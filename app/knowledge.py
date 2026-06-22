@@ -125,6 +125,15 @@ def score_record(section: str, record: dict[str, Any], query: str, query_tokens:
     if normalized_query and normalized_query in normalized_weighted:
         score += 12
 
+    if section in {"CrossSell", "Alternatives"}:
+        source_tokens = tokenize(str(record.get("Produkt") or ""))
+        source_overlap = len(effective_query_tokens & source_tokens)
+        if source_overlap >= 2:
+            score += 8 * source_overlap
+        normalized_source = normalize(str(record.get("Produkt") or ""))
+        if normalized_source and normalized_source in normalized_query:
+            score += 30
+
     if section == "Recipes" and query_tokens & RECIPE_INTENT_TOKENS and not content_tokens:
         score += 8
 
@@ -308,6 +317,31 @@ def content_cards(results: dict[str, list[dict[str, Any]]], lang: str = "SK") ->
                     "type": "cross_sell",
                     "title": clean_recommendation_title(title),
                     "subtitle": f"Súvisiace k: {source_product}" if source_product else "Súvisiaci produkt",
+                    "url": url,
+                    "button_label": "Zobraziť produkt",
+                }
+            )
+            if len(cards) >= 4:
+                break
+        if len(cards) >= 4:
+            break
+
+    for hit in results.get("Alternatives", [])[:2]:
+        record = hit["record"]
+        source_product = str(record.get("Produkt") or "").strip()
+        for index in range(1, 6):
+            title = str(record.get(f"Alternativa {index}") or "").strip()
+            url = str(record.get(f"Alternativa {index}_url") or "").strip()
+            if not title or not url or url in seen_urls:
+                continue
+            if normalize(clean_recommendation_title(title)) == normalize(clean_recommendation_title(source_product)):
+                continue
+            seen_urls.add(url)
+            cards.append(
+                {
+                    "type": "alternative",
+                    "title": clean_recommendation_title(title),
+                    "subtitle": f"Alternatíva k: {source_product}" if source_product else "Alternatíva produktu",
                     "url": url,
                     "button_label": "Zobraziť produkt",
                 }

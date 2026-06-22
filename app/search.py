@@ -22,7 +22,10 @@ STOPWORDS = {
     "je",
     "kde",
     "kedy",
+    "kolko",
     "ku",
+    "lacnejsia",
+    "lacnejsie",
     "ma",
     "mam",
     "mate",
@@ -35,7 +38,14 @@ STOPWORDS = {
     "od",
     "pre",
     "pri",
+    "produkt",
+    "produkty",
+    "produktov",
     "prosim",
+    "porovnaj",
+    "porovnanie",
+    "podobne",
+    "podobnych",
     "sa",
     "si",
     "som",
@@ -48,6 +58,25 @@ STOPWORDS = {
     "viete",
     "za",
     "ze",
+}
+
+INTENT_NOISE_TOKENS = {
+    "alternativa",
+    "alternativy",
+    "cena",
+    "ceny",
+    "doplnky",
+    "hodi",
+    "kupit",
+    "moznosti",
+    "nahrada",
+    "odporuc",
+    "porovnat",
+    "suvisejuci",
+    "suvisiace",
+    "suvisiaci",
+    "vyber",
+    "vybrat",
 }
 
 
@@ -64,8 +93,22 @@ def tokenize(value: str) -> set[str]:
     }
     expanded = set(tokens)
     for token in tokens:
+        if token in INTENT_NOISE_TOKENS:
+            continue
         if token.startswith("kredit"):
             expanded.add("kredit")
+        if token in {"cili", "chili", "chilli"} or token.startswith("cil"):
+            expanded.update({"cili", "chili"})
+        if token.startswith("omack"):
+            expanded.add("omacka")
+        if token.startswith("kokos"):
+            expanded.add("kokos")
+        if token.startswith("mliek"):
+            expanded.add("mlieko")
+        if token.startswith("gochujang"):
+            expanded.add("gochujang")
+        if token.startswith("gochugaru"):
+            expanded.update({"gochugaru", "cili", "chili", "paprika", "mleta", "mlete", "paliva", "cervena"})
         if token.startswith("srirach"):
             expanded.add("sriracha")
         if token in {"sushi", "susi"}:
@@ -78,31 +121,52 @@ def tokenize(value: str) -> set[str]:
             expanded.add("recept")
         if token.startswith("priprav") or token.startswith("uvar") or token.startswith("var"):
             expanded.add("recept")
-    return expanded
+    return expanded - INTENT_NOISE_TOKENS
+
+
+def meaningful_query_tokens(query: str) -> set[str]:
+    return tokenize(query) - INTENT_NOISE_TOKENS
 
 
 def search_products(products: list[Product], query: str, limit: int = 8) -> list[dict]:
-    query_tokens = tokenize(query)
+    query_tokens = meaningful_query_tokens(query)
     if not query_tokens:
         return []
 
     ranked: list[tuple[int, Product]] = []
+    normalized_query = normalize(query).strip()
     for product in products:
         title_tokens = tokenize(product.title)
         category_tokens = tokenize(product.product_type)
         brand_tokens = tokenize(product.brand)
         description_tokens = tokenize(product.description)
 
-        score = 0
-        score += 6 * len(query_tokens & title_tokens)
-        score += 4 * len(query_tokens & brand_tokens)
-        score += 3 * len(query_tokens & category_tokens)
-        score += len(query_tokens & description_tokens)
+        title_overlap = query_tokens & title_tokens
+        brand_overlap = query_tokens & brand_tokens
+        category_overlap = query_tokens & category_tokens
+        primary_overlap_count = len(title_overlap | brand_overlap | category_overlap)
 
-        normalized_query = normalize(query)
         normalized_title = normalize(product.title)
-        if normalized_query in normalized_title:
-            score += 10
+        phrase_match = bool(normalized_query and normalized_query in normalized_title)
+
+        # Avoid random products from broad follow-up words or description-only hits.
+        if not phrase_match and primary_overlap_count == 0:
+            continue
+        if len(query_tokens) >= 2 and not phrase_match and primary_overlap_count < 1:
+            continue
+
+        score = 0
+        score += 8 * len(title_overlap)
+        score += 5 * len(brand_overlap)
+        score += 4 * len(category_overlap)
+        score += min(2, len(query_tokens & description_tokens))
+
+        if phrase_match:
+            score += 14
+        if query_tokens and query_tokens <= (title_tokens | brand_tokens | category_tokens):
+            score += 8
+        if len(query_tokens) >= 2 and len(query_tokens & title_tokens) >= 2:
+            score += 6
 
         # Availability should only break ties among relevant matches.
         if score > 0 and product.availability == "in_stock":

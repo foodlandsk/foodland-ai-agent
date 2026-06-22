@@ -5,6 +5,7 @@
   const maxQuestionsPerMinute = config.maxQuestionsPerMinute || 8;
   const recentQuestions = [];
   const shownProductIds = new Set();
+  let lastProductTitle = "";
 
   const demoProducts = [
     {
@@ -449,17 +450,19 @@
       const productKey = String(product.id || product.link || product.title || "");
       if (productKey && shownProductIds.has(productKey)) return;
       if (productKey) shownProductIds.add(productKey);
+      if (!lastProductTitle && product.title) lastProductTitle = product.title;
       addedCount += 1;
       const price = typeof product.effective_price === "number"
         ? `${product.effective_price.toFixed(2)} ${product.currency || "EUR"}`
         : "Cena neuvedena";
       const availability = product.availability === "in_stock" ? "Skladom" : "Overit dostupnost";
       const ingredient = product.ingredient_text || "";
+      const imageUrl = product.image_link || "";
       const card = document.createElement("article");
       card.className = "fl-ai-product";
       card.innerHTML = `
         <div>
-          <img src="${escapeAttr(product.image_link || "")}" alt="${escapeAttr(product.title || "Produkt Foodland")}" loading="lazy" />
+          ${imageUrl ? `<img src="${escapeAttr(imageUrl)}" alt="${escapeAttr(product.title || "Produkt Foodland")}" loading="lazy" />` : ""}
           <div class="fl-ai-product-image-fallback">Foodland produkt</div>
         </div>
         <div>
@@ -475,10 +478,14 @@
       `;
       const image = card.querySelector("img");
       const fallback = card.querySelector(".fl-ai-product-image-fallback");
-      image.addEventListener("error", function () {
-        image.style.display = "none";
+      if (!image) {
         fallback.style.display = "flex";
-      });
+      } else {
+        image.addEventListener("error", function () {
+          image.style.display = "none";
+          fallback.style.display = "flex";
+        });
+      }
       wrap.appendChild(card);
     });
     if (addedCount === 0) return;
@@ -496,13 +503,18 @@
     const wrap = document.createElement("div");
     wrap.className = "fl-ai-content-cards";
     cards.slice(0, 4).forEach(function (item) {
+      if (!lastProductTitle && item.title && (item.type === "cross_sell" || item.type === "alternative")) {
+        lastProductTitle = item.title;
+      }
       const typeLabel = item.type === "article"
         ? "Článok"
         : item.type === "link"
           ? "Odkaz"
           : item.type === "cross_sell"
             ? "Súvisiaci produkt"
-            : "Recept";
+            : item.type === "alternative"
+              ? "Alternatíva"
+              : "Recept";
       const card = document.createElement("article");
       card.className = "fl-ai-content-card";
       if (item.image_link) card.classList.add("has-image");
@@ -574,14 +586,28 @@
       };
     }
 
+    const backendText = withFollowupContext(text);
     const response = await fetch(`${apiBaseUrl}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, limit: 6, shown_product_ids: Array.from(shownProductIds) }),
+      body: JSON.stringify({ message: backendText, limit: 6, shown_product_ids: Array.from(shownProductIds) }),
     });
     if (response.status === 429) throw new Error("RATE_LIMIT");
     if (!response.ok) throw new Error("REQUEST_FAILED");
     return response.json();
+  }
+
+  function withFollowupContext(text) {
+    const value = String(text || "");
+    if (!lastProductTitle) return value;
+
+    const normalized = value.toLowerCase();
+    const isFollowup = /porovnaj|porovnanie|alternat|náhrad|nahrad|podobn|lacnej/.test(normalized);
+    if (!isFollowup) return value;
+    if (normalized.includes(lastProductTitle.toLowerCase())) return value;
+    if (normalized.includes(" k ") || normalized.includes(" ku ")) return value;
+
+    return `${value} k ${lastProductTitle}`;
   }
 
   async function submitQuestion(text) {

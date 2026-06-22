@@ -34,6 +34,8 @@ from app.recipe_ingredients import (
     search_recipe_ingredient_products,
 )
 from app.search import normalize, products_context, search_products
+from app.validators import grounding_warnings
+from app.workflows import WorkflowResult, detect_workflow
 
 
 class ChatRequest(BaseModel):
@@ -170,6 +172,7 @@ def answer_question(
     ingredient_mode = is_ingredient_query(message)
     crosssell_mode = is_crosssell_query(message)
     compare_mode = is_compare_query(message)
+    alternative_mode = is_alternative_query(message)
     ingredient_recipe = None
 
     if ingredient_mode:
@@ -192,6 +195,13 @@ def answer_question(
         card_matches = {}
     elif crosssell_mode:
         card_matches = {"CrossSell": knowledge_matches["CrossSell"]} if knowledge_matches.get("CrossSell") else {}
+    elif alternative_mode or compare_mode:
+        if knowledge_matches.get("Alternatives"):
+            card_matches = {"Alternatives": knowledge_matches["Alternatives"]}
+        elif knowledge_matches.get("CrossSell"):
+            card_matches = {"CrossSell": knowledge_matches["CrossSell"]}
+        else:
+            card_matches = {}
     elif not recipe_mode and not ingredient_mode and matches and not is_content_query(message):
         card_matches = {}
     elif not recipe_mode and not ingredient_mode:
@@ -203,6 +213,17 @@ def answer_question(
 
     cards = enrich_content_cards(content_cards(card_matches, lang), products)
     intent = detect_intent(message, matches, knowledge_matches, recipe_mode, ingredient_mode, crosssell_mode, compare_mode)
+    workflow = detect_workflow(
+        message,
+        recipe_mode=recipe_mode,
+        ingredient_mode=ingredient_mode,
+        crosssell_mode=crosssell_mode,
+        compare_mode=compare_mode,
+        alternative_mode=alternative_mode,
+        has_faq=bool(knowledge_matches.get("FAQ")),
+        has_products=bool(matches or cards),
+        has_content=bool(knowledge_matches.get("Magazine") or knowledge_matches.get("Recipes") or knowledge_matches.get("IntentMapping")),
+    )
 
     if intent == "faq":
         log_question(
@@ -216,7 +237,7 @@ def answer_question(
             endpoint=endpoint,
             lang=lang,
         )
-        return response_payload(fallback_answer([], knowledge_matches), intent, "faq", lang, [], knowledge_matches, cards)
+        return response_payload(fallback_answer([], knowledge_matches), intent, "faq", lang, [], knowledge_matches, cards, workflow)
 
     if ingredient_mode and ingredient_recipe is not None:
         log_question(
@@ -237,7 +258,35 @@ def answer_question(
                 f"Ďalšie spoľahlivé produkty k receptu {recipe_name} už v dátach nemám. "
                 "Neopakujem už zobrazené položky ani neponúkam slabé náhrady."
             )
-        return response_payload(answer, intent, "recipe_ingredients", lang, matches, knowledge_matches, cards)
+        return response_payload(answer, intent, "recipe_ingredients", lang, matches, knowledge_matches, cards, workflow)
+
+    if intent == "alternative" and cards:
+        log_question(
+            message,
+            client_key,
+            mode="alternatives",
+            intent=intent,
+            products_count=0,
+            knowledge_matches=knowledge_matches,
+            content_cards_count=len(cards),
+            endpoint=endpoint,
+            lang=lang,
+        )
+        return response_payload(alternative_answer(cards), intent, "alternatives", lang, [], knowledge_matches, cards, workflow)
+
+    if intent == "compare_products" and cards:
+        log_question(
+            message,
+            client_key,
+            mode="compare",
+            intent=intent,
+            products_count=0,
+            knowledge_matches=knowledge_matches,
+            content_cards_count=len(cards),
+            endpoint=endpoint,
+            lang=lang,
+        )
+        return response_payload(compare_cards_answer(cards), intent, "compare", lang, [], knowledge_matches, cards, workflow)
 
     if not matches and not knowledge_matches:
         log_question(
@@ -257,7 +306,7 @@ def answer_question(
             if recipe_mode or ingredient_mode
             else "Nenašiel som presný produkt ani odpoveď. Skúste napísať názov, značku alebo tému trochu inak."
         )
-        return response_payload(answer, intent, "search_only", lang, [], {}, [])
+        return response_payload(answer, intent, "search_only", lang, [], {}, [], workflow)
 
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -278,7 +327,7 @@ def answer_question(
             answer = compare_answer(matches)
         else:
             answer = crosssell_answer(cards) if crosssell_mode and cards else fallback_answer(matches, knowledge_matches)
-        return response_payload(answer, intent, "search_only", lang, matches, knowledge_matches, cards)
+        return response_payload(answer, intent, "search_only", lang, matches, knowledge_matches, cards, workflow)
 
     try:
         client = OpenAI(api_key=api_key)
@@ -323,7 +372,7 @@ def answer_question(
             endpoint=endpoint,
             lang=lang,
         )
-        return response_payload(response.output_text, intent, "ai", lang, matches, knowledge_matches, cards)
+        return response_payload(response.output_text, intent, "ai", lang, matches, knowledge_matches, cards, workflow)
     except Exception as exc:
         log_backend_error("openai_response_failed", str(exc))
         log_question(
@@ -341,7 +390,7 @@ def answer_question(
             answer = recipe_ingredients_answer(ingredient_recipe, matches)
         else:
             answer = crosssell_answer(cards) if crosssell_mode and cards else fallback_answer(matches, knowledge_matches)
-        payload = response_payload(answer, intent, "fallback", lang, matches, knowledge_matches, cards)
+        payload = response_payload(answer, intent, "fallback", lang, matches, knowledge_matches, cards, workflow)
         payload["warning"] = "Odpoveď sa nepodarilo vygenerovať cez OpenAI, používam nájdené Foodland dáta."
         return payload
 
@@ -354,8 +403,9 @@ def response_payload(
     matches: list[dict],
     knowledge_matches: dict,
     cards: list[dict],
+    workflow: WorkflowResult | None = None,
 ) -> dict:
-    return {
+    payload = {
         "answer": answer,
         "intent": intent,
         "mode": mode,
@@ -365,6 +415,15 @@ def response_payload(
         "content_cards": cards,
         "suggested_actions": suggested_actions(intent, matches, cards),
     }
+    if workflow:
+        validator_warnings = grounding_warnings(matches, cards, products)
+        if validator_warnings:
+            workflow.warnings.extend(validator_warnings)
+            workflow.trace["grounding_warnings_count"] = len(validator_warnings)
+        else:
+            workflow.trace["grounding_warnings_count"] = 0
+        payload["workflow"] = workflow.to_dict()
+    return payload
 
 
 def enrich_content_cards(cards: list[dict], product_items: list[Product]) -> list[dict]:
@@ -373,7 +432,7 @@ def enrich_content_cards(cards: list[dict], product_items: list[Product]) -> lis
 
     for card in cards:
         item = dict(card)
-        if item.get("type") == "cross_sell":
+        if item.get("type") in {"cross_sell", "alternative"}:
             product = product_by_link.get(normalize_url(str(item.get("url") or "")))
             if product:
                 item["image_link"] = product.image_link
@@ -629,6 +688,20 @@ def crosssell_answer(cards: list[dict]) -> str:
     if count == 1:
         return "Našiel som jeden súvisiaci produkt. Pozrieť si ho môžete nižšie."
     return f"Našiel som {count} súvisiace produkty, ktoré sa k tomu hodia. Pozrieť si ich môžete nižšie."
+
+
+def alternative_answer(cards: list[dict]) -> str:
+    count = min(len(cards), 4)
+    if count == 1:
+        return "Našiel som jednu vhodnú alternatívu vo Foodland poradci. Pozrite si ju nižšie."
+    return f"Našiel som {count} vhodné alternatívy vo Foodland poradci. Porovnajte cenu, balenie a dostupnosť nižšie."
+
+
+def compare_cards_answer(cards: list[dict]) -> str:
+    count = min(len(cards), 4)
+    if count == 1:
+        return "Našiel som jednu možnosť na porovnanie vo Foodland poradci."
+    return f"Vybral som {count} možnosti na porovnanie z Foodland dát. Pozrite si cenu, balenie, značku a dostupnosť pri kartách nižšie."
 
 
 def compare_answer(matches: list[dict]) -> str:
