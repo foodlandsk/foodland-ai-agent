@@ -59,7 +59,7 @@ class KnowledgeSearchRequest(BaseModel):
 
 
 def load_products() -> list[Product]:
-    json_path = os.getenv("PRODUCTS_JSON_PATH")
+    json_path = os.getenv("PRODUCTS_JSON_PATH", "data/products.json")
     feed_path = os.getenv("PRODUCT_FEED_PATH", "data/googleMerchant_sk_export.xml")
 
     if json_path and Path(json_path).exists():
