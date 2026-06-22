@@ -226,6 +226,30 @@
       text-decoration: none;
     }
     .fl-ai-content-cards { display: grid; gap: 10px; margin: 0 0 12px; }
+    .fl-ai-missing {
+      margin: 0 0 12px;
+      padding: 12px;
+      border: 1px solid #dde7df;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 8px 20px rgba(29, 48, 38, 0.06);
+    }
+    .fl-ai-missing-title {
+      margin: 0 0 8px;
+      color: #299B5E;
+      font-size: 11px;
+      line-height: 1.2;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .fl-ai-missing-list {
+      margin: 0;
+      padding-left: 18px;
+      color: #4f6256;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .fl-ai-missing-list li { margin: 0 0 5px; }
     .fl-ai-content-card {
       padding: 12px;
       border: 1px solid #dde7df;
@@ -446,7 +470,7 @@
     const wrap = document.createElement("div");
     wrap.className = "fl-ai-products";
     let addedCount = 0;
-    products.slice(0, 6).forEach(function (product) {
+    products.slice(0, 10).forEach(function (product) {
       const productKey = String(product.id || product.link || product.title || "");
       if (productKey && shownProductIds.has(productKey)) return;
       if (productKey) shownProductIds.add(productKey);
@@ -489,6 +513,26 @@
       wrap.appendChild(card);
     });
     if (addedCount === 0) return;
+    messages.appendChild(wrap);
+    scrollToBottom();
+  }
+
+  function addMissingIngredients(items) {
+    if (!Array.isArray(items) || items.length === 0) return;
+
+    const wrap = document.createElement("div");
+    wrap.className = "fl-ai-missing";
+    const list = items.slice(0, 12).map(function (item) {
+      const text = item && item.text ? item.text : "";
+      if (!text) return "";
+      return `<li><strong>${escapeHtml(text)}</strong> - dokupit v beznych potravinach alebo mimo Foodland e-shopu.</li>`;
+    }).filter(Boolean).join("");
+    if (!list) return;
+
+    wrap.innerHTML = `
+      <p class="fl-ai-missing-title">Dokupit mimo Foodland e-shopu</p>
+      <ul class="fl-ai-missing-list">${list}</ul>
+    `;
     messages.appendChild(wrap);
     scrollToBottom();
   }
@@ -629,6 +673,7 @@
       loading.textContent = data.answer || "NenaĹˇiel som presnĂş odpoveÄŹ. SkĂşste napĂ­saĹĄ nĂˇzov produktu alebo kategĂłriu inak.";
       addContentCards(data.content_cards);
       addProducts(data.products);
+      addMissingIngredients(data.missing_ingredients);
       addSuggestedActions(data.suggested_actions);
     } catch (error) {
       loading.classList.add("error");
@@ -677,6 +722,7 @@
       loading.textContent = data.answer || "Nenašiel som presnú odpoveď. Skúste napísať názov produktu alebo kategóriu inak.";
       addContentCards(data.content_cards);
       addProducts(data.products);
+      addMissingIngredients(data.missing_ingredients);
       addSuggestedActions(data.suggested_actions);
     } catch (error) {
       loading.classList.add("error");

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import re
@@ -50,9 +50,36 @@ SKIP_INGREDIENT_FRAGMENTS = [
     "fermentovanych solenych kreviet",
     "solenych kreviet",
     "kreviet saeujeot",
+    "hovadzich kosti",
+    "hovadzieho masa",
+    "svieckovica",
+    "fazulove vyhonky",
+    "cerstva bazalka",
+    "thajska ak je dostupna",
+    "limetka",
+    "jarna cibulka",
 ]
 
 DIRECT_INGREDIENT_QUERIES = [
+    ("badianu", "badian"),
+    ("badian", "badian"),
+    ("skoricova tycinka", "skorica cela"),
+    ("skorica", "skorica cela"),
+    ("klincekov", "klinceky"),
+    ("klincek", "klinceky"),
+    ("koriandrovych semienok", "koriandrove semienka"),
+    ("koriandrove semienka", "koriandrove semienka"),
+    ("fenikla", "fenikel semienka"),
+    ("fenikel", "fenikel semienka"),
+    ("ryzovych rezancov", "ryzove rezance"),
+    ("ryzove rezance", "ryzove rezance"),
+    ("hoisin omacka", "hoisin omacka"),
+    ("hoisin", "hoisin omacka"),
+    ("sriracha", "sriracha"),
+    ("cili papricka", "susene cili papricky"),
+    ("cili papricky", "susene cili papricky"),
+    ("cerstva koriandra", "cerstvy koriander"),
+    ("cerstvy koriander", "cerstvy koriander"),
     ("gochugaru", "gochugaru"),
     ("ryzovej muky", "ryzova muka"),
     ("ryzova muka", "ryzova muka"),
@@ -170,6 +197,12 @@ def score_recipe(recipe: dict[str, Any], query: str, query_tokens: set[str]) -> 
         score += 12
 
     if is_base_recipe_query(query) and query_tokens & name_tokens:
+        if name_tokens & {"tradicny", "tradicne", "zaklad", "recept"}:
+            score += 18
+        if name_tokens & {"ramen", "jjigae", "ryza", "polievka"}:
+            score -= 10
+
+    if query_tokens == {"kimchi"} and "kimchi" in name_tokens:
         if name_tokens & {"tradicny", "tradicne", "zaklad", "recept"}:
             score += 18
         if name_tokens & {"ramen", "jjigae", "ryza", "polievka"}:
@@ -293,6 +326,26 @@ def is_compatible_product_text(ingredient_text: str, product_title: str) -> bool
         return "ryz" in title and "muka" in title
     if "rybacej omacky" in ingredient or "rybacia omacka" in ingredient:
         return "ryb" in title and "omack" in title
+    if "badian" in ingredient:
+        return "badian" in title or "aniz" in title
+    if "skoric" in ingredient:
+        return "skorica" in title and ("cela" in title or "tyc" in title or "dalchini" in title)
+    if "klincek" in ingredient or "klincekov" in ingredient:
+        return "klincek" in title or "klin" in title
+    if "koriandrovych semienok" in ingredient or "koriandrove semienka" in ingredient:
+        return "koriandr" in title and ("semien" in title or "dhania" in title)
+    if "fenikl" in ingredient:
+        return "fenikel" in title and "semien" in title
+    if "ryzovych rezancov" in ingredient or "ryzove rezance" in ingredient:
+        return "ryz" in title and "rezance" in title
+    if "hoisin" in ingredient:
+        return "hoisin" in title and "omack" in title
+    if "sriracha" in ingredient:
+        return "sriracha" in title
+    if "cili paprick" in ingredient:
+        return "cili" in title and ("paprick" in title or "paprik" in title) and "omack" not in title
+    if "cerstva koriandra" in ingredient or "cerstvy koriander" in ingredient:
+        return "koriander" in title and "cerstv" in title
     if "cesnak" in ingredient:
         return "cesnak" in title
     if "zazvor" in ingredient:
@@ -361,6 +414,46 @@ def format_ingredient_product(
     }
 
 
+def missing_recipe_ingredients(
+    recipe: dict[str, Any],
+    selected_products: list[dict[str, Any]],
+    limit: int = 14,
+) -> list[dict[str, str]]:
+    selected_ingredients = {
+        normalize(str(product.get("ingredient_text") or ""))
+        for product in selected_products
+        if product.get("ingredient_text")
+    }
+    missing: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    for ingredient in recipe.get("ingredients", []):
+        text = str(ingredient.get("text") or "").strip()
+        if not text:
+            continue
+
+        normalized = normalize(text)
+        if normalized in selected_ingredients or normalized in seen:
+            continue
+        seen.add(normalized)
+
+        if ingredient.get("likely_generic_staple") is True:
+            reason = "pantry_or_grocery"
+            note = "Bezna surovina, ktoru Foodland nemusi mat v e-shope. Dokupte v beznych potravinach."
+        elif should_skip_ingredient(ingredient):
+            reason = "not_in_foodland_feed"
+            note = "Foodland ju nema spolahlivo sparovanu v e-shop feede. Dokupte v beznych potravinach."
+        else:
+            reason = "not_reliably_matched"
+            note = "K tejto surovine nemam spolahlivu Foodland produktovu kartu. Dokupte mimo e-shopu."
+
+        missing.append({"text": text, "reason": reason, "note": note})
+        if len(missing) >= limit:
+            break
+
+    return missing
+
+
 def parse_price(value: Any) -> tuple[float | None, str]:
     text = str(value or "").strip()
     if not text:
@@ -370,10 +463,25 @@ def parse_price(value: Any) -> tuple[float | None, str]:
         return None, "EUR"
     return float(match.group(1).replace(",", ".")), match.group(2) or "EUR"
 
-
-def recipe_ingredients_answer(recipe: dict[str, Any], products: list[dict[str, Any]]) -> str:
+def recipe_ingredients_answer(
+    recipe: dict[str, Any],
+    products: list[dict[str, Any]],
+    missing_ingredients: list[dict[str, str]] | None = None,
+) -> str:
     recipe_name = str(recipe.get("name") or "receptu")
+    missing_count = len(missing_ingredients or [])
     if not products:
-        return f"Našiel som recept {recipe_name}, ale k jeho ingredienciám zatiaľ nemám spoľahlivé produktové odporúčania."
-    count = min(len(products), 6)
-    return f"Našiel som {count} produktov k receptu {recipe_name}. Vybral som položky z Foodland dát podľa ingrediencií receptu."
+        if missing_count:
+            return (
+                f"Nasiel som recept {recipe_name}, ale k jeho ingredienciam zatial nemam spolahlive "
+                "produktove karty. Suroviny na dokupenie uvadzam nizsie."
+            )
+        return f"Nasiel som recept {recipe_name}, ale k jeho ingredienciam zatial nemam spolahlive produktove odporucania."
+
+    count = len(products)
+    if missing_count:
+        return (
+            f"Nasiel som {count} Foodland produktov k receptu {recipe_name}. "
+            "Suroviny, ktore Foodland nema spolahlivo v e-shope, uvadzam zvlast na dokupenie."
+        )
+    return f"Nasiel som {count} Foodland produktov k receptu {recipe_name}. Vybral som polozky podla ingrediencii receptu."

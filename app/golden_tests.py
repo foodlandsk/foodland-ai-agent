@@ -10,6 +10,7 @@ from app.workflows import detect_workflow
 GOLDEN_CASES = [
     ("mate sriracha?", "product_search"),
     ("na vyrobu kimchi", "recipe_to_products"),
+    ("co potrebujem na recept Pho Bo", "recipe_to_products"),
     ("recept na kimchi", "recipe_only"),
     ("kolko stoji doprava do Kosic?", "faq"),
     ("alternativy k sriracha", "alternatives"),

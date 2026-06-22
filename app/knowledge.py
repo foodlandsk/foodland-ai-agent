@@ -316,6 +316,7 @@ def content_cards(results: dict[str, list[dict[str, Any]]], lang: str = "SK") ->
                 {
                     "type": "cross_sell",
                     "title": clean_recommendation_title(title),
+                    "source_product": clean_recommendation_title(source_product),
                     "subtitle": f"Súvisiace k: {source_product}" if source_product else "Súvisiaci produkt",
                     "url": url,
                     "button_label": "Zobraziť produkt",
@@ -341,6 +342,7 @@ def content_cards(results: dict[str, list[dict[str, Any]]], lang: str = "SK") ->
                 {
                     "type": "alternative",
                     "title": clean_recommendation_title(title),
+                    "source_product": clean_recommendation_title(source_product),
                     "subtitle": f"Alternatíva k: {source_product}" if source_product else "Alternatíva produktu",
                     "url": url,
                     "button_label": "Zobraziť produkt",

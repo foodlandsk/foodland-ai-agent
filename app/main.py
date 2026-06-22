@@ -30,10 +30,11 @@ from app.knowledge import (
 from app.recipe_ingredients import (
     is_ingredient_query,
     load_recipe_ingredients_json,
+    missing_recipe_ingredients,
     recipe_ingredients_answer,
     search_recipe_ingredient_products,
 )
-from app.search import normalize, products_context, search_products
+from app.search import normalize, products_context, search_products, tokenize
 from app.validators import grounding_warnings
 from app.workflows import WorkflowResult, detect_workflow
 
@@ -174,17 +175,32 @@ def answer_question(
     compare_mode = is_compare_query(message)
     alternative_mode = is_alternative_query(message)
     ingredient_recipe = None
+    culinary_crosssell_recipe = None
 
     if ingredient_mode:
+        ingredient_limit = max(limit, 10)
         ingredient_recipe, ingredient_matches = search_recipe_ingredient_products(
             recipe_ingredients,
             products,
             message,
-            limit,
+            ingredient_limit,
             shown_product_ids or set(),
         )
         if ingredient_recipe is not None:
             matches = ingredient_matches
+
+    if crosssell_mode and not ingredient_mode:
+        crosssell_limit = max(limit, 8)
+        candidate_recipe, candidate_matches = search_recipe_ingredient_products(
+            recipe_ingredients,
+            products,
+            message,
+            crosssell_limit,
+            shown_product_ids or set(),
+        )
+        if candidate_recipe is not None and is_culinary_recipe_crosssell(message, candidate_recipe):
+            culinary_crosssell_recipe = candidate_recipe
+            matches = candidate_matches
 
     if recipe_mode and not ingredient_mode:
         matches = []
@@ -192,6 +208,8 @@ def answer_question(
 
     card_matches = knowledge_matches
     if ingredient_mode:
+        card_matches = {}
+    elif culinary_crosssell_recipe is not None:
         card_matches = {}
     elif crosssell_mode:
         card_matches = {"CrossSell": knowledge_matches["CrossSell"]} if knowledge_matches.get("CrossSell") else {}
@@ -212,6 +230,8 @@ def answer_question(
         }
 
     cards = enrich_content_cards(content_cards(card_matches, lang), products)
+    if compare_mode:
+        cards = filter_compare_cards(message, cards, matches)
     intent = detect_intent(message, matches, knowledge_matches, recipe_mode, ingredient_mode, crosssell_mode, compare_mode)
     workflow = detect_workflow(
         message,
@@ -239,7 +259,49 @@ def answer_question(
         )
         return response_payload(fallback_answer([], knowledge_matches), intent, "faq", lang, [], knowledge_matches, cards, workflow)
 
+    if compare_mode and not cards and not matches:
+        log_question(
+            message,
+            client_key,
+            mode="compare_needs_product",
+            intent=intent,
+            products_count=0,
+            knowledge_matches={},
+            content_cards_count=0,
+            endpoint=endpoint,
+            lang=lang,
+        )
+        answer = "Napiste prosim konkretny produkt, ktory chcete porovnat, napriklad 'porovnaj sriracha omacky'."
+        return response_payload(answer, intent, "compare_needs_product", lang, [], {}, [], workflow)
+
+    if culinary_crosssell_recipe is not None:
+        missing_ingredients = missing_recipe_ingredients(culinary_crosssell_recipe, matches)
+        log_question(
+            message,
+            client_key,
+            mode="culinary_cross_sell",
+            intent=intent,
+            products_count=len(matches),
+            knowledge_matches=knowledge_matches,
+            content_cards_count=0,
+            endpoint=endpoint,
+            lang=lang,
+        )
+        answer = culinary_crosssell_answer(culinary_crosssell_recipe, matches, missing_ingredients)
+        return response_payload(
+            answer,
+            intent,
+            "culinary_cross_sell",
+            lang,
+            matches,
+            knowledge_matches,
+            [],
+            workflow,
+            missing_ingredients=missing_ingredients,
+        )
+
     if ingredient_mode and ingredient_recipe is not None:
+        missing_ingredients = missing_recipe_ingredients(ingredient_recipe, matches)
         log_question(
             message,
             client_key,
@@ -251,14 +313,24 @@ def answer_question(
             endpoint=endpoint,
             lang=lang,
         )
-        answer = recipe_ingredients_answer(ingredient_recipe, matches)
+        answer = recipe_ingredients_answer(ingredient_recipe, matches, missing_ingredients)
         if not matches and shown_product_ids:
             recipe_name = str(ingredient_recipe.get("name") or "receptu")
             answer = (
                 f"Ďalšie spoľahlivé produkty k receptu {recipe_name} už v dátach nemám. "
                 "Neopakujem už zobrazené položky ani neponúkam slabé náhrady."
             )
-        return response_payload(answer, intent, "recipe_ingredients", lang, matches, knowledge_matches, cards, workflow)
+        return response_payload(
+            answer,
+            intent,
+            "recipe_ingredients",
+            lang,
+            matches,
+            knowledge_matches,
+            cards,
+            workflow,
+            missing_ingredients=missing_ingredients,
+        )
 
     if intent == "alternative" and cards:
         log_question(
@@ -404,6 +476,7 @@ def response_payload(
     knowledge_matches: dict,
     cards: list[dict],
     workflow: WorkflowResult | None = None,
+    missing_ingredients: list[dict[str, str]] | None = None,
 ) -> dict:
     payload = {
         "answer": answer,
@@ -415,6 +488,8 @@ def response_payload(
         "content_cards": cards,
         "suggested_actions": suggested_actions(intent, matches, cards),
     }
+    if missing_ingredients is not None:
+        payload["missing_ingredients"] = missing_ingredients
     if workflow:
         validator_warnings = grounding_warnings(matches, cards, products)
         if validator_warnings:
@@ -566,6 +641,114 @@ def is_alternative_query(message: str) -> bool:
     return any(marker in normalized for marker in markers)
 
 
+CULINARY_CROSSSELL_NOISE_TOKENS = {
+    "hodi",
+    "hodia",
+    "suvisiace",
+    "suvisiaci",
+    "odporuc",
+    "odporucit",
+    "doplnky",
+    "kupit",
+    "recept",
+    "jedlo",
+    "varenie",
+    "priprava",
+    "produkty",
+    "produkt",
+}
+
+
+def is_culinary_recipe_crosssell(message: str, recipe: dict) -> bool:
+    query_tokens = tokenize(message) - CULINARY_CROSSSELL_NOISE_TOKENS
+    if not query_tokens:
+        return False
+
+    recipe_name = str(recipe.get("name") or "")
+    cuisine = str(recipe.get("cuisine") or "")
+    recipe_tokens = tokenize(f"{recipe_name} {cuisine}") - CULINARY_CROSSSELL_NOISE_TOKENS
+    overlap = query_tokens & recipe_tokens
+    if len(overlap) >= 2:
+        return True
+
+    normalized_message = normalize(message)
+    normalized_name = normalize(recipe_name)
+    if normalized_name and normalized_name in normalized_message:
+        return True
+
+    strong_single_dish_tokens = {"kimchi", "pho", "ramen", "jjigae", "sushi", "susi", "pad", "thai", "kari", "curry"}
+    return bool(overlap & strong_single_dish_tokens)
+
+
+COMPARE_NOISE_TOKENS = {
+    "porovnaj",
+    "porovnanie",
+    "porovnat",
+    "porovnajme",
+    "rozdiel",
+    "rozdiely",
+    "ktory",
+    "ktora",
+    "lepsi",
+    "lepsia",
+    "lepsie",
+    "vyber",
+    "vybrat",
+    "cena",
+    "ceny",
+    "cenovo",
+    "lacnejsi",
+    "lacnejsia",
+    "produkt",
+    "produkty",
+    "produktov",
+    "podobny",
+    "podobne",
+    "podobnych",
+    "moznosti",
+    "moznost",
+}
+
+
+def filter_compare_cards(message: str, cards: list[dict], matches: list[dict]) -> list[dict]:
+    if not cards:
+        return []
+
+    reference_tokens = tokenize(message) - COMPARE_NOISE_TOKENS
+    match_tokens: set[str] = set()
+    if matches:
+        primary_match = matches[0]
+        match_tokens = tokenize(
+            " ".join(
+                [
+                    str(primary_match.get("title") or ""),
+                    str(primary_match.get("brand") or ""),
+                    str(primary_match.get("product_type") or ""),
+                ]
+            )
+        )
+
+    if not reference_tokens and not match_tokens:
+        return []
+
+    filtered: list[dict] = []
+    for card in cards:
+        source_tokens = tokenize(str(card.get("source_product") or ""))
+        title_tokens = tokenize(str(card.get("title") or ""))
+        subtitle_tokens = tokenize(str(card.get("subtitle") or ""))
+        card_tokens = source_tokens | title_tokens | subtitle_tokens
+
+        source_matches_query = bool(source_tokens and reference_tokens and (reference_tokens & source_tokens))
+        card_matches_query = bool(reference_tokens and (reference_tokens & card_tokens))
+        source_matches_product = bool(source_tokens and match_tokens and (source_tokens & match_tokens))
+        title_matches_product = bool(title_tokens and match_tokens and (title_tokens & match_tokens))
+
+        if source_matches_query or source_matches_product or (card_matches_query and title_matches_product):
+            filtered.append(card)
+
+    return filtered[:4]
+
+
 def suggested_actions(intent: str, matches: list[dict], cards: list[dict]) -> list[dict[str, str]]:
     actions: list[dict[str, str]] = []
     topic = primary_topic(matches, cards)
@@ -688,6 +871,26 @@ def crosssell_answer(cards: list[dict]) -> str:
     if count == 1:
         return "Našiel som jeden súvisiaci produkt. Pozrieť si ho môžete nižšie."
     return f"Našiel som {count} súvisiace produkty, ktoré sa k tomu hodia. Pozrieť si ich môžete nižšie."
+
+
+def culinary_crosssell_answer(
+    recipe: dict,
+    products: list[dict],
+    missing_ingredients: list[dict[str, str]] | None = None,
+) -> str:
+    recipe_name = str(recipe.get("name") or "tomuto jedlu")
+    count = len(products)
+    missing_count = len(missing_ingredients or [])
+    if count and missing_count:
+        return (
+            f"K jedlu {recipe_name} som vybral {count} Foodland produktov podla receptu a kucharskej kombinacie. "
+            "Suroviny, ktore nie su spolahlivo sparovane s e-shopom, uvadzam zvlast na dokupenie."
+        )
+    if count:
+        return f"K jedlu {recipe_name} som vybral {count} Foodland produktov, ktore spolu kucharsky davaju zmysel."
+    if missing_count:
+        return f"K jedlu {recipe_name} nemam spolahlive Foodland produktove karty, ale suroviny na dokupenie uvadzam nizsie."
+    return f"K jedlu {recipe_name} zatial nemam spolahlive cross-sell odporucania."
 
 
 def alternative_answer(cards: list[dict]) -> str:
