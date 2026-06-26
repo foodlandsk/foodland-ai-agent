@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
+from app.cross_sell_rules import recommend_cross_sell_from_rules
 from app.feed import Product, load_products_json, parse_google_merchant_feed
 from app.knowledge import (
     best_faq_answer,
@@ -59,6 +60,12 @@ class ProductSearchRequest(BaseModel):
 
 class KnowledgeSearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=300)
+
+
+class CrossSellRecommendationRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=300)
+    limit: int = Field(default=4, ge=1, le=12)
+    shown_product_ids: list[str] = Field(default_factory=list, max_length=80)
 
 
 def load_products() -> list[Product]:
@@ -132,6 +139,21 @@ def knowledge_search(request: KnowledgeSearchRequest) -> dict:
     }
 
 
+@app.post("/recommendations/cross-sell")
+def cross_sell_recommendations(request: CrossSellRecommendationRequest) -> dict:
+    result = recommend_cross_sell_from_rules(
+        request.query,
+        knowledge,
+        products,
+        limit=request.limit,
+        shown_product_ids=set(request.shown_product_ids),
+    )
+    return {
+        "cards": result.cards,
+        "trace": result.trace,
+    }
+
+
 @app.post("/chat")
 def chat(chat_request: ChatRequest, request: Request) -> dict:
     return answer_question(
@@ -176,6 +198,7 @@ def answer_question(
     alternative_mode = is_alternative_query(message)
     ingredient_recipe = None
     culinary_crosssell_recipe = None
+    crosssell_rule_trace: dict | None = None
 
     if ingredient_mode:
         ingredient_limit = max(limit, 10)
@@ -230,6 +253,17 @@ def answer_question(
         }
 
     cards = enrich_content_cards(content_cards(card_matches, lang), products)
+    if crosssell_mode and culinary_crosssell_recipe is None:
+        rule_result = recommend_cross_sell_from_rules(
+            message,
+            knowledge,
+            products,
+            limit=4,
+            shown_product_ids=shown_product_ids or set(),
+        )
+        if rule_result.cards:
+            cards = rule_result.cards
+        crosssell_rule_trace = rule_result.trace
     if compare_mode:
         cards = filter_compare_cards(message, cards, matches)
     intent = detect_intent(message, matches, knowledge_matches, recipe_mode, ingredient_mode, crosssell_mode, compare_mode)
@@ -244,6 +278,8 @@ def answer_question(
         has_products=bool(matches or cards),
         has_content=bool(knowledge_matches.get("Magazine") or knowledge_matches.get("Recipes") or knowledge_matches.get("IntentMapping")),
     )
+    if workflow and crosssell_rule_trace:
+        workflow.trace["cross_sell_rules"] = crosssell_rule_trace
 
     if intent == "faq":
         log_question(
