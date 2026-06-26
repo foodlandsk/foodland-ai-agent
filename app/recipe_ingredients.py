@@ -283,12 +283,35 @@ def should_skip_ingredient(ingredient: dict[str, Any]) -> bool:
     return any(fragment in text for fragment in SKIP_INGREDIENT_FRAGMENTS)
 
 
+def clean_ingredient_text(value: str) -> str:
+    text = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r"\1", str(value or ""))
+    text = re.sub(r"https?://\S+", "", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def ingredient_has_foodland_reference(ingredient: dict[str, Any]) -> bool:
+    inline_link = str(ingredient.get("inline_link") or "")
+    if "foodland.sk" in inline_link:
+        return True
+
+    text = str(ingredient.get("text") or "")
+    if "foodland.sk" in text:
+        return True
+
+    for match in ingredient.get("product_matches") or []:
+        link = str(match.get("link") or "")
+        if "foodland.sk" in link:
+            return True
+
+    return False
+
+
 def direct_feed_product(
     recipe: dict[str, Any],
     ingredient: dict[str, Any],
     product_catalog: list[Product],
 ) -> dict[str, Any] | None:
-    ingredient_text = str(ingredient.get("text") or "")
+    ingredient_text = clean_ingredient_text(str(ingredient.get("text") or ""))
     normalized = normalize(ingredient_text)
     query = ""
     for fragment, candidate_query in DIRECT_INGREDIENT_QUERIES:
@@ -389,6 +412,7 @@ def format_ingredient_product(
     match: dict[str, Any],
     feed_product: Product | None,
 ) -> dict[str, Any]:
+    ingredient_text = clean_ingredient_text(str(ingredient.get("text") or ""))
     price, currency = parse_price(match.get("price"))
     sale_price, sale_currency = parse_price(match.get("sale_price"))
     effective_price = sale_price if sale_price is not None else price
@@ -396,7 +420,7 @@ def format_ingredient_product(
     return {
         "id": match.get("product_id") or (feed_product.id if feed_product else ""),
         "title": match.get("title") or (feed_product.title if feed_product else ""),
-        "description": f"Ingrediencia: {ingredient.get('text', '')}",
+        "description": f"Ingrediencia: {ingredient_text}",
         "product_type": f"Produkt k receptu: {recipe.get('name', '')}",
         "link": match.get("link") or (feed_product.link if feed_product else ""),
         "image_link": feed_product.image_link if feed_product else "",
@@ -409,7 +433,7 @@ def format_ingredient_product(
         "gtin": feed_product.gtin if feed_product else "",
         "unit_pricing_measure": feed_product.unit_pricing_measure if feed_product else "",
         "recipe_name": recipe.get("name", ""),
-        "ingredient_text": ingredient.get("text", ""),
+        "ingredient_text": ingredient_text,
         "match_confidence": match.get("match_confidence", ""),
     }
 
@@ -420,7 +444,7 @@ def missing_recipe_ingredients(
     limit: int = 14,
 ) -> list[dict[str, str]]:
     selected_ingredients = {
-        normalize(str(product.get("ingredient_text") or ""))
+        normalize(clean_ingredient_text(str(product.get("ingredient_text") or "")))
         for product in selected_products
         if product.get("ingredient_text")
     }
@@ -428,7 +452,7 @@ def missing_recipe_ingredients(
     seen: set[str] = set()
 
     for ingredient in recipe.get("ingredients", []):
-        text = str(ingredient.get("text") or "").strip()
+        text = clean_ingredient_text(str(ingredient.get("text") or ""))
         if not text:
             continue
 
@@ -436,6 +460,9 @@ def missing_recipe_ingredients(
         if normalized in selected_ingredients or normalized in seen:
             continue
         seen.add(normalized)
+
+        if ingredient_has_foodland_reference(ingredient):
+            continue
 
         if ingredient.get("likely_generic_staple") is True:
             reason = "pantry_or_grocery"

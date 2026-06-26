@@ -225,6 +225,18 @@
       font-weight: 800;
       text-decoration: none;
     }
+    .fl-ai-show-more {
+      min-height: 36px;
+      border: 1px solid #cfe1d5;
+      border-radius: 6px;
+      background: #fff;
+      color: #237d4c;
+      cursor: pointer;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .fl-ai-show-more:hover { border-color: #299B5E; background: #F2FAF5; }
     .fl-ai-content-cards { display: grid; gap: 10px; margin: 0 0 12px; }
     .fl-ai-missing {
       margin: 0 0 12px;
@@ -467,15 +479,53 @@
   function addProducts(products) {
     if (!Array.isArray(products) || products.length === 0) return;
 
+    const visibleProducts = products.slice(0, 10).filter(function (product) {
+      const productKey = String(product.id || product.link || product.title || "");
+      return !productKey || !shownProductIds.has(productKey);
+    });
+    if (visibleProducts.length === 0) return;
+
     const wrap = document.createElement("div");
     wrap.className = "fl-ai-products";
     let addedCount = 0;
-    products.slice(0, 10).forEach(function (product) {
+    const pageSize = 5;
+    let cursor = 0;
+
+    function appendNextBatch() {
+      const nextProducts = visibleProducts.slice(cursor, cursor + pageSize);
+      cursor += nextProducts.length;
+      nextProducts.forEach(function (product) {
+        wrap.appendChild(createProductCard(product));
+        addedCount += 1;
+      });
+
+      const oldButton = wrap.querySelector(".fl-ai-show-more");
+      if (oldButton) oldButton.remove();
+
+      const remaining = visibleProducts.length - cursor;
+      if (remaining > 0) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "fl-ai-show-more";
+        button.textContent = `Zobraziť viac (${remaining})`;
+        button.addEventListener("click", function () {
+          appendNextBatch();
+          scrollToBottom();
+        });
+        wrap.appendChild(button);
+      }
+    }
+
+    appendNextBatch();
+    if (addedCount === 0) return;
+    messages.appendChild(wrap);
+    scrollToBottom();
+  }
+
+  function createProductCard(product) {
       const productKey = String(product.id || product.link || product.title || "");
-      if (productKey && shownProductIds.has(productKey)) return;
       if (productKey) shownProductIds.add(productKey);
       if (!lastProductTitle && product.title) lastProductTitle = product.title;
-      addedCount += 1;
       const price = typeof product.effective_price === "number"
         ? `${product.effective_price.toFixed(2)} ${product.currency || "EUR"}`
         : "Cena neuvedena";
@@ -510,11 +560,7 @@
           fallback.style.display = "flex";
         });
       }
-      wrap.appendChild(card);
-    });
-    if (addedCount === 0) return;
-    messages.appendChild(wrap);
-    scrollToBottom();
+      return card;
   }
 
   function addMissingIngredients(items) {
@@ -634,7 +680,7 @@
     const response = await fetch(`${apiBaseUrl}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: backendText, limit: 6, shown_product_ids: Array.from(shownProductIds) }),
+      body: JSON.stringify({ message: backendText, limit: 10, shown_product_ids: Array.from(shownProductIds) }),
     });
     if (response.status === 429) throw new Error("RATE_LIMIT");
     if (!response.ok) throw new Error("REQUEST_FAILED");
