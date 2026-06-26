@@ -680,7 +680,7 @@
     const response = await fetch(`${apiBaseUrl}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: backendText, limit: 10, shown_product_ids: Array.from(shownProductIds) }),
+      body: JSON.stringify({ message: backendText, limit: 10, shown_product_ids: [] }),
     });
     if (response.status === 429) throw new Error("RATE_LIMIT");
     if (!response.ok) throw new Error("REQUEST_FAILED");

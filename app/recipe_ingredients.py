@@ -464,10 +464,10 @@ def missing_recipe_ingredients(
         if ingredient_has_foodland_reference(ingredient):
             continue
 
-        if ingredient.get("likely_generic_staple") is True:
-            reason = "pantry_or_grocery"
-            note = "Bezna surovina, ktoru Foodland nemusi mat v e-shope. Dokupte v beznych potravinach."
-        elif should_skip_ingredient(ingredient):
+        if ingredient.get("likely_generic_staple") is True or is_low_value_pantry_item(text):
+            continue
+
+        if should_skip_ingredient(ingredient):
             reason = "not_in_foodland_feed"
             note = "Foodland ju nema spolahlivo sparovanu v e-shop feede. Dokupte v beznych potravinach."
         else:
@@ -479,6 +479,21 @@ def missing_recipe_ingredients(
             break
 
     return missing
+
+
+def is_low_value_pantry_item(text: str) -> bool:
+    normalized = normalize(text)
+    pantry_fragments = [
+        "vody",
+        "voda",
+        "cukru",
+        "cukor",
+        "sol",
+        "soli",
+        "korenie podla chuti",
+        "podla chuti",
+    ]
+    return any(fragment in normalized for fragment in pantry_fragments)
 
 
 def parse_price(value: Any) -> tuple[float | None, str]:

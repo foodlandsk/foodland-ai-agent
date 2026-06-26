@@ -105,7 +105,7 @@ def tokenize(value: str) -> set[str]:
             expanded.add("kokos")
         if token.startswith("mliek"):
             expanded.add("mlieko")
-        if token.startswith("gochujang"):
+        if token.startswith("gochujang") or token.startswith("gocujang") or token.startswith("gocudzang") or token.startswith("gocudzan"):
             expanded.add("gochujang")
         if token.startswith("gochugaru"):
             expanded.update({"gochugaru", "cili", "chili", "paprika", "mleta", "mlete", "paliva", "cervena"})
