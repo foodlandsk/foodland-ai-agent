@@ -555,34 +555,13 @@ def answer_question(
     try:
         client = OpenAI(api_key=api_key)
         model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
-        response = client.responses.create(
+        ai_answer = generate_openai_answer(
+            client=client,
             model=model,
-            input=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Si nakupny asistent pre Foodland.sk. Odpovedaj po slovensky, kratko a prakticky. "
-                        "Volas sa Foodland poradca. Neprezentuj sa ako AI. "
-                        "Pouzivaj iba poskytnuty kontext: produkty, FAQ, recepty, cross-sell, alternativy a Products_AI. "
-                        "Ak su produkty oznacene ako produkty k receptu, odporuc ich ako nakupne polozky k danemu receptu. "
-                        "Ak je otazka na recept, odpovedaj iba receptmi z kontextu Recipes a neponukaj produkty. "
-                        "Nevymyslaj produkty, ceny, sklad, URL, recepty, clanky, FAQ odpovede ani vlastnosti produktu. "
-                        "Kazdy produkt, cena, recept, clanok a URL v odpovedi musi byt priamo v poskytnutom kontexte. "
-                        "Ak kontext odpoved nepokryva, povedz to priamo a nenahradzaj chybajuce data odhadom. "
-                        "Pri alergiach, zlozeni a dostupnosti "
-                        "odporuc overit detail produktu."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"Jazyk odpovede: {lang}\n"
-                        f"Otazka zakaznika: {message}\n\n"
-                        f"Relevantne produkty:\n{products_context(matches)}\n\n"
-                        f"Foodland Knowledge:\n{knowledge_context(knowledge_matches)}"
-                    ),
-                },
-            ],
+            lang=lang,
+            message=message,
+            matches=matches,
+            knowledge_matches=knowledge_matches,
         )
         log_question(
             message,
@@ -595,7 +574,7 @@ def answer_question(
             endpoint=endpoint,
             lang=lang,
         )
-        return response_payload(response.output_text, intent, "ai", lang, matches, knowledge_matches, cards, workflow)
+        return response_payload(ai_answer, intent, "ai", lang, matches, knowledge_matches, cards, workflow)
     except Exception as exc:
         log_backend_error("openai_response_failed", str(exc))
         log_question(
@@ -616,6 +595,53 @@ def answer_question(
         payload = response_payload(answer, intent, "fallback", lang, matches, knowledge_matches, cards, workflow)
         payload["warning"] = "Odpoveď sa nepodarilo vygenerovať cez OpenAI, používam nájdené Foodland dáta."
         return payload
+
+
+def generate_openai_answer(
+    *,
+    client: OpenAI,
+    model: str,
+    lang: str,
+    message: str,
+    matches: list[dict],
+    knowledge_matches: dict,
+) -> str:
+    system_prompt = (
+        "Si nakupny asistent pre Foodland.sk. Odpovedaj po slovensky, kratko a prakticky. "
+        "Volas sa Foodland poradca. Neprezentuj sa ako AI. "
+        "Pouzivaj iba poskytnuty kontext: produkty, FAQ, recepty, cross-sell, alternativy a Products_AI. "
+        "Ak su produkty oznacene ako produkty k receptu, odporuc ich ako nakupne polozky k danemu receptu. "
+        "Ak je otazka na recept, odpovedaj iba receptmi z kontextu Recipes a neponukaj produkty. "
+        "Nevymyslaj produkty, ceny, sklad, URL, recepty, clanky, FAQ odpovede ani vlastnosti produktu. "
+        "Kazdy produkt, cena, recept, clanok a URL v odpovedi musi byt priamo v poskytnutom kontexte. "
+        "Ak kontext odpoved nepokryva, povedz to priamo a nenahradzaj chybajuce data odhadom. "
+        "Pri alergiach, zlozeni a dostupnosti odporuc overit detail produktu."
+    )
+    user_prompt = (
+        f"Jazyk odpovede: {lang}\n"
+        f"Otazka zakaznika: {message}\n\n"
+        f"Relevantne produkty:\n{products_context(matches)}\n\n"
+        f"Foodland Knowledge:\n{knowledge_context(knowledge_matches)}"
+    )
+
+    if hasattr(client, "responses"):
+        response = client.responses.create(
+            model=model,
+            input=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        return str(response.output_text)
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+    return str(response.choices[0].message.content or "").strip()
 
 
 def response_payload(
