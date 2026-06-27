@@ -28,6 +28,10 @@ from app.knowledge import (
     normalize_lang,
     search_knowledge,
 )
+from app.product_graph import (
+    find_alternative_products,
+    find_cross_sell_products,
+)
 from app.recipe_ingredients import (
     is_ingredient_query,
     load_recipe_ingredients_json,
@@ -69,22 +73,32 @@ class CrossSellRecommendationRequest(BaseModel):
 
 
 def load_products() -> list[Product]:
-    json_path = os.getenv("PRODUCTS_JSON_PATH", "data/products.json")
-    feed_path = os.getenv("PRODUCT_FEED_PATH", "data/googleMerchant_sk_export.xml")
+    json_path = Path(os.getenv("PRODUCTS_JSON_PATH", "data/products.json"))
+    feed_path_raw = os.getenv("PRODUCT_FEED_PATH", "data/googleMerchant_sk_export.xml")
+    feed_path = Path(feed_path_raw)
+    bundled_json_path = Path(__file__).with_name("products.json")
 
-    if json_path and Path(json_path).exists():
+    if json_path.exists():
         return load_products_json(json_path)
-    if Path(feed_path).exists() or feed_path.startswith(("http://", "https://")):
-        return parse_google_merchant_feed(feed_path)
+    if bundled_json_path.exists():
+        return load_products_json(bundled_json_path)
+    if feed_path.exists() or feed_path_raw.startswith(("http://", "https://")):
+        return parse_google_merchant_feed(feed_path_raw)
     return []
 
 
 def load_knowledge() -> dict:
-    return load_knowledge_json(os.getenv("KNOWLEDGE_JSON_PATH", "data/knowledge.json"))
+    path = Path(os.getenv("KNOWLEDGE_JSON_PATH", "data/knowledge.json"))
+    if path.exists():
+        return load_knowledge_json(path)
+    return load_knowledge_json(Path(__file__).with_name("knowledge.json"))
 
 
 def load_recipe_ingredients() -> list[dict]:
-    return load_recipe_ingredients_json(os.getenv("RECIPE_INGREDIENTS_PATH", "data/recipe_ingredients.json"))
+    path = Path(os.getenv("RECIPE_INGREDIENTS_PATH", "data/recipe_ingredients.json"))
+    if path.exists():
+        return load_recipe_ingredients_json(path)
+    return load_recipe_ingredients_json(Path(__file__).with_name("recipe_ingredients.json"))
 
 
 products = load_products()
@@ -199,6 +213,21 @@ def answer_question(
     compare_mode = (is_compare_query(message) and not is_explainer_comparison_query(message)) or price_sort_mode
     alternative_mode = is_alternative_query(message)
     safety_mode = is_safety_query(message)
+    product_graph_trace: dict | None = None
+
+    # V9: deterministic Product Graph must run before weak token/vector matches.
+    # Alternative queries are especially risky; a text match on "kokos" must not
+    # return rice flour or starch as a coconut milk alternative.
+    if alternative_mode:
+        graph_matches, product_graph_trace = find_alternative_products(
+            message,
+            products,
+            limit=max(limit, 4),
+            shown_product_ids=shown_product_ids or set(),
+        )
+        if graph_matches:
+            matches = graph_matches
+
     if price_sort_mode and matches:
         matches = sort_products_by_price(matches)
     ingredient_recipe = None
@@ -277,6 +306,16 @@ def answer_question(
         if rule_result.cards:
             cards = rule_result.cards
             matches = []
+        else:
+            graph_matches, product_graph_trace = find_cross_sell_products(
+                message,
+                products,
+                limit=max(limit, 4),
+                shown_product_ids=shown_product_ids or set(),
+            )
+            if graph_matches:
+                matches = graph_matches
+                cards = []
         crosssell_rule_trace = rule_result.trace
     if compare_mode:
         cards = filter_compare_cards(message, cards, matches)
@@ -304,6 +343,8 @@ def answer_question(
     )
     if workflow and crosssell_rule_trace:
         workflow.trace["cross_sell_rules"] = crosssell_rule_trace
+    if workflow and product_graph_trace:
+        workflow.trace["product_graph"] = product_graph_trace
 
     if meal_idea_mode:
         meal_products = meal_idea_products(message, products, limit=limit)
@@ -411,6 +452,20 @@ def answer_question(
         )
         return response_payload(compare_answer(matches), intent, "product_compare", lang, matches, knowledge_matches, [], workflow)
 
+    if crosssell_mode and matches and culinary_crosssell_recipe is None:
+        log_question(
+            message,
+            client_key,
+            mode="cross_sell_product_graph",
+            intent=intent,
+            products_count=len(matches),
+            knowledge_matches=knowledge_matches,
+            content_cards_count=0,
+            endpoint=endpoint,
+            lang=lang,
+        )
+        return response_payload(crosssell_products_answer(matches), intent, "cross_sell_product_graph", lang, matches, knowledge_matches, [], workflow)
+
     if crosssell_mode and cards and culinary_crosssell_recipe is None:
         log_question(
             message,
@@ -482,6 +537,20 @@ def answer_question(
             workflow,
             missing_ingredients=missing_ingredients,
         )
+
+    if intent == "alternative" and matches:
+        log_question(
+            message,
+            client_key,
+            mode="alternatives_product_graph",
+            intent=intent,
+            products_count=len(matches),
+            knowledge_matches=knowledge_matches,
+            content_cards_count=0,
+            endpoint=endpoint,
+            lang=lang,
+        )
+        return response_payload(alternative_products_answer(matches), intent, "alternatives_product_graph", lang, matches, knowledge_matches, [], workflow)
 
     if intent == "alternative" and cards:
         log_question(
@@ -1293,6 +1362,20 @@ def culinary_crosssell_answer(
     if missing_count:
         return f"K jedlu {recipe_name} nemam spolahlive Foodland produktove karty, ale suroviny na dokupenie uvadzam nizsie."
     return f"K jedlu {recipe_name} zatial nemam spolahlive cross-sell odporucania."
+
+
+def alternative_products_answer(products: list[dict]) -> str:
+    count = min(len(products), 4)
+    if count == 1:
+        return "Našiel som jednu spoľahlivú alternatívu podľa typu produktu. Zobrazujem iba produkty z rovnakej použiteľnej skupiny."
+    return f"Našiel som {count} spoľahlivé alternatívy podľa typu produktu. Nezobrazujem slabé textové zhody mimo tejto skupiny."
+
+
+def crosssell_products_answer(products: list[dict]) -> str:
+    count = min(len(products), 4)
+    if count == 1:
+        return "Našiel som jeden vhodný doplnkový produkt, ktorý kuchársky dáva zmysel."
+    return f"Vybral som {count} doplnkové produkty, ktoré sa k tomu kuchársky hodia."
 
 
 def alternative_answer(cards: list[dict]) -> str:
