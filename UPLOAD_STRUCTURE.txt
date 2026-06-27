@@ -1,0 +1,29 @@
+Foodland AI Agent v9 – upload structure
+
+Root files:
+- main.py                 FastAPI backend
+- product_graph.py        ProductType + Product Graph recommendation logic
+- search.py               Product search
+- knowledge.py            Knowledge base loader/logic
+- feed.py                 Feed/product loader
+- workflows.py            Intent workflows
+- validators.py           Response validation
+- cross_sell_rules.py     Cross-sell rules
+- recipe_ingredients.py   Recipe ingredient mapping
+- golden_tests.py         Recommendation regression tests
+- widget.js               Frontend chat widget
+- widget.html             Local widget preview
+- products.json           Product data
+- knowledge.json          Knowledge base data
+- recipe_ingredients.json Recipe data
+- requirements.txt        Python dependencies
+- Procfile                Railway/Render start command
+- railway.json            Railway config
+- runtime.txt             Python runtime
+- pyproject.toml          Project metadata
+- .env.example            Environment variables template
+
+Do not upload:
+- __pycache__/
+- *.pyc
+- local .env with secrets

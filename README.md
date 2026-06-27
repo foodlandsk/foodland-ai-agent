@@ -293,3 +293,28 @@ Surova IP adresa sa defaultne neuklada. Ak ju z nejakeho dovodu potrebujete, zap
 5. Doplnit FAQ a obchodne podmienky.
 6. Pridat vektorove vyhladavanie pre lepsie odporucania.
 7. Napojit objednavky a sklad, ak e-shop poskytne API.
+
+## V9 – Recommendation Logic Upgrade
+
+V9 pridáva deterministický Product Graph pred slabé textové vyhľadávanie.
+
+Hlavné zmeny:
+
+- nový modul `product_graph.py`,
+- detekcia `ProductType` pre citlivé rodiny produktov,
+- tvrdé pravidlá pre alternatívy,
+- tvrdé pravidlá pre kuchársky cross-sell,
+- fallback načítania `products.json`, `knowledge.json` a `recipe_ingredients.json` priamo z balíka `app/`,
+- nové response módy:
+  - `alternatives_product_graph`,
+  - `cross_sell_product_graph`.
+
+Príklad opraveného scenára:
+
+```text
+Alternatíva ku kokosovému mlieku
+→ iba coconut_milk_cooking alebo coconut_cream
+→ nie ryžová múka, nie škrob, nie kokosový nápoj
+```
+
+Product Graph je zámerne konzervatívny: ak nevie spoľahlivo identifikovať produktový typ, radšej nevráti nič, než aby odporučil zlú náhradu.
