@@ -16,6 +16,7 @@ INGREDIENT_INTENT_MARKERS = [
     "surovina",
     "co potrebujem",
     "co treba",
+    "produkty na",
     "produkty na recept",
     "produkty k receptu",
     "nakupny zoznam",

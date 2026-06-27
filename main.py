@@ -196,7 +196,7 @@ def answer_question(
     ingredient_mode = is_ingredient_query(message) and not meal_idea_mode
     crosssell_mode = is_crosssell_query(message) and not meal_idea_mode
     price_sort_mode = is_price_sort_query(message)
-    compare_mode = is_compare_query(message) or price_sort_mode
+    compare_mode = (is_compare_query(message) and not is_explainer_comparison_query(message)) or price_sort_mode
     alternative_mode = is_alternative_query(message)
     safety_mode = is_safety_query(message)
     if price_sort_mode and matches:
@@ -264,6 +264,8 @@ def answer_question(
         }
 
     cards = enrich_content_cards(content_cards(card_matches, lang), products)
+    if alternative_mode:
+        cards = filter_alternative_cards(cards)
     if crosssell_mode and culinary_crosssell_recipe is None:
         rule_result = recommend_cross_sell_from_rules(
             message,
@@ -357,6 +359,7 @@ def answer_question(
         return response_payload(safety_answer(message, safety_products), intent, "safety_check", lang, safety_products, knowledge_matches, [], workflow)
 
     if intent == "content":
+        content_cards_for_response = [] if is_specific_explainer_answer(message) else cards
         log_question(
             message,
             client_key,
@@ -364,11 +367,20 @@ def answer_question(
             intent=intent,
             products_count=0,
             knowledge_matches=knowledge_matches,
-            content_cards_count=len(cards),
+            content_cards_count=len(content_cards_for_response),
             endpoint=endpoint,
             lang=lang,
         )
-        return response_payload(content_answer(message, knowledge_matches), intent, "content", lang, [], knowledge_matches, cards, workflow)
+        return response_payload(
+            content_answer(message, knowledge_matches),
+            intent,
+            "content",
+            lang,
+            [],
+            knowledge_matches,
+            content_cards_for_response,
+            workflow,
+        )
 
     if compare_mode and not cards and not matches:
         log_question(
@@ -735,6 +747,7 @@ def is_content_query(message: str) -> bool:
         "blog",
         "magaz",
         "co je",
+        "rozdiel",
         "ako chut",
         "porad",
         "navod",
@@ -766,6 +779,9 @@ def is_generic_safety_query(message: str) -> bool:
         "soju",
         "soja",
         "soj",
+        "alergiu",
+        "alergia",
+        "alergie",
         "vhodne",
         "veganov",
         "vegan",
@@ -778,6 +794,7 @@ def is_generic_safety_query(message: str) -> bool:
         "alergen",
         "alergeny",
         "zlozenie",
+        "kupit",
     }
     return bool(tokens) and not (tokens - generic_tokens)
 
@@ -871,6 +888,18 @@ def is_compare_query(message: str) -> bool:
         "vybrat",
     ]
     return any(marker in normalized for marker in markers)
+
+
+def is_explainer_comparison_query(message: str) -> bool:
+    normalized = normalize(message)
+    if not any(marker in normalized for marker in ["rozdiel", "aky je rozdiel", "co je rozdiel"]):
+        return False
+    return any(marker in normalized for marker in ["gochujang", "gochugaru", "sriracha", "miso", "doenjang"])
+
+
+def is_specific_explainer_answer(message: str) -> bool:
+    normalized = normalize(message)
+    return any(marker in normalized for marker in ["gochujang", "gochugaru", "sriracha"])
 
 
 def is_price_sort_query(message: str) -> bool:
@@ -1027,6 +1056,26 @@ def filter_compare_cards(message: str, cards: list[dict], matches: list[dict]) -
     return filtered[:4]
 
 
+def filter_alternative_cards(cards: list[dict]) -> list[dict]:
+    filtered: list[dict] = []
+    for card in cards:
+        if card.get("type") != "alternative":
+            filtered.append(card)
+            continue
+
+        source_tokens = tokenize(str(card.get("source_product") or ""))
+        title_tokens = tokenize(str(card.get("title") or ""))
+        if not source_tokens or not title_tokens:
+            continue
+
+        # Alternative must remain in the same product family. A single flavor token
+        # like "kokos" is too broad and can pull in snacks for coconut milk.
+        if len(source_tokens & title_tokens) >= 2:
+            filtered.append(card)
+
+    return filtered[:4]
+
+
 def suggested_actions(intent: str, matches: list[dict], cards: list[dict]) -> list[dict[str, str]]:
     actions: list[dict[str, str]] = []
     topic = primary_topic(matches, cards)
@@ -1154,6 +1203,12 @@ def fallback_answer(matches: list[dict], knowledge_matches: dict | None = None) 
 
 def content_answer(message: str, knowledge_matches: dict | None = None) -> str:
     normalized = normalize(message)
+    if "gochujang" in normalized and "gochugaru" in normalized:
+        return (
+            "Gochujang je korejska fermentovana cili pasta: je husty, slano-pikantny a umami. "
+            "Pouziva sa do marinad, bibimbapu, omacok a polievok. Gochugaru je korejske cervene cili vo forme vlociek alebo prasku. "
+            "Pouziva sa najma na kimchi a pikantne korejske jedla. Nie su to rovnake suroviny: pasta sa neda vzdy nahradit praskom a naopak."
+        )
     if "gochujang" in normalized or "gocudzang" in normalized or "gocujang" in normalized:
         return (
             "Gochujang je korejska fermentovana cili pasta. Pouziva sa do kimchi, bibimbapu, marinad, "
