@@ -195,8 +195,12 @@ def answer_question(
     recipe_mode = is_recipe_query(message) and not meal_idea_mode
     ingredient_mode = is_ingredient_query(message) and not meal_idea_mode
     crosssell_mode = is_crosssell_query(message) and not meal_idea_mode
-    compare_mode = is_compare_query(message)
+    price_sort_mode = is_price_sort_query(message)
+    compare_mode = is_compare_query(message) or price_sort_mode
     alternative_mode = is_alternative_query(message)
+    safety_mode = is_safety_query(message)
+    if price_sort_mode and matches:
+        matches = sort_products_by_price(matches)
     ingredient_recipe = None
     culinary_crosssell_recipe = None
     crosssell_rule_trace: dict | None = None
@@ -244,6 +248,12 @@ def answer_question(
             card_matches = {"CrossSell": knowledge_matches["CrossSell"]}
         else:
             card_matches = {}
+    elif is_content_query(message):
+        card_matches = {
+            section: hits
+            for section, hits in knowledge_matches.items()
+            if section in {"Magazine", "IntentMapping"}
+        }
     elif not recipe_mode and not ingredient_mode and matches and not is_content_query(message):
         card_matches = {}
     elif not recipe_mode and not ingredient_mode:
@@ -277,6 +287,7 @@ def answer_question(
         crosssell_mode,
         compare_mode,
         meal_idea_mode,
+        safety_mode,
     )
     workflow = detect_workflow(
         message,
@@ -329,6 +340,35 @@ def answer_question(
             lang=lang,
         )
         return response_payload(fallback_answer([], knowledge_matches), intent, "faq", lang, [], knowledge_matches, cards, workflow)
+
+    if safety_mode:
+        safety_products = [] if is_generic_safety_query(message) else matches
+        log_question(
+            message,
+            client_key,
+            mode="safety_check",
+            intent=intent,
+            products_count=len(safety_products),
+            knowledge_matches=knowledge_matches,
+            content_cards_count=0,
+            endpoint=endpoint,
+            lang=lang,
+        )
+        return response_payload(safety_answer(message, safety_products), intent, "safety_check", lang, safety_products, knowledge_matches, [], workflow)
+
+    if intent == "content":
+        log_question(
+            message,
+            client_key,
+            mode="content",
+            intent=intent,
+            products_count=0,
+            knowledge_matches=knowledge_matches,
+            content_cards_count=len(cards),
+            endpoint=endpoint,
+            lang=lang,
+        )
+        return response_payload(content_answer(message, knowledge_matches), intent, "content", lang, [], knowledge_matches, cards, workflow)
 
     if compare_mode and not cards and not matches:
         log_question(
@@ -657,7 +697,10 @@ def detect_intent(
     crosssell_mode: bool,
     compare_mode: bool,
     meal_idea_mode: bool = False,
+    safety_mode: bool = False,
 ) -> str:
+    if safety_mode:
+        return "safety_check"
     if meal_idea_mode:
         return "meal_idea"
     if ingredient_mode:
@@ -672,7 +715,9 @@ def detect_intent(
         return "alternative"
     if knowledge_matches.get("FAQ") and not matches:
         return "faq"
-    if is_content_query(message) and (knowledge_matches.get("Magazine") or knowledge_matches.get("IntentMapping")):
+    if is_content_query(message) and (
+        knowledge_matches.get("Magazine") or knowledge_matches.get("IntentMapping") or knowledge_matches.get("Products_AI")
+    ):
         return "content"
     if matches:
         return "product"
@@ -697,6 +742,46 @@ def is_content_query(message: str) -> bool:
     return any(marker in normalized for marker in markers)
 
 
+def is_safety_query(message: str) -> bool:
+    normalized = normalize(message)
+    markers = [
+        "bez lepku",
+        "lepok",
+        "gluten",
+        "alergen",
+        "alerg",
+        "zlozenie",
+        "obsahuje",
+        "vegan",
+        "vegetarian",
+        "tehoten",
+    ]
+    return any(marker in normalized for marker in markers)
+
+
+def is_generic_safety_query(message: str) -> bool:
+    tokens = tokenize(message)
+    generic_tokens = {
+        "obsahuje",
+        "soju",
+        "soja",
+        "soj",
+        "vhodne",
+        "veganov",
+        "vegan",
+        "vegetarianov",
+        "vegetarian",
+        "bez",
+        "lepku",
+        "lepok",
+        "gluten",
+        "alergen",
+        "alergeny",
+        "zlozenie",
+    }
+    return bool(tokens) and not (tokens - generic_tokens)
+
+
 def is_meal_idea_query(message: str) -> bool:
     normalized = normalize(message)
     has_cooking_need = any(
@@ -705,10 +790,13 @@ def is_meal_idea_query(message: str) -> bool:
             "chcem uvarit",
             "co uvarit",
             "nieco k",
+            "nieco pikantne",
             "co odporucate",
             "tip na jedlo",
             "inspiracia",
             "rychla vecera",
+            "rychlu veceru",
+            "rychly obed",
             "rychly obed",
         ]
     )
@@ -785,12 +873,38 @@ def is_compare_query(message: str) -> bool:
     return any(marker in normalized for marker in markers)
 
 
+def is_price_sort_query(message: str) -> bool:
+    normalized = normalize(message)
+    markers = [
+        "najlacnejs",
+        "najlacn",
+        "lacna",
+        "lacne",
+        "lacny",
+        "najvyhodnejs",
+        "najvyhodn",
+    ]
+    return any(marker in normalized for marker in markers)
+
+
+def sort_products_by_price(items: list[dict]) -> list[dict]:
+    return sorted(
+        items,
+        key=lambda item: (
+            item.get("effective_price") is None,
+            float(item.get("effective_price") or 0),
+            str(item.get("title") or ""),
+        ),
+    )
+
+
 def is_alternative_query(message: str) -> bool:
     normalized = normalize(message)
     markers = [
         "alternativa",
         "alternativy",
         "nahrada",
+        "nahrad",
         "namiesto",
         "miesto toho",
         "podobne",
@@ -1036,6 +1150,41 @@ def fallback_answer(matches: list[dict], knowledge_matches: dict | None = None) 
         return "Našiel som súvisiace informácie vo Foodland poradcovi."
 
     return "Nenašiel som presnú odpoveď. Skúste otázku napísať trochu inak."
+
+
+def content_answer(message: str, knowledge_matches: dict | None = None) -> str:
+    normalized = normalize(message)
+    if "gochujang" in normalized or "gocudzang" in normalized or "gocujang" in normalized:
+        return (
+            "Gochujang je korejska fermentovana cili pasta. Pouziva sa do kimchi, bibimbapu, marinad, "
+            "polievok, ryzovych misiek a omacok. Je pikantna, slana a ma vyrazne umami. "
+            "Pri alergiach a zlozeni si prosim overte detail konkretneho produktu."
+        )
+    if "gochugaru" in normalized:
+        return (
+            "Gochugaru je korejske cervene cili, vacsinou vo forme vlociek alebo prasku. "
+            "Pouziva sa najma na kimchi, jjigae a pikantne korejske jedla. Nie je to to iste ako gochujang pasta."
+        )
+    if "sriracha" in normalized:
+        return (
+            "Sriracha je pikantna cili omacka vhodna k rezancom, ryzi, masu, zelenine, marinadam a dipom. "
+            "Rozdiely medzi produktmi su hlavne v palivosti, baleni, znacke a chuti."
+        )
+    if knowledge_matches and knowledge_matches.get("Products_AI"):
+        return "Nasiel som vysvetlenie vo Foodland poradci. Pri zlozeni, alergenoch a dostupnosti si prosim overte detail produktu."
+    return "Nasiel som suvisiace informacie vo Foodland poradci."
+
+
+def safety_answer(message: str, matches: list[dict]) -> str:
+    if matches:
+        return (
+            "Toto neviem spolahlivo potvrdit iba z vyhladavania. Pri lepku, alergenoch, zlozeni a dietnych obmedzeniach "
+            "si prosim otvorte detail konkretneho produktu a skontrolujte zlozenie na obale. Nizsie davam relevantne produkty na overenie."
+        )
+    return (
+        "Toto neviem spolahlivo potvrdit z dostupnych dat. Pri lepku, alergenoch, zlozeni a dietnych obmedzeniach "
+        "si prosim overte detail konkretneho produktu alebo etiketu."
+    )
 
 
 def crosssell_answer(cards: list[dict]) -> str:

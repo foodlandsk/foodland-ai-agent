@@ -209,6 +209,8 @@ def search_products(products: list[Product], query: str, limit: int = 8) -> list
 
 
 def is_sushi_rice_query(query_tokens: set[str]) -> bool:
+    if bool({"ocot", "oct"} & query_tokens):
+        return False
     return bool({"sushi", "susi"} & query_tokens) and "ryza" in query_tokens
 
 

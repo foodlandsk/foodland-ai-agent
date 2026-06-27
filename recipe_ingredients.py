@@ -75,6 +75,8 @@ DIRECT_INGREDIENT_QUERIES = [
     ("ryzove rezance", "ryzove rezance"),
     ("hoisin omacka", "hoisin omacka"),
     ("hoisin", "hoisin omacka"),
+    ("pad thai omacky", "pad thai omacka"),
+    ("pad thai omacka", "pad thai omacka"),
     ("sriracha", "sriracha"),
     ("cili papricka", "susene cili papricky"),
     ("cili papricky", "susene cili papricky"),
@@ -349,6 +351,8 @@ def is_compatible_product_text(ingredient_text: str, product_title: str) -> bool
         return "ryz" in title and "muka" in title
     if "rybacej omacky" in ingredient or "rybacia omacka" in ingredient:
         return "ryb" in title and "omack" in title
+    if "pad thai omack" in ingredient:
+        return "pad thai" in title and "omack" in title
     if "badian" in ingredient:
         return "badian" in title or "aniz" in title
     if "skoric" in ingredient:
