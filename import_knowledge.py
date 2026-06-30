@@ -12,6 +12,8 @@ LANGS = ["SK", "CZ", "AT", "EN", "PL", "HU", "VI"]
 
 DEFAULT_FILES = {
     "Products_AI": "foodland_products_ai_tabulka.xlsx",
+    "Products_Multilang": "Foodland Poradca/foodland_products_multilang.xlsx",
+    "Product_Related_Live": "Foodland Poradca/foodland_products_multilang.xlsx",
     "Recipes": "foodland_recepty_jazykove_mutacie.xlsx",
     "Magazine": "foodland_magazin_clanky_jazykove_mutacie.xlsx",
     "CrossSell": "foodland_crosssell_tabulka.xlsx",
@@ -22,6 +24,8 @@ DEFAULT_FILES = {
 
 DEFAULT_SHEETS = {
     "Products_AI": ["Products_AI"],
+    "Products_Multilang": ["Products"],
+    "Product_Related_Live": ["Related Products"],
     "Recipes": ["Recepty Foodland", "Recipes", "Recepty"],
     "Magazine": ["Magazín články", "Magazin clanky", "Magazine"],
     "CrossSell": ["Cross-sell", "CrossSell"],
@@ -131,6 +135,9 @@ def read_section(section: str, source_path: Path) -> list[dict[str, str]]:
 
 
 def read_section_from_workbook(section: str, workbook: Any) -> list[dict[str, str]]:
+    if section == "Products_Multilang":
+        return read_products_multilang(workbook)
+
     sheet = pick_sheet(workbook, DEFAULT_SHEETS[section])
     rows = list(sheet.iter_rows())
     if not rows:
@@ -170,6 +177,52 @@ def read_section_from_workbook(section: str, workbook: Any) -> list[dict[str, st
         records.append(record)
 
     return records
+
+
+def read_products_multilang(workbook: Any) -> list[dict[str, str]]:
+    sheet = pick_sheet(workbook, DEFAULT_SHEETS["Products_Multilang"])
+    rows = list(sheet.iter_rows())
+    if len(rows) < 3:
+        return []
+
+    group_headers = [cell_text(cell) for cell in rows[0]]
+    field_headers = [cell_text(cell) for cell in rows[1]]
+    current_lang = ""
+    headers: list[str] = []
+    for group, field in zip(group_headers, field_headers):
+        if group:
+            current_lang = normalize_lang_group(group)
+        if current_lang and field in {"Title", "URL", "Price", "Availability", "Image URL"}:
+            headers.append(f"{current_lang}_{field}")
+        else:
+            headers.append(field or f"column_{len(headers) + 1}")
+
+    records: list[dict[str, str]] = []
+    for excel_row in rows[2:]:
+        record: dict[str, str] = {}
+        has_value = False
+        for header, cell in zip(headers, excel_row):
+            value = cell_text(cell)
+            has_value = has_value or bool(value)
+            record[header] = value
+
+            url = cell_url(cell)
+            if url and (header.endswith("_URL") or header.endswith("_Image URL")):
+                record[header] = url
+
+        if has_value:
+            records.append(record)
+
+    return records
+
+
+def normalize_lang_group(value: str) -> str:
+    text = str(value).strip().upper()
+    if text.startswith("DE"):
+        return "AT"
+    if text in {"SK", "CZ", "AT", "EN", "PL", "HU", "VI"}:
+        return text
+    return text.replace(" ", "_").replace("(", "").replace(")", "")
 
 
 def pick_sheet(workbook: Any, candidates: list[str]):

@@ -10,6 +10,8 @@ from app.search import normalize, tokenize
 SECTION_LIMITS = {
     "FAQ": 4,
     "Products_AI": 4,
+    "Products_Multilang": 4,
+    "Product_Related_Live": 4,
     "CrossSell": 3,
     "Alternatives": 3,
     "Recipes": 3,
@@ -20,6 +22,8 @@ SECTION_LIMITS = {
 SECTION_WEIGHTS = {
     "FAQ": 8,
     "Products_AI": 7,
+    "Products_Multilang": 6,
+    "Product_Related_Live": 5,
     "CrossSell": 5,
     "Alternatives": 5,
     "Recipes": 4,
@@ -30,12 +34,16 @@ SECTION_WEIGHTS = {
 SECTION_MIN_SCORES = {
     "FAQ": 10,
     "Products_AI": 4,
+    "Products_Multilang": 4,
+    "Product_Related_Live": 4,
     "CrossSell": 4,
     "Alternatives": 4,
     "Recipes": 4,
     "Magazine": 4,
     "IntentMapping": 4,
 }
+
+GLOBAL_SEARCH_EXCLUDED_SECTIONS = {"Product_Related_Live"}
 
 RECIPE_INTENT_TOKENS = {
     "recept",
@@ -61,6 +69,20 @@ IMPORTANT_FIELDS = {
         "Kucharsky tip - SK", "Nakupne odporucanie - SK", "Chutovy profil - SK",
         "Pouzitie v kuchyni - SK", "Kedy odporucit - SK", "Pozor / overit - SK",
         "Predajny argument - SK", "Agenticky dalsi krok - SK",
+    ],
+    "Products_Multilang": [
+        "Product ID", "GTIN (feed)", "EAN (live site)", "Live page status",
+        "SK_Title", "SK_URL", "SK_Price", "SK_Availability",
+        "AT_Title", "AT_URL", "AT_Price", "AT_Availability",
+        "EN_Title", "EN_URL", "EN_Price", "EN_Availability",
+        "HU_Title", "HU_URL", "HU_Price", "HU_Availability",
+        "PL_Title", "PL_URL", "PL_Price", "PL_Availability",
+        "CZ_Title", "CZ_URL", "CZ_Price", "CZ_Availability",
+    ],
+    "Product_Related_Live": [
+        "Source Product ID", "Source Product Title (SK)", "Related Item Title",
+        "Related Item Link", "Price Original", "Price Current", "Discount %",
+        "Stock Qty", "Availability",
     ],
     "CrossSell": ["Produkt", "Kategoria", "Cross-sell 1", "Cross-sell 2", "Cross-sell 3", "Cross-sell 4", "Cross-sell 5"],
     "Alternatives": ["Produkt", "Kategoria", "Alternativa 1", "Alternativa 2", "Alternativa 3", "Alternativa 4", "Alternativa 5"],
@@ -88,6 +110,8 @@ def search_knowledge(knowledge: dict[str, Any], query: str) -> dict[str, list[di
     sections = knowledge.get("sections", {})
     results: dict[str, list[dict[str, Any]]] = {}
     for section, records in sections.items():
+        if section in GLOBAL_SEARCH_EXCLUDED_SECTIONS:
+            continue
         ranked: list[tuple[int, dict[str, Any]]] = []
         for record in records:
             score = score_record(section, record, query, query_tokens)
@@ -156,7 +180,17 @@ def score_record(section: str, record: dict[str, Any], query: str, query_tokens:
 
 def knowledge_context(results: dict[str, list[dict[str, Any]]]) -> str:
     parts: list[str] = []
-    for section in ["FAQ", "Products_AI", "CrossSell", "Alternatives", "Recipes", "Magazine", "IntentMapping"]:
+    for section in [
+        "FAQ",
+        "Products_AI",
+        "Products_Multilang",
+        "Product_Related_Live",
+        "CrossSell",
+        "Alternatives",
+        "Recipes",
+        "Magazine",
+        "IntentMapping",
+    ]:
         hits = results.get(section, [])
         if not hits:
             continue
@@ -222,6 +256,44 @@ def format_record(section: str, record: dict[str, Any]) -> str:
                 first_matching_key_value(record, ["pozor", "overit"]),
                 first_matching_key_value(record, ["predajny argument", "predajny"]),
                 first_matching_key_value(record, ["agenticky dalsi krok", "agenticky"]),
+            ],
+            " | ",
+        )
+
+    if section == "Products_Multilang":
+        return join_parts(
+            [
+                record.get("Product ID"),
+                record.get("GTIN (feed)"),
+                record.get("SK_Title"),
+                record.get("SK_Price"),
+                record.get("SK_Availability"),
+                record.get("SK_URL"),
+                record.get("AT_Title"),
+                record.get("AT_URL"),
+                record.get("EN_Title"),
+                record.get("EN_URL"),
+                record.get("HU_Title"),
+                record.get("HU_URL"),
+                record.get("PL_Title"),
+                record.get("PL_URL"),
+                record.get("CZ_Title"),
+                record.get("CZ_URL"),
+            ],
+            " | ",
+        )
+
+    if section == "Product_Related_Live":
+        return join_parts(
+            [
+                record.get("Source Product ID"),
+                record.get("Source Product Title (SK)"),
+                record.get("Related Item Title"),
+                record.get("Price Current"),
+                record.get("Discount %"),
+                record.get("Stock Qty"),
+                record.get("Availability"),
+                record.get("Related Item Link"),
             ],
             " | ",
         )

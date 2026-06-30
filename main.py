@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from app.cross_sell_rules import recommend_cross_sell_from_rules
+from app.cross_sell_rules import recommend_cross_sell_from_rules, recommend_live_related_products
 from app.feed import Product, load_products_json, parse_google_merchant_feed
 from app.knowledge import (
     best_faq_answer,
@@ -141,13 +141,21 @@ def knowledge_search(request: KnowledgeSearchRequest) -> dict:
 
 @app.post("/recommendations/cross-sell")
 def cross_sell_recommendations(request: CrossSellRecommendationRequest) -> dict:
-    result = recommend_cross_sell_from_rules(
+    result = recommend_live_related_products(
         request.query,
         knowledge,
         products,
         limit=request.limit,
         shown_product_ids=set(request.shown_product_ids),
     )
+    if not result.cards:
+        result = recommend_cross_sell_from_rules(
+            request.query,
+            knowledge,
+            products,
+            limit=request.limit,
+            shown_product_ids=set(request.shown_product_ids),
+        )
     return {
         "cards": result.cards,
         "trace": result.trace,
@@ -267,13 +275,21 @@ def answer_question(
     if alternative_mode:
         cards = filter_alternative_cards(cards)
     if crosssell_mode and culinary_crosssell_recipe is None:
-        rule_result = recommend_cross_sell_from_rules(
+        rule_result = recommend_live_related_products(
             message,
             knowledge,
             products,
             limit=4,
             shown_product_ids=shown_product_ids or set(),
         )
+        if not rule_result.cards:
+            rule_result = recommend_cross_sell_from_rules(
+                message,
+                knowledge,
+                products,
+                limit=4,
+                shown_product_ids=shown_product_ids or set(),
+            )
         if rule_result.cards:
             cards = rule_result.cards
             matches = []
@@ -412,10 +428,15 @@ def answer_question(
         return response_payload(compare_answer(matches), intent, "product_compare", lang, matches, knowledge_matches, [], workflow)
 
     if crosssell_mode and cards and culinary_crosssell_recipe is None:
+        crosssell_mode_name = (
+            "live_related_products"
+            if crosssell_rule_trace and crosssell_rule_trace.get("engine") == "live_related_products_v1"
+            else "cross_sell_rules"
+        )
         log_question(
             message,
             client_key,
-            mode="cross_sell_rules",
+            mode=crosssell_mode_name,
             intent=intent,
             products_count=0,
             knowledge_matches=knowledge_matches,
@@ -423,7 +444,7 @@ def answer_question(
             endpoint=endpoint,
             lang=lang,
         )
-        return response_payload(crosssell_answer(cards), intent, "cross_sell_rules", lang, [], knowledge_matches, cards, workflow)
+        return response_payload(crosssell_answer(cards), intent, crosssell_mode_name, lang, [], knowledge_matches, cards, workflow)
 
     if culinary_crosssell_recipe is not None:
         missing_ingredients = missing_recipe_ingredients(culinary_crosssell_recipe, matches)

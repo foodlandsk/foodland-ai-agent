@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.feed import load_products_json
+from app.cross_sell_rules import recommend_live_related_products
 from app.knowledge import is_recipe_query, load_knowledge_json, search_knowledge
 from app.recipe_ingredients import is_ingredient_query
 from app.search import normalize, search_products
@@ -23,6 +24,10 @@ GOLDEN_CASES = [
 PRODUCT_GOLDEN_CASES = [
     ("Mate sushi ryzu?", "susi ryza"),
     ("Porovnaj sriracha omacky", "sriracha"),
+]
+
+LIVE_RELATED_GOLDEN_CASES = [
+    ("co sa hodi ku kokosovemu mlieku AROY-D 1000ml", "Kokosové mlieko AROY-D 1000ml"),
 ]
 
 
@@ -55,6 +60,14 @@ def main() -> None:
         first_title = normalize(str(matches[0].get("title") or "")) if matches else ""
         status = "OK" if expected_title_part in first_title else "FAIL"
         print(f"{status}: {query!r} -> first product {first_title!r} expected title containing {expected_title_part!r}")
+        if status == "FAIL":
+            failures.append(query)
+
+    for query, expected_source_product in LIVE_RELATED_GOLDEN_CASES:
+        result = recommend_live_related_products(query, knowledge, products, limit=4)
+        source_product = str(result.cards[0].get("source_product") or "") if result.cards else ""
+        status = "OK" if source_product == expected_source_product else "FAIL"
+        print(f"{status}: {query!r} -> live related source {source_product!r} expected {expected_source_product!r}")
         if status == "FAIL":
             failures.append(query)
 
