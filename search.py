@@ -85,6 +85,10 @@ def normalize(value: str) -> str:
     return ascii_text.lower()
 
 
+def normalize_url(value: str) -> str:
+    return str(value or "").strip().split("?", 1)[0].split("#", 1)[0].rstrip("/")
+
+
 def tokenize(value: str) -> set[str]:
     tokens = {
         token

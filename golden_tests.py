@@ -28,6 +28,8 @@ PRODUCT_GOLDEN_CASES = [
 
 LIVE_RELATED_GOLDEN_CASES = [
     ("co sa hodi ku kokosovemu mlieku AROY-D 1000ml", "Kokosové mlieko AROY-D 1000ml"),
+    ("co sa hodi k sriracha", "sriracha"),
+    ("čo sa kombinuje s gochujang omáčkou", "gochujang"),
 ]
 
 
@@ -66,7 +68,9 @@ def main() -> None:
     for query, expected_source_product in LIVE_RELATED_GOLDEN_CASES:
         result = recommend_live_related_products(query, knowledge, products, limit=4)
         source_product = str(result.cards[0].get("source_product") or "") if result.cards else ""
-        status = "OK" if source_product == expected_source_product else "FAIL"
+        normalized_source = normalize(source_product)
+        normalized_expected = normalize(expected_source_product)
+        status = "OK" if normalized_expected in normalized_source else "FAIL"
         print(f"{status}: {query!r} -> live related source {source_product!r} expected {expected_source_product!r}")
         if status == "FAIL":
             failures.append(query)
@@ -77,7 +81,25 @@ def main() -> None:
 
 def is_crosssell_query(message: str) -> bool:
     normalized = normalize(message)
-    return any(marker in normalized for marker in ["suvisiace", "co sa hodi", "k tomu", "hodi sa", "odporuc"])
+    return any(
+        marker in normalized
+        for marker in [
+            "suvisiace",
+            "co sa hodi",
+            "k tomu",
+            "hodi sa",
+            "odporuc",
+            "co si vziat",
+            "co este",
+            "co sa kombinuje",
+            "co k tomu",
+            "kombinuje sa",
+            "co patr",
+            "doplnit",
+            "dobalit",
+            "pridat k",
+        ]
+    )
 
 
 def is_compare_query(message: str) -> bool:

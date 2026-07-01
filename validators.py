@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 from app.feed import Product
-
-
-def normalize_url(value: str) -> str:
-    return value.strip().split("?", 1)[0].rstrip("/")
+from app.search import normalize_url
 
 
 def grounding_warnings(

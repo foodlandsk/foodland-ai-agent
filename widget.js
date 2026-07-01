@@ -480,8 +480,8 @@
     if (!Array.isArray(products) || products.length === 0) return;
 
     const visibleProducts = products.slice(0, 10).filter(function (product) {
-      const productKey = String(product.id || product.link || product.title || "");
-      return !productKey || !shownProductIds.has(productKey);
+      const productKey = productDisplayKey(product);
+      return productKey ? !shownProductIds.has(productKey) : false;
     });
     if (visibleProducts.length === 0) return;
 
@@ -523,7 +523,7 @@
   }
 
   function createProductCard(product) {
-      const productKey = String(product.id || product.link || product.title || "");
+      const productKey = productDisplayKey(product);
       if (productKey) shownProductIds.add(productKey);
       if (!lastProductTitle && product.title) lastProductTitle = product.title;
       const price = typeof product.effective_price === "number"
@@ -593,6 +593,8 @@
     const wrap = document.createElement("div");
     wrap.className = "fl-ai-content-cards";
     cards.slice(0, 4).forEach(function (item) {
+      const itemKey = productDisplayKey(item);
+      if (itemKey) shownProductIds.add(itemKey);
       if (!lastProductTitle && item.title && (item.type === "cross_sell" || item.type === "alternative")) {
         lastProductTitle = item.title;
       }
@@ -680,7 +682,7 @@
     const response = await fetch(`${apiBaseUrl}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: backendText, limit: 10, shown_product_ids: [] }),
+      body: JSON.stringify({ message: backendText, limit: 10, shown_product_ids: Array.from(shownProductIds) }),
     });
     if (response.status === 429) throw new Error("RATE_LIMIT");
     if (!response.ok) throw new Error("REQUEST_FAILED");
@@ -698,6 +700,18 @@
     if (normalized.includes(" k ") || normalized.includes(" ku ")) return value;
 
     return `${value} k ${lastProductTitle}`;
+  }
+
+  function productDisplayKey(item) {
+    const url = normalizeProductUrl(item && (item.link || item.url));
+    if (url) return url;
+    return String((item && item.title) || "");
+  }
+
+  function normalizeProductUrl(value) {
+    const text = String(value || "").trim();
+    if (!text) return "";
+    return text.split("?")[0].replace(/\/+$/, "");
   }
 
   async function submitQuestion(text) {

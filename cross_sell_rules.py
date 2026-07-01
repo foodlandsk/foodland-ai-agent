@@ -5,14 +5,16 @@ from typing import Any
 
 from app.feed import Product
 from app.knowledge import clean_recommendation_title
-from app.search import normalize, tokenize
+from app.search import normalize, normalize_url, tokenize
 
 
 RULE_NOISE_TOKENS = {
     "cross",
     "doplnky",
+    "dokupit",
     "hodi",
     "hodia",
+    "kombinuje",
     "k tomu",
     "kupit",
     "odporuc",
@@ -21,6 +23,18 @@ RULE_NOISE_TOKENS = {
     "produkty",
     "suvisiace",
     "suvisiaci",
+    "vziat",
+}
+
+GENERIC_PRODUCT_TYPE_TOKENS = {
+    "cili",
+    "chili",
+    "korejska",
+    "korejske",
+    "omacka",
+    "omackou",
+    "paliva",
+    "pasta",
 }
 
 
@@ -44,7 +58,7 @@ def recommend_cross_sell_from_rules(
     limit: int = 4,
     shown_product_ids: set[str] | None = None,
 ) -> CrossSellRuleResult:
-    shown_product_ids = shown_product_ids or set()
+    shown_urls = normalize_shown_urls(shown_product_ids or set())
     product_by_url = {normalize_url(product.link): product for product in products if product.link}
     query_tokens = tokenize(query) - RULE_NOISE_TOKENS
     recommendations: list[RuleRecommendation] = []
@@ -74,7 +88,7 @@ def recommend_cross_sell_from_rules(
                 continue
 
             key = normalize_url(url) or normalize(title)
-            if key in seen_keys or key in shown_product_ids:
+            if key in seen_keys or key in shown_urls:
                 continue
             if normalize(title) == normalize(source_product):
                 continue
@@ -126,16 +140,17 @@ def recommend_live_related_products(
     limit: int = 4,
     shown_product_ids: set[str] | None = None,
 ) -> CrossSellRuleResult:
-    shown_product_ids = shown_product_ids or set()
+    shown_urls = normalize_shown_urls(shown_product_ids or set())
     product_by_url = {normalize_url(product.link): product for product in products if product.link}
     query_tokens = tokenize(query) - RULE_NOISE_TOKENS
+    product_focus_tokens = query_tokens - GENERIC_PRODUCT_TYPE_TOKENS
     if not query_tokens:
         return CrossSellRuleResult(cards=[], trace={"engine": "live_related_products_v1", "returned": 0})
 
     recommendations: list[RuleRecommendation] = []
     seen_keys: set[str] = set()
     normalized_query = normalize(query)
-    scored_sources: dict[str, int] = {}
+    scored_sources: dict[str, tuple[int, bool]] = {}
 
     for record in knowledge.get("sections", {}).get("Product_Related_Live", []):
         source_product = clean_recommendation_title(str(record.get("Source Product Title (SK)") or ""))
@@ -143,14 +158,28 @@ def recommend_live_related_products(
             continue
         source_tokens = tokenize(source_product)
         source_overlap = query_tokens & source_tokens
+        product_focus_overlap = product_focus_tokens & source_tokens
         source_phrase = normalize(source_product) in normalized_query
-        if not source_phrase and len(source_overlap) < 2:
+        single_token_match = bool(source_overlap) and (
+            len(source_tokens) == 1
+            or len(query_tokens) == 1
+            or (len(product_focus_tokens) == 1 and bool(product_focus_overlap))
+        )
+        if not source_phrase and len(source_overlap) < 2 and not single_token_match:
             continue
         score = 30 if source_phrase else 8 * len(source_overlap)
+        if single_token_match:
+            score += 6
+        if product_focus_overlap:
+            score += 4 * len(product_focus_overlap)
         if source_tokens and query_tokens and len(query_tokens & source_tokens) >= 3:
             score += 10
         key = normalize(source_product)
-        scored_sources[key] = max(scored_sources.get(key, 0), score)
+        current_score, current_single = scored_sources.get(key, (0, False))
+        if score > current_score:
+            scored_sources[key] = (score, single_token_match)
+        elif score == current_score:
+            scored_sources[key] = (current_score, current_single or single_token_match)
 
     if not scored_sources:
         return CrossSellRuleResult(
@@ -158,19 +187,20 @@ def recommend_live_related_products(
             trace={
                 "engine": "live_related_products_v1",
                 "query_tokens": sorted(query_tokens),
+                "product_focus_tokens": sorted(product_focus_tokens),
                 "candidates": 0,
                 "returned": 0,
             },
         )
 
-    best_source_score = max(scored_sources.values())
-    source_score_floor = max(16, best_source_score - 4)
+    best_source_score = max(score for score, _ in scored_sources.values())
+    source_score_floor = max(12, best_source_score - 4)
 
     for record in knowledge.get("sections", {}).get("Product_Related_Live", []):
         source_product = clean_recommendation_title(str(record.get("Source Product Title (SK)") or ""))
         source_key = normalize(source_product)
-        source_base_score = scored_sources.get(source_key, 0)
-        if source_base_score < source_score_floor:
+        source_base_score, source_single_token_match = scored_sources.get(source_key, (0, False))
+        if source_base_score < source_score_floor and not source_single_token_match:
             continue
 
         title = clean_recommendation_title(str(record.get("Related Item Title") or ""))
@@ -179,7 +209,7 @@ def recommend_live_related_products(
             continue
 
         key = normalize_url(url) or normalize(title)
-        if key in seen_keys or key in shown_product_ids:
+        if key in seen_keys or key in shown_urls:
             continue
         if normalize(title) == normalize(source_product):
             continue
@@ -227,6 +257,7 @@ def recommend_live_related_products(
         trace={
             "engine": "live_related_products_v1",
             "query_tokens": sorted(query_tokens),
+            "product_focus_tokens": sorted(product_focus_tokens),
             "candidates": len(recommendations),
             "returned": len(cards),
         },
@@ -327,5 +358,5 @@ def parse_int(value: Any) -> int:
         return 0
 
 
-def normalize_url(value: str) -> str:
-    return value.strip().split("?", 1)[0].rstrip("/")
+def normalize_shown_urls(values: set[str]) -> set[str]:
+    return {normalized for value in values if (normalized := normalize_url(str(value or "")))}
