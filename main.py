@@ -575,7 +575,7 @@ def answer_question(
 
     try:
         client = OpenAI(api_key=api_key)
-        model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         ai_answer = generate_openai_answer(
             client=client,
             model=model,
@@ -598,6 +598,7 @@ def answer_question(
         )
         return response_payload(ai_answer, intent, "ai", lang, matches, knowledge_matches, cards, workflow)
     except Exception as exc:
+        print(f"[OpenAI ERROR] {type(exc).__name__}: {exc}", flush=True)
         log_backend_error("openai_response_failed", str(exc))
         log_question(
             message,
@@ -647,16 +648,6 @@ def generate_openai_answer(
         f"Produktove a obsahove karty:\n{cards_context(cards)}\n\n"
         f"Foodland Knowledge:\n{knowledge_context(knowledge_matches)}"
     )
-
-    if hasattr(client, "responses"):
-        response = client.responses.create(
-            model=model,
-            input=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-        return str(response.output_text)
 
     response = client.chat.completions.create(
         model=model,
