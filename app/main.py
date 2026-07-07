@@ -108,6 +108,34 @@ RELATED_INTENT_MARKERS = (
     "spravit",
 )
 
+ALLERGEN_INTENT_MARKERS = (
+    "alerg",
+    "alergen",
+    "bez ",
+    "bezlepk",
+    "neobsahuje",
+    "neznasam",
+    "intoler",
+    "celiak",
+    "celiaki",
+)
+
+ALLERGEN_TERMS = {
+    "soja": "sóju",
+    "soj": "sóju",
+    "lepok": "lepok",
+    "gluten": "lepok",
+    "arasid": "arašidy",
+    "orech": "orechy",
+    "mlieko": "mlieko",
+    "lakto": "laktózu",
+    "vajc": "vajcia",
+    "sezam": "sezam",
+    "ryb": "ryby",
+    "makky": "mäkkýše",
+    "krev": "krevety",
+}
+
 app = FastAPI(title="Foodland AI Agent", version="0.1.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent), name="static")
 
@@ -156,6 +184,17 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     client_key = get_client_key(request)
     enforce_rate_limit(client_key)
 
+    allergen_term = detect_allergen_intent(chat_request.message)
+    if allergen_term:
+        knowledge_matches = search_knowledge(knowledge, chat_request.message)
+        log_question(chat_request.message, client_key, 0)
+        return {
+            "answer": allergen_safety_answer(allergen_term),
+            "products": [],
+            "knowledge": knowledge_summary(knowledge_matches),
+            "intent": "allergen_safety",
+        }
+
     related_subject = detect_related_subject(chat_request.message)
     if related_subject:
         matches = related_products_for_subject(products, related_subject, chat_request.limit)
@@ -200,7 +239,6 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                     "role": "user",
                     "content": (
                         f"Otázka zákazníka: {chat_request.message}\n\n"
-                        f"Typ otázky: {question_type_label(related_subject)}\n\n"
                         f"Relevantné produkty:\n{products_context(matches)}\n\n"
                         f"Foodland Knowledge:\n{knowledge_context(knowledge_matches)}"
                     ),
@@ -226,7 +264,6 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "answer": fallback_answer(matches, knowledge_matches, related_subject),
             "products": matches,
             "knowledge": knowledge_summary(knowledge_matches),
-            "intent": "related_products" if related_subject else "product_search",
             "warning": "Odpoveď sa nepodarilo vygenerovať, zobrazujem nájdené produkty.",
         }
 
@@ -301,6 +338,36 @@ def detect_related_subject(message: str) -> str | None:
             return subject
 
     return None
+
+
+def detect_allergen_intent(message: str) -> str | None:
+    normalized_message = normalize(message)
+    if not any(marker in normalized_message for marker in ALLERGEN_INTENT_MARKERS):
+        return None
+
+    for term, label in ALLERGEN_TERMS.items():
+        if term in normalized_message:
+            return label
+
+    if "alerg" in normalized_message or "alergen" in normalized_message:
+        return "alergény"
+
+    return None
+
+
+def allergen_safety_answer(allergen_term: str) -> str:
+    if allergen_term == "alergény":
+        return (
+            "Pri alergénoch vám nechcem odporučiť nesprávny produkt. "
+            "Prosím overte zloženie v detaile konkrétneho produktu alebo nám napíšte názov produktu, "
+            "ktorý chcete skontrolovať."
+        )
+
+    return (
+        f"Pri alergii alebo intolerancii na {allergen_term} vám nechcem odporučiť produkt len podľa názvu. "
+        "Prosím overte zloženie a alergény v detaile konkrétneho produktu. "
+        "Ak mi pošlete názov produktu, pomôžem vám nájsť jeho detail na Foodland.sk."
+    )
 
 
 def related_products_for_subject(products: list[Product], subject: str, limit: int) -> list[dict]:

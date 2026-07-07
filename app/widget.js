@@ -217,19 +217,6 @@
       font-weight: 800;
       text-decoration: none;
     }
-    .fl-ai-show-more {
-      min-height: 38px;
-      border: 1px solid #299B5E;
-      border-radius: 6px;
-      background: #fff;
-      color: #238750;
-      font-size: 13px;
-      font-weight: 800;
-      cursor: pointer;
-    }
-    .fl-ai-show-more:hover {
-      background: #F2FAF5;
-    }
     .fl-ai-form {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -364,8 +351,7 @@
 
     const wrap = document.createElement("div");
     wrap.className = "fl-ai-products";
-    const initialCount = 4;
-    const renderProduct = function (product) {
+    products.slice(0, 4).forEach(function (product) {
       const price = typeof product.effective_price === "number"
         ? `${product.effective_price.toFixed(2)} ${product.currency || "EUR"}`
         : "Cena neuvedená";
@@ -394,23 +380,7 @@
         fallback.style.display = "flex";
       });
       wrap.appendChild(card);
-    };
-
-    products.slice(0, initialCount).forEach(renderProduct);
-
-    if (products.length > initialCount) {
-      const button = document.createElement("button");
-      button.className = "fl-ai-show-more";
-      button.type = "button";
-      button.textContent = `Zobraziť ďalšie (${products.length - initialCount})`;
-      button.addEventListener("click", function () {
-        products.slice(initialCount).forEach(renderProduct);
-        button.remove();
-        scrollToBottom();
-      });
-      wrap.appendChild(button);
-    }
-
+    });
     messages.appendChild(wrap);
     scrollToBottom();
   }

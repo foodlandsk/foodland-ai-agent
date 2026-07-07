@@ -23,9 +23,6 @@ STOPWORDS = {
     "kde",
     "kedy",
     "ku",
-    "ktore",
-    "ktory",
-    "ktoru",
     "ma",
     "mam",
     "mate",
@@ -94,12 +91,16 @@ def search_products(products: list[Product], query: str, limit: int = 8) -> list
     if not query_tokens:
         return []
 
+    normalized_query = normalize(query)
+    wants_sushi_rice = {"ryza"} <= query_tokens and bool({"sushi", "susi"} & query_tokens)
+
     ranked: list[tuple[int, bool, Product]] = []
     for product in products:
         title_tokens = tokenize(product.title)
         category_tokens = tokenize(product.product_type)
         brand_tokens = tokenize(product.brand)
         description_tokens = tokenize(product.description)
+        normalized_title = normalize(product.title)
 
         title_hits = len(query_tokens & title_tokens)
         brand_hits = len(query_tokens & brand_tokens)
@@ -112,10 +113,20 @@ def search_products(products: list[Product], query: str, limit: int = 8) -> list
         score += 4 * category_hits
         score += description_hits
 
-        normalized_query = normalize(query)
-        normalized_title = normalize(product.title)
         if normalized_query in normalized_title:
             score += 12
+
+        if wants_sushi_rice:
+            title_is_sushi_rice = (
+                "ryza" in title_tokens
+                and bool({"sushi", "susi"} & title_tokens)
+                and "ocot" not in title_tokens
+                and "vinegar" not in title_tokens
+            )
+            if title_is_sushi_rice:
+                score += 18
+            if "ocot" in title_tokens or "vinegar" in title_tokens:
+                score -= 30
 
         strong_match = bool(title_hits or brand_hits or category_hits or normalized_query in normalized_title)
 
