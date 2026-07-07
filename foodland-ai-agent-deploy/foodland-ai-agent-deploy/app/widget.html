@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="sk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Foodland AI Widget Demo</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Arial, sans-serif;
+        background: #f7f8f5;
+        color: #221F20;
+      }
+
+      main {
+        max-width: 1060px;
+        margin: 0 auto;
+        padding: 56px 24px;
+      }
+
+      h1 {
+        max-width: 720px;
+        margin: 0 0 14px;
+        font-size: clamp(34px, 5vw, 56px);
+        line-height: 1;
+      }
+
+      p {
+        max-width: 620px;
+        margin: 0;
+        color: #5d6b62;
+        font-size: 18px;
+        line-height: 1.5;
+      }
+
+      .demo-band {
+        margin-top: 38px;
+        min-height: 260px;
+        border: 1px solid #dde6df;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 16px 44px rgba(28, 43, 34, 0.08);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Foodland poradca</h1>
+      <p>Demo stranka pre test nakupneho poradcu s produktovymi kartami, lepsimi stavmi a mobilnym spravanim.</p>
+      <div class="demo-band"></div>
+    </main>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const isLocalFile = window.location.protocol === "file:";
+      window.FoodlandAI = {
+        apiBaseUrl: isLocalFile ? "http://localhost:8000" : window.location.origin,
+        demoMode: isLocalFile || params.get("demo") === "1",
+      };
+    </script>
+    <script src="./widget.js"></script>
+  </body>
+</html>

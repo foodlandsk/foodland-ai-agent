@@ -23,9 +23,6 @@ STOPWORDS = {
     "kde",
     "kedy",
     "ku",
-    "ktore",
-    "ktory",
-    "ktoru",
     "ma",
     "mam",
     "mate",
@@ -37,19 +34,12 @@ STOPWORDS = {
     "nie",
     "od",
     "pre",
-    "produkt",
-    "produkty",
-    "produktov",
     "pri",
     "prosim",
     "sa",
     "si",
     "som",
     "su",
-    "suvisiace",
-    "suvisiaci",
-    "suvisiaca",
-    "suvisia",
     "to",
     "uz",
     "vam",
@@ -84,8 +74,6 @@ def tokenize(value: str) -> set[str]:
             expanded.add("ryza")
         if token.startswith("kimchi") or token.startswith("kimci"):
             expanded.add("kimchi")
-        if token.startswith("gochuj") or token.startswith("gochuang"):
-            expanded.add("gochujang")
     return expanded
 
 
@@ -94,51 +82,33 @@ def search_products(products: list[Product], query: str, limit: int = 8) -> list
     if not query_tokens:
         return []
 
-    ranked: list[tuple[int, bool, Product]] = []
+    ranked: list[tuple[int, Product]] = []
     for product in products:
         title_tokens = tokenize(product.title)
         category_tokens = tokenize(product.product_type)
         brand_tokens = tokenize(product.brand)
         description_tokens = tokenize(product.description)
 
-        title_hits = len(query_tokens & title_tokens)
-        brand_hits = len(query_tokens & brand_tokens)
-        category_hits = len(query_tokens & category_tokens)
-        description_hits = len(query_tokens & description_tokens)
-
         score = 0
-        score += 8 * title_hits
-        score += 5 * brand_hits
-        score += 4 * category_hits
-        score += description_hits
+        score += 6 * len(query_tokens & title_tokens)
+        score += 4 * len(query_tokens & brand_tokens)
+        score += 3 * len(query_tokens & category_tokens)
+        score += len(query_tokens & description_tokens)
 
         normalized_query = normalize(query)
         normalized_title = normalize(product.title)
         if normalized_query in normalized_title:
-            score += 12
-
-        strong_match = bool(title_hits or brand_hits or category_hits or normalized_query in normalized_title)
+            score += 10
 
         # Availability should only break ties among relevant matches.
         if score > 0 and product.availability == "in_stock":
             score += 1
 
         if score > 0:
-            ranked.append((score, strong_match, product))
+            ranked.append((score, product))
 
-    strong_ranked = [item for item in ranked if item[1]]
-    weak_ranked = [item for item in ranked if not item[1]]
-    strong_ranked.sort(key=lambda item: item[0], reverse=True)
-    weak_ranked.sort(key=lambda item: item[0], reverse=True)
-
-    # Description-only hits often mean "served with X", not that the product itself is X.
-    # Use them only as a fallback when strong title/brand/category matches are scarce.
-    if len(strong_ranked) >= min(limit, 4):
-        ranked = strong_ranked
-    else:
-        ranked = strong_ranked + weak_ranked
-
-    return [format_product(product) for _, _, product in ranked[:limit]]
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    return [format_product(product) for _, product in ranked[:limit]]
 
 
 def format_product(product: Product) -> dict:

@@ -24,7 +24,7 @@ from app.knowledge import (
     load_knowledge_json,
     search_knowledge,
 )
-from app.search import normalize, products_context, search_products
+from app.search import products_context, search_products
 
 
 logging.basicConfig(
@@ -80,34 +80,6 @@ last_feed_refresh_error: str | None = None
 feed_refresh_task: asyncio.Task | None = None
 rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 
-RELATED_PRODUCT_QUERIES = {
-    "kimchi": [
-        "gochujang",
-        "gochugaru",
-        "cervena cili paprika",
-        "rybacia omacka",
-        "ryzova muka",
-        "sezamovy olej",
-        "sojova omacka",
-        "ramen",
-        "jazminova ryza",
-    ],
-}
-
-RELATED_INTENT_MARKERS = (
-    "suvisiace",
-    "hodi",
-    "hodia",
-    "vyrob",
-    "priprav",
-    "ingredien",
-    "surovin",
-    "potrebujem",
-    "recept",
-    "urobit",
-    "spravit",
-)
-
 app = FastAPI(title="Foodland AI Agent", version="0.1.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent), name="static")
 
@@ -156,11 +128,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     client_key = get_client_key(request)
     enforce_rate_limit(client_key)
 
-    related_subject = detect_related_subject(chat_request.message)
-    if related_subject:
-        matches = related_products_for_subject(products, related_subject, chat_request.limit)
-    else:
-        matches = search_products(products, chat_request.message, chat_request.limit)
+    matches = search_products(products, chat_request.message, chat_request.limit)
     knowledge_matches = search_knowledge(knowledge, chat_request.message)
     log_question(chat_request.message, client_key, len(matches))
 
@@ -174,10 +142,9 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if not api_key:
         logger.debug("No OPENAI_API_KEY set, using fallback answer.")
         return {
-            "answer": fallback_answer(matches, knowledge_matches, related_subject),
+            "answer": fallback_answer(matches, knowledge_matches),
             "products": matches,
             "knowledge": knowledge_summary(knowledge_matches),
-            "intent": "related_products" if related_subject else "product_search",
         }
 
     try:
@@ -200,33 +167,26 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                     "role": "user",
                     "content": (
                         f"Otázka zákazníka: {chat_request.message}\n\n"
-                        f"Typ otázky: {question_type_label(related_subject)}\n\n"
                         f"Relevantné produkty:\n{products_context(matches)}\n\n"
                         f"Foodland Knowledge:\n{knowledge_context(knowledge_matches)}"
                     ),
                 },
             ],
         )
-        answer_text = response.choices[0].message.content or fallback_answer(
-            matches,
-            knowledge_matches,
-            related_subject,
-        )
+        answer_text = response.choices[0].message.content or fallback_answer(matches, knowledge_matches)
         logger.info("OpenAI response generated.")
         return {
             "answer": answer_text,
             "products": matches,
             "knowledge": knowledge_summary(knowledge_matches),
-            "intent": "related_products" if related_subject else "product_search",
         }
     except Exception as exc:
         logger.error("OpenAI API failed: %s", exc, exc_info=True)
         log_backend_error("openai_response_failed", str(exc))
         return {
-            "answer": fallback_answer(matches, knowledge_matches, related_subject),
+            "answer": fallback_answer(matches, knowledge_matches),
             "products": matches,
             "knowledge": knowledge_summary(knowledge_matches),
-            "intent": "related_products" if related_subject else "product_search",
             "warning": "Odpoveď sa nepodarilo vygenerovať, zobrazujem nájdené produkty.",
         }
 
@@ -291,52 +251,7 @@ def log_backend_error(event: str, detail: str) -> None:
         logger.error("Failed to log backend error: %s", exc, exc_info=True)
 
 
-def detect_related_subject(message: str) -> str | None:
-    normalized_message = normalize(message)
-    if not any(marker in normalized_message for marker in RELATED_INTENT_MARKERS):
-        return None
-
-    for subject in RELATED_PRODUCT_QUERIES:
-        if subject in normalized_message:
-            return subject
-
-    return None
-
-
-def related_products_for_subject(products: list[Product], subject: str, limit: int) -> list[dict]:
-    subject_query = normalize(subject)
-    seen: set[str] = set()
-    recommendations: list[dict] = []
-
-    for query in RELATED_PRODUCT_QUERIES.get(subject, []):
-        for product in search_products(products, query, 3):
-            title = normalize(product.get("title", ""))
-            if subject_query and subject_query in title:
-                continue
-
-            key = product.get("id") or product.get("link") or product.get("title")
-            if not key or key in seen:
-                continue
-
-            seen.add(key)
-            recommendations.append(product)
-            if len(recommendations) >= limit:
-                return recommendations
-
-    return recommendations
-
-
-def question_type_label(related_subject: str | None) -> str:
-    if related_subject:
-        return f"Zákazník hľadá súvisiace produkty alebo suroviny k téme {related_subject}, nie hotový produkt."
-    return "Zákazník hľadá produkt alebo informáciu k produktom."
-
-
-def fallback_answer(
-    matches: list[dict],
-    knowledge_matches: dict | None = None,
-    related_subject: str | None = None,
-) -> str:
+def fallback_answer(matches: list[dict], knowledge_matches: dict | None = None) -> str:
     knowledge_matches = knowledge_matches or {}
     faq_answer = best_faq_answer(knowledge_matches)
     if faq_answer and not matches:
@@ -344,8 +259,6 @@ def fallback_answer(
 
     if matches:
         count = min(len(matches), 5)
-        if related_subject:
-            return f"Našiel som {count} súvisiacich produktov a surovín, ktoré sa hodia k téme {related_subject}."
         if knowledge_matches:
             return f"Našiel som {count} vhodných produktov a doplnil som odporúčania z Foodland poradcu."
         return f"Našiel som {count} vhodných produktov. Pozrite si odporúčania nižšie."
