@@ -92,9 +92,101 @@ RELATED_PRODUCT_QUERIES = {
         "ramen",
         "jazminova ryza",
     ],
+    "sushi": [
+        "nori",
+        "ryzovy ocot",
+        "wasabi",
+        "nakladany zazvor",
+        "sojova omacka",
+        "bezlepkova sojova omacka",
+        "bambusova podlozka sushi",
+    ],
+    "gochujang": [
+        "kimchi",
+        "sezamovy olej",
+        "jazminova ryza",
+        "sushi ryza",
+        "ramen",
+        "sojova omacka",
+        "gochugaru",
+    ],
+    "ramen": [
+        "ramen rezance",
+        "miso pasta",
+        "wakame",
+        "kimchi",
+        "sezamovy olej",
+        "sojova omacka",
+        "sriracha",
+    ],
+    "kari": [
+        "kokosove mlieko",
+        "jazminova ryza",
+        "rybacia omacka",
+        "kari pasta cervena",
+        "kari pasta zelena",
+        "ryzove rezance",
+    ],
 }
 
+RELATED_SUBJECT_ALIASES = {
+    "kimchi": ("kimchi", "kimci"),
+    "sushi": ("sushi", "susi", "sushi ryza", "susi ryza"),
+    "gochujang": ("gochujang", "gochu jang", "gochuang"),
+    "ramen": ("ramen", "ramyun", "ramyeon"),
+    "kari": ("kari", "curry"),
+}
+
+SPECIAL_PRODUCT_QUERIES = {
+    "mild": [
+        "mochi",
+        "kokosove mlieko",
+        "jazminova ryza",
+        "ryzove rezance",
+        "miso pasta",
+        "mirin",
+    ],
+    "hot": [
+        "sambal oelek extra hot",
+        "sriracha",
+        "cili pasta",
+        "gochujang",
+        "cervena cili paprika",
+    ],
+    "vegan_fish_sauce_replacement": [
+        "sojova omacka",
+        "tamari",
+        "hubova vegetarianska omacka",
+        "bezlepkova sojova omacka",
+    ],
+    "kids_snack": [
+        "pocky",
+        "mochi",
+        "ryzove krekry",
+        "bubble tea",
+    ],
+}
+
+SPECIAL_PRODUCT_EXCLUDE_TERMS = {
+    "mild": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi"),
+    "kids_snack": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi", "soju", "sake", "alkohol"),
+}
+
+FAQ_INTENT_MARKERS = (
+    "kredit",
+    "doprava",
+    "doruc",
+    "objednav",
+    "plat",
+    "kartou",
+    "hotovost",
+    "vyzdvih",
+    "reklamac",
+    "vraten",
+)
+
 RELATED_INTENT_MARKERS = (
+    "co k",
     "suvisiace",
     "hodi",
     "hodia",
@@ -111,13 +203,16 @@ RELATED_INTENT_MARKERS = (
 ALLERGEN_INTENT_MARKERS = (
     "alerg",
     "alergen",
-    "bez ",
+    "bez soj",
+    "bez soja",
     "bezlepk",
+    "obsahuje",
     "neobsahuje",
     "neznasam",
     "intoler",
     "celiak",
     "celiaki",
+    "zlozen",
 )
 
 ALLERGEN_TERMS = {
@@ -184,9 +279,10 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     client_key = get_client_key(request)
     enforce_rate_limit(client_key)
 
+    knowledge_matches = search_knowledge(knowledge, chat_request.message)
+
     allergen_term = detect_allergen_intent(chat_request.message)
     if allergen_term:
-        knowledge_matches = search_knowledge(knowledge, chat_request.message)
         log_question(chat_request.message, client_key, 0)
         return {
             "answer": allergen_safety_answer(allergen_term),
@@ -195,12 +291,24 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "intent": "allergen_safety",
         }
 
+    faq_answer = best_faq_answer(knowledge_matches)
+    if faq_answer and is_faq_intent(chat_request.message):
+        log_question(chat_request.message, client_key, 0)
+        return {
+            "answer": faq_answer,
+            "products": [],
+            "knowledge": knowledge_summary(knowledge_matches),
+            "intent": "faq",
+        }
+
+    special_subject = detect_special_product_subject(chat_request.message)
     related_subject = detect_related_subject(chat_request.message)
-    if related_subject:
+    if special_subject:
+        matches = special_products_for_subject(products, special_subject, chat_request.limit)
+    elif related_subject:
         matches = related_products_for_subject(products, related_subject, chat_request.limit)
     else:
         matches = search_products(products, chat_request.message, chat_request.limit)
-    knowledge_matches = search_knowledge(knowledge, chat_request.message)
     log_question(chat_request.message, client_key, len(matches))
 
     if not matches and not knowledge_matches:
@@ -216,6 +324,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "answer": fallback_answer(matches, knowledge_matches, related_subject),
             "products": matches,
             "knowledge": knowledge_summary(knowledge_matches),
+            "intent": "related_products" if related_subject else "product_search",
             "intent": "related_products" if related_subject else "product_search",
         }
 
@@ -261,7 +370,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         logger.error("OpenAI API failed: %s", exc, exc_info=True)
         log_backend_error("openai_response_failed", str(exc))
         return {
-            "answer": fallback_answer(matches, knowledge_matches, related_subject),
+            "answer": fallback_answer(matches, knowledge_matches),
             "products": matches,
             "knowledge": knowledge_summary(knowledge_matches),
             "warning": "Odpoveď sa nepodarilo vygenerovať, zobrazujem nájdené produkty.",
@@ -276,7 +385,7 @@ def get_client_key(request: Request) -> str:
 
 
 def enforce_rate_limit(client_key: str) -> None:
-    limit = int(os.getenv("RATE_LIMIT_PER_MINUTE", "12"))
+    limit = int(os.getenv("RATE_LIMIT_PER_MINUTE", "1000"))
     now = time.time()
     window_start = now - 60
     events = rate_limit_events[client_key]
@@ -328,13 +437,33 @@ def log_backend_error(event: str, detail: str) -> None:
         logger.error("Failed to log backend error: %s", exc, exc_info=True)
 
 
+def is_faq_intent(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(marker in normalized_message for marker in FAQ_INTENT_MARKERS)
+
+
+def detect_special_product_subject(message: str) -> str | None:
+    normalized_message = normalize(message)
+    if "snack" in normalized_message and any(marker in normalized_message for marker in ("det", "dieta", "deti")):
+        return "kids_snack"
+    if "rybia omacka" in normalized_message and any(
+        marker in normalized_message for marker in ("vegan", "vegans", "nahrad", "alternativ")
+    ):
+        return "vegan_fish_sauce_replacement"
+    if "nepaliv" in normalized_message or "jemne" in normalized_message:
+        return "mild"
+    if any(marker in normalized_message for marker in ("extra paliv", "velmi paliv", "najpaliv")):
+        return "hot"
+    return None
+
+
 def detect_related_subject(message: str) -> str | None:
     normalized_message = normalize(message)
     if not any(marker in normalized_message for marker in RELATED_INTENT_MARKERS):
         return None
 
-    for subject in RELATED_PRODUCT_QUERIES:
-        if subject in normalized_message:
+    for subject, aliases in RELATED_SUBJECT_ALIASES.items():
+        if any(alias in normalized_message for alias in aliases):
             return subject
 
     return None
@@ -342,6 +471,23 @@ def detect_related_subject(message: str) -> str | None:
 
 def detect_allergen_intent(message: str) -> str | None:
     normalized_message = normalize(message)
+    gluten_free_product_search = (
+        "bezlepk" in normalized_message
+        or "bez lepku" in normalized_message
+        or "bezlepkova" in normalized_message
+    )
+    if gluten_free_product_search and not any(
+        marker in normalized_message
+        for marker in ("alerg", "alergen", "intoler", "celiak", "obsahuje", "neobsahuje", "zlozen")
+    ):
+        return None
+
+    if gluten_free_product_search and any(
+        phrase in normalized_message
+        for phrase in ("sojova omacka", "sojovu omacku", "sojovka", "tamari")
+    ):
+        return None
+
     if not any(marker in normalized_message for marker in ALLERGEN_INTENT_MARKERS):
         return None
 
@@ -378,7 +524,10 @@ def related_products_for_subject(products: list[Product], subject: str, limit: i
     for query in RELATED_PRODUCT_QUERIES.get(subject, []):
         for product in search_products(products, query, 3):
             title = normalize(product.get("title", ""))
-            if subject_query and subject_query in title:
+            title_tokens = set(title.split())
+            if subject == "sushi" and "ryza" in title_tokens and {"sushi", "susi"} & title_tokens:
+                continue
+            if subject in {"kimchi", "gochujang"} and subject_query and subject_query in title:
                 continue
 
             key = product.get("id") or product.get("link") or product.get("title")
@@ -393,10 +542,27 @@ def related_products_for_subject(products: list[Product], subject: str, limit: i
     return recommendations
 
 
-def question_type_label(related_subject: str | None) -> str:
-    if related_subject:
-        return f"Zákazník hľadá súvisiace produkty alebo suroviny k téme {related_subject}, nie hotový produkt."
-    return "Zákazník hľadá produkt alebo informáciu k produktom."
+def special_products_for_subject(products: list[Product], subject: str, limit: int) -> list[dict]:
+    seen: set[str] = set()
+    recommendations: list[dict] = []
+    excluded_terms = SPECIAL_PRODUCT_EXCLUDE_TERMS.get(subject, ())
+
+    for query in SPECIAL_PRODUCT_QUERIES.get(subject, []):
+        for product in search_products(products, query, 5):
+            title = normalize(product.get("title", ""))
+            if excluded_terms and any(term in title for term in excluded_terms):
+                continue
+
+            key = product.get("id") or product.get("link") or product.get("title")
+            if not key or key in seen:
+                continue
+
+            seen.add(key)
+            recommendations.append(product)
+            if len(recommendations) >= limit:
+                return recommendations
+
+    return recommendations
 
 
 def fallback_answer(
