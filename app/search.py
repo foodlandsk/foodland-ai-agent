@@ -73,7 +73,7 @@ def tokenize(value: str) -> set[str]:
     for token in tokens:
         if token.startswith("kredit"):
             expanded.add("kredit")
-        if token.startswith("srirach"):
+        if token.startswith("srirach") or token.startswith("srirac") or token.startswith("sirach"):
             expanded.add("sriracha")
         if token in {"sushi", "susi"}:
             expanded.update({"sushi", "susi"})

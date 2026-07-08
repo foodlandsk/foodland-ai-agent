@@ -14,3 +14,6 @@
 {"id":"RT0014","query":"chcem snack pre deti","expected_intent":"product_search","expected_products_include":["Pocky","Mochi","ryžové krekry"],"must_not_include_products":["angry spicy","hot & spicy","Soju","Sake"],"note":"Detské snacky nesmú začínať pálivými snackmi ani alkoholom."}
 {"id":"RT0015","query":"kredity od akej sumy môžem použiť?","expected_intent":"faq","expected_products_count":0,"expected_answer_include":["50"],"note":"FAQ odpoveď nemá zobrazovať náhodné produktové karty."}
 {"id":"RT0016","query":"dá sa platiť kartou?","expected_intent":"faq","expected_products_count":0,"expected_answer_include":["kartou"],"note":"Platobná FAQ odpoveď nemá zobrazovať produkty."}
+{"id":"RT0017","query":"kimchi","expected_intent":"product_search","expected_products_include":["Kimchi"],"must_not_include_products":["KIMPO","Suši ryža"],"note":"Pri hľadaní kimchi sa nesmie zobrazovať demo/fallback sushi ryža KIMPO."}
+{"id":"RT0018","query":"sriracha","expected_intent":"product_search","expected_products_include":["Sriracha"],"must_not_include_products":["Kimchi","KIMPO","Suši ryža"],"note":"Pri hľadaní Sriracha sa nesmú zobrazovať kimchi demo produkty ani sushi ryža."}
+{"id":"RT0019","query":"sriraca","expected_intent":"product_search","expected_products_include":["Sriracha"],"note":"Preklep sriraca má nájsť Sriracha produkty."}

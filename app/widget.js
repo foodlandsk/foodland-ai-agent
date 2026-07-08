@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   const config = window.FoodlandAI || {};
   const apiBaseUrl = config.apiBaseUrl || "https://ai.foodland.sk";
   const demoMode = Boolean(config.demoMode);
@@ -7,24 +7,49 @@
 
   const demoProducts = [
     {
-      title: "Suši ryža KIMPO 1 kg",
+      title: "Kimchi krajané JONGGA 1000 g",
+      effective_price: 11.90,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "JONGGA",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/kimchi-krajane-jongga-1000-g-7424.jpg",
+      link: "https://www.foodland.sk/konzervovana-zelenina/kimchi-krajane-jongga-1000-g/",
+    },
+    {
+      title: "Kimchi Nakladaná kapusta MAT KIMCHI JONGGA 300g",
+      effective_price: 4.52,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "JONGGA",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/kimchi-nakladana-kapusta-mat-kimchi-jongga-300g-7423.jpg",
+      link: "https://www.foodland.sk/konzervovana-zelenina/kimchi-nakladana-kapusta-mat-kimchi-jongga-300g/",
+    },
+  ];
+
+  const srirachaDemoProducts = [
+    {
+      title: "Čili omáčka Sriracha COCK BRAND 490g/ 440ml",
+      effective_price: 4.76,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "COCK BRAND",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/cili-omacka-sriracha-cock-brand-490g-440ml-2365.jpg",
+      link: "https://www.foodland.sk/omacky-a-marinady/cili-omacka-sriracha-cock-brand-490g-440ml/",
+    },
+    {
+      title: "Spicy Sriracha Mayo čili omáčka FLYING GOOSE 200ml",
       effective_price: 3.33,
       currency: "EUR",
       availability: "in_stock",
-      brand: "KIMPO",
-      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/susi-ryza-kimpo-1-kg-3905.jpg?ft=1727720136&nwtrmrk=1",
-      link: "https://www.foodland.sk/susi-ryza/susi-ryza-kimpo-1-kg/",
-    },
-    {
-      title: "AKA MISO polievka prášok s tofu LOBO 30 g",
-      effective_price: 2.97,
-      currency: "EUR",
-      availability: "in_stock",
-      brand: "LOBO",
-      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/aka-miso-polievka-prasok-s-tofu-lobo-30g-1466.jpg?ft=1680869315&nwtrmrk=1",
-      link: "https://www.foodland.sk/instantne-polievky/aka-miso-polievka-prasok-s-tofu-lobo-30g/",
+      brand: "FLYING GOOSE",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/spicy-sriracha-mayo-cili-omacka-flying-goose-200ml-1785.jpg",
+      link: "https://www.foodland.sk/omacky-a-marinady/spicy-sriracha-mayo-cili-omacka-flying-goose-200ml/",
     },
   ];
+
+  function removeDiacritics(value) {
+    return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
 
   const style = document.createElement("style");
   style.textContent = `
@@ -403,9 +428,13 @@
   async function askBackend(text) {
     if (demoMode) {
       await new Promise(function (resolve) { window.setTimeout(resolve, 600); });
+      const normalizedText = removeDiacritics(String(text || "").toLowerCase());
+      const products = normalizedText.includes("srirach") || normalizedText.includes("srirac")
+        ? srirachaDemoProducts
+        : demoProducts;
       return {
         answer: "Našiel som niekoľko vhodných produktov. Pozrite si odporúčania nižšie.",
-        products: demoProducts,
+        products,
       };
     }
 
