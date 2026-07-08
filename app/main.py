@@ -169,6 +169,18 @@ SPECIAL_PRODUCT_QUERIES = {
 
 SPECIAL_PRODUCT_EXCLUDE_TERMS = {
     "mild": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi"),
+    "vegan_fish_sauce_replacement": (
+        "box",
+        "dressing",
+        "flastick",
+        "flast",
+        "miska",
+        "misky",
+        "nadoba",
+        "doza",
+        "davkovac",
+        "obal",
+    ),
     "kids_snack": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi", "soju", "sake", "alkohol"),
 }
 
@@ -325,7 +337,6 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "products": matches,
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "related_products" if related_subject else "product_search",
-            "intent": "related_products" if related_subject else "product_search",
         }
 
     try:
@@ -446,7 +457,7 @@ def detect_special_product_subject(message: str) -> str | None:
     normalized_message = normalize(message)
     if "snack" in normalized_message and any(marker in normalized_message for marker in ("det", "dieta", "deti")):
         return "kids_snack"
-    if "rybia omacka" in normalized_message and any(
+    if "rybi" in normalized_message and "omack" in normalized_message and any(
         marker in normalized_message for marker in ("vegan", "vegans", "nahrad", "alternativ")
     ):
         return "vegan_fish_sauce_replacement"
