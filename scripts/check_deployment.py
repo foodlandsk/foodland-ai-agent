@@ -18,6 +18,20 @@ FORBIDDEN_ROOT_FILES = {
     "env.example",
     "knowledge.json",
     "__init__.py",
+    "cross_sell_rules.py",
+    "download (2)",
+    "feed.py",
+    "golden_tests.py",
+    "import_knowledge.py",
+    "main (1).py",
+    "product_graph.py",
+    "products.json",
+    "question_analytics.jsonl",
+    "recipe_ingredients.json",
+    "recipe_ingredients.py",
+    "UPLOAD_STRUCTURE.txt",
+    "validators.py",
+    "workflows.py",
 }
 
 MOJIBAKE_MARKERS = (
