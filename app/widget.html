@@ -55,7 +55,7 @@
       const isLocalFile = window.location.protocol === "file:";
       window.FoodlandAI = {
         apiBaseUrl: isLocalFile ? "http://localhost:8000" : window.location.origin,
-        demoMode: isLocalFile || params.get("demo") === "1",
+        demoMode: params.get("demo") === "1",
       };
     </script>
     <script src="./widget.js"></script>

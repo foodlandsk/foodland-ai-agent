@@ -12,7 +12,7 @@
       currency: "EUR",
       availability: "in_stock",
       brand: "JONGGA",
-      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/kimchi-krajane-jongga-1000-g-7424.jpg",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/kimchi-krajane-jongga-1000-g-3315.jpg?ft=1700865338&nwtrmrk=1",
       link: "https://www.foodland.sk/konzervovana-zelenina/kimchi-krajane-jongga-1000-g/",
     },
     {
@@ -21,8 +21,8 @@
       currency: "EUR",
       availability: "in_stock",
       brand: "JONGGA",
-      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/kimchi-nakladana-kapusta-mat-kimchi-jongga-300g-7423.jpg",
-      link: "https://www.foodland.sk/konzervovana-zelenina/kimchi-nakladana-kapusta-mat-kimchi-jongga-300g/",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/nakladana-kapusta-mat-kimchi-jongga-300g-921.jpg?ft=1720100911&nwtrmrk=1",
+      link: "https://www.foodland.sk/hotove-jedla/nakladana-kapusta-mat-kimchi-jongga-300g/",
     },
   ];
 
@@ -33,8 +33,8 @@
       currency: "EUR",
       availability: "in_stock",
       brand: "COCK BRAND",
-      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/cili-omacka-sriracha-cock-brand-490g-440ml-2365.jpg",
-      link: "https://www.foodland.sk/omacky-a-marinady/cili-omacka-sriracha-cock-brand-490g-440ml/",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/cock-brand-sriracha-cili-omacka-490g-1315.jpg?ft=1588069091&nwtrmrk=1",
+      link: "https://www.foodland.sk/sriracha-cili-omacky/cili-omacka-sriracha-cock-brand-490g/",
     },
     {
       title: "Spicy Sriracha Mayo čili omáčka FLYING GOOSE 200ml",
@@ -42,8 +42,8 @@
       currency: "EUR",
       availability: "in_stock",
       brand: "FLYING GOOSE",
-      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/spicy-sriracha-mayo-cili-omacka-flying-goose-200ml-1785.jpg",
-      link: "https://www.foodland.sk/omacky-a-marinady/spicy-sriracha-mayo-cili-omacka-flying-goose-200ml/",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/spicy-sriracha-mayo-cili-omacka-flying-goose-200-ml-1457.jpg?ft=1680643653&nwtrmrk=1",
+      link: "https://www.foodland.sk/sriracha-cili-omacky/spicy-sriracha-mayo-cili-omacka-flying-goose-200-ml/",
     },
   ];
 
