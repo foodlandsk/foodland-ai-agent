@@ -477,6 +477,17 @@ def detect_related_subject(message: str) -> str | None:
         if any(alias in normalized_message for alias in aliases):
             return subject
 
+    if normalized_message.strip() in {
+        "na vyrobu",
+        "na pripravu",
+        "ingrediencie",
+        "suroviny",
+        "co na vyrobu",
+        "co treba na vyrobu",
+        "co potrebujem na vyrobu",
+    }:
+        return "kimchi"
+
     return None
 
 
@@ -533,7 +544,8 @@ def related_products_for_subject(products: list[Product], subject: str, limit: i
     recommendations: list[dict] = []
 
     for query in RELATED_PRODUCT_QUERIES.get(subject, []):
-        for product in search_products(products, query, 3):
+        per_query_limit = 1 if subject == "kimchi" else 3
+        for product in search_products(products, query, per_query_limit):
             title = normalize(product.get("title", ""))
             title_tokens = set(title.split())
             if subject == "sushi" and "ryza" in title_tokens and {"sushi", "susi"} & title_tokens:

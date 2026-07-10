@@ -4,6 +4,7 @@
   const demoMode = Boolean(config.demoMode);
   const maxQuestionsPerMinute = config.maxQuestionsPerMinute || 8;
   const recentQuestions = [];
+  let lastProductSubject = "";
 
   const demoProducts = [
     {
@@ -49,6 +50,48 @@
 
   function removeDiacritics(value) {
     return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function normalizedInput(value) {
+    return removeDiacritics(String(value || "").toLowerCase());
+  }
+
+  function rememberProductSubject(text) {
+    const normalizedText = normalizedInput(text);
+    if (normalizedText.includes("kimchi") || normalizedText.includes("kimci")) {
+      lastProductSubject = "kimchi";
+    } else if (normalizedText.includes("sushi") || normalizedText.includes("susi")) {
+      lastProductSubject = "sushi";
+    } else if (normalizedText.includes("ramen") || normalizedText.includes("ramyun") || normalizedText.includes("ramyeon")) {
+      lastProductSubject = "ramen";
+    } else if (normalizedText.includes("gochujang") || normalizedText.includes("gochuang")) {
+      lastProductSubject = "gochujang";
+    }
+  }
+
+  function withFollowUpContext(text) {
+    const normalizedText = normalizedInput(text).trim();
+    const hasKnownSubject = ["kimchi", "kimci", "sushi", "susi", "ramen", "ramyun", "ramyeon", "gochujang", "gochuang"].some(function (subject) {
+      return normalizedText.includes(subject);
+    });
+    const isRelatedFollowUp = [
+      "na vyrobu",
+      "na pripravu",
+      "ingrediencie",
+      "suroviny",
+      "co k tomu",
+      "co este",
+      "co potrebujem",
+      "co kupit",
+      "suvisiace",
+    ].some(function (marker) {
+      return normalizedText.includes(marker);
+    });
+
+    if (lastProductSubject && !hasKnownSubject && isRelatedFollowUp) {
+      return `${lastProductSubject} ${text}`;
+    }
+    return text;
   }
 
   const style = document.createElement("style");
@@ -426,9 +469,11 @@
   }
 
   async function askBackend(text) {
+    const backendText = withFollowUpContext(text);
+
     if (demoMode) {
       await new Promise(function (resolve) { window.setTimeout(resolve, 600); });
-      const normalizedText = removeDiacritics(String(text || "").toLowerCase());
+      const normalizedText = normalizedInput(backendText);
       const products = normalizedText.includes("srirach") || normalizedText.includes("srirac")
         ? srirachaDemoProducts
         : demoProducts;
@@ -441,7 +486,7 @@
     const response = await fetch(`${apiBaseUrl}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, limit: 6 }),
+      body: JSON.stringify({ message: backendText, limit: 6 }),
     });
     if (response.status === 429) throw new Error("RATE_LIMIT");
     if (!response.ok) throw new Error("REQUEST_FAILED");
@@ -477,6 +522,7 @@
     input.value = "";
     submit.disabled = true;
     addMessage("user", text);
+    rememberProductSubject(text);
     const loading = addLoadingMessage();
 
     try {
