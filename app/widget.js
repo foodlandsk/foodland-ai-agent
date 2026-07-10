@@ -48,6 +48,63 @@
     },
   ];
 
+  const kimchiIngredientDemoProducts = [
+    {
+      title: "Čili pasta Gochujang Ofood DAESANG 500g",
+      effective_price: 4.76,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "DAESANG",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/daesang-cili-pasta-gochujang-500g-1273.jpg?ft=1680816568&nwtrmrk=1",
+      link: "https://www.foodland.sk/pasty-korenia/daesang-cili-pasta-gochujang-500g/",
+    },
+    {
+      title: "Červená čili paprika pálivá mletá LIM GA NE 1000g",
+      effective_price: 11.90,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "LIM GA NE",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/cervena-cili-paprika-paliva-mleta-lim-ga-ne-500g-1724.jpg?ft=1644346302&nwtrmrk=1",
+      link: "https://www.foodland.sk/horeca-hotel-restauracia-catering/cervena-cili-paprika-paliva-mleta-lim-ga-ne-1000g/",
+    },
+    {
+      title: "Rybacia omáčka 40N THUAN PHAT 620ml",
+      effective_price: 5.35,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "THUAN PHAT",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/rybacia-omacka-40n-thuan-phat-620ml-1251.jpg?ft=1679693791&nwtrmrk=1",
+      link: "https://www.foodland.sk/rybacie-omacky/rybacia-omacka-40n-thuan-phat-620ml/",
+    },
+    {
+      title: "Ryžová múka COCK BRAND 400 g",
+      effective_price: 1.58,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "COCK BRAND",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/ryzova-muka-cock-brand-400-g-204.jpg?ft=1683916910&nwtrmrk=1",
+      link: "https://www.foodland.sk/muka-skrob-a-ryzovy-papier/ryzova-muka-cock-brand-400-g/",
+    },
+    {
+      title: "Čistý čierny sezamový olej 100% LEE KUM KEE 207 ml",
+      effective_price: 4.17,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "Lee Kum Kee",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/cisty-cierny-sezamovy-olej-100-lee-kum-kee-207-ml-1797.jpg?ft=1739209284&nwtrmrk=1",
+      link: "https://www.foodland.sk/olej-na-dochucovanie/cisty-cierny-sezamovy-olej-100-lee-kum-kee-207-ml/",
+    },
+    {
+      title: "Bezlepková sójová omáčka MEGACHEF 200 ml",
+      effective_price: 3.45,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "MEGACHEF",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/bezlepkova-sojova-omacka-megachef-200-ml-591.jpg?ft=1680262409&nwtrmrk=1",
+      link: "https://www.foodland.sk/sojove-omacky/bezlepkova-sojova-omacka-megachef-200-ml/",
+    },
+  ];
+
   function removeDiacritics(value) {
     return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
@@ -92,6 +149,25 @@
       return `${lastProductSubject} ${text}`;
     }
     return text;
+  }
+
+  function isKimchiIngredientRequest(normalizedText) {
+    const mentionsKimchi = normalizedText.includes("kimchi") || normalizedText.includes("kimci");
+    const asksForIngredients = [
+      "na vyrobu",
+      "na pripravu",
+      "ingrediencie",
+      "suroviny",
+      "co potrebujem",
+      "co kupit",
+      "recept",
+      "spravit",
+      "urobit",
+      "pripravit",
+    ].some(function (marker) {
+      return normalizedText.includes(marker);
+    });
+    return mentionsKimchi && asksForIngredients;
   }
 
   const style = document.createElement("style");
@@ -474,11 +550,18 @@
     if (demoMode) {
       await new Promise(function (resolve) { window.setTimeout(resolve, 600); });
       const normalizedText = normalizedInput(backendText);
-      const products = normalizedText.includes("srirach") || normalizedText.includes("srirac")
-        ? srirachaDemoProducts
-        : demoProducts;
+      let products = demoProducts;
+      let answer = "Našiel som niekoľko vhodných produktov. Pozrite si odporúčania nižšie.";
+
+      if (normalizedText.includes("srirach") || normalizedText.includes("srirac")) {
+        products = srirachaDemoProducts;
+      } else if (isKimchiIngredientRequest(normalizedText)) {
+        products = kimchiIngredientDemoProducts;
+        answer = "Na výrobu kimchi odporúčam najmä gochujang, čili papriku, rybaciu omáčku, ryžovú múku a sezamový olej.";
+      }
+
       return {
-        answer: "Našiel som niekoľko vhodných produktov. Pozrite si odporúčania nižšie.",
+        answer,
         products,
       };
     }
