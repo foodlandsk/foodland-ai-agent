@@ -212,6 +212,15 @@ RELATED_INTENT_MARKERS = (
     "spravit",
 )
 
+RECIPE_INTENT_MARKERS = (
+    "recept",
+    "navod",
+    "postup",
+    "ako spravim",
+    "ako pripravim",
+    "ako urobim",
+)
+
 ALLERGEN_INTENT_MARKERS = (
     "alerg",
     "alergen",
@@ -311,6 +320,16 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "products": [],
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "faq",
+        }
+
+    recipe_subject = detect_recipe_subject(chat_request.message)
+    if recipe_subject:
+        log_question(chat_request.message, client_key, 0)
+        return {
+            "answer": recipe_answer(recipe_subject, knowledge_matches),
+            "products": [],
+            "knowledge": knowledge_summary(knowledge_matches),
+            "intent": "recipe",
         }
 
     special_subject = detect_special_product_subject(chat_request.message)
@@ -451,6 +470,44 @@ def log_backend_error(event: str, detail: str) -> None:
 def is_faq_intent(message: str) -> bool:
     normalized_message = normalize(message)
     return any(marker in normalized_message for marker in FAQ_INTENT_MARKERS)
+
+
+def detect_recipe_subject(message: str) -> str | None:
+    normalized_message = normalize(message)
+    if not any(marker in normalized_message for marker in RECIPE_INTENT_MARKERS):
+        return None
+
+    for subject, aliases in RELATED_SUBJECT_ALIASES.items():
+        if any(alias in normalized_message for alias in aliases):
+            return subject
+
+    return "general"
+
+
+def recipe_answer(subject: str, knowledge_matches: dict | None = None) -> str:
+    if subject == "kimchi":
+        return (
+            "Recept na zakladne kimchi: nakrajajte cinsku kapustu, poriadne ju nasolte a nechajte 1-2 hodiny zmaknut. "
+            "Potom ju oplachnite a zmiesajte s pastou z gochugaru alebo cili, cesnaku, zazvoru, rybacej omacky, "
+            "trochy cukru a ryzovej kase z ryzovej muky. Pridat mozete jarne cibulky alebo mrkvu. "
+            "Natlačte do pohara, nechajte 1-2 dni fermentovat pri izbovej teplote a potom skladujte v chladnicke. "
+            "Ak chcete nakupny zoznam, napiste: suroviny na kimchi."
+        )
+
+    recipes = (knowledge_matches or {}).get("Recipes", [])
+    if recipes:
+        record = recipes[0].get("record", {})
+        recipe_name = next((str(value) for key, value in record.items() if "Recept" in key and value), "")
+        if recipe_name:
+            return (
+                f"Nasiel som recept: {recipe_name}. "
+                "Ak chcete, mozem k nemu doplnit aj nakupny zoznam produktov z Foodlandu."
+            )
+
+    return (
+        "Receptovu otazku som zachytil, ale nemam dost detailov na presny recept. "
+        "Skuste napisat nazov jedla, napriklad: recept na kimchi alebo recept na pad thai."
+    )
 
 
 def detect_special_product_subject(message: str) -> str | None:

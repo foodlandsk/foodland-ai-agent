@@ -160,7 +160,6 @@
       "suroviny",
       "co potrebujem",
       "co kupit",
-      "recept",
       "spravit",
       "urobit",
       "pripravit",
@@ -168,6 +167,14 @@
       return normalizedText.includes(marker);
     });
     return mentionsKimchi && asksForIngredients;
+  }
+
+  function isKimchiRecipeRequest(normalizedText) {
+    const mentionsKimchi = normalizedText.includes("kimchi") || normalizedText.includes("kimci");
+    const asksForRecipe = ["recept", "navod", "postup"].some(function (marker) {
+      return normalizedText.includes(marker);
+    });
+    return mentionsKimchi && asksForRecipe;
   }
 
   const style = document.createElement("style");
@@ -553,7 +560,10 @@
       let products = demoProducts;
       let answer = "Našiel som niekoľko vhodných produktov. Pozrite si odporúčania nižšie.";
 
-      if (normalizedText.includes("srirach") || normalizedText.includes("srirac")) {
+      if (isKimchiRecipeRequest(normalizedText)) {
+        products = [];
+        answer = "Recept na základné kimchi: nakrájajte čínsku kapustu, nasoľte ju a nechajte 1-2 hodiny zmäknúť. Opláchnite ju a zmiešajte s pastou z gochugaru alebo čili, cesnaku, zázvoru, rybacej omáčky, trochy cukru a ryžovej kaše z ryžovej múky. Natlačte do pohára, nechajte 1-2 dni fermentovať pri izbovej teplote a potom skladujte v chladničke. Ak chcete nákupný zoznam, napíšte: suroviny na kimchi.";
+      } else if (normalizedText.includes("srirach") || normalizedText.includes("srirac")) {
         products = srirachaDemoProducts;
       } else if (isKimchiIngredientRequest(normalizedText)) {
         products = kimchiIngredientDemoProducts;
