@@ -34,6 +34,29 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+class UTF8StaticFiles(StaticFiles):
+    ALLOWED_SUFFIXES = {".css", ".html", ".ico", ".js", ".json", ".map", ".txt"}
+    CHARSET_BY_SUFFIX = {
+        ".css": "text/css; charset=utf-8",
+        ".html": "text/html; charset=utf-8",
+        ".js": "application/javascript; charset=utf-8",
+        ".json": "application/json; charset=utf-8",
+        ".map": "application/json; charset=utf-8",
+        ".txt": "text/plain; charset=utf-8",
+    }
+
+    def file_response(self, full_path, stat_result, scope, status_code=200):
+        suffix = Path(full_path).suffix.lower()
+        if suffix not in self.ALLOWED_SUFFIXES:
+            raise HTTPException(status_code=404, detail="Static file not found.")
+
+        response = super().file_response(full_path, stat_result, scope, status_code)
+        content_type = self.CHARSET_BY_SUFFIX.get(suffix)
+        if content_type:
+            response.headers["content-type"] = content_type
+        return response
+
+
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=1000)
     limit: int = Field(default=6, ge=1, le=12)
@@ -138,6 +161,14 @@ RELATED_SUBJECT_ALIASES = {
 }
 
 SPECIAL_PRODUCT_QUERIES = {
+    "gluten_free_sushi": [
+        "bezlepkova sojova omacka",
+        "tamari",
+        "nori",
+        "sushi ryza",
+        "wasabi",
+        "nakladany zazvor",
+    ],
     "mild": [
         "mochi",
         "kokosove mlieko",
@@ -168,6 +199,17 @@ SPECIAL_PRODUCT_QUERIES = {
 }
 
 SPECIAL_PRODUCT_EXCLUDE_TERMS = {
+    "gluten_free_sushi": (
+        "flastick",
+        "flast",
+        "miska",
+        "misky",
+        "nadoba",
+        "doza",
+        "davkovac",
+        "obal",
+        "box",
+    ),
     "mild": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi"),
     "vegan_fish_sauce_replacement": (
         "box",
@@ -253,7 +295,7 @@ ALLERGEN_TERMS = {
 }
 
 app = FastAPI(title="Foodland AI Agent", version="0.1.0")
-app.mount("/static", StaticFiles(directory=Path(__file__).parent), name="static")
+app.mount("/static", UTF8StaticFiles(directory=Path(__file__).parent), name="static")
 
 allowed_origins = [
     origin.strip()
@@ -334,6 +376,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
 
     special_subject = detect_special_product_subject(chat_request.message)
     related_subject = detect_related_subject(chat_request.message)
+    needs_composition_caution = is_composition_caution_search(chat_request.message)
     if special_subject:
         matches = special_products_for_subject(products, special_subject, chat_request.limit)
     elif related_subject:
@@ -352,7 +395,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if not api_key:
         logger.debug("No OPENAI_API_KEY set, using fallback answer.")
         return {
-            "answer": fallback_answer(matches, knowledge_matches, related_subject),
+            "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
             "products": matches,
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "related_products" if related_subject else "product_search",
@@ -379,7 +422,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                     "content": (
                         f"Otázka zákazníka: {chat_request.message}\n\n"
                         f"Relevantné produkty:\n{products_context(matches)}\n\n"
-                        f"Foodland Knowledge:\n{knowledge_context(knowledge_matches)}"
+                        f"Foodland Knowledge:\n{knowledge_context(knowledge_matches)}\n\n"
+                        f"Bezpečnostná poznámka: {composition_caution_context(needs_composition_caution)}"
                     ),
                 },
             ],
@@ -388,6 +432,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             matches,
             knowledge_matches,
             related_subject,
+            needs_composition_caution,
         )
         logger.info("OpenAI response generated.")
         return {
@@ -400,7 +445,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         logger.error("OpenAI API failed: %s", exc, exc_info=True)
         log_backend_error("openai_response_failed", str(exc))
         return {
-            "answer": fallback_answer(matches, knowledge_matches),
+            "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
             "products": matches,
             "knowledge": knowledge_summary(knowledge_matches),
             "warning": "Odpoveď sa nepodarilo vygenerovať, zobrazujem nájdené produkty.",
@@ -512,6 +557,8 @@ def recipe_answer(subject: str, knowledge_matches: dict | None = None) -> str:
 
 def detect_special_product_subject(message: str) -> str | None:
     normalized_message = normalize(message)
+    if is_gluten_free_search(normalized_message) and bool({"sushi", "susi"} & set(normalized_message.split())):
+        return "gluten_free_sushi"
     if "snack" in normalized_message and any(marker in normalized_message for marker in ("det", "dieta", "deti")):
         return "kids_snack"
     if "rybi" in normalized_message and "omack" in normalized_message and any(
@@ -527,6 +574,9 @@ def detect_special_product_subject(message: str) -> str | None:
 
 def detect_related_subject(message: str) -> str | None:
     normalized_message = normalize(message)
+    if is_gluten_free_search(normalized_message):
+        return None
+
     if not any(marker in normalized_message for marker in RELATED_INTENT_MARKERS):
         return None
 
@@ -550,11 +600,7 @@ def detect_related_subject(message: str) -> str | None:
 
 def detect_allergen_intent(message: str) -> str | None:
     normalized_message = normalize(message)
-    gluten_free_product_search = (
-        "bezlepk" in normalized_message
-        or "bez lepku" in normalized_message
-        or "bezlepkova" in normalized_message
-    )
+    gluten_free_product_search = is_gluten_free_search(normalized_message)
     if gluten_free_product_search and not any(
         marker in normalized_message
         for marker in ("alerg", "alergen", "intoler", "celiak", "obsahuje", "neobsahuje", "zlozen")
@@ -580,6 +626,28 @@ def detect_allergen_intent(message: str) -> str | None:
     return None
 
 
+def is_gluten_free_search(message_or_normalized: str) -> bool:
+    normalized_message = normalize(message_or_normalized)
+    return (
+        "bezlepk" in normalized_message
+        or "bez lepku" in normalized_message
+        or "bezlepkova" in normalized_message
+    )
+
+
+def is_composition_caution_search(message: str) -> bool:
+    normalized_message = normalize(message)
+    return is_gluten_free_search(normalized_message) or any(
+        marker in normalized_message for marker in ("zlozen", "obsahuje", "neobsahuje")
+    )
+
+
+def composition_caution_context(needs_composition_caution: bool) -> str:
+    if not needs_composition_caution:
+        return "Nie je potrebná."
+    return "Pri bezlepkových otázkach alebo otázkach na zloženie odporuč overiť zloženie v detaile produktu."
+
+
 def allergen_safety_answer(allergen_term: str) -> str:
     if allergen_term == "alergény":
         return (
@@ -590,7 +658,7 @@ def allergen_safety_answer(allergen_term: str) -> str:
 
     return (
         f"Pri alergii alebo intolerancii na {allergen_term} vám nechcem odporučiť produkt len podľa názvu. "
-        "Prosím overte zloženie a alergény v detaile konkrétneho produktu. "
+        "Prosím overte zloženie a alergény v detaile konkrétneho produktu. Ak riešite konkrétny produkt, rozhodujúca je etiketa. "
         "Ak mi pošlete názov produktu, pomôžem vám nájsť jeho detail na Foodland.sk."
     )
 
@@ -601,8 +669,7 @@ def related_products_for_subject(products: list[Product], subject: str, limit: i
     recommendations: list[dict] = []
 
     for query in RELATED_PRODUCT_QUERIES.get(subject, []):
-        per_query_limit = 1 if subject == "kimchi" else 3
-        for product in search_products(products, query, per_query_limit):
+        for product in search_products(products, query, 3):
             title = normalize(product.get("title", ""))
             title_tokens = set(title.split())
             if subject == "sushi" and "ryza" in title_tokens and {"sushi", "susi"} & title_tokens:
@@ -618,6 +685,7 @@ def related_products_for_subject(products: list[Product], subject: str, limit: i
             recommendations.append(product)
             if len(recommendations) >= limit:
                 return recommendations
+            break
 
     return recommendations
 
@@ -641,6 +709,7 @@ def special_products_for_subject(products: list[Product], subject: str, limit: i
             recommendations.append(product)
             if len(recommendations) >= limit:
                 return recommendations
+            break
 
     return recommendations
 
@@ -649,6 +718,7 @@ def fallback_answer(
     matches: list[dict],
     knowledge_matches: dict | None = None,
     related_subject: str | None = None,
+    needs_composition_caution: bool = False,
 ) -> str:
     knowledge_matches = knowledge_matches or {}
     faq_answer = best_faq_answer(knowledge_matches)
@@ -657,11 +727,16 @@ def fallback_answer(
 
     if matches:
         count = min(len(matches), 5)
+        caution = (
+            " Pri bezlepkových produktoch alebo otázkach na zloženie si prosím overte zloženie v detaile produktu."
+            if needs_composition_caution
+            else ""
+        )
         if related_subject:
-            return f"Našiel som {count} súvisiacich produktov a surovín, ktoré sa hodia k téme {related_subject}."
+            return f"Našiel som {count} súvisiacich produktov a surovín, ktoré sa hodia k téme {related_subject}.{caution}"
         if knowledge_matches:
-            return f"Našiel som {count} vhodných produktov a doplnil som odporúčania z Foodland poradcu."
-        return f"Našiel som {count} vhodných produktov. Pozrite si odporúčania nižšie."
+            return f"Našiel som {count} vhodných produktov a doplnil som odporúčania z Foodland poradcu.{caution}"
+        return f"Našiel som {count} vhodných produktov. Pozrite si odporúčania nižšie.{caution}"
 
     if knowledge_matches:
         return "Našiel som súvisiace informácie vo Foodland poradcovi."

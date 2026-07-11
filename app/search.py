@@ -71,6 +71,14 @@ def tokenize(value: str) -> set[str]:
     }
     expanded = set(tokens)
     for token in tokens:
+        if token.startswith("bezlepk"):
+            expanded.update({"bezlepkovy", "bezlepkova", "bezlepkovu", "bezlepkove"})
+        if token.startswith("sojov"):
+            expanded.update({"sojova", "sojovu", "sojove", "sojovy"})
+        if token.startswith("omack"):
+            expanded.update({"omacka", "omacku", "omacky"})
+        if token.startswith("rybac") or token.startswith("rybi"):
+            expanded.update({"rybacia", "rybiu", "rybia"})
         if token.startswith("kredit"):
             expanded.add("kredit")
         if token.startswith("srirach") or token.startswith("srirac") or token.startswith("sirach"):

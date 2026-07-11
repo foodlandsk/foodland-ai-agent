@@ -34,6 +34,11 @@ FORBIDDEN_ROOT_FILES = {
     "workflows.py",
 }
 
+FORBIDDEN_PACKAGE_FILES = {
+    "data/question_analytics.jsonl",
+    "data/backend_errors.jsonl",
+}
+
 MOJIBAKE_MARKERS = (
     "\u0102",
     "\u0139",
@@ -50,6 +55,10 @@ def main() -> int:
     for name in sorted(FORBIDDEN_ROOT_FILES):
         if (ROOT / name).exists():
             errors.append(f"Forbidden root drift file exists: {name}")
+
+    for name in sorted(FORBIDDEN_PACKAGE_FILES):
+        if (ROOT / name).exists():
+            errors.append(f"Generated runtime file should not be packaged: {name}")
 
     for required in [
         "app/main.py",
