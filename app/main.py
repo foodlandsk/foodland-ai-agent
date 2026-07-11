@@ -702,11 +702,14 @@ def allergen_product_matches(message: str, limit: int) -> list[dict]:
 
 
 def allergen_product_query(message: str) -> str:
+    normalized_message = normalize(message)
+    if "bez soj" in normalized_message or "bez soja" in normalized_message:
+        return ""
+
     after_question = message.rsplit("?", 1)[-1].strip()
     if after_question and after_question != message.strip():
         return after_question
 
-    normalized_message = normalize(message)
     cleanup_patterns = [
         r"\bviete mi najst\b",
         r"\bdobry den\b",

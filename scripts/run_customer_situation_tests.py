@@ -349,7 +349,7 @@ def main() -> int:
                 "report": str(report_path),
                 "first_failures": [row for row in report_rows if not row["ok"]][:10],
             },
-            ensure_ascii=False,
+            ensure_ascii=True,
             indent=2,
         )
     )

@@ -47,6 +47,7 @@ MOJIBAKE_MARKERS = (
     "\ufffd",
 )
 TEXT_SUFFIXES = {".py", ".js", ".html", ".md", ".toml", ".json", ".txt", ".example"}
+SKIP_DIRS = {"outputs", ".runtime-check-deps", ".runtime-check-venv"}
 
 
 def main() -> int:
@@ -79,7 +80,7 @@ def main() -> int:
             errors.append(f"Missing deployment file: {required}")
 
     for path in ROOT.rglob("*"):
-        if "__pycache__" in path.parts or not path.is_file():
+        if "__pycache__" in path.parts or any(part in SKIP_DIRS for part in path.parts) or not path.is_file():
             continue
         if path.suffix not in TEXT_SUFFIXES and path.name != "Procfile":
             continue
