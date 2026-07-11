@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import time
 from collections import defaultdict, deque
 from pathlib import Path
@@ -150,6 +151,31 @@ RELATED_PRODUCT_QUERIES = {
         "kari pasta zelena",
         "ryzove rezance",
     ],
+    "pho": [
+        "ryzove rezance",
+        "rybacia omacka",
+        "sriracha",
+        "hoisin",
+        "mung fazulove klicky",
+    ],
+    "pad_thai": [
+        "ryzove rezance",
+        "tamarind",
+        "rybacia omacka",
+        "arasidy",
+        "pad thai omacka",
+    ],
+    "bibimbap": [
+        "gochujang",
+        "sezamovy olej",
+        "kimchi",
+        "jazminova ryza",
+    ],
+    "gyoza": [
+        "sojova omacka",
+        "ryzovy ocot",
+        "chilli olej",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -158,6 +184,10 @@ RELATED_SUBJECT_ALIASES = {
     "gochujang": ("gochujang", "gochu jang", "gochuang"),
     "ramen": ("ramen", "ramyun", "ramyeon"),
     "kari": ("kari", "curry"),
+    "pho": ("pho",),
+    "pad_thai": ("pad thai", "padthai"),
+    "bibimbap": ("bibimbap",),
+    "gyoza": ("gyoza",),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
@@ -249,6 +279,10 @@ RELATED_INTENT_MARKERS = (
     "ingredien",
     "surovin",
     "potrebujem",
+    "kupit",
+    "varit",
+    "odporuc",
+    "doplnky",
     "recept",
     "urobit",
     "spravit",
@@ -293,6 +327,19 @@ ALLERGEN_TERMS = {
     "makky": "mäkkýše",
     "krev": "krevety",
 }
+
+OUT_OF_DOMAIN_MARKERS = (
+    "bicykl",
+    "notebook",
+    "opravujete telefon",
+    "poistenie auta",
+    "pocasie",
+    "basen",
+    "letenk",
+    "prack",
+    "stavebn",
+    "danov",
+)
 
 app = FastAPI(title="Foodland AI Agent", version="0.1.0")
 app.mount("/static", UTF8StaticFiles(directory=Path(__file__).parent), name="static")
@@ -346,10 +393,11 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
 
     allergen_term = detect_allergen_intent(chat_request.message)
     if allergen_term:
-        log_question(chat_request.message, client_key, 0)
+        allergen_matches = allergen_product_matches(chat_request.message, chat_request.limit)
+        log_question(chat_request.message, client_key, len(allergen_matches))
         return {
             "answer": allergen_safety_answer(allergen_term),
-            "products": [],
+            "products": allergen_matches,
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "allergen_safety",
         }
@@ -372,6 +420,15 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "products": [],
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "recipe",
+        }
+
+    if detect_out_of_domain(chat_request.message):
+        log_question(chat_request.message, client_key, 0)
+        return {
+            "answer": "Na toto neviem spoľahlivo odpovedať ako Foodland poradca. Skúste sa opýtať na produkty, objednávku, dopravu alebo platbu na Foodland.sk.",
+            "products": [],
+            "knowledge": knowledge_summary(knowledge_matches),
+            "intent": "unknown",
         }
 
     special_subject = detect_special_product_subject(chat_request.message)
@@ -601,6 +658,12 @@ def detect_related_subject(message: str) -> str | None:
 def detect_allergen_intent(message: str) -> str | None:
     normalized_message = normalize(message)
     gluten_free_product_search = is_gluten_free_search(normalized_message)
+    asks_if_gluten_free = gluten_free_product_search and (
+        re.search(r"\b(je|su|obsahuje)\b.*\bbez lepku\b", normalized_message) is not None
+    )
+    if asks_if_gluten_free:
+        return "lepok"
+
     if gluten_free_product_search and not any(
         marker in normalized_message
         for marker in ("alerg", "alergen", "intoler", "celiak", "obsahuje", "neobsahuje", "zlozen")
@@ -624,6 +687,50 @@ def detect_allergen_intent(message: str) -> str | None:
         return "alergény"
 
     return None
+
+
+def detect_out_of_domain(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(marker in normalized_message for marker in OUT_OF_DOMAIN_MARKERS)
+
+
+def allergen_product_matches(message: str, limit: int) -> list[dict]:
+    query = allergen_product_query(message)
+    if not query:
+        return []
+    return search_products(products, query, limit)
+
+
+def allergen_product_query(message: str) -> str:
+    after_question = message.rsplit("?", 1)[-1].strip()
+    if after_question and after_question != message.strip():
+        return after_question
+
+    normalized_message = normalize(message)
+    cleanup_patterns = [
+        r"\bviete mi najst\b",
+        r"\bdobry den\b",
+        r"\bahoj\b",
+        r"\bprosim\b",
+        r"\bmoze to jest\b",
+        r"\balergik na arasidy\b",
+        r"\balergia na arasidy\b",
+        r"\bje\b",
+        r"\bsu\b",
+        r"\bbez lepku\b",
+        r"\bbezlepk\w*\b",
+        r"\bobsahuje\b",
+        r"\bneobsahuje\b",
+        r"\bsoju\b",
+        r"\bsoja\b",
+        r"\bskladom\b",
+        r"\bza dobru cenu\b",
+    ]
+    cleaned = normalized_message
+    for pattern in cleanup_patterns:
+        cleaned = re.sub(pattern, " ", cleaned)
+    cleaned = re.sub(r"[^a-z0-9 ]+", " ", cleaned)
+    return " ".join(cleaned.split())
 
 
 def is_gluten_free_search(message_or_normalized: str) -> bool:

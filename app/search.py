@@ -79,17 +79,35 @@ def tokenize(value: str) -> set[str]:
             expanded.update({"omacka", "omacku", "omacky"})
         if token.startswith("rybac") or token.startswith("rybi"):
             expanded.update({"rybacia", "rybiu", "rybia"})
+        if token == "fish":
+            expanded.update({"rybacia", "rybiu", "rybia"})
+        if token == "sauce":
+            expanded.update({"omacka", "omacku", "omacky"})
+        if token == "sesame":
+            expanded.update({"sezamovy", "sezamova", "sezamove"})
+        if token == "oil":
+            expanded.update({"olej"})
+        if token == "rice":
+            expanded.update({"ryza", "ryzovy"})
+        if token == "paper":
+            expanded.update({"papier"})
         if token.startswith("kredit"):
             expanded.add("kredit")
         if token.startswith("srirach") or token.startswith("srirac") or token.startswith("sirach"):
             expanded.add("sriracha")
-        if token in {"sushi", "susi"}:
+        if token in {"sushi", "susi", "sushy"}:
             expanded.update({"sushi", "susi"})
         if token.startswith("ryz"):
             expanded.add("ryza")
-        if token.startswith("kimchi") or token.startswith("kimci"):
+        if token.startswith("kimchi") or token.startswith("kimci") or token.startswith("kimchee"):
             expanded.add("kimchi")
-        if token.startswith("gochuj") or token.startswith("gochuang"):
+        if (
+            token.startswith("gochuj")
+            or token.startswith("gochuang")
+            or token.startswith("gochud")
+            or token.startswith("gocud")
+            or token.startswith("gocuj")
+        ):
             expanded.add("gochujang")
     return expanded
 
