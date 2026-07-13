@@ -355,6 +355,10 @@ FAQ_INTENT_MARKERS = (
     "kredit",
     "doprava",
     "doruc",
+    "postovn",
+    "kurier",
+    "packeta",
+    "zasielk",
     "objednav",
     "plat",
     "kartou",
@@ -534,9 +538,9 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "intent": "allergen_safety",
         }
 
-    faq_answer = best_faq_answer(knowledge_matches)
-    if not faq_answer and is_faq_intent(chat_request.message):
-        faq_answer = best_direct_faq_answer(chat_request.message, knowledge)
+    faq_answer = None
+    if is_faq_intent(chat_request.message):
+        faq_answer = best_direct_faq_answer(chat_request.message, knowledge) or best_faq_answer(knowledge_matches)
     if faq_answer and is_faq_intent(chat_request.message):
         log_question(chat_request.message, client_key, 0)
         return {
@@ -764,6 +768,21 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
     best_score = 0
     best_answer = ""
 
+    if any(marker in normalized_message for marker in ("postovn", "cena dopravy", "stoji doprava", "kolko stoji doprava")):
+        shipping_answer = direct_faq_answer_by_question_markers(
+            loaded_knowledge,
+            required_markers=("doprava", "zadarmo"),
+        )
+        if shipping_answer:
+            return shipping_answer
+    if any(marker in normalized_message for marker in ("kurier", "doruc", "zasielk")):
+        delivery_answer = direct_faq_answer_by_question_markers(
+            loaded_knowledge,
+            required_markers=("sposoby", "dorucenia"),
+        )
+        if delivery_answer:
+            return delivery_answer
+
     for record in loaded_knowledge.get("sections", {}).get("FAQ", []):
         question = first_record_value(record, ("Otázka", "Otazka", "question"))
         answer = first_record_value(record, ("Odpoveď", "Odpoved", "answer"))
@@ -783,7 +802,11 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         for category_name, markers in FAQ_CATEGORY_MARKERS.items():
             if normalized_category == category_name and any(marker in normalized_message for marker in markers):
                 score += 10
-        if "kolko" in normalized_message and "zadarmo" in normalized_question and "doprava" in normalized_question:
+        if (
+            any(marker in normalized_message for marker in ("kolko", "cena", "stoji", "postovn"))
+            and "zadarmo" in normalized_question
+            and "doprava" in normalized_question
+        ):
             score += 10
         if "ako" in normalized_message and "zapl" in normalized_message and "plat" in normalized_question:
             score += 10
@@ -793,6 +816,17 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
             best_answer = answer
 
     return best_answer if best_score >= 3 else None
+
+
+def direct_faq_answer_by_question_markers(loaded_knowledge: dict, required_markers: tuple[str, ...]) -> str | None:
+    for record in loaded_knowledge.get("sections", {}).get("FAQ", []):
+        question = first_record_value(record, ("Otázka", "Otazka", "question"))
+        normalized_question = normalize(question)
+        if all(marker in normalized_question for marker in required_markers):
+            answer = first_record_value(record, ("Odpoveď", "Odpoved", "answer"))
+            if answer:
+                return answer
+    return None
 
 
 def detect_recipe_subject(message: str) -> str | None:
