@@ -39,12 +39,43 @@ SECTION_MIN_SCORES = {
 
 IMPORTANT_FIELDS = {
     "FAQ": ["Otázka", "Odpoveď", "Kategória", "question", "answer", "category"],
-    "Products_AI": ["product_name", "synonyms", "category", "usage", "taste", "advisor_note"],
+    "Products_AI": [
+        "product_name",
+        "synonyms",
+        "category",
+        "usage",
+        "taste",
+        "advisor_note",
+        "Produkt (URL)",
+        "Kategória",
+        "Kuchyňa",
+        "AI popis – SK",
+        "Cross-sell",
+        "Alternatíva",
+        "Súvisiaci recept",
+        "Kucharsky tip - SK",
+        "Nakupne odporucanie - SK",
+        "Chutovy profil - SK",
+        "Pouzitie v kuchyni - SK",
+        "Kedy odporucit - SK",
+        "Pozor / overit - SK",
+        "Predajny argument - SK",
+        "Agenticky dalsi krok - SK",
+    ],
     "CrossSell": ["Produkt", "Kategoria", "Cross-sell 1", "Cross-sell 2", "Cross-sell 3", "Cross-sell 4", "Cross-sell 5"],
     "Alternatives": ["Produkt", "Kategoria", "Alternativa 1", "Alternativa 2", "Alternativa 3", "Alternativa 4", "Alternativa 5"],
     "Recipes": ["Recept (SK názov)", "Kuchyňa", "SK", "Poznámka (anomálie na webe)"],
     "Magazine": ["Článok (SK názov)", "Téma", "SK", "Poznámka (anomálie na webe)"],
-    "IntentMapping": ["intent", "examples", "action", "source"],
+    "IntentMapping": [
+        "intent",
+        "examples",
+        "action",
+        "source",
+        "Typ zámeru",
+        "Zámer (príklad otázky/vyhľadávania)",
+        "Názov prepojeného obsahu",
+        "Poznámka",
+    ],
 }
 
 
@@ -120,11 +151,14 @@ def format_record(section: str, record: dict[str, Any]) -> str:
     if section == "Products_AI":
         return join_parts(
             [
-                record.get("product_name"),
-                record.get("category"),
-                record.get("usage"),
-                record.get("taste"),
-                record.get("advisor_note"),
+                first_value(record, ["product_name", "Produkt (URL)"]),
+                first_value(record, ["category", "Kategória"]),
+                first_value(record, ["usage", "Pouzitie v kuchyni - SK"]),
+                first_value(record, ["taste", "Chutovy profil - SK"]),
+                first_value(record, ["advisor_note", "Nakupne odporucanie - SK"]),
+                record.get("Kucharsky tip - SK"),
+                record.get("Kedy odporucit - SK"),
+                record.get("Pozor / overit - SK"),
             ],
             " | ",
         )
@@ -166,7 +200,15 @@ def format_record(section: str, record: dict[str, Any]) -> str:
         )
 
     if section == "IntentMapping":
-        return join_parts([record.get("intent"), record.get("examples"), record.get("action")], " | ")
+        return join_parts(
+            [
+                first_value(record, ["intent", "Typ zámeru"]),
+                first_value(record, ["examples", "Zámer (príklad otázky/vyhľadávania)"]),
+                first_value(record, ["action", "Názov prepojeného obsahu"]),
+                first_value(record, ["source", "Poznámka"]),
+            ],
+            " | ",
+        )
 
     return join_parts(record.values(), " | ")
 
