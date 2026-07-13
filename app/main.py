@@ -10,6 +10,7 @@ import re
 import time
 from collections import defaultdict, deque
 from pathlib import Path
+from urllib.parse import quote_plus
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,7 +26,7 @@ from app.knowledge import (
     load_knowledge_json,
     search_knowledge,
 )
-from app.search import normalize, products_context, search_products
+from app.search import normalize, products_context, search_products, tokenize
 
 
 logging.basicConfig(
@@ -226,6 +227,86 @@ SPECIAL_PRODUCT_QUERIES = {
         "ryzove krekry",
         "bubble tea",
     ],
+    "asian_sweets": [
+        "mochi",
+        "ryzove krekry",
+        "pocky",
+        "kokosove cukriky",
+    ],
+    "dairy_replacement": [
+        "sezamovy olej",
+        "kokosove mlieko",
+        "miso pasta",
+    ],
+    "fermented_sour": [
+        "kimchi",
+        "nakladany zazvor",
+        "tamarind",
+    ],
+    "rice_vinegar": [
+        "ryzovy ocot",
+        "rice vinegar",
+        "ocot sushi",
+    ],
+    "asian_noodles": [
+        "ryzove rezance",
+        "udon",
+        "ramen rezance",
+    ],
+    "rice_side": [
+        "jazminova ryza",
+        "sushi ryza",
+        "basmati ryza",
+    ],
+    "vegan_asian": [
+        "tofu",
+        "nori",
+        "ryzove rezance",
+        "kokosove mlieko",
+    ],
+    "no_pork_asian": [
+        "tofu",
+        "nori",
+        "wakame",
+        "ryzove rezance",
+    ],
+    "medium_spicy": [
+        "sriracha",
+        "gochujang",
+        "chilli olej",
+    ],
+    "korean_paste": [
+        "gochujang",
+        "ssamjang",
+    ],
+    "tamari": [
+        "tamari",
+        "bezlepkova sojova omacka",
+    ],
+    "safe_snack": [
+        "mochi",
+        "pocky",
+        "ryzove krekry",
+    ],
+    "safe_sauce": [
+        "sojova omacka",
+        "tamari",
+        "hoisin",
+    ],
+    "plain_rice": [
+        "jazminova ryza",
+        "sushi ryza",
+    ],
+    "sushi_condiments": [
+        "nori",
+        "wasabi",
+        "nakladany zazvor",
+    ],
+    "tofu_seaweed": [
+        "tofu",
+        "nori",
+        "wakame",
+    ],
 }
 
 SPECIAL_PRODUCT_EXCLUDE_TERMS = {
@@ -254,6 +335,18 @@ SPECIAL_PRODUCT_EXCLUDE_TERMS = {
         "obal",
     ),
     "kids_snack": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi", "soju", "sake", "alkohol"),
+    "asian_sweets": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi", "soju", "sake", "alkohol"),
+    "dairy_replacement": ("dezert", "cukrik", "snack", "cokolad"),
+    "fermented_sour": ("polievk", "lemonade", "cukrik", "krekry", "forma", "noznice", "miska"),
+    "vegan_asian": ("caj", "kava", "napoj", "dzus", "cukrik", "snack", "box", "filter"),
+    "no_pork_asian": ("caj", "kava", "napoj", "dzus", "cukrik", "snack", "box", "filter"),
+    "medium_spicy": ("rezance", "chips", "cipsy", "curry", "kari pasta", "sladk"),
+    "korean_paste": ("rezance", "snack", "rolky", "omacka na morske", "caj", "dzus"),
+    "safe_snack": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi", "soju", "sake", "alkohol"),
+    "safe_sauce": ("rybacia", "arasid"),
+    "plain_rice": ("ocot", "ryzovar", "vinegar"),
+    "sushi_condiments": ("ryza", "rice"),
+    "tofu_seaweed": ("bravc", "kurac", "maso"),
 }
 
 FAQ_INTENT_MARKERS = (
@@ -286,6 +379,10 @@ RELATED_INTENT_MARKERS = (
     "recept",
     "urobit",
     "spravit",
+    "nakupny zoznam",
+    "nesmie",
+    "chybat",
+    "robim",
 )
 
 RECIPE_INTENT_MARKERS = (
@@ -307,8 +404,11 @@ ALLERGEN_INTENT_MARKERS = (
     "neobsahuje",
     "neznasam",
     "intoler",
+    "vegan",
     "celiak",
     "celiaki",
+    "lakto",
+    "vhodn",
     "zlozen",
 )
 
@@ -328,6 +428,17 @@ ALLERGEN_TERMS = {
     "krev": "krevety",
 }
 
+ALLERGEN_TERMS.update(
+    {
+        "soja": "soju",
+        "soj": "soju",
+        "arasid": "arasidy",
+        "lakto": "laktozu",
+        "makky": "makkyse",
+        "vegan": "vhodnost pre veganov",
+    }
+)
+
 OUT_OF_DOMAIN_MARKERS = (
     "bicykl",
     "notebook",
@@ -339,6 +450,23 @@ OUT_OF_DOMAIN_MARKERS = (
     "prack",
     "stavebn",
     "danov",
+    "taxik",
+    "taxi",
+    "liek",
+    "predpis",
+    "akcie",
+    "burz",
+    "hypotek",
+    "nahradne diely",
+    "diely do auta",
+    "krmivo",
+    "psov",
+    "psa",
+    "lekar",
+    "lekara",
+    "zdravotn",
+    "diagnoz",
+    "jedalnick",
 )
 
 app = FastAPI(title="Foodland AI Agent", version="0.1.0")
@@ -414,9 +542,11 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
 
     recipe_subject = detect_recipe_subject(chat_request.message)
     if recipe_subject:
+        recipes = recipe_results(knowledge_matches, chat_request.limit, chat_request.message)
         log_question(chat_request.message, client_key, 0)
         return {
-            "answer": recipe_answer(recipe_subject, knowledge_matches),
+            "answer": recipe_answer(recipe_subject, recipes),
+            "recipes": recipes,
             "products": [],
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "recipe",
@@ -586,36 +716,167 @@ def detect_recipe_subject(message: str) -> str | None:
     return "general"
 
 
-def recipe_answer(subject: str, knowledge_matches: dict | None = None) -> str:
-    if subject == "kimchi":
-        return (
-            "Recept na zakladne kimchi: nakrajajte cinsku kapustu, poriadne ju nasolte a nechajte 1-2 hodiny zmaknut. "
-            "Potom ju oplachnite a zmiesajte s pastou z gochugaru alebo cili, cesnaku, zazvoru, rybacej omacky, "
-            "trochy cukru a ryzovej kase z ryzovej muky. Pridat mozete jarne cibulky alebo mrkvu. "
-            "Natlačte do pohara, nechajte 1-2 dni fermentovat pri izbovej teplote a potom skladujte v chladnicke. "
-            "Ak chcete nakupny zoznam, napiste: suroviny na kimchi."
-        )
-
+def recipe_results(knowledge_matches: dict | None, limit: int = 4, message: str = "") -> list[dict]:
     recipes = (knowledge_matches or {}).get("Recipes", [])
-    if recipes:
-        record = recipes[0].get("record", {})
-        recipe_name = next((str(value) for key, value in record.items() if "Recept" in key and value), "")
-        if recipe_name:
-            return (
-                f"Nasiel som recept: {recipe_name}. "
-                "Ak chcete, mozem k nemu doplnit aj nakupny zoznam produktov z Foodlandu."
-            )
+    results: list[dict] = []
+    seen_titles: set[str] = set()
+    wanted_tokens = recipe_query_tokens(message)
 
-    return (
-        "Receptovu otazku som zachytil, ale nemam dost detailov na presny recept. "
-        "Skuste napisat nazov jedla, napriklad: recept na kimchi alebo recept na pad thai."
-    )
+    for item in recipes:
+        record = item.get("record", {})
+        recipe = recipe_card(record)
+        title_key = normalize(recipe.get("title", ""))
+        recipe_tokens = tokenize(" ".join([recipe.get("title", ""), recipe.get("cuisine", "")]))
+        if wanted_tokens and not (wanted_tokens & recipe_tokens):
+            continue
+        if recipe["title"] and title_key not in seen_titles:
+            seen_titles.add(title_key)
+            results.append(recipe)
+        if len(results) >= max(1, min(limit, 4)):
+            break
+
+    return results
+
+
+def recipe_query_tokens(message: str) -> set[str]:
+    stop_words = {
+        "recept",
+        "recepty",
+        "navod",
+        "postup",
+        "ako",
+        "spravim",
+        "pripravim",
+        "urobim",
+        "na",
+        "pre",
+        "zo",
+        "z",
+        "stranky",
+        "foodland",
+        "foodlandu",
+        "sk",
+        "prosim",
+    }
+    return {token for token in tokenize(message) if token not in stop_words and len(token) > 1}
+
+
+def recipe_card(record: dict) -> dict:
+    title = first_record_value(record, ("Recept", "recipe", "nazov", "názov"))
+    cuisine = first_record_value(record, ("Kuchyňa", "Kuchyna", "cuisine"))
+    note = first_record_value(record, ("Poznámka", "Poznamka", "note"))
+    return {
+        "title": title,
+        "cuisine": cuisine,
+        "note": note,
+        "link": first_recipe_link(record, title),
+    }
+
+
+def first_record_value(record: dict, markers: tuple[str, ...]) -> str:
+    normalized_markers = tuple(normalize(marker) for marker in markers)
+    for key, value in record.items():
+        normalized_key = normalize(str(key))
+        if any(marker in normalized_key for marker in normalized_markers) and value:
+            return str(value).strip()
+    return ""
+
+
+def first_recipe_link(record: dict, title: str) -> str:
+    for key, value in record.items():
+        text = str(value or "").strip()
+        normalized_key = normalize(str(key))
+        if text.startswith(("http://", "https://")) and any(
+            marker in normalized_key for marker in ("url", "link", "odkaz", "sk", "cz", "en")
+        ):
+            return text
+
+    if title:
+        return f"https://www.foodland.sk/?s={quote_plus(title)}"
+    return "https://www.foodland.sk/recepty/"
+
+
+def recipe_answer(subject: str, recipes: list[dict] | None = None) -> str:
+    if recipes:
+        if len(recipes) == 1:
+            return "Našiel som recept z Foodland.sk. Otvorte si ho nižšie."
+        return "Našiel som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie."
+
+    return "Receptovú otázku som zachytil, ale nemám dosť detailov na presný recept. Skúste napísať napríklad: recept na kimchi alebo recept na pad thai."
 
 
 def detect_special_product_subject(message: str) -> str | None:
     normalized_message = normalize(message)
-    if is_gluten_free_search(normalized_message) and bool({"sushi", "susi"} & set(normalized_message.split())):
+    if (is_gluten_free_search(normalized_message) or "celiak" in normalized_message) and bool(
+        {"sushi", "susi"} & set(normalized_message.split())
+    ):
         return "gluten_free_sushi"
+    if "ryz" in normalized_message and "ocot" in normalized_message and any(
+        marker in normalized_message for marker in ("nie ocot", "nie ryzovar")
+    ):
+        return "plain_rice"
+    if "sushi" in normalized_message and "dopln" in normalized_message and any(
+        marker in normalized_message for marker in ("nie dalsie balenia ryze", "nie ryz")
+    ):
+        return "sushi_condiments"
+    if ("paliv" in normalized_message or "pikant" in normalized_message) and any(
+        marker in normalized_message for marker in ("nie sladke", "cukrik")
+    ):
+        return "medium_spicy"
+    if ("tofu" in normalized_message or "rias" in normalized_message) and "nie maso" in normalized_message:
+        return "tofu_seaweed"
+    if "gochu jang" in normalized_message or "gochudzang" in normalized_message or "gochudang" in normalized_message:
+        return "korean_paste"
+    if "coconat milk" in normalized_message or "coconut milk" in normalized_message:
+        return "dairy_replacement"
+    if "kokos" in normalized_message and "mlieko" in normalized_message and "kari" in normalized_message:
+        return "dairy_replacement"
+    if any(marker in normalized_message for marker in ("extra paliv", "velmi paliv", "najpaliv")):
+        return "hot"
+    if "pikant" in normalized_message and any(marker in normalized_message for marker in ("nie extrem", "nie velmi", "mierne")):
+        return "medium_spicy"
+    if "rice vinegar" in normalized_message or ("ryzov" in normalized_message and "ocot" in normalized_message):
+        return "rice_vinegar"
+    if ("tamari" in normalized_message or "tamary" in normalized_message) and (
+        "sojov" in normalized_message or "bezlepk" in normalized_message or "namiesto" in normalized_message
+    ):
+        return "tamari"
+    if "bezlepk" in normalized_message and "sojov" in normalized_message and "omack" in normalized_message:
+        return "tamari"
+    if "korejsk" in normalized_message and "past" in normalized_message:
+        return "korean_paste"
+    if "vegan" in normalized_message and any(marker in normalized_message for marker in ("azij", "europsk", "jedl")):
+        return "vegan_asian"
+    if "bravcov" in normalized_message and any(marker in normalized_message for marker in ("azij", "jedl", "bez")):
+        return "no_pork_asian"
+    if "sladkost" in normalized_message or (
+        "snack" in normalized_message
+        and any(marker in normalized_message for marker in ("azij", "cokolad", "europsk"))
+        and "omack" not in normalized_message
+    ):
+        return "asian_sweets"
+    if "mochi" in normalized_message and "ryz" in normalized_message:
+        return "asian_sweets"
+    if "snack" in normalized_message and any(marker in normalized_message for marker in ("nic paliv", "alkohol", "wasabi")):
+        return "safe_snack"
+    if "omack" in normalized_message and "nie rybac" in normalized_message:
+        return "safe_sauce"
+    if any(marker in normalized_message for marker in ("masla", "maslo", "smotany", "smotana")) and any(
+        marker in normalized_message for marker in ("namiesto", "nahrad", "dochuten")
+    ):
+        return "dairy_replacement"
+    if any(marker in normalized_message for marker in ("smotanov", "kravskym mliekom", "kravske mlieko")) and any(
+        marker in normalized_message for marker in ("kokos", "azij", "varenia", "kari")
+    ):
+        return "dairy_replacement"
+    if "ferment" in normalized_message or ("kysl" in normalized_message and "kapust" in normalized_message):
+        return "fermented_sour"
+    if any(marker in normalized_message for marker in ("psenic", "talianske cestoviny", "cestoviny")) and any(
+        marker in normalized_message for marker in ("nahrad", "nechcem", "nesedia")
+    ):
+        return "asian_noodles"
+    if "zemiak" in normalized_message and "ryz" in normalized_message:
+        return "rice_side"
     if "snack" in normalized_message and any(marker in normalized_message for marker in ("det", "dieta", "deti")):
         return "kids_snack"
     if "rybi" in normalized_message and "omack" in normalized_message and any(
@@ -624,8 +885,6 @@ def detect_special_product_subject(message: str) -> str | None:
         return "vegan_fish_sauce_replacement"
     if "nepaliv" in normalized_message or "jemne" in normalized_message:
         return "mild"
-    if any(marker in normalized_message for marker in ("extra paliv", "velmi paliv", "najpaliv")):
-        return "hot"
     return None
 
 
@@ -657,9 +916,23 @@ def detect_related_subject(message: str) -> str | None:
 
 def detect_allergen_intent(message: str) -> str | None:
     normalized_message = normalize(message)
+    if "rybi" in normalized_message and "omack" in normalized_message and any(
+        marker in normalized_message for marker in ("vegan", "vegans", "nahrad", "alternativ")
+    ):
+        return None
+    if ("celiak" in normalized_message or "vhodn" in normalized_message) and any(
+        term in normalized_message for term in ("bez lepku", "bezlepk", "celiak")
+    ):
+        return "lepok"
+    if "vegan" in normalized_message and any(
+        marker in normalized_message for marker in ("je ", " su ", "vhodn", "vlastnost", "zlozen")
+    ):
+        return "vhodnost pre veganov"
+    if "lepk" in normalized_message and any(marker in normalized_message for marker in ("tamari", "bezpec", "pri lepk")):
+        return "lepok"
     gluten_free_product_search = is_gluten_free_search(normalized_message)
     asks_if_gluten_free = gluten_free_product_search and (
-        re.search(r"\b(je|su|obsahuje)\b.*\bbez lepku\b", normalized_message) is not None
+        re.search(r"\b(je|su|mate|obsahuje)\b.*\bbez lepku\b", normalized_message) is not None
     )
     if asks_if_gluten_free:
         return "lepok"
@@ -683,6 +956,9 @@ def detect_allergen_intent(message: str) -> str | None:
         if term in normalized_message:
             return label
 
+    if "intoler" in normalized_message or "zlozen" in normalized_message:
+        return "alergeny"
+
     if "alerg" in normalized_message or "alergen" in normalized_message:
         return "alergény"
 
@@ -705,6 +981,41 @@ def allergen_product_query(message: str) -> str:
     normalized_message = normalize(message)
     if "bez soj" in normalized_message or "bez soja" in normalized_message:
         return ""
+    if "gochu jang" in normalized_message or "gochudzang" in normalized_message or "gochudang" in normalized_message:
+        return "gochujang"
+
+    known_product_queries = (
+        "bezlepkova sojova omacka",
+        "sushi ryza",
+        "gochujang",
+        "kimchi",
+        "tamari",
+        "miso pasta",
+        "miso",
+        "kokosove mlieko",
+        "sezamovy olej",
+        "ryzovy ocot",
+        "nori",
+        "wakame",
+        "tofu",
+        "sriracha",
+        "ramen",
+        "ramyun",
+        "udon",
+        "panko",
+        "ssamjang",
+        "sambal",
+        "hoisin",
+        "sojova omacka",
+        "rybacia omacka",
+        "ryzove rezance",
+        "ryzovy papier",
+        "mochi",
+        "wasabi",
+    )
+    for product_query in known_product_queries:
+        if product_query in normalized_message:
+            return product_query
 
     after_question = message.rsplit("?", 1)[-1].strip()
     if after_question and after_question != message.strip():
@@ -718,14 +1029,33 @@ def allergen_product_query(message: str) -> str:
         r"\bmoze to jest\b",
         r"\balergik na arasidy\b",
         r"\balergia na arasidy\b",
+        r"\bs alergiou na arasidy\b",
         r"\bje\b",
         r"\bsu\b",
+        r"\bma\b",
         r"\bbez lepku\b",
         r"\bbezlepk\w*\b",
         r"\bobsahuje\b",
         r"\bneobsahuje\b",
+        r"\balergeny\b",
+        r"\bvegan\b",
+        r"\bvhodn\w*\b",
+        r"\bpri celiakii\b",
+        r"\bceliak\w*\b",
+        r"\bintoleranc\w*\b",
+        r"\bco mam skontrolovat\b",
+        r"\bskontrolovat\b",
+        r"\bukazte produkt\b",
+        r"\boverte etiketu\b",
+        r"\betiketu\b",
+        r"\bnechcem vymyslene vlastnosti\b",
+        r"\bnehadajte\b",
+        r"\bupozornite ma na zlozenie\b",
+        r"\bchcem opatrnu odpoved\b",
+        r"\bopatrnu odpoved\b",
         r"\bsoju\b",
         r"\bsoja\b",
+        r"\blepok\b",
         r"\bskladom\b",
         r"\bza dobru cenu\b",
     ]

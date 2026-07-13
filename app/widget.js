@@ -368,6 +368,43 @@
       font-weight: 800;
       text-decoration: none;
     }
+    .fl-ai-recipes { display: grid; gap: 10px; margin: 0 0 12px; }
+    .fl-ai-recipe {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid #dde7df;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 8px 20px rgba(29, 48, 38, 0.06);
+    }
+    .fl-ai-recipe-title {
+      margin: 0;
+      color: #221F20;
+      font-size: 14px;
+      line-height: 1.28;
+      font-weight: 800;
+    }
+    .fl-ai-recipe-meta {
+      color: #5d6d63;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .fl-ai-recipe-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: max-content;
+      max-width: 100%;
+      min-height: 32px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: #299B5E;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      text-decoration: none;
+    }
     .fl-ai-form {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -497,6 +534,28 @@
     return message;
   }
 
+  function addRecipes(recipes) {
+    if (!Array.isArray(recipes) || recipes.length === 0) return;
+
+    const wrap = document.createElement("div");
+    wrap.className = "fl-ai-recipes";
+    recipes.slice(0, 4).forEach(function (recipe) {
+      const title = recipe.title || "Recept Foodland";
+      const cuisine = recipe.cuisine ? `${recipe.cuisine} kuchyňa` : "Foodland recept";
+      const note = recipe.note ? ` · ${recipe.note}` : "";
+      const card = document.createElement("article");
+      card.className = "fl-ai-recipe";
+      card.innerHTML = `
+        <h3 class="fl-ai-recipe-title">${escapeHtml(title)}</h3>
+        <div class="fl-ai-recipe-meta">${escapeHtml(cuisine + note)}</div>
+        <a class="fl-ai-recipe-link" href="${escapeAttr(recipe.link || "https://www.foodland.sk/recepty/")}" target="_blank" rel="noopener">Otvoriť recept</a>
+      `;
+      wrap.appendChild(card);
+    });
+    messages.appendChild(wrap);
+    scrollToBottom();
+  }
+
   function addProducts(products) {
     if (!Array.isArray(products) || products.length === 0) return;
 
@@ -558,11 +617,20 @@
       await new Promise(function (resolve) { window.setTimeout(resolve, 600); });
       const normalizedText = normalizedInput(backendText);
       let products = demoProducts;
+      let recipes = [];
       let answer = "Našiel som niekoľko vhodných produktov. Pozrite si odporúčania nižšie.";
 
       if (isKimchiRecipeRequest(normalizedText)) {
         products = [];
-        answer = "Recept na základné kimchi: nakrájajte čínsku kapustu, nasoľte ju a nechajte 1-2 hodiny zmäknúť. Opláchnite ju a zmiešajte s pastou z gochugaru alebo čili, cesnaku, zázvoru, rybacej omáčky, trochy cukru a ryžovej kaše z ryžovej múky. Natlačte do pohára, nechajte 1-2 dni fermentovať pri izbovej teplote a potom skladujte v chladničke. Ak chcete nákupný zoznam, napíšte: suroviny na kimchi.";
+        recipes = [
+          {
+            title: "Tradičný Kimchi recept",
+            cuisine: "Kórejská",
+            note: "",
+            link: "https://www.foodland.sk/?s=Tradi%C4%8Dn%C3%BD+Kimchi+recept",
+          },
+        ];
+        answer = "Našiel som recept z Foodland.sk. Otvorte si ho nižšie.";
       } else if (normalizedText.includes("srirach") || normalizedText.includes("srirac")) {
         products = srirachaDemoProducts;
       } else if (isKimchiIngredientRequest(normalizedText)) {
@@ -572,6 +640,7 @@
 
       return {
         answer,
+        recipes,
         products,
       };
     }
@@ -621,7 +690,8 @@
     try {
       const data = await askBackend(text);
       loading.textContent = data.answer || "Nenašiel som presnú odpoveď. Skúste napísať názov produktu alebo kategóriu inak.";
-      addProducts(data.products);
+      addRecipes(data.recipes);
+      if (data.intent !== "recipe") addProducts(data.products);
     } catch (error) {
       loading.classList.add("error");
       loading.textContent = error.message === "RATE_LIMIT"
