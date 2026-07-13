@@ -272,6 +272,8 @@
       lastProductSubject = "sushi";
     } else if (normalizedText.includes("ramen") || normalizedText.includes("ramyun") || normalizedText.includes("ramyeon")) {
       lastProductSubject = "ramen";
+    } else if (normalizedText.includes("pho") || normalizedText.includes("phở")) {
+      lastProductSubject = "pho";
     } else if (normalizedText.includes("gochujang") || normalizedText.includes("gochuang")) {
       lastProductSubject = "gochujang";
     }
@@ -279,7 +281,7 @@
 
   function withFollowUpContext(text) {
     const normalizedText = normalizedInput(text).trim();
-    const hasKnownSubject = ["kimchi", "kimci", "sushi", "susi", "ramen", "ramyun", "ramyeon", "gochujang", "gochuang", "sojova", "sojove", "sojovy", "omacka", "omacky"].some(function (subject) {
+    const hasKnownSubject = ["kimchi", "kimci", "sushi", "susi", "ramen", "ramyun", "ramyeon", "pho", "phở", "gochujang", "gochuang", "sojova", "sojove", "sojovy", "omacka", "omacky"].some(function (subject) {
       return normalizedText.includes(subject);
     });
     const isExplicitProductQuery = isSoySauceRequest(normalizedText)

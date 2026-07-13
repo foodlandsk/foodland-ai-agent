@@ -23,3 +23,4 @@
 {"id":"RT0023","query":"koľko stojí doprava?","expected_intent":"faq","expected_products_count":0,"expected_answer_include":["49"],"note":"Otazky na cenu dopravy musia ist cez FAQ, nie cez AI produktovy fallback."}
 {"id":"RT0024","query":"ako môžem zaplatiť?","expected_intent":"faq","expected_products_count":0,"expected_answer_include":["Dobierka","kartou"],"note":"Platobne otazky musia ist cez FAQ."}
 {"id":"RT0025","query":"poštovné","expected_intent":"faq","expected_products_count":0,"expected_answer_include":["49"],"note":"Synonymum postovne ma smerovat na dopravu FAQ."}
+{"id":"RT0026","query":"ramen na Pho polievku mate ingrediencie?","expected_intent":"related_products","expected_products_include":["ryžové rezance","rybacia omáčka","hoisin"],"must_not_include_products":["ramen","miso","wakame","kimchi"],"note":"Ak widget omylom prilepi starsi kontext, jasne spomenute Pho musi vyhrat nad ramenom."}

@@ -1051,6 +1051,9 @@ def detect_related_subject(message: str) -> str | None:
     if not any(marker in normalized_message for marker in RELATED_INTENT_MARKERS):
         return None
 
+    if "pho" in normalized_message:
+        return "pho"
+
     for subject, aliases in RELATED_SUBJECT_ALIASES.items():
         if any(alias in normalized_message for alias in aliases):
             return subject
