@@ -708,7 +708,7 @@ def is_faq_intent(message: str) -> bool:
 
 def detect_recipe_subject(message: str) -> str | None:
     normalized_message = normalize(message)
-    if not any(marker in normalized_message for marker in RECIPE_INTENT_MARKERS):
+    if not is_recipe_intent(normalized_message):
         return None
 
     for subject, aliases in RELATED_SUBJECT_ALIASES.items():
@@ -716,6 +716,12 @@ def detect_recipe_subject(message: str) -> str | None:
             return subject
 
     return "general"
+
+
+def is_recipe_intent(normalized_message: str) -> bool:
+    if any(marker in normalized_message for marker in RECIPE_INTENT_MARKERS):
+        return True
+    return any(token.startswith(("rec", "recep")) for token in tokenize(normalized_message))
 
 
 def recipe_results(knowledge_matches: dict | None, limit: int = 4, message: str = "") -> list[dict]:
@@ -746,6 +752,8 @@ def recipe_query_tokens(message: str) -> set[str]:
         "recepty",
         "reept",
         "recet",
+        "receppt",
+        "recep",
         "navod",
         "postup",
         "ako",

@@ -259,8 +259,11 @@
   }
 
   function isRecipeRequest(normalizedText) {
-    return ["recept", "reept", "recet", "navod", "postup"].some(function (marker) {
+    if (["recept", "reept", "recet", "receppt", "navod", "postup"].some(function (marker) {
       return normalizedText.includes(marker);
+    })) return true;
+    return normalizedText.split(/\s+/).some(function (token) {
+      return token.startsWith("rec") || token.startsWith("recep");
     });
   }
 
