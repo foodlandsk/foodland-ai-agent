@@ -1,7 +1,8 @@
 ﻿(function () {
   const config = window.FoodlandAI || {};
   const apiBaseUrl = config.apiBaseUrl || "https://ai.foodland.sk";
-  const demoMode = Boolean(config.demoMode && config.allowDemoMode);
+  const isDemoPage = window.location.protocol === "file:" || /\/static\/widget\.html$/.test(window.location.pathname);
+  const demoMode = Boolean(config.demoMode && config.allowDemoMode && isDemoPage);
   const maxQuestionsPerMinute = config.maxQuestionsPerMinute || 8;
   const recentQuestions = [];
   let lastProductSubject = "";
