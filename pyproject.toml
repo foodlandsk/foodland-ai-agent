@@ -1,22 +1,13 @@
-{"id":"RT0001","query":"máte bezlepkovú sójovú omáčku?","expected_intent":"product_search","expected_products_include":["Bezlepková sójová omáčka","Tamari","KIKKOMAN"],"must_not_include_products":["Soju"],"note":"Bezlepková sójová omáčka je produktový dotaz, nie alergia na sóju."}
-{"id":"RT0002","query":"potrebujem niečo bez lepku k sushi","expected_intent":"product_search","expected_answer_include":["overte zloženie","bezlepk"],"expected_products_include":["bezlepková sójová omáčka","tamari","nori","sushi ryža"],"note":"Má odporúčať vhodné sushi doplnky a upozorniť na zloženie."}
-{"id":"RT0003","query":"alergia na arašidy, čo môžem kúpiť?","expected_intent":"allergen_safety","expected_products_count":0,"expected_answer_include":["overte zloženie","alergény"],"note":"Pri alergii nesmie odporúčať produkty len podľa názvu."}
-{"id":"RT0004","query":"súvisiace produkty k sushi ryži","expected_intent":"related_products","expected_products_include":["nori","ryžový ocot","wasabi","nakladaný zázvor"],"must_not_start_with":["Suši ryža"],"note":"Doplnky k sushi ryži, nie ďalšie balenia ryže."}
-{"id":"RT0005","query":"čo sa hodí ku gochujang?","expected_intent":"related_products","expected_products_include":["kimchi","sezamový olej","ryža","ramen"],"must_not_start_with":["Čili pasta Gochujang"],"note":"Má odporúčať doplnky ku gochujang, nie ďalšie gochujang pasty."}
-{"id":"RT0006","query":"čo k červenej kari paste?","expected_intent":"related_products","expected_products_include":["kokosové mlieko","jazmínová ryža","rybia omáčka"],"note":"Kari dotaz má preferovať suroviny ku kari."}
-{"id":"RT0007","query":"obsahuje kimchi rybiu omáčku?","expected_intent":"allergen_safety","expected_answer_include":["overte zloženie","konkrétny produkt"],"note":"Otázka na zloženie má byť opatrná a nemá vymýšľať zloženie každého kimchi."}
-{"id":"RT0008","query":"kimci","expected_intent":"product_search","expected_products_include":["Kimchi"],"note":"Preklep kimci má nájsť kimchi produkty."}
-{"id":"RT0009","query":"gochuang","expected_intent":"product_search","expected_products_include":["Gochujang"],"note":"Preklep gochuang má nájsť gochujang produkty."}
-{"id":"RT0010","query":"sójová omáčka bez sóje","expected_intent":"allergen_safety","expected_products_count":0,"expected_answer_include":["overte zloženie","alergény"],"must_not_include_products":["Soju"],"note":"Bez sóje nie je to isté ako bezlepková sójová omáčka."}
-{"id":"RT0011","query":"mám rád nepálivé jedlo, čo odporúčaš?","expected_intent":"product_search","expected_products_include":["mochi","kokosové mlieko","jazmínová ryža","miso"],"must_not_include_products":["EKO kraft box","spicy","hot","páliv"],"note":"Nepálivá preferencia nesmie skončiť na obaloch ani pálivých snackoch."}
-{"id":"RT0012","query":"chcem niečo extra pálivé","expected_intent":"product_search","expected_products_include":["Sambal Oelek Extra hot","Sriracha","čili pasta","Gochujang"],"must_not_include_products":["Basmati ryža"],"note":"Extra pálivé má ukázať pálivé omáčky/pasty, nie ryžu s tokenom extra."}
-{"id":"RT0013","query":"náhrada za rybiu omáčku vegan","expected_intent":"product_search","expected_products_include":["sójová omáčka","tamari","hubová vegetariánska omáčka"],"must_not_include_products":["Dressing box","Fľaštičky","miska","obal"],"note":"Vegan náhrada za rybiu omáčku má odporúčať dochucovadlá, nie obaly na omáčku."}
-{"id":"RT0014","query":"chcem snack pre deti","expected_intent":"product_search","expected_products_include":["Pocky","Mochi","ryžové krekry"],"must_not_include_products":["angry spicy","hot & spicy","Soju","Sake"],"note":"Detské snacky nesmú začínať pálivými snackmi ani alkoholom."}
-{"id":"RT0015","query":"kredity od akej sumy môžem použiť?","expected_intent":"faq","expected_products_count":0,"expected_answer_include":["50"],"note":"FAQ odpoveď nemá zobrazovať náhodné produktové karty."}
-{"id":"RT0016","query":"dá sa platiť kartou?","expected_intent":"faq","expected_products_count":0,"expected_answer_include":["kartou"],"note":"Platobná FAQ odpoveď nemá zobrazovať produkty."}
-{"id":"RT0017","query":"kimchi","expected_intent":"product_search","expected_products_include":["Kimchi"],"must_not_include_products":["KIMPO","Suši ryža"],"note":"Pri hľadaní kimchi sa nesmie zobrazovať demo/fallback sushi ryža KIMPO."}
-{"id":"RT0018","query":"sriracha","expected_intent":"product_search","expected_products_include":["Sriracha"],"must_not_include_products":["Kimchi","KIMPO","Suši ryža"],"note":"Pri hľadaní Sriracha sa nesmú zobrazovať kimchi demo produkty ani sushi ryža."}
-{"id":"RT0019","query":"sriraca","expected_intent":"product_search","expected_products_include":["Sriracha"],"note":"Preklep sriraca má nájsť Sriracha produkty."}
-{"id":"RT0020","query":"kimchi na vyrobu","expected_intent":"related_products","expected_products_include":["Gochujang","Rybacia omacka","ryzova muka","cili"],"must_not_prioritize":["Kimchi krajane","Nakladana kapusta MAT KIMCHI"],"note":"Otazka na vyrobu kimchi ma odporucat suroviny, nie hotove kimchi."}
-{"id":"RT0021","query":"na vyrobu","expected_intent":"related_products","expected_products_include":["Gochujang","Rybacia omacka","ryzova muka","cili"],"must_not_prioritize":["Kimchi krajane","Nakladana kapusta MAT KIMCHI"],"note":"Kratka nasledna otazka po kimchi ma mat fallback na suroviny na kimchi."}
-{"id":"RT0022","query":"potrebujem recept na kimchi","expected_intent":"recipe","expected_products_count":0,"expected_answer_include":["Recept","kapustu","fermentovat"],"note":"Recept na kimchi ma odpovedat postupom, nie produktovymi kartami na vyrobu."}
+[project]
+name = "foodland-ai-agent"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.115.6",
+  "uvicorn[standard]==0.34.0",
+  "openai==1.59.7",
+  "pydantic==2.10.4"
+]
+
+[tool.vercel]
+entrypoint = "app.main:app"
