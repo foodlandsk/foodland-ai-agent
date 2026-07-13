@@ -535,6 +535,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         }
 
     faq_answer = best_faq_answer(knowledge_matches)
+    if not faq_answer and is_faq_intent(chat_request.message):
+        faq_answer = best_direct_faq_answer(chat_request.message, knowledge)
     if faq_answer and is_faq_intent(chat_request.message):
         log_question(chat_request.message, client_key, 0)
         return {
@@ -605,7 +607,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                         "Voláš sa Foodland poradca. Neprezentuj sa ako AI. "
                         "Používaj iba poskytnutý kontext: produkty, FAQ, recepty, cross-sell, alternatívy a Products_AI. "
                         "Pri produktoch uvádzaj cenu a odkaz, ak sú dostupné. Pri alergiách, zložení a dostupnosti "
-                        "odporuč overiť detail produktu. Nevymýšľaj ceny, sklad ani vlastnosti produktu."
+                        "odporuč overiť detail produktu. Nevymýšľaj ceny, sklad ani vlastnosti produktu. "
+                        "Nevkladaj žiadne URL ani markdown odkazy, ktoré nie sú doslovne v poskytnutom kontexte."
                     ),
                 },
                 {
@@ -625,6 +628,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             related_subject,
             needs_composition_caution,
         )
+        answer_text = sanitize_answer_links(answer_text, allowed_answer_urls(matches, knowledge_matches))
         logger.info("OpenAI response generated.")
         return {
             "answer": answer_text,
@@ -648,6 +652,41 @@ def get_client_key(request: Request) -> str:
     if forwarded_for:
         return forwarded_for.split(",", 1)[0].strip()
     return request.client.host if request.client else "unknown"
+
+
+def allowed_answer_urls(matches: list[dict], knowledge_matches: dict | None) -> set[str]:
+    urls: set[str] = set()
+    for product in matches or []:
+        for key in ("link", "url"):
+            value = str(product.get(key) or "").strip()
+            if value.startswith(("http://", "https://")):
+                urls.add(value)
+
+    for hits in (knowledge_matches or {}).values():
+        for hit in hits:
+            record = hit.get("record", {})
+            for value in record.values():
+                text = str(value or "").strip()
+                if text.startswith(("http://", "https://")):
+                    urls.add(text)
+
+    return urls
+
+
+def sanitize_answer_links(answer: str, allowed_urls: set[str]) -> str:
+    def markdown_replacement(match: re.Match) -> str:
+        label = match.group(1)
+        url = match.group(2).rstrip(".,);")
+        return match.group(0) if url in allowed_urls else label
+
+    sanitized = re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", markdown_replacement, answer)
+
+    def bare_replacement(match: re.Match) -> str:
+        url = match.group(0).rstrip(".,);")
+        suffix = match.group(0)[len(url):]
+        return match.group(0) if url in allowed_urls else suffix
+
+    return re.sub(r"https?://[^\s)]+", bare_replacement, sanitized)
 
 
 def enforce_rate_limit(client_key: str) -> None:
@@ -706,6 +745,54 @@ def log_backend_error(event: str, detail: str) -> None:
 def is_faq_intent(message: str) -> bool:
     normalized_message = normalize(message)
     return any(marker in normalized_message for marker in FAQ_INTENT_MARKERS)
+
+
+FAQ_CATEGORY_MARKERS = {
+    "doprava": ("doprava", "doruc", "kurier", "packeta", "dpd", "gls", "postovn", "vyzdvih"),
+    "platby": ("plat", "zapl", "kart", "hotov", "dobier", "paypal", "gopay", "prevod"),
+    "reklamacie": ("reklamac", "poskoden", "chyb", "vymen", "vratenie penaz"),
+    "vratenie tovaru": ("vrat", "odstup", "vymen"),
+    "registracia": ("registr", "prihlas", "heslo", "ucet"),
+    "vernostny program": ("kredit", "vernost", "zlava", "body", "bod"),
+    "nakup": ("objednav", "kosik", "nakup", "skladom"),
+}
+
+
+def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
+    normalized_message = normalize(message)
+    query_tokens = tokenize(message)
+    best_score = 0
+    best_answer = ""
+
+    for record in loaded_knowledge.get("sections", {}).get("FAQ", []):
+        question = first_record_value(record, ("Otázka", "Otazka", "question"))
+        answer = first_record_value(record, ("Odpoveď", "Odpoved", "answer"))
+        category = first_record_value(record, ("Kategória", "Kategoria", "category"))
+        if not answer:
+            continue
+
+        normalized_question = normalize(question)
+        normalized_category = normalize(category)
+        record_tokens = tokenize(" ".join([category, question, answer]))
+        score = len(query_tokens & record_tokens)
+
+        if normalized_question and normalized_question in normalized_message:
+            score += 20
+        if normalized_category and normalized_category in normalized_message:
+            score += 12
+        for category_name, markers in FAQ_CATEGORY_MARKERS.items():
+            if normalized_category == category_name and any(marker in normalized_message for marker in markers):
+                score += 10
+        if "kolko" in normalized_message and "zadarmo" in normalized_question and "doprava" in normalized_question:
+            score += 10
+        if "ako" in normalized_message and "zapl" in normalized_message and "plat" in normalized_question:
+            score += 10
+
+        if score > best_score:
+            best_score = score
+            best_answer = answer
+
+    return best_answer if best_score >= 3 else None
 
 
 def detect_recipe_subject(message: str) -> str | None:
