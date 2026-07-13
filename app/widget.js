@@ -589,6 +589,7 @@
       font-size: 12px;
       line-height: 1.35;
     }
+    .fl-ai-notice[hidden] { display: none; }
     .fl-ai-recipe-link {
       display: inline-flex;
       align-items: center;
@@ -679,7 +680,7 @@
           </svg>
         </button>
       </header>
-      <div class="fl-ai-notice">Pri alergiách, zložení a dostupnosti si prosím overte detail produktu.</div>
+      <div class="fl-ai-notice" hidden>Pri alergiách, zložení a dostupnosti si prosím overte detail produktu.</div>
       <div class="fl-ai-messages" aria-live="polite"></div>
       <form class="fl-ai-form">
         <input class="fl-ai-input" type="text" placeholder="Napíšte, čo hľadáte..." autocomplete="off" />
@@ -698,6 +699,7 @@
   const panel = root.querySelector(".fl-ai-panel");
   const launcher = root.querySelector(".fl-ai-launcher");
   const closeButton = root.querySelector(".fl-ai-close");
+  const notice = root.querySelector(".fl-ai-notice");
   const messages = root.querySelector(".fl-ai-messages");
   const form = root.querySelector(".fl-ai-form");
   const input = root.querySelector(".fl-ai-input");
@@ -798,6 +800,12 @@
     messages.scrollTop = messages.scrollHeight;
   }
 
+  function updateNotice(data) {
+    const products = Array.isArray(data.products) ? data.products : [];
+    const shouldShow = data.intent === "allergen_safety" || products.length > 0;
+    notice.hidden = !shouldShow;
+  }
+
   function canAskNow() {
     const now = Date.now();
     const windowStart = now - 60000;
@@ -895,10 +903,12 @@
 
     try {
       const data = await askBackend(text);
+      updateNotice(data);
       loading.textContent = data.answer || "Nenašiel som presnú odpoveď. Skúste napísať názov produktu alebo kategóriu inak.";
       addRecipes(data.recipes);
       if (data.intent !== "recipe") addProducts(data.products);
     } catch (error) {
+      notice.hidden = true;
       loading.classList.add("error");
       loading.textContent = error.message === "RATE_LIMIT"
         ? "Poslali ste veľa otázok za krátky čas. Skúste to prosím o chvíľu."
