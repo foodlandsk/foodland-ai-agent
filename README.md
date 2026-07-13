@@ -97,8 +97,8 @@ KNOWLEDGE_JSON_PATH=data/knowledge.json
 FEED_REFRESH_MINUTES=180
 ALLOWED_ORIGINS=https://www.foodland.sk,https://foodland.sk
 RATE_LIMIT_PER_MINUTE=12
-ANALYTICS_LOG_PATH=data/question_analytics.jsonl
-ERROR_LOG_PATH=data/backend_errors.jsonl
+ANALYTICS_LOG_PATH=/tmp/foodland-ai-agent/question_analytics.jsonl
+ERROR_LOG_PATH=/tmp/foodland-ai-agent/backend_errors.jsonl
 ANALYTICS_INCLUDE_IP=false
 ANALYTICS_SALT=<nahodny tajny retazec>
 ADMIN_RELOAD_TOKEN=<volitelne>
@@ -119,6 +119,8 @@ Po nasadeni backendu vlozte do Foodland.sk:
 </script>
 <script src="https://ai.foodland.sk/static/widget.js"></script>
 ```
+
+Produkcia nema nastavovat `demoMode`. Demo data su povolene iba v testovacej stranke, kde je explicitne nastavene aj `allowDemoMode: true`.
 
 Demo:
 

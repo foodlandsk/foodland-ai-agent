@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import sys
 import types
 import unicodedata
@@ -232,6 +233,7 @@ class RequestStub:
 
 
 def backend_module():
+    os.environ.setdefault("RATE_LIMIT_PER_MINUTE", "10000")
     install_backend_stubs()
     import app.main as main
 

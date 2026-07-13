@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+import tempfile
 import time
 from collections import defaultdict, deque
 from pathlib import Path
@@ -104,6 +105,7 @@ last_feed_refresh_at = int(time.time()) if products else None
 last_feed_refresh_error: str | None = None
 feed_refresh_task: asyncio.Task | None = None
 rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
+DEFAULT_RUNTIME_LOG_DIR = Path(tempfile.gettempdir()) / "foodland-ai-agent"
 
 RELATED_PRODUCT_QUERIES = {
     "kimchi": [
@@ -544,7 +546,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
 
     recipe_subject = detect_recipe_subject(chat_request.message)
     if recipe_subject:
-        recipes = recipe_results(knowledge_matches, chat_request.limit, chat_request.message)
+        recipes = recipe_results(knowledge_matches, chat_request.limit, chat_request.message, knowledge)
         log_question(chat_request.message, client_key, 0)
         return {
             "answer": recipe_answer(recipe_subject, recipes),
@@ -649,7 +651,7 @@ def get_client_key(request: Request) -> str:
 
 
 def enforce_rate_limit(client_key: str) -> None:
-    limit = int(os.getenv("RATE_LIMIT_PER_MINUTE", "1000"))
+    limit = int(os.getenv("RATE_LIMIT_PER_MINUTE", "12"))
     now = time.time()
     window_start = now - 60
     events = rate_limit_events[client_key]
@@ -668,7 +670,7 @@ def enforce_rate_limit(client_key: str) -> None:
 
 
 def log_question(message: str, client_key: str, matches_count: int) -> None:
-    path = Path(os.getenv("ANALYTICS_LOG_PATH", "data/question_analytics.jsonl"))
+    path = Path(os.getenv("ANALYTICS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "question_analytics.jsonl")))
     salt = os.getenv("ANALYTICS_SALT", "")
     record = {
         "ts": int(time.time()),
@@ -687,7 +689,7 @@ def log_question(message: str, client_key: str, matches_count: int) -> None:
 
 
 def log_backend_error(event: str, detail: str) -> None:
-    path = Path(os.getenv("ERROR_LOG_PATH", "data/backend_errors.jsonl"))
+    path = Path(os.getenv("ERROR_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "backend_errors.jsonl")))
     record = {
         "ts": int(time.time()),
         "event": event,
@@ -724,11 +726,22 @@ def is_recipe_intent(normalized_message: str) -> bool:
     return any(token.startswith(("rec", "recep")) for token in tokenize(normalized_message))
 
 
-def recipe_results(knowledge_matches: dict | None, limit: int = 4, message: str = "") -> list[dict]:
+def recipe_results(
+    knowledge_matches: dict | None,
+    limit: int = 4,
+    message: str = "",
+    all_knowledge: dict | None = None,
+) -> list[dict]:
     recipes = (knowledge_matches or {}).get("Recipes", [])
     results: list[dict] = []
     seen_titles: set[str] = set()
     wanted_tokens = recipe_query_tokens(message)
+
+    if not recipes and not wanted_tokens and all_knowledge:
+        recipes = [
+            {"record": record}
+            for record in all_knowledge.get("sections", {}).get("Recipes", [])
+        ]
 
     for item in recipes:
         record = item.get("record", {})
@@ -769,6 +782,15 @@ def recipe_query_tokens(message: str) -> set[str]:
         "foodlandu",
         "sk",
         "prosim",
+        "ake",
+        "aky",
+        "aku",
+        "mate",
+        "mas",
+        "mame",
+        "ponukate",
+        "ukaz",
+        "daj",
     }
     return {token for token in tokenize(message) if token not in stop_words and len(token) > 1}
 
