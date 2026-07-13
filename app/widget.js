@@ -186,6 +186,66 @@
     },
   ];
 
+  const padThaiIngredientDemoProducts = [
+    {
+      title: "Chantaboon ryžové rezance tyčinky 3 mm FARMER 400 g",
+      effective_price: 2.14,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "FARMER",
+      image_link: "",
+      link: "https://www.foodland.sk/ryzove-rezance/chantaboon-ryzove-rezance-tycinky-3-mm-farmer-400-g/",
+    },
+    {
+      title: "Pad Thai Omáčka (thajské vyprážané rezance) POR KWAN 225g",
+      effective_price: 2.97,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "POR KWAN",
+      image_link: "",
+      link: "https://www.foodland.sk/omacky-a-marinady/pad-thai-omacka-thajske-vyprazane-rezance-por-kwan-225g/",
+    },
+    {
+      title: "Rybacia omáčka 40N THUAN PHAT 620ml",
+      effective_price: 5.35,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "THUAN PHAT",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/rybacia-omacka-40n-thuan-phat-620ml-1251.jpg?ft=1679693791&nwtrmrk=1",
+      link: "https://www.foodland.sk/rybacie-omacky/rybacia-omacka-40n-thuan-phat-620ml/",
+    },
+  ];
+
+  const phoIngredientDemoProducts = [
+    {
+      title: "Chantaboon ryžové rezance tyčinky 3 mm FARMER 400 g",
+      effective_price: 2.14,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "FARMER",
+      image_link: "",
+      link: "https://www.foodland.sk/ryzove-rezance/chantaboon-ryzove-rezance-tycinky-3-mm-farmer-400-g/",
+    },
+    {
+      title: "Rybacia omáčka 40N THUAN PHAT 620ml",
+      effective_price: 5.35,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "THUAN PHAT",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/rybacia-omacka-40n-thuan-phat-620ml-1251.jpg?ft=1679693791&nwtrmrk=1",
+      link: "https://www.foodland.sk/rybacie-omacky/rybacia-omacka-40n-thuan-phat-620ml/",
+    },
+    {
+      title: "Hoisin omáčka FLYING GOOSE BRAND 200ml",
+      effective_price: 2.71,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "FLYING GOOSE",
+      image_link: "",
+      link: "https://www.foodland.sk/hoisin-omacky/hoisin-omacka-flying-goose-brand-200ml/",
+    },
+  ];
+
   function removeDiacritics(value) {
     return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
@@ -241,6 +301,7 @@
     const recipeSubject = detectRecipeSubject(normalizedText);
     const isRecipeFollowUp = lastRecipeSubject
       && recipeSubject
+      && !isIngredientRequest(normalizedText)
       && !isRecipeRequest(normalizedText)
       && normalizedText.length <= 40;
     if (isRecipeFollowUp) {
@@ -256,6 +317,23 @@
   function isSoySauceRequest(normalizedText) {
     return (normalizedText.includes("sojov") || normalizedText.includes("soy sauce") || normalizedText.includes("tamari"))
       && (normalizedText.includes("omack") || normalizedText.includes("sauce") || normalizedText.includes("tamari"));
+  }
+
+  function isIngredientRequest(normalizedText) {
+    return [
+      "na vyrobu",
+      "na pripravu",
+      "ingrediencie",
+      "suroviny",
+      "co potrebujem",
+      "co kupit",
+      "nakupny zoznam",
+      "urobit",
+      "spravit",
+      "pripravit",
+    ].some(function (marker) {
+      return normalizedText.includes(marker);
+    });
   }
 
   function isRecipeRequest(normalizedText) {
@@ -283,20 +361,16 @@
 
   function isKimchiIngredientRequest(normalizedText) {
     const mentionsKimchi = normalizedText.includes("kimchi") || normalizedText.includes("kimci");
-    const asksForIngredients = [
-      "na vyrobu",
-      "na pripravu",
-      "ingrediencie",
-      "suroviny",
-      "co potrebujem",
-      "co kupit",
-      "spravit",
-      "urobit",
-      "pripravit",
-    ].some(function (marker) {
-      return normalizedText.includes(marker);
-    });
-    return mentionsKimchi && asksForIngredients;
+    return mentionsKimchi && isIngredientRequest(normalizedText);
+  }
+
+  function demoIngredientProductsForText(normalizedText) {
+    const subject = detectRecipeSubject(normalizedText);
+    if (!isIngredientRequest(normalizedText)) return [];
+    if (subject === "pad_thai") return padThaiIngredientDemoProducts;
+    if (subject === "pho") return phoIngredientDemoProducts;
+    if (subject === "kimchi") return kimchiIngredientDemoProducts;
+    return [];
   }
 
   const style = document.createElement("style");
@@ -742,8 +816,12 @@
       let recipes = [];
       let answer = "Nenašiel som presnú demo odpoveď. Skúste napísať názov produktu alebo kategóriu presnejšie.";
       const requestedRecipes = demoRecipesForText(normalizedText);
+      const ingredientProducts = demoIngredientProductsForText(normalizedText);
 
-      if (isRecipeRequest(normalizedText) && requestedRecipes.length > 0) {
+      if (ingredientProducts.length > 0) {
+        products = ingredientProducts;
+        answer = "Na prípravu odporúčam tieto suroviny z Foodland.sk.";
+      } else if (isRecipeRequest(normalizedText) && requestedRecipes.length > 0) {
         products = [];
         recipes = requestedRecipes;
         answer = recipes.length === 1
