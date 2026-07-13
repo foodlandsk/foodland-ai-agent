@@ -1177,6 +1177,9 @@ def allergen_product_query(message: str) -> str:
 
     after_question = message.rsplit("?", 1)[-1].strip()
     if after_question and after_question != message.strip():
+        normalized_after_question = normalize(after_question)
+        if is_generic_allergen_recommendation_tail(normalized_after_question):
+            return ""
         return after_question
 
     cleanup_patterns = [
@@ -1221,7 +1224,53 @@ def allergen_product_query(message: str) -> str:
     for pattern in cleanup_patterns:
         cleaned = re.sub(pattern, " ", cleaned)
     cleaned = re.sub(r"[^a-z0-9 ]+", " ", cleaned)
-    return " ".join(cleaned.split())
+    cleaned = " ".join(cleaned.split())
+    if is_generic_allergen_recommendation_tail(cleaned):
+        return ""
+    return cleaned
+
+
+def is_generic_allergen_recommendation_tail(normalized_text: str) -> bool:
+    cleaned = re.sub(r"[^a-z0-9 ]+", " ", normalized_text)
+    cleaned = " ".join(cleaned.split())
+    if not cleaned:
+        return True
+    generic_markers = (
+        "co by ste odporucili",
+        "co odporucate",
+        "co odporucas",
+        "co by ste doporucili",
+        "co by ste dopurucili",
+        "co doporucujete",
+        "co dopurucujete",
+        "poradite",
+        "poradis",
+        "ake produkty",
+        "co mam kupit",
+        "co si mam kupit",
+    )
+    if any(marker in cleaned for marker in generic_markers):
+        return True
+    generic_words = {
+        "co",
+        "by",
+        "ste",
+        "mi",
+        "prosim",
+        "odporucili",
+        "odporucate",
+        "odporucas",
+        "doporucili",
+        "doporucujete",
+        "dopurucili",
+        "dopurucujete",
+        "poradite",
+        "poradis",
+        "kupit",
+        "produkty",
+    }
+    tokens = set(cleaned.split())
+    return bool(tokens) and tokens <= generic_words
 
 
 def is_gluten_free_search(message_or_normalized: str) -> bool:
