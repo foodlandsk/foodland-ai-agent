@@ -387,6 +387,8 @@ RELATED_INTENT_MARKERS = (
 
 RECIPE_INTENT_MARKERS = (
     "recept",
+    "reept",
+    "recet",
     "navod",
     "postup",
     "ako spravim",
@@ -742,6 +744,8 @@ def recipe_query_tokens(message: str) -> set[str]:
     stop_words = {
         "recept",
         "recepty",
+        "reept",
+        "recet",
         "navod",
         "postup",
         "ako",

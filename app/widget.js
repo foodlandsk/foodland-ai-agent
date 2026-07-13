@@ -5,6 +5,7 @@
   const maxQuestionsPerMinute = config.maxQuestionsPerMinute || 8;
   const recentQuestions = [];
   let lastProductSubject = "";
+  let lastRecipeSubject = "";
 
   const demoProducts = [
     {
@@ -68,6 +69,65 @@
       link: "https://www.foodland.sk/sojove-omacky/double-deluxe-sojova-omacka-lee-kum-kee-500-ml/",
     },
   ];
+
+  const demoRecipeCatalog = {
+    kimchi: [
+      {
+        title: "Tradičný Kimchi recept",
+        cuisine: "Kórejská",
+        note: "",
+        link: "https://www.foodland.sk/?s=Tradi%C4%8Dn%C3%BD+Kimchi+recept",
+      },
+      {
+        title: "Kimchi Ramen",
+        cuisine: "Kórejská",
+        note: "",
+        link: "https://www.foodland.sk/?s=Kimchi+Ramen",
+      },
+    ],
+    ramen: [
+      {
+        title: "Shoyu Ramen",
+        cuisine: "Japonská",
+        note: "",
+        link: "https://www.foodland.sk/?s=Shoyu+Ramen",
+      },
+      {
+        title: "Kimchi Ramen",
+        cuisine: "Kórejská",
+        note: "",
+        link: "https://www.foodland.sk/?s=Kimchi+Ramen",
+      },
+    ],
+    pho: [
+      {
+        title: "Vietnamská hovädzia polievka PHỞ BÒ",
+        cuisine: "Vietnamská",
+        note: "",
+        link: "https://www.foodland.sk/?s=Vietnamsk%C3%A1+hov%C3%A4dzia+polievka+PHO+BO",
+      },
+      {
+        title: "Vietnamská kuracia polievka PHỞ GÀ",
+        cuisine: "Vietnamská",
+        note: "",
+        link: "https://www.foodland.sk/?s=Vietnamsk%C3%A1+kuracia+polievka+PHO+GA",
+      },
+    ],
+    pad_thai: [
+      {
+        title: "Vegánske Pad Thai",
+        cuisine: "Thajská",
+        note: "",
+        link: "https://www.foodland.sk/?s=Veg%C3%A1nske+Pad+Thai",
+      },
+      {
+        title: "Kuracie Pad Thai",
+        cuisine: "Thajská",
+        note: "",
+        link: "https://www.foodland.sk/?s=Kuracie+Pad+Thai",
+      },
+    ],
+  };
 
   const kimchiIngredientDemoProducts = [
     {
@@ -136,6 +196,13 @@
 
   function rememberProductSubject(text) {
     const normalizedText = normalizedInput(text);
+    const recipeSubject = detectRecipeSubject(normalizedText);
+    if (isRecipeRequest(normalizedText) && recipeSubject) {
+      lastRecipeSubject = recipeSubject;
+      lastProductSubject = "";
+      return;
+    }
+
     if (normalizedText.includes("kimchi") || normalizedText.includes("kimci")) {
       lastProductSubject = "kimchi";
     } else if (isSoySauceRequest(normalizedText)) {
@@ -171,6 +238,15 @@
       return normalizedText.includes(marker);
     });
 
+    const recipeSubject = detectRecipeSubject(normalizedText);
+    const isRecipeFollowUp = lastRecipeSubject
+      && recipeSubject
+      && !isRecipeRequest(normalizedText)
+      && normalizedText.length <= 40;
+    if (isRecipeFollowUp) {
+      return `recept ${text}`;
+    }
+
     if (lastProductSubject && !hasKnownSubject && !isExplicitProductQuery && isRelatedFollowUp) {
       return `${lastProductSubject} ${text}`;
     }
@@ -180,6 +256,26 @@
   function isSoySauceRequest(normalizedText) {
     return (normalizedText.includes("sojov") || normalizedText.includes("soy sauce") || normalizedText.includes("tamari"))
       && (normalizedText.includes("omack") || normalizedText.includes("sauce") || normalizedText.includes("tamari"));
+  }
+
+  function isRecipeRequest(normalizedText) {
+    return ["recept", "reept", "recet", "navod", "postup"].some(function (marker) {
+      return normalizedText.includes(marker);
+    });
+  }
+
+  function detectRecipeSubject(normalizedText) {
+    if (normalizedText.includes("pad thai") || normalizedText.includes("padthai")) return "pad_thai";
+    if (normalizedText.includes("pho") || normalizedText.includes("phở")) return "pho";
+    if (normalizedText.includes("ramen") || normalizedText.includes("ramyun") || normalizedText.includes("ramyeon")) return "ramen";
+    if (normalizedText.includes("kimchi") || normalizedText.includes("kimci")) return "kimchi";
+    return "";
+  }
+
+  function demoRecipesForText(normalizedText) {
+    const subject = detectRecipeSubject(normalizedText);
+    if (!subject) return [];
+    return demoRecipeCatalog[subject] || [];
   }
 
   function isKimchiIngredientRequest(normalizedText) {
@@ -198,14 +294,6 @@
       return normalizedText.includes(marker);
     });
     return mentionsKimchi && asksForIngredients;
-  }
-
-  function isKimchiRecipeRequest(normalizedText) {
-    const mentionsKimchi = normalizedText.includes("kimchi") || normalizedText.includes("kimci");
-    const asksForRecipe = ["recept", "navod", "postup"].some(function (marker) {
-      return normalizedText.includes(marker);
-    });
-    return mentionsKimchi && asksForRecipe;
   }
 
   const style = document.createElement("style");
@@ -650,18 +738,14 @@
       let products = [];
       let recipes = [];
       let answer = "Nenašiel som presnú demo odpoveď. Skúste napísať názov produktu alebo kategóriu presnejšie.";
+      const requestedRecipes = demoRecipesForText(normalizedText);
 
-      if (isKimchiRecipeRequest(normalizedText)) {
+      if (isRecipeRequest(normalizedText) && requestedRecipes.length > 0) {
         products = [];
-        recipes = [
-          {
-            title: "Tradičný Kimchi recept",
-            cuisine: "Kórejská",
-            note: "",
-            link: "https://www.foodland.sk/?s=Tradi%C4%8Dn%C3%BD+Kimchi+recept",
-          },
-        ];
-        answer = "Našiel som recept z Foodland.sk. Otvorte si ho nižšie.";
+        recipes = requestedRecipes;
+        answer = recipes.length === 1
+          ? "Našiel som recept z Foodland.sk. Otvorte si ho nižšie."
+          : "Našiel som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie.";
       } else if (isKimchiIngredientRequest(normalizedText)) {
         products = kimchiIngredientDemoProducts;
         answer = "Na výrobu kimchi odporúčam najmä gochujang, čili papriku, rybaciu omáčku, ryžovú múku a sezamový olej.";
