@@ -379,7 +379,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/veganske-pad-thai/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/veganske-pad-thai/",
+        "AT_url": "https://www.foodland.at/rezepte/veganes-pad-thai/",
+        "EN_url": "https://www.foodland-express.com/recipes/vegan-pad-thai/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/weganskie-pad-thai/",
+        "HU_url": "https://www.foodland.hu/receptek/vegan-pad-thai/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/pho-xao-chay/"
       },
       {
         "Kuchyňa": "",
@@ -391,7 +398,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/thajske-kuracie-satay-s-arasidovou-omackou/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/veganske-pad-thai/",
+        "AT_url": "https://www.foodland.at/rezepte/thailandisches-huhnersatay-mit-erdnusssauce/",
+        "EN_url": "https://www.foodland-express.com/recipes/thai-chicken-satay-with-peanut-sauce/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/satay-z-kurczaka-z-tajska-orzechowa-sosem/",
+        "HU_url": "https://www.foodland.hu/receptek/thai-csirke-satay-mogyoroszosszal/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/ga-sa-te-thai-lan-sot-dau-phong/"
       },
       {
         "Kuchyňa": "",
@@ -403,7 +417,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/tom-yum-polevka-recept-tmya-kung-autenticky-thai-styl/",
+        "AT_url": "https://www.foodland.at/rezepte/tom-yum-suppenrezept-say-ya-thi-authentischer-thailandischer-stil/",
+        "EN_url": "https://www.foodland-express.com/recipes/tom-yum-soup-recipe-authentic-thai-style/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/przepis-na-zupe-tom-yum-say-ya-thi-autentyczny-tajski-styl/",
+        "HU_url": "https://www.foodland.hu/receptek/tom-yum-leves-receptje-say-ya-thi-autentikus-thai-stilus/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/tom-yum-tom-kieu-thai-chinh-thong/"
       },
       {
         "Kuchyňa": "",
@@ -415,7 +436,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/tom-kha-gai-thajska-kokosova-kureci-polevka/",
+        "AT_url": "https://www.foodland.at/rezepte/tom-kha-gai-thailandische-kokosnuss-huhnersuppe/",
+        "EN_url": "https://www.foodland-express.com/recipes/tom-kha-gai-thai-coconut-chicken-soup/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/tom-kha-gai-tajska-zupa-z-kurczaka-kokosowego/",
+        "HU_url": "https://www.foodland.hu/receptek/tom-kha-gai-thai-kokuszos-csirkehusleves/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/sup-ga-sua-dua-thai-lan/"
       },
       {
         "Kuchyňa": "",
@@ -427,7 +455,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/kureci-pad-thai-thajske-prazene-nudle-s-kurecim-masem/",
+        "AT_url": "https://www.foodland.at/rezepte/chicken-pad-thai-gebratene-thailandische-nudeln-mit-huhnchen/",
+        "EN_url": "https://www.foodland-express.com/recipes/pad-thai-chicken/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/chicken-pad-thai-tajski-smazony-makaron-z-kurczakiem/",
+        "HU_url": "https://www.foodland.hu/receptek/chicken-pad-thai-thai-sult-teszta-csirkevel/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/pho-xao-thai-lan/"
       },
       {
         "Kuchyňa": "",
@@ -439,7 +474,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/thajsky-salat-z-ciernej-ryze/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/thajsky-salat-z-cerne-ryze/",
+        "AT_url": "https://www.foodland.at/rezepte/thailandischer-schwarzer-reissalat/",
+        "EN_url": "https://www.foodland-express.com/recipes/thai-black-rice-salad/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/tajska-salatka-z-czarnego-ryzu/",
+        "HU_url": "https://www.foodland.hu/receptek/thai-fekete-rizs-salata/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/salad-gao-den-thai-lan/"
       },
       {
         "Kuchyňa": "",
@@ -451,7 +493,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/thajska-sladka-lepkava-ryza-s-mangom-khaoneeomamuang/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/thajska-sladka-lepkava-ryza-s-mangom-khaoneeomamuang/",
+        "AT_url": "https://www.foodland.at/rezepte/thailandischer-susser-klebreis-mit-mango-khao-neeo-mamuang/",
+        "EN_url": "https://www.foodland-express.com/recipes/thai-sweet-sticky-rice-with-mango-khaoneeomamuang/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/tajski-slodki-lepki-ryz-z-mango-khao-neeo-mamuang/",
+        "HU_url": "https://www.foodland.hu/receptek/thai-edes-ragados-rizs-mangoval-khao-neeo-mamuang/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/xoi-thai-voi-xoai-khao-neeo-mamuang/"
       },
       {
         "Kuchyňa": "Vietnamská kuchyňa",
@@ -463,7 +512,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/ako-sa-vari-vietnamska-hovadzia-polievka-pho-bo/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/ako-sa-vari-vietnamska-hovadzia-polievka-pho-bo/",
+        "AT_url": "https://www.foodland.at/rezepte/wie-man-vietnamesische-rindfleischsuppe-pho-bo-kocht/",
+        "EN_url": "https://www.foodland-express.com/recipes/how-to-cook-beef-soup-pho-bo/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/jak-gotowac-wietnamska-zupe-wolowa-pho-bo/",
+        "HU_url": "https://www.foodland.hu/receptek/hogyan-kell-fozni-vietnami-marhahuslevest-pho-bo/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/cach-nau-mon-pho-bo-viet-nam/"
       },
       {
         "Kuchyňa": "",
@@ -475,7 +531,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/pho-ga/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/pho-ga/",
+        "AT_url": "https://www.foodland.at/rezepte/vietnamesische-huhnersuppe-pho-ga/",
+        "EN_url": "https://www.foodland-express.com/recipes/ph/recepty/vietnamska-kureci-polevka-pho-ga/ga/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/wietnamska-zupa-z-kurczaka-pho-ga/",
+        "HU_url": "https://www.foodland.hu/receptek/vietnami-csirkeleves-pko-ga/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/pho-ga-viet-nam/"
       },
       {
         "Kuchyňa": "",
@@ -487,7 +550,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/ako-sa-pripravuje-vietnamsky-banh-mi-sendwic/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/jak-se-pripravuje-vietnamsky-banh-mi-sendwic/",
+        "AT_url": "https://www.foodland.at/rezepte/so-bereiten-sie-ein-vietnamesisches-banh-mi-sandwich-zu/",
+        "EN_url": "https://www.foodland-express.com/recipes/how-to-prepare-the-vietnamese-banh-mi-sandwich/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/jak-przygotowac-wietnamska-kanapke-banh-mi/",
+        "HU_url": "https://www.foodland.hu/receptek/hogyan-keszitsunk-vietnami-banh-mi-szendvicset/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/cach-che-bien-mon-banh-mi-sendwich-viet-nam/"
       },
       {
         "Kuchyňa": "",
@@ -499,7 +569,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/ako-urobit-vietnamske-cerstve-jarne-zavitky-nem-cuon/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/ako-urobit-vietnamske-cerstve-jarne-zavitky-nem-cuon/",
+        "AT_url": "https://www.foodland.at/rezepte/so-bereiten-sie-vietnamesische-frische-fruhlingsrollen-nem-cuon-zu/",
+        "EN_url": "https://www.foodland-express.com/recipes/how-to-make-vietnamese-fresh-spring-rolls-nem-cuon/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/jak-zrobic-wietnamskie-swieze-sajgonki-nem-cuon/",
+        "HU_url": "https://www.foodland.hu/receptek/hogyan-keszitsunk-vietnami-friss-tavaszi-tekercset-nem-cuon/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/cach-lam-nem-cuon-viet-nam/"
       },
       {
         "Kuchyňa": "",
@@ -511,7 +588,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/ako-sa-robi-bun-cha/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/ako-sa-robi-bun-cha/",
+        "AT_url": "https://www.foodland.at/rezepte/wie-man-bun-cha-macht/",
+        "EN_url": "https://www.foodland-express.com/recipes/how-to-do-the-bun-cha/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/jak-zrobic-bun-cha/",
+        "HU_url": "https://www.foodland.hu/receptek/hogyan-keszitsunk-bun-cha-t/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/cach-lam-bun-cha/"
       },
       {
         "Kuchyňa": "",
@@ -523,7 +607,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/ako-spravne-pripravit-vietnamsku-specialitu-bun-bo-nam-bo/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/jak-spravne-pripravit-vietnamskou-specialitu-bun-bo-nam-bo/",
+        "AT_url": "https://www.foodland.at/rezepte/so-bereiten-sie-die-vietnamesische-spezialitat-bun-bo-nam-bo-richtig-zu/",
+        "EN_url": "https://www.foodland-express.com/recipes/how-to-properly-prepare-vietnamese-specialty-bun-bo-nam-bo/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/jak-prawidlowo-przygotowac-wietnamska-specjalnosc-bun-bo-nam-bo/",
+        "HU_url": "https://www.foodland.hu/receptek/hogyan-kell-megfeleloen-elkesziteni-a-vietnami-bun-bo-nam-bo-specialitast/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/cach-lam-bun-bo-nam-bo-ngon/"
       },
       {
         "Kuchyňa": "",
@@ -535,7 +626,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/vietnamska-omacka-na-namacanie-nuoc-cham/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/vietnamska-omacka-k-namaceni-nuoc-cham/",
+        "AT_url": "https://www.foodland.at/rezepte/vietnamesische-dip-sauce-nuoc-cham/",
+        "EN_url": "https://www.foodland-express.com/recipes/vietnamese-dipping-sauce-nuoc-cham/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/wietnamski-sos-do-maczania-nuoc-cham/",
+        "HU_url": "https://www.foodland.hu/receptek/vietnami-martogatos-szosz-nuoc-cham/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/nuoc-cham-viet-nam-nuoc-cham/"
       },
       {
         "Kuchyňa": "",
@@ -547,7 +645,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/banh-gio-pyramidove-parene-buchty/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/banh-gio-vietnamske-parene-pyramidove-knedliky/",
+        "AT_url": "https://www.foodland.at/rezepte/banh-gio-vietnamesische-pyramiden-dampfbrotchen/",
+        "EN_url": "https://www.foodland-express.com/recipes/banh-gio-vietnamese-pyramid-dumplings/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/banh-gio-wietnamskie-buleczki-na-parze-w-ksztalcie-piramidy/",
+        "HU_url": "https://www.foodland.hu/receptek/banh-gio-vietnami-piramis-parolt-zsemle/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/banh-gio-viet-nam/"
       },
       {
         "Kuchyňa": "",
@@ -559,7 +664,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/vietnamsky-zeleninovy-salat/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/vietnamsky-zeleninovy-salat/",
+        "AT_url": "https://www.foodland.at/rezepte/vietnamesischer-gemusesalat/",
+        "EN_url": "https://www.foodland-express.com/recipes/vietnamese-vegetable-salad/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/wietnamska-salatka-jarzynowa/",
+        "HU_url": "https://www.foodland.hu/receptek/vietnami-zoldsegsalata/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/salad-rau-viet-nam/"
       },
       {
         "Kuchyňa": "",
@@ -571,7 +683,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/smazene-bravcove-bociky-s-rybaciou-omackou/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/smazene-veprove-bucky-s-rybi-omackou-thit-rang-chay-canh/",
+        "AT_url": "https://www.foodland.at/rezepte/gebratener-schweinebauch-mit-fischsauce-thit-rang-chay-canh/",
+        "EN_url": "https://www.foodland-express.com/recepty/fish-sauce-glazed-pork-belly/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/smazony-boczek-wieprzowy-z-sosem-rybnym-thit-rang-chay-canh/",
+        "HU_url": "https://www.foodland.hu/receptek/sult-serteshas-halszosszal-thit-rang-chay-canh/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/thit-rang-chay-canh/"
       },
       {
         "Kuchyňa": "",
@@ -583,7 +702,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/vietnamska-huspenina-thit-dong/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/vietnamska-huspenina-thit-dong/",
+        "AT_url": "https://www.foodland.at/przepisy/mieso-z-gesi-wietnamskiej-thit-dong/",
+        "EN_url": "https://www.foodland-express.com/recipes/jellied-pork-thit-.dong/",
+        "PL_url": "https://www.foodland-express.pl/rezepte/vietnamesisches-gansefleisch-thit-dong/",
+        "HU_url": "https://www.foodland.hu/receptek/vietnami-libahus-thit-dong/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/thit-dong/"
       },
       {
         "Kuchyňa": "",
@@ -595,7 +721,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/ako-sa-vari-jasminova-ryza/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/jak-se-vari-jasminova-ryze/",
+        "AT_url": "https://www.foodland.at/rezepte/wie-man-jasminreis-kocht/",
+        "EN_url": "https://www.foodland-express.com/recipes/how-to-cook-rice-jasminova/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/jak-gotowac-ryz-jasminowy/",
+        "HU_url": "https://www.foodland.hu/receptek/hogyan-kell-fozni-a-jazmin-rizst/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-moon-an/cach-nau-com-gao-jasmine/"
       },
       {
         "Kuchyňa": "",
@@ -607,7 +740,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/banh-ran-sezamove-gulocky/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/sezamove-gulocky-banh-ran/",
+        "AT_url": "https://www.foodland.at/rezepte/sesamballchen-banh-ran/",
+        "EN_url": "https://www.foodland-express.com/recipes/banh-ran-sesame-ball/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/kulki-sezamowe-banh-ran/",
+        "HU_url": "https://www.foodland.hu/receptek/szezamgolyok-banh-ran/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/banh-ran-vung/"
       },
       {
         "Kuchyňa": "Kórejská kuchyňa",
@@ -619,7 +759,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/kimchi-ramen/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/kimchi-ramen/",
+        "AT_url": "https://www.foodland.at/rezepte/kimchi-ramen/",
+        "EN_url": "https://www.foodland-express.com/recipes/kimchi-ramen/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/kimchi-ramen/",
+        "HU_url": "https://www.foodland.hu/receptek/kimchi-ramen/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/ramen-kim-chi/"
       },
       {
         "Kuchyňa": "",
@@ -631,7 +778,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/kimchi-jjigae-dusene-kimchi-s-masom-a-tofu/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/kimchi-jjigae-dusene-kimchi-s-masem-a-tofu/",
+        "AT_url": "https://www.foodland.at/recepty/kimchi-jjigae-eintopf-kimchi-mit-fleisch-und-tofu/",
+        "EN_url": "https://www.foodland-express.com/recipes/kimchi-jjigae-kimchi-stew-with-meat-and-tofu/",
+        "PL_url": "https://www.foodland-express.pl/recepty/kimchi-jjigae-kimchi-duszone-z-miesem-i-tofu/",
+        "HU_url": "https://www.foodland.hu/recepty/kimchi-jjigae-porkolt-kimchi-hussal-es-tofuval/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/kimchi-jjigae-kimchi-ham-voi-thit-va-dau-phu/"
       },
       {
         "Kuchyňa": "",
@@ -643,7 +797,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/japchae-prazene-sklenene-rezance-s-hovadzim-masom-a-zeleninou/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/japchae-korejske-prazene-sklenene-nudle-s-hovezim-masem-a-zeleninou/",
+        "AT_url": "https://www.foodland.at/receptek/japchae-koreai-sult-uvegteszta-marhahussal-es-zoldsegekkel/",
+        "EN_url": "https://www.foodland-express.com/recipes/japchae-roasted-glass-noodles-with-beef-and-vegetables/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/japchae-koreanski-smazony-makaron-szklany-z-wolowina-i-warzywami/",
+        "HU_url": "https://www.foodland.hu/receptek/japchae-koreai-sult-uvegteszta-marhahussal-es-zoldsegekkel/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/japchae-mien-xao-thit-bo-va-rau-han-quoc/"
       },
       {
         "Kuchyňa": "",
@@ -655,7 +816,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/tradicny-kimchi-recept/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/tradicni-kimchi-recept-tongbaechu-kimchi-tongbaechugimchi/",
+        "AT_url": "https://www.foodland.at/rezepte/traditionelles-kimchi-rezept-tongbaechu-kimchi-tongbaechugimchi/",
+        "EN_url": "https://www.foodland-express.com/recipes/traditional-kimchi-recipe/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/tradycyjny-przepis-na-kimchi-tongbaechu-kimchi-tongbaechugimchi/",
+        "HU_url": "https://www.foodland.hu/receptek/hagyomanyos-kimcsi-recept-tongbaechu-kimchi-tongbaechugimchi/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/cong-thuc-kimchi-truyen-thong/"
       },
       {
         "Kuchyňa": "",
@@ -667,7 +835,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/bulgogi-korejske-hovadzie-bbq/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/bulgogi-korejske-hovezi-bbq/",
+        "AT_url": "https://www.foodland.at/rezepte/bulgogi-koreanisches-rindfleisch-bbq/",
+        "EN_url": "https://www.foodland-express.com/recipes/bulgogi-korean-bbq-beef/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/bulgogi-koreanski-grill-wolowy/",
+        "HU_url": "https://www.foodland.hu/receptek/bulgogi-koreai-marhahus-bbq/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/bulgogi-bbq-bo-han-quoc/"
       },
       {
         "Kuchyňa": "",
@@ -679,7 +854,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/kimchi-prazena-ryza/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/kimchi-prazena-ryze/",
+        "AT_url": "https://www.foodland.at/rezepte/gebratener-kimchi-reis/",
+        "EN_url": "https://www.foodland-express.com/recipes/kimchi-fried-rice/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/ryz-smazony-kimchi/",
+        "HU_url": "https://www.foodland.hu/receptek/kimchi-sult-rizs/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/com-rang-kimchi/"
       },
       {
         "Kuchyňa": "",
@@ -691,7 +873,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/bibimbap-korejska-specialita/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/bibimbap-korejska-specialita/",
+        "AT_url": "https://www.foodland.at/rezepte/bibimbap-koreanische-spezialitat/",
+        "EN_url": "https://www.foodland-express.com/recipes/bibimbap-korean-specialty/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/bibimbap-koreanska-specjalnosc/",
+        "HU_url": "https://www.foodland.hu/receptek/bibimbap-koreai-specialitas/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/bibimbap-dac-san-han-quoc/"
       },
       {
         "Kuchyňa": "",
@@ -703,7 +892,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/gimbap-korejske-susi-rolky/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/gimbap-korejska-verze-susi-role/",
+        "AT_url": "https://www.foodland.at/rezepte/gimbap-koreanische-version-einer-sushi-rolle/",
+        "EN_url": "https://www.foodland-express.com/recipes/korean-version-of-the-sushi-roll/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/gimbap-koreanska-wersja-rolki-sushi/",
+        "HU_url": "https://www.foodland.hu/receptek/gimbap-egy-sushi-tekercs-koreai-valtozata/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/gimbap-sushi-cuon-phien-ban-han-quoc/"
       },
       {
         "Kuchyňa": "Japonská kuchyňa",
@@ -715,7 +911,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/20-minutove-japonske-kuracie-kari/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/20minutove-japonske-kureci-kari/",
+        "AT_url": "https://www.foodland.at/rezepte/20-minutiges-japanisches-huhnchen-curry/",
+        "EN_url": "https://www.foodland-express.com/recipes/20-minute-japanese-chicken-curry/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/20-minutowe-japonskie-curry-z-kurczakiem/",
+        "HU_url": "https://www.foodland.hu/receptek/20-perces-japan-csirke-curry/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/ca-ri-ga-kieu-nhat-voi-20-phut/"
       },
       {
         "Kuchyňa": "",
@@ -727,7 +930,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/15-minutovy-udon-s-krevetami-a-cesnakom/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/15-minutovy-udon-s-krevetami-a-cesnekem/",
+        "AT_url": "https://www.foodland.at/rezepte/20-minutiges-japanisches-huhnchen-curry/",
+        "EN_url": "https://www.foodland-express.com/recipes/15-minute-garlic-prawn-udon/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/20-minutowe-japonskie-curry-z-kurczakiem/",
+        "HU_url": "https://www.foodland.hu/receptek/20-perces-japan-csirke-curry/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/15-phut-mi-udon-voi-tom-va-toi/"
       },
       {
         "Kuchyňa": "",
@@ -739,7 +949,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/teriyaki-tofu/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/teriyaki-tofu/",
+        "AT_url": "https://www.foodland.at/rezepte/teriyaki-tofu/",
+        "EN_url": "https://www.foodland-express.com/recipes/teriyaki-tofu/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/tofu-teriyaki/",
+        "HU_url": "https://www.foodland.hu/receptek/teriyaki-tofu/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/dau-phu-teriyaki/"
       },
       {
         "Kuchyňa": "",
@@ -751,7 +968,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/kuromame-gohan-japonska-ryza-s-ciernymi-fazulami/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/kuromame-gohan-japonska-ryze-s-cernymi-fazolemi/",
+        "AT_url": "https://www.foodland.at/rezepte/kuromame-gohan-japanischer-reis-mit-schwarzen-bohnen/",
+        "EN_url": "https://www.foodland-express.com/recipes/kuromame-gohan-black-soy-bean-rice/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/kuromame-gohan-japonski-ryz-z-czarna-fasola/",
+        "HU_url": "https://www.foodland.hu/receptek/kuromame-gohan-japan-rizs-fekete-babbal/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/kuromame-gohan-com-dau-den-kieu-nhat/"
       },
       {
         "Kuchyňa": "",
@@ -763,7 +987,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/yakiudon-japonske-rezance-udon-s-masom-a-zeleninou/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/yakiudon-japonske-rezance-udon-s-masom-a-zeleninou/",
+        "AT_url": "https://www.foodland.at/rezepte/yakiudon-japanische-gerostete-udon-nudeln-mit-fleisch-und-gemuse/",
+        "EN_url": "https://www.foodland-express.com/recipes/yakiudon-japanese-noodles-with-meat-and-vegetables/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/yakiudon-japonski-pieczony-makaron-udon-z-miesem-i-warzywami/",
+        "HU_url": "https://www.foodland.hu/receptek/yakiudon-japan-sult-udon-teszta-hussal-es-zoldsegekkel/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/yakiudon-mi-udon-nhat-ban-xao-thit-va-rau/"
       },
       {
         "Kuchyňa": "",
@@ -775,7 +1006,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/ako-sa-vari-miso-polievka/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/kuromame-gohan-japonska-ryze-s-cernymi-fazolemi/",
+        "AT_url": "https://www.foodland.at/rezepte/wie-man-miso-suppe-kocht/",
+        "EN_url": "https://www.foodland-express.com/recipes/how-to-boil-miso-soup/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/jak-gotowac-zupe-miso/",
+        "HU_url": "https://www.foodland.hu/receptek/hogyan-kell-fozni-miso-levest/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/cach-nau-sup-miso/"
       },
       {
         "Kuchyňa": "",
@@ -787,7 +1025,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/recept-na-pripravu-tempury-vegansky-styl/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/recept-na-pripravu-tempury-vegansky-styl/",
+        "AT_url": "https://www.foodland.at/rezepte/rezept-zur-zubereitung-von-tempura-vegan/",
+        "EN_url": "https://www.foodland-express.com/recipes/recipe-for-making-tempura-vegan-style/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/przepis-na-przygotowanie-tempury-w-stylu-weganskim/",
+        "HU_url": "https://www.foodland.hu/receptek/recept-a-tempura-elkeszitesehez-vegan-stilusban/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/cong-thuc-che-bien-mon-tempura-phong-cach-thuan-chay/"
       },
       {
         "Kuchyňa": "",
@@ -799,7 +1044,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/shoyu-ramen-tajomstvo-najoblubenejsej-japonskej-polievky/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/shoyu-ramen-tajemstvi-nejoblibenejsi-japonske-polevky/",
+        "AT_url": "https://www.foodland.at/rezepte/shoyu-ramen-das-geheimnis-der-beliebtesten-japanischen-nudelsuppe/",
+        "EN_url": "https://www.foodland-express.com/recipes/shoyu-ramen-the-secret-behind-japan-s-most-popular-noodle-soup/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/shoyu-ramen-sekret-najpopularniejszej-japonskiej-zupy-z-makaronem/",
+        "HU_url": "https://www.foodland.hu/receptek/shoyu-ramen-japan-legnepszerubb-ramen-levesenek-titka/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/shoyu-ramen-bi-quyet-cua-mon-mi-nuoc-noi-tieng-nhat-nhat-ban/"
       },
       {
         "Kuchyňa": "Čínska kuchyňa",
@@ -811,7 +1063,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/kung-pao-lotosovy-koren/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/kung-pao-lotosovy-koren/",
+        "AT_url": "https://www.foodland.at/rezepte/kung-pao-lotuswurzel/",
+        "EN_url": "https://www.foodland-express.com/recipes/kung-pao-lotus-root/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/korzen-lotosu-kung-pao/",
+        "HU_url": "https://www.foodland.hu/receptek/kung-pao-lotuszgyoker/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/cu-sen-kung-pao/"
       },
       {
         "Kuchyňa": "",
@@ -823,7 +1082,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/recept-pekingska-kacica/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/recept-pekingska-kachna/",
+        "AT_url": "https://www.foodland.at/rezepte/pekingente/",
+        "EN_url": "https://www.foodland-express.com/recipes/recipe-peking-duck/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/kaczka-po-pekinsku/",
+        "HU_url": "https://www.foodland.hu/receptek/pekingi-kacsa/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/cong-thuc-vit-quay-bac-kinh/"
       },
       {
         "Kuchyňa": "",
@@ -835,7 +1101,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/ma-po-tofu/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/ma-po-tofu/",
+        "AT_url": "https://www.foodland.at/rezepte/ma-po-tofu/",
+        "EN_url": "https://www.foodland-express.com/recipes/ma-po-tofu/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/mam-po-tofu/plico/",
+        "HU_url": "https://www.foodland.hu/receptek/ma-po-tofu/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/dau-phu-ma-po/"
       },
       {
         "Kuchyňa": "",
@@ -847,7 +1120,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/ostro-kysla-polievka-suan-la-tang/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/sichuanska-ostre-kysela-polevka-suan-la-tang/",
+        "AT_url": "https://www.foodland.at/rezepte/scharf-saure-sichuan-suppe-suan-la-tang/",
+        "EN_url": "https://www.foodland-express.com/recipes/sichuan-hot-and-sour-soup-suan-la-tang/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/zupa-syczuanska-goraca-i-kwasna-suan-la-tang/",
+        "HU_url": "https://www.foodland.hu/receptek/szecsuani-forro-savanyu-leves-suan-la-tang/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/sup-chua-cay-tu-xuyen-suan-la-tang/"
       },
       {
         "Kuchyňa": "",
@@ -859,7 +1139,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/originalne-kuracie-kung-pao/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/originalni-kureci-kung-pao/",
+        "AT_url": "https://www.foodland.at/rezepte/original-hahnchen-kung-pao/",
+        "EN_url": "https://www.foodland-express.com/recipes/the-original-chicken-kung-pao/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/oryginalne-kurczak-kung-pao/",
+        "HU_url": "https://www.foodland.hu/receptek/eredeti-kung-pao-csirke/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/kung-pao-ga-nguyen-ban/"
       },
       {
         "Kuchyňa": "Indická kuchyňa",
@@ -871,7 +1158,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/murgh-makhani-indicke-maslove-kura/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/murgh-makhani-indicka-maslova-kure/",
+        "AT_url": "https://www.foodland.at/rezepte/murgh-makhani-indisches-butterhuhn/",
+        "EN_url": "https://www.foodland-express.com/recipes/murgh-makhani-indian-butter-chicken/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/murgh-makhani-indyjski-kurczak-na-masle/",
+        "HU_url": "https://www.foodland.hu/receptek/murgh-makhani-indiai-vajas-csirke/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/murgh-makhani-ga-bo-an-do/"
       },
       {
         "Kuchyňa": "",
@@ -883,7 +1177,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/kuracia-tikka-masala/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/kuracia-tikka-masala/",
+        "AT_url": "https://www.foodland.at/rezepte/chicken-tikka-masala/",
+        "EN_url": "https://www.foodland-express.com/recipes/chicken-tikka-masala/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/kurczak-tikka-masala/",
+        "HU_url": "https://www.foodland.hu/receptek/tikka-masala-csirke/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/tikka-masala-ga/"
       },
       {
         "Kuchyňa": "",
@@ -895,7 +1196,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/tandoori-masala-kurca/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/tandoori-masala-kure/",
+        "AT_url": "https://www.foodland.at/rezepte/tandoori-masala-hahnchen/",
+        "EN_url": "https://www.foodland-express.com/recipes/tandoori-masala-chicken/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/kurczak-tandoori-masala/",
+        "HU_url": "https://www.foodland.hu/receptek/tandoori-masala-csirke/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/tandoori-masala-ga/"
       },
       {
         "Kuchyňa": "",
@@ -907,7 +1215,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/kuracie-biryani-indicke-kuracie-rizoto/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/kureci-biryani-indicke-kureci-rizoto/",
+        "AT_url": "https://www.foodland.at/rezepte/chicken-biryani-indisches-huhnerrisotto/",
+        "EN_url": "https://www.foodland-express.com/recipes/chicken-biryani-indian-chicken-risotto/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/chicken-biryani-indyjskie-risotto-z-kurczakiem/",
+        "HU_url": "https://www.foodland.hu/receptek/chicken-biryani-indiai-csirke-rizotto/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/biryani-ga-risotto-ga-an-do/"
       },
       {
         "Kuchyňa": "Indonézska kuchyňa",
@@ -919,7 +1234,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/nasi-goreng/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/nasi-goreng/",
+        "AT_url": "https://www.foodland.at/rezepte/nasi-goreng/",
+        "EN_url": "https://www.foodland-express.com/recipes/nasi-goreng/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/nasi-goreng/",
+        "HU_url": "https://www.foodland.hu/receptek/nasi-goreng/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/nasi-goreng/"
       },
       {
         "Kuchyňa": "",
@@ -931,7 +1253,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/mie-goreng/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/mie-goreng/",
+        "AT_url": "https://www.foodland.at/rezepte/mie-goreng/",
+        "EN_url": "https://www.foodland-express.com/recipes/mie-goreng/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/mie-goreng/",
+        "HU_url": "https://www.foodland.hu/receptek/mie-goreng/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/mie-goreng/"
       },
       {
         "Kuchyňa": "",
@@ -943,7 +1272,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/rendang-je-tradicne-a-oblubene-indonezske-jedlo-pochadzajuce-z-indonezie/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/rendang-tajemstvi-tradicniho-indoneskeho-pokrmu/",
+        "AT_url": "https://www.foodland.at/rezepte/rendang-das-geheimnis-eines-traditionellen-indonesischen-gerichts/",
+        "EN_url": "https://www.foodland-express.com/recipes/rendang-the-secret-of-a-traditional-indonesian-dish/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/rendang-sekret-tradycyjnego-indonezyjskiego-dania/",
+        "HU_url": "https://www.foodland.hu/receptek/rendang-egy-hagyomanyos-indonez-etel-titka/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/rendang-bi-mat-mon-an-truyen-thong-cua-indonesia/"
       },
       {
         "Kuchyňa": "Malajská kuchyňa",
@@ -955,7 +1291,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/malajsky-hovadzi-rendang-chutna-pozitkova-lahodka/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/malajsky-hovezi-rendang-chutna-pozitkova-lahudka/",
+        "AT_url": "https://www.foodland.at/rezepte/malaysisches-rindfleisch-rendang-eine-kostliche-delikatesse/",
+        "EN_url": "https://www.foodland-express.com/recipes/malaysian-beef-rendang-a-tasty-delight/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/malezyjski-rendang-wolowy-pyszne-rozkoszne-przysmaki/",
+        "HU_url": "https://www.foodland.hu/receptek/malajziai-marhahus-rendang-izletes-kenyezteto-finomsagok/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/thit-bo-rendang-malaysia-mon-an-ngon-tuyet-voi/"
       },
       {
         "Kuchyňa": "",
@@ -967,7 +1310,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/blog/nasi-lemak-chutne-malajske-potesenie/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/nasi-lemak-chutne-malajske-poteseni/",
+        "AT_url": "https://www.foodland.at/rezepte/nasi-lemak-ein-kostlicher-malaysischer-hochgenuss/",
+        "EN_url": "https://www.foodland-express.com/blog/nasi-lemak-a-tasty-malaysian-delight/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/nasi-lemak-pyszny-malezyjski-przysmak/",
+        "HU_url": "https://www.foodland.hu/receptek/nasi-lemak-a-delicious-malaysian-delight/",
+        "VI_url": "https://vn.foodland.sk/blog/nasi-lemak-mon-an-ngon-cua-malaysia/"
       },
       {
         "Kuchyňa": "Singapurská kuchyňa",
@@ -979,7 +1329,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/hainanske-kurca-na-ryzi/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/hain-anske-kure-na-ryzi/",
+        "AT_url": "https://www.foodland.at/rezepte/hainan-huhn-auf-reis/",
+        "EN_url": "https://www.foodland-express.com/recipes/hainanese-chicken-on-rice/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/kurczak-po-hajnansku-z-ryzem/",
+        "HU_url": "https://www.foodland.hu/receptek/hainanese-csirke-rizsen/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/com-ga-hai-nam/"
       },
       {
         "Kuchyňa": "",
@@ -991,7 +1348,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/pikantne-singapurske-rezance/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/pikantni-singapurske-nudle/",
+        "AT_url": "https://www.foodland.at/rezepte/scharfe-singapur-nudeln/",
+        "EN_url": "https://www.foodland-express.com/recipes/spicy-singapore-noodles/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/pikantne-singapurskie-kluski/",
+        "HU_url": "https://www.foodland.hu/receptek/fuszeres-szingapuri-teszta/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/mi-cay-singapore/"
       },
       {
         "Kuchyňa": "Filipínska kuchyňa",
@@ -1003,7 +1367,14 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka (anomálie na webe)": ""
+        "Poznámka (anomálie na webe)": "",
+        "SK_url": "https://www.foodland.sk/recepty/sinigang-filipinska-kysla-polievka-s-bravcovym-masom-a-zeleninou/",
+        "CZ_url": "https://www.foodland-express.cz/recepty/sinigang-nejlepsi-zeleninova-polevka-na-svete/",
+        "AT_url": "https://www.foodland.at/rezepte/sinigang-die-beste-gemusesuppe-der-welt/",
+        "EN_url": "https://www.foodland-express.com/recipes/sinigang-filipino-sour-soup-with-pork-and-vegetables/",
+        "PL_url": "https://www.foodland-express.pl/przepisy/sinigang-najlepsza-zupa-jarzynowa-na-swiecie/",
+        "HU_url": "https://www.foodland.hu/receptek/sinigang-a-legjobb-zoldsegleves-a-vilagon/",
+        "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/sinigang-canh-chua-thit-heo-va-rau-cu-philippines/"
       }
     ],
     "Magazine": [

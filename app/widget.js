@@ -76,13 +76,13 @@
         title: "Tradičný Kimchi recept",
         cuisine: "Kórejská",
         note: "",
-        link: "https://www.foodland.sk/?s=Tradi%C4%8Dn%C3%BD+Kimchi+recept",
+        link: "https://www.foodland.sk/recepty/tradicny-kimchi-recept/",
       },
       {
         title: "Kimchi Ramen",
         cuisine: "Kórejská",
         note: "",
-        link: "https://www.foodland.sk/?s=Kimchi+Ramen",
+        link: "https://www.foodland.sk/recepty/kimchi-ramen/",
       },
     ],
     ramen: [
@@ -90,13 +90,13 @@
         title: "Shoyu Ramen",
         cuisine: "Japonská",
         note: "",
-        link: "https://www.foodland.sk/?s=Shoyu+Ramen",
+        link: "https://www.foodland.sk/recepty/shoyu-ramen-tajomstvo-najoblubenejsej-japonskej-polievky/",
       },
       {
         title: "Kimchi Ramen",
         cuisine: "Kórejská",
         note: "",
-        link: "https://www.foodland.sk/?s=Kimchi+Ramen",
+        link: "https://www.foodland.sk/recepty/kimchi-ramen/",
       },
     ],
     pho: [
@@ -104,13 +104,13 @@
         title: "Vietnamská hovädzia polievka PHỞ BÒ",
         cuisine: "Vietnamská",
         note: "",
-        link: "https://www.foodland.sk/?s=Vietnamsk%C3%A1+hov%C3%A4dzia+polievka+PHO+BO",
+        link: "https://www.foodland.sk/recepty/ako-sa-vari-vietnamska-hovadzia-polievka-pho-bo/",
       },
       {
         title: "Vietnamská kuracia polievka PHỞ GÀ",
         cuisine: "Vietnamská",
         note: "",
-        link: "https://www.foodland.sk/?s=Vietnamsk%C3%A1+kuracia+polievka+PHO+GA",
+        link: "https://www.foodland.sk/recepty/pho-ga/",
       },
     ],
     pad_thai: [
@@ -118,13 +118,13 @@
         title: "Vegánske Pad Thai",
         cuisine: "Thajská",
         note: "",
-        link: "https://www.foodland.sk/?s=Veg%C3%A1nske+Pad+Thai",
+        link: "https://www.foodland.sk/recepty/veganske-pad-thai/",
       },
       {
         title: "Kuracie Pad Thai",
         cuisine: "Thajská",
         note: "",
-        link: "https://www.foodland.sk/?s=Kuracie+Pad+Thai",
+        link: "https://www.foodland.sk/recepty/kuracie-pad-thai/",
       },
     ],
   };
