@@ -48,6 +48,27 @@
     },
   ];
 
+  const soySauceDemoProducts = [
+    {
+      title: "Bezlepková sójová omáčka MEGACHEF 200 ml",
+      effective_price: 3.45,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "MEGACHEF",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/bezlepkova-sojova-omacka-megachef-200-ml-591.jpg?ft=1680262409&nwtrmrk=1",
+      link: "https://www.foodland.sk/sojove-omacky/bezlepkova-sojova-omacka-megachef-200-ml/",
+    },
+    {
+      title: "Double Deluxe sójová omáčka LEE KUM KEE 500ml",
+      effective_price: 3.93,
+      currency: "EUR",
+      availability: "in_stock",
+      brand: "LEE KUM KEE",
+      image_link: "https://www.foodland.sk/sub/foodland.sk/shop/product/lee-kum-kee-double-deluxe-sojova-omacka-500-ml-1190.jpg?ft=1680861172&nwtrmrk=1",
+      link: "https://www.foodland.sk/sojove-omacky/double-deluxe-sojova-omacka-lee-kum-kee-500-ml/",
+    },
+  ];
+
   const kimchiIngredientDemoProducts = [
     {
       title: "Čili pasta Gochujang Ofood DAESANG 500g",
@@ -117,6 +138,8 @@
     const normalizedText = normalizedInput(text);
     if (normalizedText.includes("kimchi") || normalizedText.includes("kimci")) {
       lastProductSubject = "kimchi";
+    } else if (isSoySauceRequest(normalizedText)) {
+      lastProductSubject = "sojova omacka";
     } else if (normalizedText.includes("sushi") || normalizedText.includes("susi")) {
       lastProductSubject = "sushi";
     } else if (normalizedText.includes("ramen") || normalizedText.includes("ramyun") || normalizedText.includes("ramyeon")) {
@@ -128,9 +151,12 @@
 
   function withFollowUpContext(text) {
     const normalizedText = normalizedInput(text).trim();
-    const hasKnownSubject = ["kimchi", "kimci", "sushi", "susi", "ramen", "ramyun", "ramyeon", "gochujang", "gochuang"].some(function (subject) {
+    const hasKnownSubject = ["kimchi", "kimci", "sushi", "susi", "ramen", "ramyun", "ramyeon", "gochujang", "gochuang", "sojova", "sojove", "sojovy", "omacka", "omacky"].some(function (subject) {
       return normalizedText.includes(subject);
     });
+    const isExplicitProductQuery = isSoySauceRequest(normalizedText)
+      || normalizedText.includes("srirach")
+      || normalizedText.includes("srirac");
     const isRelatedFollowUp = [
       "na vyrobu",
       "na pripravu",
@@ -145,10 +171,15 @@
       return normalizedText.includes(marker);
     });
 
-    if (lastProductSubject && !hasKnownSubject && isRelatedFollowUp) {
+    if (lastProductSubject && !hasKnownSubject && !isExplicitProductQuery && isRelatedFollowUp) {
       return `${lastProductSubject} ${text}`;
     }
     return text;
+  }
+
+  function isSoySauceRequest(normalizedText) {
+    return (normalizedText.includes("sojov") || normalizedText.includes("soy sauce") || normalizedText.includes("tamari"))
+      && (normalizedText.includes("omack") || normalizedText.includes("sauce") || normalizedText.includes("tamari"));
   }
 
   function isKimchiIngredientRequest(normalizedText) {
@@ -616,9 +647,9 @@
     if (demoMode) {
       await new Promise(function (resolve) { window.setTimeout(resolve, 600); });
       const normalizedText = normalizedInput(backendText);
-      let products = demoProducts;
+      let products = [];
       let recipes = [];
-      let answer = "Našiel som niekoľko vhodných produktov. Pozrite si odporúčania nižšie.";
+      let answer = "Nenašiel som presnú demo odpoveď. Skúste napísať názov produktu alebo kategóriu presnejšie.";
 
       if (isKimchiRecipeRequest(normalizedText)) {
         products = [];
@@ -631,11 +662,18 @@
           },
         ];
         answer = "Našiel som recept z Foodland.sk. Otvorte si ho nižšie.";
-      } else if (normalizedText.includes("srirach") || normalizedText.includes("srirac")) {
-        products = srirachaDemoProducts;
       } else if (isKimchiIngredientRequest(normalizedText)) {
         products = kimchiIngredientDemoProducts;
         answer = "Na výrobu kimchi odporúčam najmä gochujang, čili papriku, rybaciu omáčku, ryžovú múku a sezamový olej.";
+      } else if (normalizedText.includes("kimchi") || normalizedText.includes("kimci")) {
+        products = demoProducts;
+        answer = "Našiel som niekoľko vhodných produktov. Pozrite si odporúčania nižšie.";
+      } else if (isSoySauceRequest(normalizedText)) {
+        products = soySauceDemoProducts;
+        answer = "Našiel som sójové omáčky. Pozrite si odporúčania nižšie.";
+      } else if (normalizedText.includes("srirach") || normalizedText.includes("srirac")) {
+        products = srirachaDemoProducts;
+        answer = "Našiel som niekoľko vhodných produktov. Pozrite si odporúčania nižšie.";
       }
 
       return {
