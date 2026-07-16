@@ -25,13 +25,25 @@ from tenacity import (
 )
 from pydantic import BaseModel, Field
 
-from app.feed import Product, load_products_json, parse_google_merchant_feed
+from app.feed import (
+    Product,
+    load_multilang_feeds,
+    load_products_json,
+    multilang_translation_index,
+    parse_google_merchant_feed,
+)
 from app.knowledge import (
     best_faq_answer,
     knowledge_context,
     knowledge_summary,
     load_knowledge_json,
     search_knowledge,
+)
+from app.knowledge_builder import (
+    ProductSnapshot,
+    build_knowledge,
+    build_product_snapshot,
+    save_knowledge,
 )
 from app.search import normalize, products_context, search_products, tokenize
 
@@ -110,6 +122,9 @@ knowledge = load_knowledge()
 last_feed_refresh_at = int(time.time()) if products else None
 last_feed_refresh_error: str | None = None
 feed_refresh_task: asyncio.Task | None = None
+# Knowledge-builder state
+product_snapshot: ProductSnapshot = build_product_snapshot(products)
+translation_index: dict[str, dict[str, "Product"]] = {}
 rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 _RATE_LIMIT_MAX_CLIENTS = 50_000  # BUG-02: ochrana pamate – max pocet trackovanych klientov
 DEFAULT_RUNTIME_LOG_DIR = Path(tempfile.gettempdir()) / "foodland-ai-agent"
@@ -138,7 +153,7 @@ RELATED_PRODUCT_QUERIES = {
     "gochujang": [
         "kimchi",
         "sezamovy olej",
-        "jazminova ryza",
+        "jazi,nova ryza",
         "sushi ryza",
         "ramen",
         "sojova omacka",
@@ -183,7 +198,7 @@ RELATED_PRODUCT_QUERIES = {
     ],
     "gyoza": [
         "sojova omacka",
-        "rypovy ocot",
+        "ryzovy ocot",
         "chilli olej",
     ],
 }
@@ -339,7 +354,6 @@ SPECIAL_PRODUCT_EXCLUDE_TERMS = {
         "miska",
         "misky",
         "nadoba",
-
         "doza",
         "davkovac",
         "obal",
@@ -347,7 +361,7 @@ SPECIAL_PRODUCT_EXCLUDE_TERMS = {
     "kids_snack": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi", "soju", "sake", "alkohol"),
     "asian_sweets": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi", "soju", "sake", "alkohol"),
     "dairy_replacement": ("dezert", "cukrik", "snack", "cokolad"),
-    "fermented_sour": ("polievky", "lemonade", "cukrik", "krekry", "forma", "noznice", "miska"),
+    "fermented_sour": ("polievk", "lemonade", "cukrik", "krekry", "forma", "noznice", "miska"),
     "vegan_asian": ("caj", "kava", "napoj", "dzus", "cukrik", "snack", "box", "filter"),
     "no_pork_asian": ("caj", "kava", "napoj", "dzus", "cukrik", "snack", "box", "filter"),
     "medium_spicy": ("rezance", "chips", "cipsy", "curry", "kari pasta", "sladk"),
@@ -371,7 +385,7 @@ FAQ_INTENT_MARKERS = (
     "plat",
     "kartou",
     "hotovost",
-    "vyzdvigh",
+    "vyzdvih",
     "reklamac",
     "vraten",
 )
@@ -433,7 +447,7 @@ ALLERGEN_TERMS = {
     "soja": "sóju",
     "soj": "sóju",
     "lepok": "lepok",
-    "gloten": "lepok",
+    "gluten": "lepok",
     "arasid": "arašidy",
     "orech": "orechy",
     "mlieko": "mlieko",
@@ -441,7 +455,7 @@ ALLERGEN_TERMS = {
     "vajc": "vajcia",
     "sezam": "sezam",
     "ryb": "ryby",
-    "makky": "mákkýše",
+    "makky": "mäkkýše",
     "krev": "krevety",
     "vegan": "vhodnosť pre veganov",
 }
@@ -483,7 +497,7 @@ _openai_client: OpenAI | None = None
 def _get_openai_client() -> OpenAI | None:
     """Vrati singleton OpenAI klienta. None ak OPENAI_API_KEY nie je nastaveny."""
     global _openai_client
-    api_key = os.getenv("OPENA_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         return None
     if _openai_client is None:
@@ -492,7 +506,7 @@ def _get_openai_client() -> OpenAI | None:
 
 
 # RETRY-01: Retry pre transientne OpenAI chyby (rate limit, timeout, connection)
-# Max 3 pokusy, exponencialne backoff 1s → 2s → 4s, ostatne vynimky padaju okamzaite.
+# Max 3 pokusy, exponencialne backoff 1s → 2s → 4s, ostatne vynimky padaju okamzite.
 @retry(
     retry=retry_if_exception_type((RateLimitError, APITimeoutError, APIConnectionError)),
     wait=wait_exponential(multiplier=1, min=1, max=8),
@@ -502,7 +516,7 @@ def _get_openai_client() -> OpenAI | None:
 def _call_openai_with_retry(client: OpenAI, messages: list[dict], model: str) -> str:
     """
     Zavola OpenAI chat completion s retry pri transientnych chybach.
-    Vracia text odpovede aleZo prazdny retazec ak choices[0].message.content je None.
+    Vracia text odpovede alebo prazdny retazec ak choices[0].message.content je None.
     """
     response = client.chat.completions.create(model=model, messages=messages)
     return response.choices[0].message.content or ""
@@ -512,7 +526,7 @@ app = FastAPI(title="Foodland AI Agent", version="0.1.0")
 app.mount("/static", UTF8StaticFiles(directory=Path(__file__).parent), name="static")
 
 allowed_origins = [
-     origin.strip()
+    origin.strip()
     for origin in os.getenv("ALLOWED_ORIGINS", "https://www.foodland.sk,https://foodland.sk").split(",")
     if origin.strip()
 ]
@@ -646,7 +660,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             {
                 "role": "user",
                 "content": (
-                    f"Otázka zákazníka: {chat_request.message}\n\n"
+                    f"Otázka zákazhíka: {chat_request.message}\n\n"
                     f"Relevantné produkty:\n{products_context(matches)}\n\n"
                     f"Foodland Knowledge:\n{knowledge_context(knowledge_matches)}\n\n"
                     f"Bezpečnostná poznámka: {composition_caution_context(needs_composition_caution)}"
@@ -998,7 +1012,7 @@ def recipe_answer(subject: str, recipes: list[dict] | None = None) -> str:
     if recipes:
         if len(recipes) == 1:
             return "Našiel som recept z Foodland.sk. Otvorte si ho nižšie."
-        return "Našiel som recepty z Foodland.sk. Vyberte si z z odporúčanícj nižšie."
+        return "Našiel som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie."
 
     return "Receptovú otázku som zachytil, ale nemám dosť detailov na presný recept. Skúste napísať napríklad: recept na kimchi alebo recept na pad thai."
 
@@ -1045,11 +1059,11 @@ def detect_special_product_subject(message: str) -> str | None:
         return "korean_paste"
     if "vegan" in normalized_message and any(marker in normalized_message for marker in ("azij", "europsk", "jedl")):
         return "vegan_asian"
-    if "bravcov" in normalized_message and any(marker in normalized_message for marker in ("azicj", "jedl", "bez")):
+    if "bravcov" in normalized_message and any(marker in normalized_message for marker in ("azij", "jedl", "bez")):
         return "no_pork_asian"
     if "sladkost" in normalized_message or (
         "snack" in normalized_message
-        and any(marker in normalized_message for marker in ("azicj", "cokolad", "europsk"))
+        and any(marker in normalized_message for marker in ("azij", "cokolad", "europsk"))
         and "omack" not in normalized_message
     ):
         return "asian_sweets"
@@ -1181,6 +1195,23 @@ def allergen_product_matches(message: str, limit: int) -> list[dict]:
 def allergen_product_query(message: str) -> str:
     normalized_message = normalize(message)
     if "bez soj" in normalized_message or "bez soja" in normalized_message:
+        return ""
+    if "gochu jang" in normalized_message or "gochudzang" in normalized_message or "gochudang" in normalized_messa
+def detect_out_of_domain(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(marker in normalized_message for marker in OUT_OF_DOMAIN_MARKERS)
+
+
+def allergen_product_matches(message: str, limit: int) -> list[dict]:
+    query = allergen_product_query(message)
+    if not query:
+        return []
+    return search_products(products, query, limit)
+
+
+def allergen_product_query(message: str) -> str:
+    normalized_message = normalize(message)
+    if "bez" in normalized_message:
         return ""
     if "gochu jang" in normalized_message or "gochudzang" in normalized_message or "gochudang" in normalized_message:
         return "gochujang"
@@ -1317,7 +1348,6 @@ def is_generic_allergen_recommendation_tail(normalized_text: str) -> bool:
 
 
 def is_gluten_free_search(message_or_normalized: str) -> bool:
-
     normalized_message = normalize(message_or_normalized)
     return (
         "bezlepk" in normalized_message
@@ -1340,9 +1370,9 @@ def composition_caution_context(needs_composition_caution: bool) -> str:
 
 
 def allergen_safety_answer(allergen_term: str) -> str:
-    if allergen_term == "alergény":
+    if allergen_term in ("alergeny", "alerginy"):
         return (
-            "Pri alergénoch vám nechcem odporučiť nesprávny produkt. "
+            "Pri alergènoch vám nechcem odporučiť nesprávny produkt. "
             "Prosím overte zloženie v detaile konkrétneho produktu alebo nám napíšte názov produktu, "
             "ktorý chcete skontrolovať."
         )
@@ -1411,7 +1441,6 @@ def fallback_answer(
     related_subject: str | None = None,
     needs_composition_caution: bool = False,
 ) -> str:
-
     knowledge_matches = knowledge_matches or {}
     faq_answer = best_faq_answer(knowledge_matches)
     if faq_answer and not matches:
@@ -1420,20 +1449,20 @@ def fallback_answer(
     if matches:
         count = min(len(matches), 5)
         caution = (
-            " Pri bezlepkových produktoch alebo otázkach na zložení si prosím overte zložení v detaile produktu."
+            " Pri bezlepkových produktoch alebo otázkach na zloženie si prosím overte zloženie v detaile produktu."
             if needs_composition_caution
             else ""
         )
         if related_subject:
             return f"Našiel som {count} súvisiacich produktov a surovín, ktoré sa hodia k téme {related_subject}.{caution}"
         if knowledge_matches:
-            return f"Našiel som {count} vhodných produktov a doplnil som odporúčania z Foodland poradcú.{caution}"
+            return f"Našiel som {count} vhodných produktov a doplnil som odporúčania z Foodland poradcu.{caution}"
         return f"Našiel som {count} vhodných produktov. Pozrite si odporúčania nižšie.{caution}"
 
     if knowledge_matches:
-        return "Našiel som súvisiacé informácie vo Foodland poradcovi."
+        return "Našiel som súvisiace informácie vo Foodland poradcovi."
 
-    return "Nenašiel som presnú odpoveď. Skúster otázku napísať trochu inak."
+    return "Nenašiel som presnú odpoveď. Skúste otázku napísať trochu inak."
 
 
 @app.on_event("startup")
@@ -1444,50 +1473,63 @@ async def start_feed_refresh_loop() -> None:
         logger.info("Starting feed refresh loop every %s minutes.", refresh_minutes)
         feed_refresh_task = asyncio.create_task(feed_refresh_loop(refresh_minutes))
 
-@app.on_event("shutdown")
-async def stop_feed_refresh_loop() -> None:
-    if feed_refresh_task:
-        logger.info("Stopping feed refresh loop.")
-        feed_refresh_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await feed_refresh_task
-
 
 async def feed_refresh_loop(refresh_minutes: int) -> None:
+    """Periodicky obnovi produktovy feed a prebuduje knowledge databazu."""
+    global last_feed_refresh_error
     while True:
         await asyncio.sleep(refresh_minutes * 60)
         try:
-            await asyncio.wait_for(asyncio.to_thread(refresh_feed), timeout=60)
+            await asyncio.wait_for(
+                asyncio.to_thread(refresh_feed),
+                timeout=90.0,
+            )
         except asyncio.TimeoutError:
-            logger.error("Feed refresh timeout.")
+            last_feed_refresh_error = "feed_refresh_timeout"
+            logger.error("Feed refresh timed out after 90s.")
+        except Exception as exc:
+            last_feed_refresh_error = str(exc)
+            logger.error("Feed refresh failed: %s", exc, exc_info=True)
+        else:
+            try:
+                await asyncio.wait_for(rebuild_knowledge_from_feed(), timeout=300.0)
+            except asyncio.TimeoutError:
+                logger.error("Knowledge rebuild timed out after 300s.")
+            except Exception as exc:
+                logger.error("Knowledge rebuild failed: %s", exc, exc_info=True)
 
 
 def refresh_feed() -> None:
-    global products, last_feed_refresh_at, last_feed_refresh_error
-    try:
-        logger.info("Refreshing feed.")
-        refreshed_products = load_products()
-        if refreshed_products:
-            products = refreshed_products
-            last_feed_refresh_at = int(time.time())
-            last_feed_refresh_error = None
-            logger.info("Feed refreshed successfully: %s products.", len(products))
-        else:
-            logger.warning("Feed refresh returned no products.")
-    except Exception as exc:
-        last_feed_refresh_error = str(exc)
-        logger.error("Feed refresh failed: %s", exc, exc_info=True)
+    """Nacita produkty zo vsetkych jazykovych mutacii feedu (SK/CZ/DE/EN/HU/PL)."""
+    global products, product_snapshot, translation_index
+    global last_feed_refresh_at, last_feed_refresh_error
+
+    new_products, new_translation_index = load_multilang_feeds()
+    products = new_products
+    product_snapshot = build_product_snapshot(new_products)
+    translation_index = new_translation_index
+    last_feed_refresh_at = int(time.time())
+    last_feed_refresh_error = None
+    logger.info(
+        "Feed refreshed: %d products, langs=%s",
+        len(products),
+        list(new_translation_index.keys()),
+    )
 
 
-@app.post("/admin/reload-feed")
-def reload_feed(x_admin_token: str | None = Header(default=None)) -> dict:
-    token = os.getenv("ADMIN_RELOAD_TOKEN")
-    if not token:
-        raise HTTPException(status_code=403, detail="Admin reload is disabled.")
-    if x_admin_token != token:
-        logger.warning("Invalid admin reload token attempt.")
-        raise HTTPException(status_code=401, detail="Invalid admin token.")
+async def rebuild_knowledge_from_feed() -> None:
+    """Prebuduje knowledge.json z aktualnych produktov a ulozi na disk."""
+    global knowledge
+    knowledge_path = os.getenv("KNOWLEDGE_JSON_PATH", "data/knowledge.json")
+    openai_client = _get_openai_client()
 
-    logger.info("Manual feed reload requested.")
-    refresh_feed()
-    return {"status": "reloaded", "products": len(products)}
+    logger.info("Starting knowledge rebuild from feed (%d products)...", len(products))
+    new_knowledge = await asyncio.to_thread(
+        build_knowledge,
+        products,
+        knowledge_path,
+        openai_client,
+    )
+    await asyncio.to_thread(save_knowledge, new_knowledge, knowledge_path)
+    knowledge = new_knowledge
+    logger.info("Knowledge rebuilt successfully: %s", new_knowledge.get("counts", {}))
