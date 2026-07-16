@@ -678,6 +678,22 @@
       transition: background 120ms ease, color 120ms ease;
     }
     .fl-ai-suggestion:hover { background: #299B5E; color: #fff; }
+    .fl-ai-show-more {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 9px 14px;
+      border: 1px dashed #299B5E;
+      border-radius: 8px;
+      background: #f2faf5;
+      color: #299B5E;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 120ms ease;
+    }
+    .fl-ai-show-more:hover { background: #e6f5ee; }
   `;
   document.head.appendChild(style);
 
@@ -804,9 +820,11 @@
   function addProducts(products) {
     if (!Array.isArray(products) || products.length === 0) return;
 
+    const INITIAL = 3;
     const wrap = document.createElement("div");
     wrap.className = "fl-ai-products";
-    products.slice(0, 4).forEach(function (product) {
+
+    function renderCard(product) {
       const price = typeof product.effective_price === "number"
         ? `${product.effective_price.toFixed(2)} ${product.currency || "EUR"}`
         : "Cena neuvedená";
@@ -834,13 +852,32 @@
         image.style.display = "none";
         fallback.style.display = "flex";
       });
-      wrap.appendChild(card);
+      return card;
+    }
+
+    products.slice(0, INITIAL).forEach(function (product) {
+      wrap.appendChild(renderCard(product));
     });
+
+    if (products.length > INITIAL) {
+      const remaining = products.slice(INITIAL);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "fl-ai-show-more";
+      btn.textContent = `Zobraziť viac (${remaining.length})`;
+      btn.addEventListener("click", function () {
+        remaining.forEach(function (p) { wrap.insertBefore(renderCard(p), btn); });
+        btn.remove();
+        scrollToBottom();
+      });
+      wrap.appendChild(btn);
+    }
+
     messages.appendChild(wrap);
     scrollToBottom();
   }
 
-  function scrollToBottom() {
+    function scrollToBottom() {
     messages.scrollTop = messages.scrollHeight;
   }
 
