@@ -1196,7 +1196,97 @@ def allergen_product_query(message: str) -> str:
     normalized_message = normalize(message)
     if "bez soj" in normalized_message or "bez soja" in normalized_message:
         return ""
-    if "gochu jang" in normalized_message or "gochudzang" in normalized_message or "gochudang" in normalized_messa
+    if "gochu jang" in normalized_message or "gochudzang" in normalized_message or "gochudang" in normalized_message:
+        return "gochujang"
+
+    known_product_queries = (
+        "bezlepkova sojova omacka",
+        "sushi ryza",
+        "gochujang",
+        "kimchi",
+        "tamari",
+        "miso pasta",
+        "miso",
+        "kokosove mlieko",
+        "sezamovy olej",
+        "ryzovy ocot",
+        "nori",
+        "wakame",
+        "tofu",
+        "sriracha",
+        "ramen",
+        "ramyun",
+        "udon",
+        "panko",
+        "ssamjang",
+        "sambal",
+        "hoisin",
+        "sojova omacka",
+        "rybacia omacka",
+        "ryzove rezance",
+        "ryzovy papier",
+        "mochi",
+        "wasabi",
+    )
+    for product_query in known_product_queries:
+        if product_query in normalized_message:
+            return product_query
+
+    after_question = message.rsplit("?", 1)[-1].strip()
+    if after_question and after_question != message.strip():
+        normalized_after_question = normalize(after_question)
+        if is_generic_allergen_recommendation_tail(normalized_after_question):
+            return ""
+        return after_question
+
+    cleanup_patterns = [
+        r"\bviete mi najst\b",
+        r"\bdobry den\b",
+        r"\bahoj\b",
+        r"\bprosim\b",
+        r"\bmoze to jest\b",
+        r"\balergik na arasidy\b",
+        r"\balergia na arasidy\b",
+        r"\bs alergiou na arasidy\b",
+        r"\bje\b",
+        r"\bsu\b",
+        r"\bma\b",
+        r"\bbez lepku\b",
+        r"\bbezlepk\w*\b",
+        r"\bobsahuje\b",
+        r"\bneobsahuje\b",
+        r"\balergeny\b",
+        r"\bvegan\b",
+        r"\bvhodn\w*\b",
+        r"\bpri celiakii\b",
+        r"\bceliak\w*\b",
+        r"\bintoleranc\w*\b",
+        r"\bco mam skontrolovat\b",
+        r"\bskontrolovat\b",
+        r"\bukazte produkt\b",
+        r"\boverte etiketu\b",
+        r"\betiketu\b",
+        r"\bnechcem vymyslene vlastnosti\b",
+        r"\bnehadajte\b",
+        r"\bupozornite ma na zlozenie\b",
+        r"\bchcem opatrnu odpoved\b",
+        r"\bopatrnu odpoved\b",
+        r"\bsoju\b",
+        r"\bsoja\b",
+        r"\blepok\b",
+        r"\bskladom\b",
+        r"\bza dobru cenu\b",
+    ]
+    cleaned = normalized_message
+    for pattern in cleanup_patterns:
+        cleaned = re.sub(pattern, " ", cleaned)
+    cleaned = re.sub(r"[^a-z0-9 ]+", " ", cleaned)
+    cleaned = " ".join(cleaned.split())
+    if is_generic_allergen_recommendation_tail(cleaned):
+        return ""
+    return cleaned
+
+
 def detect_out_of_domain(message: str) -> bool:
     normalized_message = normalize(message)
     return any(marker in normalized_message for marker in OUT_OF_DOMAIN_MARKERS)
