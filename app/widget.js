@@ -664,6 +664,20 @@
     @media (prefers-reduced-motion: reduce) {
       .fl-ai-launcher, .fl-ai-dot { transition: none; animation: none; }
     }
+    .fl-ai-suggestions { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 8px; }
+    .fl-ai-suggestion {
+      padding: 5px 12px;
+      border: 1px solid #299B5E;
+      border-radius: 20px;
+      background: #f2faf5;
+      color: #299B5E;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      line-height: 1.35;
+      transition: background 120ms ease, color 120ms ease;
+    }
+    .fl-ai-suggestion:hover { background: #299B5E; color: #fff; }
   `;
   document.head.appendChild(style);
 
@@ -710,10 +724,31 @@
   const input = root.querySelector(".fl-ai-input");
   const submit = root.querySelector(".fl-ai-submit");
 
-  function openPanel() {
+  function addSuggestions() {
+    const items = ["Kimchi", "Sriracha", "Sójová omáčka", "Recept na ramen"];
+    const wrap = document.createElement("div");
+    wrap.className = "fl-ai-suggestions";
+    items.forEach(function (label) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "fl-ai-suggestion";
+      btn.textContent = label;
+      btn.addEventListener("click", function () {
+        wrap.remove();
+        input.value = label;
+        form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      wrap.appendChild(btn);
+    });
+    messages.appendChild(wrap);
+    scrollToBottom();
+  }
+
+    function openPanel() {
     panel.classList.add("is-open");
     if (messages.children.length === 0) {
       addMessage("assistant", "Dobrý deň, s čím vám pomôžem? Môžete sa pýtať na produkty, ceny alebo odporúčania.");
+      addSuggestions();
     }
     window.setTimeout(function () { input.focus(); }, 50);
   }
@@ -725,7 +760,11 @@
   function addMessage(role, text, variant) {
     const message = document.createElement("div");
     message.className = `fl-ai-message ${role}${variant ? ` ${variant}` : ""}`;
-    message.textContent = text;
+    if (role === "user" || variant === "error") {
+      message.textContent = text;
+    } else {
+      message.innerHTML = renderText(text);
+    }
     messages.appendChild(message);
     scrollToBottom();
     return message;
@@ -884,6 +923,24 @@
     return escapeHtml(value).replace(/`/g, "&#96;");
   }
 
+  function renderText(text) {
+    const escaped = escapeHtml(String(text || ""));
+    return escaped.replace(
+      /https?:\/\/[^\s\)\]"'<>]+/g,
+      function (url) {
+        return '<a href="' + url + '" target="_blank" rel="noopener" style="color:#299B5E;word-break:break-all;">' + url + '<\/a>';
+      }
+    );
+  }
+
+  function cleanAnswerText(text, hasProducts) {
+    if (!hasProducts) return text;
+    return text.split('\n').filter(function (line) {
+      const t = line.trim();
+      return !(t.startsWith('-') && /\d+[,.]\d+\s*(EUR|€)/.test(t));
+    }).join('\n').trim();
+  }
+
   launcher.addEventListener("click", function () {
     if (panel.classList.contains("is-open")) closePanel();
     else openPanel();
@@ -909,7 +966,14 @@
     try {
       const data = await askBackend(text);
       updateNotice(data);
-      loading.textContent = data.answer || "Nenašiel som presnú odpoveď. Skúste napísať názov produktu alebo kategóriu inak.";
+      const hasProducts = Array.isArray(data.products) && data.products.length > 0;
+      loading.innerHTML = renderText(
+        cleanAnswerText(
+          data.answer || "Nenašiel som presnú odpoveď. Skúste napísať názov produktu alebo kategóriu inak.",
+          hasProducts
+        )
+      );
+      scrollToBottom();
       addRecipes(data.recipes);
       if (data.intent !== "recipe") addProducts(data.products);
     } catch (error) {
