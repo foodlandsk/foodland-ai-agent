@@ -263,7 +263,7 @@ def diff_products(
 
     removed = [pid for pid in old_snapshot if pid not in new_ids]
     return changed, removed
-------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Section builders
 # ---------------------------------------------------------------------------
 
@@ -328,7 +328,7 @@ def build_crosssell(products: list[Product], max_cs: int = 5) -> list[dict]:
 
         cs_products: list[tuple[Product, str]] = []
         for comp in comp_cats:
-        for c in cat_index.get(comp, []):
+            for c in cat_index.get(comp, []):
                 if c.id != p.id and c.availability == "in_stock":
                     cs_products.append((c, comp))
                 if len(cs_products) >= max_cs * 3:
