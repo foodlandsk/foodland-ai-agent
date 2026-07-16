@@ -1427,7 +1427,7 @@ def fallback_answer(
         if related_subject:
             return f"Našiel som {count} súvisiacich produktov a surovín, ktoré sa hodia k téme {related_subject}.{caution}"
         if knowledge_matches:
-            return f"Našiel som {count} vhodných produktov a doplnil som odporúčania z Foodland poradcu.{caution}"
+            return f"Našiel som {count} vhodných produktov. Nižšie nájdete odporúčania Foodland poradcu.{caution}"
         return f"Našiel som {count} vhodných produktov. Pozrite si odporúčania nižšie.{caution}"
 
     if knowledge_matches:
