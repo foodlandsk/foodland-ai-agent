@@ -1504,7 +1504,9 @@ def refresh_feed() -> None:
     global products, product_snapshot, translation_index
     global last_feed_refresh_at, last_feed_refresh_error
 
-    new_products, new_translation_index = load_multilang_feeds()
+    lang_feeds = load_multilang_feeds()
+    new_products = lang_feeds.get('sk', [])
+    new_translation_index = multilang_translation_index(lang_feeds)
     products = new_products
     product_snapshot = build_product_snapshot(new_products)
     translation_index = new_translation_index
@@ -1519,17 +1521,20 @@ def refresh_feed() -> None:
 
 async def rebuild_knowledge_from_feed() -> None:
     """Prebuduje knowledge.json z aktualnych produktov a ulozi na disk."""
-    global knowledge
+    global knowledge, product_snapshot
     knowledge_path = os.getenv("KNOWLEDGE_JSON_PATH", "data/knowledge.json")
     openai_client = _get_openai_client()
 
     logger.info("Starting knowledge rebuild from feed (%d products)...", len(products))
-    new_knowledge = await asyncio.to_thread(
+    new_knowledge, new_snapshot = await asyncio.to_thread(
         build_knowledge,
         products,
-        knowledge_path,
-        openai_client,
+        knowledge,
+        old_snapshot=product_snapshot,
+        translation_index=translation_index,
+        openai_client=openai_client,
     )
     await asyncio.to_thread(save_knowledge, new_knowledge, knowledge_path)
     knowledge = new_knowledge
+    product_snapshot = new_snapshot
     logger.info("Knowledge rebuilt successfully: %s", new_knowledge.get("counts", {}))
