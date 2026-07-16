@@ -383,11 +383,14 @@
       position: fixed;
       right: 20px;
       bottom: 20px;
-      z-index: 999999;
+      z-index: 2147483000;
       font-family: "Open Sans", Arial, sans-serif;
       color: #221F20;
+      pointer-events: none;
     }
     .fl-ai-launcher {
+      position: relative;
+      z-index: 2147483002;
       width: 62px;
       height: 62px;
       display: grid;
@@ -397,6 +400,7 @@
       background: #299B5E;
       color: #fff;
       cursor: pointer;
+      pointer-events: auto;
       box-shadow: 0 14px 34px rgba(41, 155, 94, 0.34);
       transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
     }
@@ -407,13 +411,15 @@
     }
     .fl-ai-launcher svg { width: 28px; height: 28px; display: block; }
     .fl-ai-panel {
-      position: absolute;
-      right: 0;
-      bottom: 76px;
+      position: fixed;
+      right: 20px;
+      bottom: 96px;
+      z-index: 2147483001;
       width: min(410px, calc(100vw - 32px));
       height: min(640px, calc(100vh - 116px));
       display: none;
       flex-direction: column;
+      pointer-events: auto;
       overflow: hidden;
       border: 1px solid #d9e5dc;
       border-radius: 8px;
@@ -647,7 +653,6 @@
     @media (max-width: 520px) {
       .fl-ai-root { right: 12px; bottom: 12px; }
       .fl-ai-panel {
-        position: fixed;
         inset: auto 10px 84px 10px;
         width: auto;
         height: min(650px, calc(100vh - 104px));
