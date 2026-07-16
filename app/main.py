@@ -16,7 +16,13 @@ from urllib.parse import quote_plus
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from openai import OpenAI
+from openai import OpenAI, APIConnectionError, APITimeoutError, RateLimitError
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 from pydantic import BaseModel, Field
 
 from app.feed import Product, load_products_json, parse_google_merchant_feed
@@ -177,7 +183,7 @@ RELATED_PRODUCT_QUERIES = {
     ],
     "gyoza": [
         "sojova omacka",
-        "ryzovy ocot",
+        "rypovy ocot",
         "chilli olej",
     ],
 }
@@ -333,15 +339,15 @@ SPECIAL_PRODUCT_EXCLUDE_TERMS = {
         "miska",
         "misky",
         "nadoba",
+
         "doza",
         "davkovac",
         "obal",
     ),
-    "kids_snack": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi", "soju", "sake", "alkohol"
-),
+    "kids_snack": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi", "soju", "sake", "alkohol"),
     "asian_sweets": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi", "soju", "sake", "alkohol"),
     "dairy_replacement": ("dezert", "cukrik", "snack", "cokolad"),
-    "fermented_sour": ("polievka", "lemonade", "cukrik", "krekry", "forma", "noznice", "miska"),
+    "fermented_sour": ("polievky", "lemonade", "cukrik", "krekry", "forma", "noznice", "miska"),
     "vegan_asian": ("caj", "kava", "napoj", "dzus", "cukrik", "snack", "box", "filter"),
     "no_pork_asian": ("caj", "kava", "napoj", "dzus", "cukrik", "snack", "box", "filter"),
     "medium_spicy": ("rezance", "chips", "cipsy", "curry", "kari pasta", "sladk"),
@@ -365,7 +371,7 @@ FAQ_INTENT_MARKERS = (
     "plat",
     "kartou",
     "hotovost",
-    "vyzdvih",
+    "vyzdvigh",
     "reklamac",
     "vraten",
 )
@@ -424,10 +430,10 @@ ALLERGEN_INTENT_MARKERS = (
 
 ALLERGEN_TERMS = {
     # BUG-01 fix: zluceny do jedneho dict, akcentovane user-facing labely zachovane
-    "soja": "sójy"•",
+    "soja": "sóju",
     "soj": "sóju",
     "lepok": "lepok",
-    "gluten": "lepok",
+    "gloten": "lepok",
     "arasid": "arašidy",
     "orech": "orechy",
     "mlieko": "mlieko",
@@ -435,7 +441,7 @@ ALLERGEN_TERMS = {
     "vajc": "vajcia",
     "sezam": "sezam",
     "ryb": "ryby",
-    "makky": "mäkoŽše",
+    "makky": "mákkýše",
     "krev": "krevety",
     "vegan": "vhodnosť pre veganov",
 }
@@ -477,7 +483,7 @@ _openai_client: OpenAI | None = None
 def _get_openai_client() -> OpenAI | None:
     """Vrati singleton OpenAI klienta. None ak OPENAI_API_KEY nie je nastaveny."""
     global _openai_client
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("OPENA_API_KEY")
     if not api_key:
         return None
     if _openai_client is None:
@@ -485,11 +491,28 @@ def _get_openai_client() -> OpenAI | None:
     return _openai_client
 
 
+# RETRY-01: Retry pre transientne OpenAI chyby (rate limit, timeout, connection)
+# Max 3 pokusy, exponencialne backoff 1s → 2s → 4s, ostatne vynimky padaju okamzaite.
+@retry(
+    retry=retry_if_exception_type((RateLimitError, APITimeoutError, APIConnectionError)),
+    wait=wait_exponential(multiplier=1, min=1, max=8),
+    stop=stop_after_attempt(3),
+    reraise=True,
+)
+def _call_openai_with_retry(client: OpenAI, messages: list[dict], model: str) -> str:
+    """
+    Zavola OpenAI chat completion s retry pri transientnych chybach.
+    Vracia text odpovede aleZo prazdny retazec ak choices[0].message.content je None.
+    """
+    response = client.chat.completions.create(model=model, messages=messages)
+    return response.choices[0].message.content or ""
+
+
 app = FastAPI(title="Foodland AI Agent", version="0.1.0")
 app.mount("/static", UTF8StaticFiles(directory=Path(__file__).parent), name="static")
 
 allowed_origins = [
-    origin.strip()
+     origin.strip()
     for origin in os.getenv("ALLOWED_ORIGINS", "https://www.foodland.sk,https://foodland.sk").split(",")
     if origin.strip()
 ]
@@ -608,37 +631,32 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
 
     try:
         model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Si nákupný asistent pre Foodland.sk. Odpovedaj po slovensky, krátko a prakticky. "
-                        "Voláš sa Foodland poradca. Neprezentuj sa ako AI. "
-                        "Používaj iba poskytnutý kontext: produkty, FAQ, recepty, cross-sell, alternatívy a Products_AI. "
-                        "Pri produktoch uvádzaj cenu a odkaz, ak sú dostupné. Pri alergiách, zloſení a dostupnosti "
-                        "odporuč overiť detail produktu. Nevymýšľaj ceny, sklad ani vlastnosti produktu. "
-                        "Nevkladaj žiadne URL ani markdown odkazy, ktor�� nie sú doslovne v poskytnutom kontexte."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"Otázka zákazníka: {chat_request.message}\n\n"
-                        f"Relevantné produkty:\n{products_context(matches)}\n\n"
-                        f"Foodland Knowledge:\n{knowledge_context(knowledge_matches)}\n\n"
-                        f"Bezpečnostná poznámka: {composition_caution_context(needs_composition_caution)}"
-                    ),
-                },
-            ],
-        )
-        answer_text = response.choices[0].message.content or fallback_answer(
-            matches,
-            knowledge_matches,
-            related_subject,
-            needs_composition_caution,
-        )
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Si nákupný asistent pre Foodland.sk. Odpovedaj po slovensky, krátko a prakticky. "
+                    "Voláš sa Foodland poradca. Neprezentuj sa ako AI. "
+                    "Používaj iba poskytnutý kontext: produkty, FAQ, recepty, cross-sell, alternatívy a Products_AI. "
+                    "Pri produktoch uvádzaj cenu a odkaz, ak sú dostupné. Pri alergiách, zložení a dostupnosti "
+                    "odporuč overiť detail produktu. Nevymýšľaj ceny, sklad ani vlastnosti produktu. "
+                    "Nevkladaj žiadne URL ani markdown odkazy, ktoré nie sú doslovne v poskytnutom kontexte."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Otázka zákazníka: {chat_request.message}\n\n"
+                    f"Relevantné produkty:\n{products_context(matches)}\n\n"
+                    f"Foodland Knowledge:\n{knowledge_context(knowledge_matches)}\n\n"
+                    f"Bezpečnostná poznámka: {composition_caution_context(needs_composition_caution)}"
+                ),
+            },
+        ]
+        # RETRY-01: _call_openai_with_retry pokusi sa max 3x pri RateLimit/Timeout/Connection
+        answer_text = _call_openai_with_retry(client, messages, model)
+        if not answer_text:
+            answer_text = fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution)
         answer_text = sanitize_answer_links(answer_text, allowed_answer_urls(matches, knowledge_matches))
         logger.info("OpenAI response generated.")
         return {
@@ -646,6 +664,15 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "products": matches,
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "related_products" if related_subject else "product_search",
+        }
+    except (RateLimitError, APITimeoutError, APIConnectionError) as exc:
+        logger.warning("OpenAI transient error after retries: %s", exc)
+        log_backend_error("openai_transient_error", str(exc))
+        return {
+            "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
+            "products": matches,
+            "knowledge": knowledge_summary(knowledge_matches),
+            "warning": "Služba je momentálne preťažená, zobrazujem nájdené produkty.",
         }
     except Exception as exc:
         logger.error("OpenAI API failed: %s", exc, exc_info=True)
@@ -697,7 +724,7 @@ def sanitize_answer_links(answer: str, allowed_urls: set[str]) -> str:
         suffix = match.group(0)[len(url):]
         return match.group(0) if url in allowed_urls else suffix
 
-    return re.sub(r"https?://[^\s]+", bare_replacement, sanitized)
+    return re.sub(r"https?://[^\s)]+", bare_replacement, sanitized)
 
 
 def enforce_rate_limit(client_key: str) -> None:
@@ -722,14 +749,14 @@ def enforce_rate_limit(client_key: str) -> None:
         logger.warning("Rate limit exceeded.")
         raise HTTPException(
             status_code=429,
-            detail="Príliš ve�a otázok za krátky čas. Skúste to prosím o chvíėu.",
+            detail="Príliš veľa otázok za krátky čas. Skúste to prosím o chvíľu.",
         )
 
     events.append(now)
 
 
 def log_question(message: str, client_key: str, matches_count: int) -> None:
-    path = Path(os.getenv("ANALVTICS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "question_analytics.jsonl")))
+    path = Path(os.getenv("ANALYTICS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "question_analytics.jsonl")))
     salt = os.getenv("ANALYTICS_SALT", "")
     record = {
         "ts": int(time.time()),
@@ -971,7 +998,7 @@ def recipe_answer(subject: str, recipes: list[dict] | None = None) -> str:
     if recipes:
         if len(recipes) == 1:
             return "Našiel som recept z Foodland.sk. Otvorte si ho nižšie."
-        return "Našiel som recepty z Foodland.sk. Vyberte si z odporúčaní ni��šie."
+        return "Našiel som recepty z Foodland.sk. Vyberte si z z odporúčanícj nižšie."
 
     return "Receptovú otázku som zachytil, ale nemám dosť detailov na presný recept. Skúste napísať napríklad: recept na kimchi alebo recept na pad thai."
 
@@ -1018,11 +1045,11 @@ def detect_special_product_subject(message: str) -> str | None:
         return "korean_paste"
     if "vegan" in normalized_message and any(marker in normalized_message for marker in ("azij", "europsk", "jedl")):
         return "vegan_asian"
-    if "bravcov" in normalized_message and any(marker in normalized_message for marker in ("azij", "jedl", "bez")):
+    if "bravcov" in normalized_message and any(marker in normalized_message for marker in ("azicj", "jedl", "bez")):
         return "no_pork_asian"
     if "sladkost" in normalized_message or (
         "snack" in normalized_message
-        and any(marker in normalized_message for marker in ("azij", "cokolad", "europsk"))
+        and any(marker in normalized_message for marker in ("azicj", "cokolad", "europsk"))
         and "omack" not in normalized_message
     ):
         return "asian_sweets"
@@ -1134,7 +1161,7 @@ def detect_allergen_intent(message: str) -> str | None:
         return "alergeny"
 
     if "alerg" in normalized_message or "alergen" in normalized_message:
-        return "alergìny"
+        return "alergény"
 
     return None
 
@@ -1153,7 +1180,7 @@ def allergen_product_matches(message: str, limit: int) -> list[dict]:
 
 def allergen_product_query(message: str) -> str:
     normalized_message = normalize(message)
-    if "bez" in normalized_message:
+    if "bez soj" in normalized_message or "bez soja" in normalized_message:
         return ""
     if "gochu jang" in normalized_message or "gochudzang" in normalized_message or "gochudang" in normalized_message:
         return "gochujang"
@@ -1290,6 +1317,7 @@ def is_generic_allergen_recommendation_tail(normalized_text: str) -> bool:
 
 
 def is_gluten_free_search(message_or_normalized: str) -> bool:
+
     normalized_message = normalize(message_or_normalized)
     return (
         "bezlepk" in normalized_message
@@ -1312,7 +1340,7 @@ def composition_caution_context(needs_composition_caution: bool) -> str:
 
 
 def allergen_safety_answer(allergen_term: str) -> str:
-    if allergen_term == "alergìny":
+    if allergen_term == "alergény":
         return (
             "Pri alergénoch vám nechcem odporučiť nesprávny produkt. "
             "Prosím overte zloženie v detaile konkrétneho produktu alebo nám napíšte názov produktu, "
@@ -1321,7 +1349,7 @@ def allergen_safety_answer(allergen_term: str) -> str:
 
     return (
         f"Pri alergii alebo intolerancii na {allergen_term} vám nechcem odporučiť produkt len podľa názvu. "
-        "Prosím overte zloženie a alergìny v detaile konkrétneho produktu. Ak riešite konkrétny produkt, rozhodujúca je etiketa. "
+        "Prosím overte zloženie a alergény v detaile konkrétneho produktu. Ak riešite konkrétny produkt, rozhodujúca je etiketa. "
         "Ak mi pošlete názov produktu, pomôžem vám nájsť jeho detail na Foodland.sk."
     )
 
@@ -1356,7 +1384,7 @@ def related_products_for_subject(products: list[Product], subject: str, limit: i
 def special_products_for_subject(products: list[Product], subject: str, limit: int) -> list[dict]:
     seen: set[str] = set()
     recommendations: list[dict] = []
-    excluded_terms = SPECIAE�PRODUCT_EXCLUDE_TERMS.get(subject, ())
+    excluded_terms = SPECIAL_PRODUCT_EXCLUDE_TERMS.get(subject, ())
 
     for query in SPECIAL_PRODUCT_QUERIES.get(subject, []):
         for product in search_products(products, query, 5):
@@ -1383,6 +1411,7 @@ def fallback_answer(
     related_subject: str | None = None,
     needs_composition_caution: bool = False,
 ) -> str:
+
     knowledge_matches = knowledge_matches or {}
     faq_answer = best_faq_answer(knowledge_matches)
     if faq_answer and not matches:
@@ -1391,20 +1420,20 @@ def fallback_answer(
     if matches:
         count = min(len(matches), 5)
         caution = (
-            " Pri bezlepkových produktoch alebo otázkach na zloženie si prosím overte zloženie v detaile produktu."
+            " Pri bezlepkových produktoch alebo otázkach na zložení si prosím overte zložení v detaile produktu."
             if needs_composition_caution
             else ""
         )
         if related_subject:
             return f"Našiel som {count} súvisiacich produktov a surovín, ktoré sa hodia k téme {related_subject}.{caution}"
         if knowledge_matches:
-            return f"Našiel som {count} vhodných produktov a doplnil som odporúčania z Foodland poradcu.{caution}"
+            return f"Našiel som {count} vhodných produktov a doplnil som odporúčania z Foodland poradcú.{caution}"
         return f"Našiel som {count} vhodných produktov. Pozrite si odporúčania nižšie.{caution}"
 
     if knowledge_matches:
-        return "Našiel som súvisiace informácie vo Foodland poradcovi."
+        return "Našiel som súvisiacé informácie vo Foodland poradcovi."
 
-    return "Nenašiel som presnú odpoveď. Skúste otázku napísať trochu inak."
+    return "Nenašiel som presnú odpoveď. Skúster otázku napísať trochu inak."
 
 
 @app.on_event("startup")
@@ -1414,3 +1443,51 @@ async def start_feed_refresh_loop() -> None:
     if refresh_minutes > 0:
         logger.info("Starting feed refresh loop every %s minutes.", refresh_minutes)
         feed_refresh_task = asyncio.create_task(feed_refresh_loop(refresh_minutes))
+
+@app.on_event("shutdown")
+async def stop_feed_refresh_loop() -> None:
+    if feed_refresh_task:
+        logger.info("Stopping feed refresh loop.")
+        feed_refresh_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await feed_refresh_task
+
+
+async def feed_refresh_loop(refresh_minutes: int) -> None:
+    while True:
+        await asyncio.sleep(refresh_minutes * 60)
+        try:
+            await asyncio.wait_for(asyncio.to_thread(refresh_feed), timeout=60)
+        except asyncio.TimeoutError:
+            logger.error("Feed refresh timeout.")
+
+
+def refresh_feed() -> None:
+    global products, last_feed_refresh_at, last_feed_refresh_error
+    try:
+        logger.info("Refreshing feed.")
+        refreshed_products = load_products()
+        if refreshed_products:
+            products = refreshed_products
+            last_feed_refresh_at = int(time.time())
+            last_feed_refresh_error = None
+            logger.info("Feed refreshed successfully: %s products.", len(products))
+        else:
+            logger.warning("Feed refresh returned no products.")
+    except Exception as exc:
+        last_feed_refresh_error = str(exc)
+        logger.error("Feed refresh failed: %s", exc, exc_info=True)
+
+
+@app.post("/admin/reload-feed")
+def reload_feed(x_admin_token: str | None = Header(default=None)) -> dict:
+    token = os.getenv("ADMIN_RELOAD_TOKEN")
+    if not token:
+        raise HTTPException(status_code=403, detail="Admin reload is disabled.")
+    if x_admin_token != token:
+        logger.warning("Invalid admin reload token attempt.")
+        raise HTTPException(status_code=401, detail="Invalid admin token.")
+
+    logger.info("Manual feed reload requested.")
+    refresh_feed()
+    return {"status": "reloaded", "products": len(products)}
