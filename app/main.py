@@ -998,7 +998,7 @@ def recipe_answer(subject: str, recipes: list[dict] | None = None) -> str:
     if recipes:
         if len(recipes) == 1:
             return "Našiel som recept z Foodland.sk. Otvorte si ho nižšie."
-        return "Našiel som recepty z Foodland.sk. Vyberte si z z odporúčanícj nižšie."
+        return "Našiel som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie."
 
     return "Receptovú otázku som zachytil, ale nemám dosť detailov na presný recept. Skúste napísať napríklad: recept na kimchi alebo recept na pad thai."
 
@@ -1427,13 +1427,13 @@ def fallback_answer(
         if related_subject:
             return f"Našiel som {count} súvisiacich produktov a surovín, ktoré sa hodia k téme {related_subject}.{caution}"
         if knowledge_matches:
-            return f"Našiel som {count} vhodných produktov a doplnil som odporúčania z Foodland poradcú.{caution}"
+            return f"Našiel som {count} vhodných produktov a doplnil som odporúčania z Foodland poradcu.{caution}"
         return f"Našiel som {count} vhodných produktov. Pozrite si odporúčania nižšie.{caution}"
 
     if knowledge_matches:
-        return "Našiel som súvisiacé informácie vo Foodland poradcovi."
+        return "Našiel som súvisiace informácie vo Foodland poradcovi."
 
-    return "Nenašiel som presnú odpoveď. Skúster otázku napísať trochu inak."
+    return "Nenašiel som presnú odpoveď. Skúste otázku napísať trochu inak."
 
 
 @app.on_event("startup")
