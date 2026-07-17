@@ -589,6 +589,27 @@ RELATED_PRODUCT_QUERIES = {
     "dakgalbi": [
         "gochujang", "sojova omacka", "sezamovy olej", "ryzovy ocot",
     ],
+    "char_siu": [
+        "sojova omacka", "hoisin omacka", "sezamovy olej", "ryzovy ocot", "cesnak",
+    ],
+    "som_tam": [
+        "rybacia omacka", "ryzovy ocot", "sriracha", "sojova omacka",
+    ],
+    "nasi_goreng": [
+        "sojova omacka", "sezamovy olej", "rybacia omacka", "sriracha",
+    ],
+    "mee_goreng": [
+        "sojova omacka", "sezamovy olej", "rybacia omacka", "sriracha", "ustricova omacka",
+    ],
+    "rendang": [
+        "kokosove mlieko", "citronova trava", "sojova omacka", "kari pasta",
+    ],
+    "larb": [
+        "rybacia omacka", "ryzovy ocot", "sriracha", "sezamovy olej",
+    ],
+    "chow_mein": [
+        "sojova omacka", "sezamovy olej", "ustricova omacka", "ryzove rezance",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -654,7 +675,7 @@ RELATED_SUBJECT_ALIASES = {
     "gyudon": ("gyudon", "hovaezi don", "beef bowl"),
     "oyakodon": ("oyakodon", "oyako don"),
     "karaage": ("karaage",),
-    "yangnyeom_chicken": ("yangnyeom chicken", "yangnyeom", "chimaek"),
+    "yangnyeom_chicken": ("yangnyeom chicken", "yangnyeom", "chimaek", "korean fried chicken", "korean chicken"),
     "samgyeopsal": ("samgyeopsal",),
     "bun_bo_hue": ("bun bo hue", "bun bo"),
     "banh_xeo": ("banh xeo",),
@@ -662,6 +683,13 @@ RELATED_SUBJECT_ALIASES = {
     "kung_pao": ("kung pao", "kung pao chicken"),
     "dim_sum": ("dim sum", "dimsum", "dumpling", "dumplingy"),
     "dakgalbi": ("dakgalbi",),
+    "char_siu": ("char siu", "char-siu", "cinsky bbq"),
+    "som_tam": ("som tam", "som tum", "papajovy salat"),
+    "nasi_goreng": ("nasi goreng",),
+    "mee_goreng": ("mee goreng", "mi goreng"),
+    "rendang": ("rendang",),
+    "larb": ("larb",),
+    "chow_mein": ("chow mein", "chowmein", "chow-mein"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
