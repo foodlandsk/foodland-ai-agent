@@ -726,6 +726,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                     "Nevkladaj žiadne URL ani markdown odkazy, ktoré nie sú doslovne v poskytnutom kontexte. "
                     "Konverzácia je viackolová – pri otázkach ako 'a čo k tomu?' alebo 'a ešte niečo?' "
                     "odkazuj na predchádzajúce správy v konverzácii."
+                    "Ak zákazník hovorí, že produkt UŽ MÁ ('mám X', 'kúpil som X', 'vlastním X'), "
+                    "odporúčaj výhradne iné, komplementárne produkty – nie ďalšie varianty toho istého. "
                 ),
             },
         ]
