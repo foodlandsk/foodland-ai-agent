@@ -81,6 +81,7 @@ class UTF8StaticFiles(StaticFiles):
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=1000)
     limit: int = Field(default=6, ge=1, le=12)
+    conversation_history: list[dict] = Field(default_factory=list)
 
 
 class ProductSearchRequest(BaseModel):
@@ -714,23 +715,36 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             {
                 "role": "system",
                 "content": (
-                    "Si nákupný asistent pre Foodland.sk. Odpovedaj po slovensky, krátko a prakticky. "
-                    "Voláš sa Foodland poradca. Neprezentuj sa ako AI. "
+                    "Si Foodland poradca – odborný nákupný asistent pre Foodland.sk, špeciálne azijské a svetové potraviny. "
+                    "Odpovedaj po slovensky, priateľsky a s predajným tónom. Neprezentuj sa ako AI. "
+                    "Vždy navrhuj doplnkové produkty (cross-sell) – napr. k sójovej omáčke navrhni mirin alebo ryžový ocot, "
+                    "k ramen navrhni dashi alebo kimchi. Používaj formulácie: 'Odporúčam tiež...', "
+                    "'Skvelo sa hodí k...', 'Zákazníci si k tomu zvyčajne berú aj...'. "
                     "Používaj iba poskytnutý kontext: produkty, FAQ, recepty, cross-sell, alternatívy a Products_AI. "
                     "Pri produktoch uvádzaj cenu a odkaz, ak sú dostupné. Pri alergiách, zložení a dostupnosti "
                     "odporuč overiť detail produktu. Nevymýšľaj ceny, sklad ani vlastnosti produktu. "
-                    "Nevkladaj žiadne URL ani markdown odkazy, ktoré nie sú doslovne v poskytnutom kontexte."
+                    "Nevkladaj žiadne URL ani markdown odkazy, ktoré nie sú doslovne v poskytnutom kontexte. "
+                    "Konverzácia je viackolová – pri otázkach ako 'a čo k tomu?' alebo 'a ešte niečo?' "
+                    "odkazuj na predchádzajúce správy v konverzácii."
                 ),
             },
+        ]
+        # Pridaj historiu konverzacie (max 10 sprav)
+        for msg in chat_request.conversation_history[-10:]:
+            if isinstance(msg, dict) and msg.get("role") in ("user", "assistant") and isinstance(msg.get("content"), str):
+                messages.append({"role": msg["role"], "content": msg["content"][:2000]})
+        # Pridaj aktualnu otazku so vsetkym kontextom
+        messages.append(
             {
                 "role": "user",
                 "content": (
-                    f"Otázka zákazhíka: {chat_request.message}\n\n"
+                    f"Otázka zákazníka: {chat_request.message}\n\n"
                     f"Relevantné produkty:\n{products_context(matches)}\n\n"
                     f"Foodland Knowledge:\n{knowledge_context(knowledge_matches)}\n\n"
                     f"Bezpečnostná poznámka: {composition_caution_context(needs_composition_caution)}"
                 ),
-            },
+            }
+        )
         ]
         # RETRY-01: _call_openai_with_retry pokusi sa max 3x pri RateLimit/Timeout/Connection
         answer_text = _call_openai_with_retry(client, messages, model)
