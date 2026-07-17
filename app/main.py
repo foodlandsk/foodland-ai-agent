@@ -202,6 +202,35 @@ RELATED_PRODUCT_QUERIES = {
         "ryzovy ocot",
         "chilli olej",
     ],
+    "poke_bowl": [
+        "sushi ryza",
+        "nori",
+        "sojova omacka",
+        "sezamovy olej",
+        "wasabi",
+        "nakladany zazvor",
+    ],
+    "korejsky_gril": [
+        "gochujang",
+        "ssamjang",
+        "sezamovy olej",
+        "kimchi",
+        "sojova omacka",
+    ],
+    "thajske_kari": [
+        "kokosove mlieko",
+        "rybacia omacka",
+        "kari pasta cervena",
+        "jazminova ryza",
+        "sriracha",
+    ],
+    "sojova_omacka": [
+        "mirin",
+        "ryzovy ocot",
+        "hoisin omacka",
+        "sezamovy olej",
+        "dashi",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -214,6 +243,10 @@ RELATED_SUBJECT_ALIASES = {
     "pad_thai": ("pad thai", "padthai"),
     "bibimbap": ("bibimbap",),
     "gyoza": ("gyoza",),
+    "poke_bowl": ("poke bowl", "poke", "poke boul"),
+    "korejsky_gril": ("korejsky gril", "korejsky bbq", "korejsky barbecue", "kbbq", "korean bbq"),
+    "thajske_kari": ("thajske kari", "thajske curry", "thajsky curry", "thajskeho curry", "thai curry"),
+    "sojova_omacka": ("sojovej omacke", "k sojovej omacke", "doplnky k sojovej", "sojova omacka"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
@@ -412,6 +445,10 @@ RELATED_INTENT_MARKERS = (
     "nesmie",
     "chybat",
     "robim",
+    "patri",
+    "nakupujem",
+    "doplnky k",
+    "co k tomu",
 )
 
 RECIPE_INTENT_MARKERS = (
@@ -449,7 +486,12 @@ ALREADY_HAVE_SUBJECT_MAP = {
     "nori": ("nori", "morske riasy"),
     "tofu": ("tofu",),
     "gochujang": ("gochujang",),
-    "sriracha": ("sriracha",),
+    "sriracha": ("sriracha", "srirachu", "srirachom"),
+    "ryzovy_ocot": ("ryzovy ocot", "ryzovom octe", "sushi ocot", "ocot na sushi", "ryzi ocot"),
+    "wasabi": ("wasabi",),
+    "udon": ("udon", "udon rezance", "udon rezancov"),
+    "hoisin": ("hoisin", "hoisin omacku", "hoisin omacka", "hoisin omacke"),
+    "rybacia_omacka": ("rybaciu omacku", "rybacia omacka", "rybacou omackou", "fish sauce"),
     "sezamovy_olej": ("sezamovy olej", "sezamovym olejom"),
     "kari": ("kari pastu", "kari omacku", "kari", "curry"),
 }
@@ -467,6 +509,11 @@ ALREADY_HAVE_COMPLEMENT_QUERIES = {
     "sriracha": ["kokosove mlieko", "rybacia omacka", "jazminova ryza", "ramen"],
     "sezamovy_olej": ["sojova omacka", "ryzovy ocot", "mirin", "gochujang", "kimchi"],
     "kari": ["kokosove mlieko", "jazminova ryza", "rybacia omacka", "koriander", "sriracha"],
+    "ryzovy_ocot": ["sushi ryza", "nori", "wasabi", "nakladany zazvor", "sojova omacka"],
+    "wasabi": ["sojova omacka", "nakladany zazvor", "nori", "sushi ryza", "ryzovy ocot"],
+    "udon": ["sojova omacka", "dashi", "wakame", "miso pasta", "sriracha"],
+    "hoisin": ["sojova omacka", "sezamovy olej", "ramen rezance", "udon", "sriracha"],
+    "rybacia_omacka": ["ryzove rezance", "sriracha", "hoisin omacka", "nakladany zazvor", "kokosove mlieko"],
 }
 
 ALLERGEN_INTENT_MARKERS = (
