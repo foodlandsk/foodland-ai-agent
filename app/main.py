@@ -443,6 +443,62 @@ RELATED_PRODUCT_QUERIES = {
         "miso pasta",
         "zazvor",
     ],
+    "matcha": [
+        "matcha prah",
+        "smetana",
+        "mlieko",
+        "sladidlo",
+        "zeleny caj",
+    ],
+    "mochi": [
+        "mochiko",
+        "ryzova muka",
+        "kokosove mlieko",
+        "cukrovy praskovy",
+        "sezamove semienka",
+    ],
+    "bubble_tea": [
+        "tapiokove perly",
+        "caj",
+        "kokosove mlieko",
+        "kondenzovane mlieko",
+        "cierny caj",
+    ],
+    "edamame": [
+        "sojova omacka",
+        "morska sol",
+        "sezamovy olej",
+        "wasabi",
+    ],
+    "tonkatsu": [
+        "panko",
+        "tonkatsu omacka",
+        "sojova omacka",
+        "sezamovy olej",
+        "ryzovy ocot",
+    ],
+    "agedashi_tofu": [
+        "tofu",
+        "dashi",
+        "sojova omacka",
+        "mirin",
+        "katsuobushi",
+    ],
+    "nori_rolky": [
+        "nori",
+        "sushi ryza",
+        "ryzovy ocot",
+        "wasabi",
+        "nakladany zazvor",
+        "sojova omacka",
+    ],
+    "dashi_vyvar": [
+        "dashi",
+        "katsuobushi",
+        "kombu",
+        "sojova omacka",
+        "mirin",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -489,6 +545,15 @@ RELATED_SUBJECT_ALIASES = {
     "laksa": ("laksa",),
     "banh_mi": ("banh mi",),
     "congee": ("congee", "ryzova kasa", "ryzovu kasu"),
+    "matcha": ("matcha",),
+    "mochi": ("mochi",),
+    "bubble_tea": ("bubble tea", "boba", "boba tea", "bubble tea"),
+    "edamame": ("edamame",),
+    "tonkatsu": ("tonkatsu",),
+    "agedashi_tofu": ("agedashi tofu", "agedashi",),
+    "nori_rolky": ("nori rolky", "nori wrap", "nori sheet"),
+    "dashi_vyvar": ("dashi vyvar", "dashi vyvaru", "dashi polievka"),
+    "japansk": ("japanske ranajky", "japanska snidana"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
