@@ -83,7 +83,17 @@ def load_knowledge_json(path: str | Path) -> dict[str, Any]:
     file_path = Path(path)
     if not file_path.exists():
         return {"version": "missing", "sections": {}, "counts": {}}
-    return json.loads(file_path.read_text(encoding="utf-8"))
+    data = json.loads(file_path.read_text(encoding="utf-8"))
+    # Merge recipe patches (missing recipes not yet in main knowledge.json)
+    patches_path = file_path.parent / "recipe_patches.json"
+    if patches_path.exists():
+        patches = json.loads(patches_path.read_text(encoding="utf-8"))
+        recipes = data.setdefault("sections", {}).setdefault("Recipes", [])
+        existing_names = {r.get("Recept (SK n\u00e1zov)") for r in recipes}
+        for recipe in patches.get("Recipes", []):
+            if recipe.get("Recept (SK n\u00e1zov)") not in existing_names:
+                recipes.append(recipe)
+    return data
 
 
 def search_knowledge(knowledge: dict[str, Any], query: str) -> dict[str, list[dict[str, Any]]]:
