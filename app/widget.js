@@ -567,12 +567,33 @@
       min-height: 32px;
       padding: 7px 10px;
       border-radius: 6px;
-      background: #299B5E;
-      color: #fff;
+      border: 1.5px solid #299B5E;
+      background: transparent;
+      color: #299B5E;
       font-size: 12px;
       font-weight: 800;
       text-decoration: none;
     }
+    .fl-ai-product-link:hover { background: #f2faf5; }
+    .fl-ai-product-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .fl-ai-cart-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: #299B5E;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      border: 0;
+      transition: background 120ms ease;
+    }
+    .fl-ai-cart-btn:hover:not(:disabled) { background: #238750; }
+    .fl-ai-cart-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .fl-ai-cart-btn.is-added { background: #238750; }
     .fl-ai-recipes { display: grid; gap: 10px; margin: 0 0 12px; }
     .fl-ai-recipe {
       display: grid;
@@ -818,6 +839,45 @@
     scrollToBottom();
   }
 
+  async function addToCart(product) {
+    const productLink = product.link || "";
+    const isOnFoodland = window.location.hostname.includes("foodland.sk");
+
+    if (!isOnFoodland || !productLink) {
+      window.open(productLink || "https://www.foodland.sk/", "_blank", "noopener");
+      return;
+    }
+
+    const pageResp = await fetch(productLink, { credentials: "include" });
+    const html = await pageResp.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const productId = doc.querySelector('input[name="product_id"]')?.value;
+    const manufacturerId = doc.querySelector('input[name="manufacturer_id"]')?.value || "";
+    const categoryId = doc.querySelector('input[name="category_id"]')?.value || "";
+
+    if (!productId) {
+      window.open(productLink, "_blank", "noopener");
+      return;
+    }
+
+    const body = new URLSearchParams({
+      product_id: productId,
+      quantity: "1",
+      flypage: "shop.flypage",
+      manufacturer_id: manufacturerId,
+      category_id: categoryId,
+      func: "cartAdd",
+    });
+
+    await fetch("https://www.foodland.sk/nakupny-kosik/", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+  }
+
   function addProducts(products) {
     if (!Array.isArray(products) || products.length === 0) return;
 
@@ -844,9 +904,30 @@
             <span>${escapeHtml(availability)}</span>
             ${product.brand ? `<span>${escapeHtml(product.brand)}</span>` : ""}
           </div>
-          <a class="fl-ai-product-link" href="${escapeAttr(product.link || "#")}" target="_blank" rel="noopener">Zobraziť produkt</a>
+          <div class="fl-ai-product-actions">
+            <a class="fl-ai-product-link" href="${escapeAttr(product.link || "#")}" target="_blank" rel="noopener">Zobraziť</a>
+          </div>
         </div>
       `;
+      const actionsDiv = card.querySelector(".fl-ai-product-actions");
+      const cartBtn = document.createElement("button");
+      cartBtn.type = "button";
+      cartBtn.className = "fl-ai-cart-btn";
+      cartBtn.textContent = "Do košíka";
+      cartBtn.addEventListener("click", async function () {
+        cartBtn.disabled = true;
+        cartBtn.textContent = "Pridávam...";
+        try {
+          await addToCart(product);
+          cartBtn.textContent = "✓ Pridané";
+          cartBtn.classList.add("is-added");
+        } catch (e) {
+          cartBtn.textContent = "Do košíka";
+          cartBtn.disabled = false;
+          window.open(product.link || "https://www.foodland.sk/", "_blank", "noopener");
+        }
+      });
+      actionsDiv.appendChild(cartBtn);
       const image = card.querySelector("img");
       const fallback = card.querySelector(".fl-ai-product-image-fallback");
       image.addEventListener("error", function () {
