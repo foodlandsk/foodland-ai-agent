@@ -565,6 +565,12 @@ RELATED_PRODUCT_QUERIES = {
     "karaage": [
         "sojova omacka", "sake", "zazvor", "cesnak", "sezamovy olej", "mirin",
     ],
+    "tonkatsu": [
+        "sojova omacka", "tonkatsu omacka", "panko", "sezamovy olej", "cesnak",
+    ],
+    "gyoza": [
+        "sojova omacka", "ryzovy ocot", "sezamovy olej", "zazvor", "cesnak",
+    ],
     "yangnyeom_chicken": [
         "gochujang", "sojova omacka", "ryzovy ocot", "cesnak", "zazvor", "sezamovy olej",
     ],
@@ -708,6 +714,8 @@ RELATED_SUBJECT_ALIASES = {
     "gyudon": ("gyudon", "hovaezi don", "beef bowl"),
     "oyakodon": ("oyakodon", "oyako don"),
     "karaage": ("karaage",),
+    "tonkatsu": ("tonkatsu",),
+    "gyoza": ("gyoza", "jiaozi"),
     "yangnyeom_chicken": ("yangnyeom chicken", "yangnyeom", "chimaek", "korean fried chicken", "korean chicken"),
     "samgyeopsal": ("samgyeopsal", "pork belly"),
     "bun_bo_hue": ("bun bo hue", "bun bo"),
@@ -996,6 +1004,8 @@ RELATED_INTENT_MARKERS = (
     "vecer", "obedom", "ranom",
     "what do i need", "what to buy", "what goes with",
     "supplies", "party",
+    "making", "tonight", "want to make", "need to make", "going to make",
+    "want to cook", "going to cook", "how to make", "i make",
 )
 
 RECIPE_INTENT_MARKERS = (
