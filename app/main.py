@@ -429,11 +429,11 @@ RELATED_SUBJECT_ALIASES = {
     "thajska_kuchyna": ("thajsku kuchynu", "thajska kuchyna", "thajska vecera", "thajsku veceru", "thajsk"),
     "cinska_kuchyna": ("cinsku kuchynu", "cinska kuchyna", "cinska vecera", "cinsku veceru", "cinsk"),
     "pad_thai": ("pad thai", "padthai", "pad-thai"),
-    "tempura": ("tempura",),
+    "tempura": ("tempura", "tempuru", "tempury", "tempurou"),
     "okonomiyaki": ("okonomiyaki",),
     "takoyaki": ("takoyaki",),
-    "shabu_shabu": ("shabu shabu", "shabu-shabu", "hot pot", "hotpot", "hot-pot"),
-    "onigiri": ("onigiri", "ryżové gulky", "ryzove gulky"),
+    "shabu_shabu": ("shabu shabu", "shabu-shabu", "hot pot", "hotpot", "hot-pot", "hot potu", "hotpotu"),
+    "onigiri": ("onigiri", "ryżové gulky", "ryzove gulky", "ryzove gulky", "onigiri"),
     "yakisoba": ("yakisoba", "yaki soba"),
 }
 
