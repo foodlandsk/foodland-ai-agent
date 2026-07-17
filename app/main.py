@@ -1283,7 +1283,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "intent": "recipe",
         }
 
-    if detect_out_of_domain(chat_request.message):
+    if detect_out_of_domain(chat_request.message) and not detect_related_subject(chat_request.message):
         log_question(chat_request.message, client_key, 0)
         return {
             "answer": "Na toto neviem spoľahlivo odpovedať ako Foodland poradca. Skúste sa opýtať na produkty, objednávku, dopravu alebo platbu na Foodland.sk.",
