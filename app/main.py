@@ -396,6 +396,53 @@ RELATED_PRODUCT_QUERIES = {
         "kokosove mlieko",
         "rybacia omacka",
     ],
+    "udon": [
+        "dashi",
+        "sojova omacka",
+        "mirin",
+        "nori",
+        "tofu",
+    ],
+    "soba": [
+        "sojova omacka",
+        "mirin",
+        "dashi",
+        "nori",
+        "wasabi",
+    ],
+    "mandu": [
+        "sojova omacka",
+        "sezamovy olej",
+        "ryzovy ocot",
+        "zazvor",
+        "gochujang",
+    ],
+    "wonton": [
+        "sojova omacka",
+        "sezamovy olej",
+        "ustricova omacka",
+        "zazvor",
+    ],
+    "laksa": [
+        "kokosove mlieko",
+        "rybacia omacka",
+        "ryzove rezance",
+        "sojova omacka",
+    ],
+    "banh_mi": [
+        "rybacia omacka",
+        "ryzovy ocot",
+        "nakladany zazvor",
+        "sojova omacka",
+        "sriracha",
+    ],
+    "congee": [
+        "sojova omacka",
+        "sezamovy olej",
+        "dashi",
+        "miso pasta",
+        "zazvor",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -435,6 +482,13 @@ RELATED_SUBJECT_ALIASES = {
     "shabu_shabu": ("shabu shabu", "shabu-shabu", "hot pot", "hotpot", "hot-pot", "hot potu", "hotpotu"),
     "onigiri": ("onigiri", "ryżové gulky", "ryzove gulky", "ryzove gulky", "onigiri"),
     "yakisoba": ("yakisoba", "yaki soba", "yakisobu", "yaki sobu", "yakisoby"),
+    "udon": ("udon", "udonom", "udonove nudle", "udonovu polievku"),
+    "soba": ("soba nudle", "soba rezance", "sobove nudle"),
+    "mandu": ("mandu",),
+    "wonton": ("wonton", "wonton soup", "wontonova polievka"),
+    "laksa": ("laksa",),
+    "banh_mi": ("banh mi",),
+    "congee": ("congee", "ryzova kasa", "ryzovu kasu"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
