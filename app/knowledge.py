@@ -84,15 +84,17 @@ def load_knowledge_json(path: str | Path) -> dict[str, Any]:
     if not file_path.exists():
         return {"version": "missing", "sections": {}, "counts": {}}
     data = json.loads(file_path.read_text(encoding="utf-8"))
-    # Merge recipe patches (missing recipes not yet in main knowledge.json)
-    patches_path = file_path.parent / "recipe_patches.json"
-    if patches_path.exists():
-        patches = json.loads(patches_path.read_text(encoding="utf-8"))
-        recipes = data.setdefault("sections", {}).setdefault("Recipes", [])
-        existing_names = {r.get("Recept (SK n\u00e1zov)") for r in recipes}
-        for recipe in patches.get("Recipes", []):
-            if recipe.get("Recept (SK n\u00e1zov)") not in existing_names:
-                recipes.append(recipe)
+    # Inject missing recipes not yet indexed in knowledge.json
+    _missing = [
+        {"Recept (SK n\u00e1zov)": "Japonsk\u00e9 sushi a sashimi", "SK": "SK", "SK_url": "https://www.foodland.sk/recepty/japonske-sushi-a-sashimi/", "CZ": "CZ", "CZ_url": "https://www.foodland-express.cz/recepty/japonske-sushi-a-sashimi/", "AT": "AT", "AT_url": "https://www.foodland.at/rezepte/japanisches-sushi-und-sashimi/", "EN": "EN", "EN_url": "https://www.foodland-express.com/recipes/japanese-sushi-and-sashimi/", "PL": "PL", "PL_url": "https://www.foodland-express.pl/przepisy/japonskie-sushi-i-sashimi/", "HU": "HU", "HU_url": "https://www.foodland.hu/receptek/japan-sushi-es-sashimi/", "VI": "VI", "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/sushi-va-sashimi-nhat-ban/"},
+        {"Recept (SK n\u00e1zov)": "20-min\u00fatov\u00e9 japonsk\u00e9 kuracie kari", "SK": "SK", "SK_url": "https://www.foodland.sk/recepty/20-minutove-japonske-kuracie-kari/", "CZ": "CZ", "CZ_url": "https://www.foodland-express.cz/recepty/20minutove-japonske-kureci-kari/", "AT": "AT", "AT_url": "https://www.foodland.at/rezepte/20-minutiges-japanisches-huhnchen-curry/", "EN": "EN", "EN_url": "https://www.foodland-express.com/recipes/20-minute-japanese-chicken-curry/", "PL": "PL", "PL_url": "https://www.foodland-express.pl/przepisy/20-minutowe-japonskie-curry-z-kurczakiem/", "HU": "HU", "HU_url": "https://www.foodland.hu/receptek/20-perces-japan-csirke-curry/", "VI": "VI", "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/ca-ri-ga-kieu-nhat-voi-20-phut/"},
+        {"Recept (SK n\u00e1zov)": "Thajsk\u00e9 kokosov\u00e9 kari s tekvicou a c\u00edcerom (veg\u00e1nske)", "SK": "SK", "SK_url": "https://www.foodland.sk/recepty/thajske-kokosove-kari-s-tekvicou-a-cicerom-veganske/", "CZ": "CZ", "CZ_url": "https://www.foodland-express.cz/recepty/thajske-kokosove-kari-s-dyni-a-cizrnou-veganske/", "AT": "AT", "AT_url": "https://www.foodland.at/rezepte/thailandisches-kokos-curry-mit-kurbis-und-kichererbsen-vegan/", "EN": "EN", "EN_url": "https://www.foodland-express.com/recipes/thai-coconut-curry-with-pumpkin-and-chickpeas-vegan/", "PL": "PL", "PL_url": "https://www.foodland-express.pl/przepisy/tajskie-curry-kokosowe-z-dynia-i-ciecierzyca-weganskie/", "HU": "HU", "HU_url": "https://www.foodland.hu/receptek/thai-kokuszos-curry-tokkel-es-csicseriborsoval-vegan/", "VI": "VI", "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/ca-ri-dua-thai-voi-bi-do-va-dau-ga-thuan-chay/"},
+    ]
+    recipes = data.setdefault("sections", {}).setdefault("Recipes", [])
+    existing = {r.get("Recept (SK n\u00e1zov)") for r in recipes}
+    for r in _missing:
+        if r.get("Recept (SK n\u00e1zov)") not in existing:
+            recipes.append(r)
     return data
 
 
