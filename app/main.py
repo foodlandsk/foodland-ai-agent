@@ -992,6 +992,10 @@ RELATED_INTENT_MARKERS = (
     "na film", "k filmu", "k serialu", "na serial", "na snack",
     "polievky", "pre vegetarianov", "pre deti", "pre alergikov",
     "vegetariansk", "bezmasov",
+    "dinner", "lunch", "meal", "cooking", "recipe",
+    "vecer", "obedom", "ranom",
+    "what do i need", "what to buy", "what goes with",
+    "supplies", "party",
 )
 
 RECIPE_INTENT_MARKERS = (
