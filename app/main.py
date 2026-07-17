@@ -520,11 +520,26 @@ RELATED_PRODUCT_QUERIES = {
         "sriracha",
         "sojova omacka",
     ],
+    "jjigae": [
+        "gochujang",
+        "doenjang pasta",
+        "tofu",
+        "sojova omacka",
+        "sezamovy olej",
+        "dashi",
+    ],
+    "nam_van": [
+        "ryzovy papier",
+        "rybacia omacka",
+        "ryzove rezance",
+        "sojova omacka",
+        "sezamovy olej",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
     "kimchi": ("kimchi", "kimci"),
-    "sushi": ("sushi", "susi", "sushi ryza", "susi ryza"),
+    "sushi": ("sushi", "susi", "sushi ryza", "susi ryza", "maki", "maki rolky", "california roll", "futomaki", "hosomaki", "uramaki", "nigiri", "temaki", "sashimi"),
     "gochujang": ("gochujang", "gochu jang", "gochuang"),
     "ramen": ("ramen", "ramyun", "ramyeon"),
     "kari": ("kari", "curry"),
@@ -578,6 +593,8 @@ RELATED_SUBJECT_ALIASES = {
     "grilovanie": ("grilovacku", "grilovat", "grilovanie", "na gril", "grilu", "grilovacky"),
     "asian_snack": ("k filmu", "k serialu", "na film", "na serial", "k pivu azij", "snack azij"),
     "tom_yum": ("tom yum", "tom yum polievka", "thajska polievka", "thajskej polievky", "tom yum soup"),
+    "jjigae": ("jjigae", "sundubu jjigae", "sundubu", "doenjang jjigae", "doenjang", "korejsky stew"),
+    "nam_van": ("nam van", "goi cuon", "vietnamske rolky", "cerstve rolky"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
