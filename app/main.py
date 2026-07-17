@@ -745,7 +745,6 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                 ),
             }
         )
-        ]
         # RETRY-01: _call_openai_with_retry pokusi sa max 3x pri RateLimit/Timeout/Connection
         answer_text = _call_openai_with_retry(client, messages, model)
         if not answer_text:
