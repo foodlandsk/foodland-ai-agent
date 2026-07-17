@@ -870,7 +870,7 @@
       func: "cartAdd",
     });
 
-    await fetch("https://www.foodland.sk/nakupny-kosik/", {
+    await fetch("/modules/mod_shop_cart_ajax.php", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
