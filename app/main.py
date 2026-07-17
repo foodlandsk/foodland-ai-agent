@@ -535,6 +535,33 @@ RELATED_PRODUCT_QUERIES = {
         "sojova omacka",
         "sezamovy olej",
     ],
+    "sukiyaki": [
+        "sojova omacka",
+        "mirin",
+        "sake",
+        "sezamovy olej",
+        "tofu",
+        "dashi",
+    ],
+    "bao_bun": [
+        "sojova omacka",
+        "sezamovy olej",
+        "ustricova omacka",
+        "hoisin omacka",
+        "gochujang",
+    ],
+    "gyudon": [
+        "sojova omacka",
+        "mirin",
+        "dashi",
+        "ryzovy ocot",
+    ],
+    "oyakodon": [
+        "sojova omacka",
+        "mirin",
+        "dashi",
+        "sake",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -595,6 +622,10 @@ RELATED_SUBJECT_ALIASES = {
     "tom_yum": ("tom yum", "tom yum polievka", "thajska polievka", "thajskej polievky", "tom yum soup"),
     "jjigae": ("jjigae", "sundubu jjigae", "sundubu", "doenjang jjigae", "doenjang", "korejsky stew"),
     "nam_van": ("nam van", "goi cuon", "vietnamske rolky", "cerstve rolky"),
+    "sukiyaki": ("sukiyaki",),
+    "bao_bun": ("bao bun", "bao", "baozi", "parovany bun", "parovane buchty"),
+    "gyudon": ("gyudon", "hovaezi don", "beef bowl"),
+    "oyakodon": ("oyakodon", "oyako don"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
