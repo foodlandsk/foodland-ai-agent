@@ -499,6 +499,20 @@ RELATED_PRODUCT_QUERIES = {
         "sojova omacka",
         "mirin",
     ],
+    "grilovanie": [
+        "sojova omacka",
+        "gochujang",
+        "teriyaki omacka",
+        "sezamovy olej",
+        "sriracha",
+    ],
+    "asian_snack": [
+        "ryzove krekry",
+        "pocky",
+        "mochi",
+        "edamame",
+        "nori snack",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -554,6 +568,8 @@ RELATED_SUBJECT_ALIASES = {
     "nori_rolky": ("nori rolky", "nori wrap", "nori sheet"),
     "dashi_vyvar": ("dashi vyvar", "dashi vyvaru", "dashi polievka"),
     "japansk": ("japanske ranajky", "japanska snidana"),
+    "grilovanie": ("grilovacku", "grilovat", "grilovanie", "na gril", "grilu", "grilovacky"),
+    "asian_snack": ("k filmu", "k serialu", "na film", "na serial", "k pivu azij", "snack azij"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
@@ -808,6 +824,8 @@ RELATED_INTENT_MARKERS = (
     "k receptu",
     "zvyknu",
     "hodiat",
+    "co jest", "co si dat", "co dat na stol", "jest so", "jest k", "co hodia",
+    "na film", "k filmu", "k serialu", "na serial", "na snack",
 )
 
 RECIPE_INTENT_MARKERS = (
