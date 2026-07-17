@@ -736,6 +736,7 @@
   const closeButton = root.querySelector(".fl-ai-close");
   const notice = root.querySelector(".fl-ai-notice");
   const messages = root.querySelector(".fl-ai-messages");
+  let conversationHistory = [];
   const form = root.querySelector(".fl-ai-form");
   const input = root.querySelector(".fl-ai-input");
   const submit = root.querySelector(".fl-ai-submit");
@@ -943,7 +944,7 @@
     const response = await fetch(`${apiBaseUrl}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: backendText, limit: 6 }),
+      body: JSON.stringify({ message: backendText, limit: 6, conversation_history: conversationHistory }),
     });
     if (response.status === 429) throw new Error("RATE_LIMIT");
     if (!response.ok) throw new Error("REQUEST_FAILED");
@@ -1010,6 +1011,8 @@
           hasProducts
         )
       );
+      conversationHistory.push({role: "user", content: backendText});
+      conversationHistory.push({role: "assistant", content: data.answer || ""});
       scrollToBottom();
       addRecipes(data.recipes);
       if (data.intent !== "recipe") addProducts(data.products);
