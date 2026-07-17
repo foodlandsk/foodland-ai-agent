@@ -571,6 +571,18 @@ RELATED_PRODUCT_QUERIES = {
     "gyoza": [
         "sojova omacka", "ryzovy ocot", "sezamovy olej", "zazvor", "cesnak",
     ],
+    "yakitori": [
+        "sojova omacka", "mirin", "sake", "sezamovy olej", "cesnak",
+    ],
+    "adobo": [
+        "sojova omacka", "ryzovy ocot", "sezamovy olej", "cesnak", "kokosove mlieko",
+    ],
+    "malatang": [
+        "sojova omacka", "sezamovy olej", "tofu", "ryzove rezance", "gochujang",
+    ],
+    "jajangmyeon": [
+        "sojova omacka", "sezamovy olej", "ryzove rezance", "ustricova omacka",
+    ],
     "yangnyeom_chicken": [
         "gochujang", "sojova omacka", "ryzovy ocot", "cesnak", "zazvor", "sezamovy olej",
     ],
@@ -716,6 +728,10 @@ RELATED_SUBJECT_ALIASES = {
     "karaage": ("karaage",),
     "tonkatsu": ("tonkatsu",),
     "gyoza": ("gyoza", "jiaozi"),
+    "yakitori": ("yakitori",),
+    "adobo": ("adobo", "filipino adobo"),
+    "malatang": ("malatang", "mala tang", "mala hotpot"),
+    "jajangmyeon": ("jajangmyeon", "jajangmyon", "black bean noodles"),
     "yangnyeom_chicken": ("yangnyeom chicken", "yangnyeom", "chimaek", "korean fried chicken", "korean chicken"),
     "samgyeopsal": ("samgyeopsal", "pork belly"),
     "bun_bo_hue": ("bun bo hue", "bun bo"),
