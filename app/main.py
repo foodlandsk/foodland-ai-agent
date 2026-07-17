@@ -610,6 +610,33 @@ RELATED_PRODUCT_QUERIES = {
     "chow_mein": [
         "sojova omacka", "sezamovy olej", "ustricova omacka", "ryzove rezance",
     ],
+    "satay": [
+        "sojova omacka", "kari pasta", "kokosove mlieko", "sriracha", "sezamovy olej",
+    ],
+    "khao_pad": [
+        "sojova omacka", "rybacia omacka", "sezamovy olej", "sriracha",
+    ],
+    "crying_tiger": [
+        "sojova omacka", "rybacia omacka", "sriracha", "ryzovy ocot",
+    ],
+    "banchan": [
+        "gochujang", "sojova omacka", "sezamovy olej", "ryzovy ocot",
+    ],
+    "dubu_jorim": [
+        "tofu", "gochujang", "sojova omacka", "sezamovy olej",
+    ],
+    "haemul_pajeon": [
+        "sojova omacka", "ryzovy ocot", "sezamovy olej", "gochujang",
+    ],
+    "gimbap": [
+        "nori", "sushi ryza", "sojova omacka", "sezamovy olej", "ryzovy ocot",
+    ],
+    "tangsu_yuk": [
+        "sojova omacka", "ryzovy ocot", "sezamovy olej", "gochujang",
+    ],
+    "hainanese_chicken": [
+        "sojova omacka", "sezamovy olej", "zazvor", "cesnak",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -638,7 +665,7 @@ RELATED_SUBJECT_ALIASES = {
     "tom_yum": ("tom yum", "tom yam", "tom kha"),
     "japchae": ("japchae", "jap chae", "korejske sklenene rezance"),
     "vietnamska_kuchyna": ("vietnamsku kuchynu", "vietnamska kuchyna", "vietnamska vecera", "vietnam", "vietnamsk"),
-    "japonska_kuchyna": ("japonsku kuchynu", "japonska kuchyna", "japonska vecera", "japonsku veceru", "japonsk"),
+    "japonska_kuchyna": ("japonsku kuchynu", "japonska kuchyna", "japonska vecera", "japonsku veceru", "japonsk", "japansk"),
     "korejska_kuchyna": ("korejsku kuchynu", "korejska kuchyna", "korejska vecera", "korejsku veceru", "korejsk"),
     "thajska_kuchyna": ("thajsku kuchynu", "thajska kuchyna", "thajska vecera", "thajsku veceru", "thajsk"),
     "cinska_kuchyna": ("cinsku kuchynu", "cinska kuchyna", "cinska vecera", "cinsku veceru", "cinsk"),
@@ -690,6 +717,15 @@ RELATED_SUBJECT_ALIASES = {
     "rendang": ("rendang",),
     "larb": ("larb",),
     "chow_mein": ("chow mein", "chowmein", "chow-mein"),
+    "satay": ("satay", "sate", "satay kura"),
+    "khao_pad": ("khao pad",),
+    "crying_tiger": ("crying tiger",),
+    "banchan": ("banchan", "korejske prilohy"),
+    "dubu_jorim": ("dubu jorim",),
+    "haemul_pajeon": ("haemul pajeon", "pajeon", "korejske palacinky"),
+    "gimbap": ("gimbap", "kimbap"),
+    "tangsu_yuk": ("tangsu yuk", "tangsu"),
+    "hainanese_chicken": ("hainanese chicken", "hainanese rice", "hainan chicken"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
