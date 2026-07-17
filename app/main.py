@@ -432,6 +432,11 @@ ALREADY_HAVE_MARKERS = (
     "mam uz ",
     "kupil som ",
     "vlastnim ",
+    "mám ",
+    "mám doma ",
+    "mám uz ",
+    "kúpil som ",
+    "vlastním ",
 )
 
 ALREADY_HAVE_SUBJECT_MAP = {
