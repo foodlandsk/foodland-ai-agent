@@ -231,6 +231,28 @@ RELATED_PRODUCT_QUERIES = {
         "sezamovy olej",
         "dashi",
     ],
+    "wok": [
+        "ustricova omacka",
+        "sojova omacka",
+        "sezamovy olej",
+        "sriracha",
+        "thajska cili stir-fry omacka",
+    ],
+    "beginner_kit": [
+        "sojova omacka",
+        "sezamovy olej",
+        "ryzovy ocot",
+        "jazminova ryza",
+        "ramen rezance",
+        "sriracha",
+    ],
+    "azijske_dezerty": [
+        "pocky",
+        "mochi",
+        "bubble tea",
+        "ryzove krekry",
+        "kokosove cukriky",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -247,6 +269,9 @@ RELATED_SUBJECT_ALIASES = {
     "korejsky_gril": ("korejsky gril", "korejsky bbq", "korejsky barbecue", "kbbq", "korean bbq"),
     "thajske_kari": ("thajske kari", "thajske curry", "thajsky curry", "thajskeho curry", "thai curry"),
     "sojova_omacka": ("sojovej omacke", "k sojovej omacke", "doplnky k sojovej", "sojova omacka"),
+    "wok": ("woku", "wok", "stir fry", "stir-fry", "na woku"),
+    "beginner_kit": ("zacinam azijsky", "zacinam varit azijsky", "zacinam s azijskou", "azijska spajza", "co si kupit ako prv", "zacinam varit"),
+    "azijske_dezerty": ("azijske dezerty", "azijsky dezert", "na dezert", "dezert ky"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
@@ -449,6 +474,13 @@ RELATED_INTENT_MARKERS = (
     "nakupujem",
     "doplnky k",
     "co k tomu",
+    "zacinam",
+    "dam do",
+    "davam do",
+    "do woku",
+    "na dezert",
+    "na ranajky",
+    "na obed",
 )
 
 RECIPE_INTENT_MARKERS = (
@@ -494,6 +526,11 @@ ALREADY_HAVE_SUBJECT_MAP = {
     "rybacia_omacka": ("rybaciu omacku", "rybacia omacka", "rybacou omackou", "fish sauce"),
     "sezamovy_olej": ("sezamovy olej", "sezamovym olejom"),
     "kari": ("kari pastu", "kari omacku", "kari", "curry"),
+    "gyoza": ("gyozu", "gyoza", "gyozove cestoviny", "gyozovych cestoviny"),
+    "mochi": ("mochi",),
+    "dashi": ("dashi", "dashi bujonu", "dashi stock"),
+    "edamame": ("edamame",),
+    "rezance": ("udon rezance", "ramen rezance", "ryze rezance", "rezancov", "rezance"),
 }
 
 ALREADY_HAVE_COMPLEMENT_QUERIES = {
@@ -514,6 +551,11 @@ ALREADY_HAVE_COMPLEMENT_QUERIES = {
     "udon": ["sojova omacka", "dashi", "wakame", "miso pasta", "sriracha"],
     "hoisin": ["sojova omacka", "sezamovy olej", "ramen rezance", "udon", "sriracha"],
     "rybacia_omacka": ["ryzove rezance", "sriracha", "hoisin omacka", "nakladany zazvor", "kokosove mlieko"],
+    "gyoza": ["sojova omacka", "ryzovy ocot", "chilli olej", "sriracha"],
+    "mochi": ["pocky", "bubble tea", "ryzove krekry", "kokosove cukriky"],
+    "dashi": ["miso pasta", "tofu", "wakame", "ramen rezance"],
+    "edamame": ["sojova omacka", "wasabi", "sezamovy olej", "sriracha"],
+    "rezance": ["sojova omacka", "sezamovy olej", "sriracha", "ustricova omacka", "dashi"],
 }
 
 ALLERGEN_INTENT_MARKERS = (
