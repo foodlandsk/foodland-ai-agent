@@ -513,6 +513,13 @@ RELATED_PRODUCT_QUERIES = {
         "edamame",
         "nori snack",
     ],
+    "tom_yum": [
+        "kokosove mlieko",
+        "rybacia omacka",
+        "citronova trava",
+        "sriracha",
+        "sojova omacka",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -534,7 +541,7 @@ RELATED_SUBJECT_ALIASES = {
     "azijske_dezerty": ("azijske dezerty", "azijsky dezert", "na dezert", "dezert ky"),
     "jarne_zavitky": ("jarne zavitky", "spring rolls", "jarnych zavitkov", "jarne rolky", "nemecke zavitky"),
     "teriyaki": ("teriyaki", "teriyaki kuracie", "teriyaki losos", "teriyaki omacku"),
-    "miso_polievka": ("miso polievku", "miso polievka", "miso soup", "miso sopu", "miso polevku"),
+    "miso_polievka": ("miso polievku", "miso polievka", "miso soup", "miso sopu", "miso polevku", "miso polievky", "miso polievke"),
     "fried_rice": ("fried rice", "smazena ryza", "vysmazena ryza", "ryza na panvici", "vyprazana ryza", "vyprazanu ryzu", "smazenu ryzu", "smaza ryzu", "smazim ryzu"),
     "bulgogi": ("bulgogi",),
     "tteokbokki": ("tteokbokki", "ddukbokki", "tteok", "dduk"),
@@ -570,6 +577,7 @@ RELATED_SUBJECT_ALIASES = {
     "japansk": ("japanske ranajky", "japanska snidana"),
     "grilovanie": ("grilovacku", "grilovat", "grilovanie", "na gril", "grilu", "grilovacky"),
     "asian_snack": ("k filmu", "k serialu", "na film", "na serial", "k pivu azij", "snack azij"),
+    "tom_yum": ("tom yum", "tom yum polievka", "thajska polievka", "thajskej polievky", "tom yum soup"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
@@ -826,6 +834,8 @@ RELATED_INTENT_MARKERS = (
     "hodiat",
     "co jest", "co si dat", "co dat na stol", "jest so", "jest k", "co hodia",
     "na film", "k filmu", "k serialu", "na serial", "na snack",
+    "polievky", "pre vegetarianov", "pre deti", "pre alergikov",
+    "vegetariansk", "bezmasov",
 )
 
 RECIPE_INTENT_MARKERS = (
