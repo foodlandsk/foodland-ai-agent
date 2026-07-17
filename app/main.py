@@ -463,7 +463,7 @@ ALLERGEN_TERMS = {
 
 OUT_OF_DOMAIN_MARKERS = (
     # --- potravinovy obchod: existujuce markery ---
-    "bicykl",
+    "bicyk",
     "notebook",
     "opravujete telefon",
     "poistenie auta",
@@ -1217,6 +1217,8 @@ def detect_allergen_intent(message: str) -> str | None:
         marker in normalized_message for marker in ("vegan", "vegans", "nahrad", "alternativ")
     ):
         return None
+    if "bezlepk" in normalized_message:
+        return "lepok"
     if ("celiak" in normalized_message or "vhodn" in normalized_message) and any(
         term in normalized_message for term in ("bez lepku", "bezlepk", "celiak")
     ):
@@ -1549,6 +1551,12 @@ def allergen_safety_answer(allergen_term: str) -> str:
             "ktorý chcete skontrolovať."
         )
 
+    if allergen_term in ("vhodnost pre veganov", "vhodnosť pre veganov"):
+        return (
+            "Rozumiem, že ste vegán. V Foodland.sk máme viaceré produkty vhodné pre vegánov "
+            "— rastlinné omáčky, kokosové mlieko, tofu, tempeh a iné. "
+            "Odporúčam použiť filter alebo nám napísať čo konkrétne hľadáte."
+        )
     return (
         f"Pri alergii alebo intolerancii na {allergen_term} vám nechcem odporučiť produkt len podľa názvu. "
         "Prosím overte zloženie a alergény v detaile konkrétneho produktu. Ak riešite konkrétny produkt, rozhodujúca je etiketa. "
