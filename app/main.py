@@ -347,6 +347,55 @@ RELATED_PRODUCT_QUERIES = {
         "arasidy",
         "sriracha",
     ],
+    "tempura": [
+        "tempura muka",
+        "sojova omacka",
+        "wasabi",
+        "nakladany zazvor",
+        "ryzovy ocot",
+    ],
+    "okonomiyaki": [
+        "sojova omacka",
+        "sezamovy olej",
+        "gochujang",
+        "miso pasta",
+    ],
+    "takoyaki": [
+        "sojova omacka",
+        "ponzu",
+        "sezamovy olej",
+        "morske riasy",
+    ],
+    "shabu_shabu": [
+        "sojova omacka",
+        "sezamovy olej",
+        "dashi",
+        "miso pasta",
+        "gochujang",
+    ],
+    "onigiri": [
+        "sushi ryza",
+        "nori",
+        "sojova omacka",
+        "sezamove semienka",
+        "nakladany zazvor",
+    ],
+    "yakisoba": [
+        "sojova omacka",
+        "sezamovy olej",
+        "ustricova omacka",
+        "sriracha",
+    ],
+    "beginner_kit": [
+        "sojova omacka",
+        "sezamovy olej",
+        "ryzovy ocot",
+        "sriracha",
+        "mirin",
+        "dashi",
+        "kokosove mlieko",
+        "rybacia omacka",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -364,7 +413,7 @@ RELATED_SUBJECT_ALIASES = {
     "thajske_kari": ("thajske kari", "thajske curry", "thajsky curry", "thajskeho curry", "thai curry"),
     "sojova_omacka": ("sojovej omacke", "k sojovej omacke", "doplnky k sojovej", "sojova omacka"),
     "wok": ("woku", "wok", "stir fry", "stir-fry", "na woku"),
-    "beginner_kit": ("zacinam azijsky", "zacinam varit azijsky", "zacinam s azijskou", "azijska spajza", "co si kupit ako prv", "zacinam varit", "prvy krat azij", "prvy krat varit azij", "krat korejsk", "krat japonsk", "krat thajsk", "krat cinsk"),
+    "beginner_kit": ("zacinam azijsky", "zacinam varit azijsky", "zacinam s azijskou", "azijska spajza", "co si kupit ako prv", "zacinam varit", "prvy krat azij", "prvy krat varit azij", "krat korejsk", "krat japonsk", "krat thajsk", "krat cinsk", "azijsk", "azijskeho", "azijsku kuchyn", "azijske jedlo", "azijsku vecer", "nieco azij", "nejake azij"),
     "azijske_dezerty": ("azijske dezerty", "azijsky dezert", "na dezert", "dezert ky"),
     "jarne_zavitky": ("jarne zavitky", "spring rolls", "jarnych zavitkov", "jarne rolky", "nemecke zavitky"),
     "teriyaki": ("teriyaki", "teriyaki kuracie", "teriyaki losos", "teriyaki omacku"),
@@ -380,6 +429,12 @@ RELATED_SUBJECT_ALIASES = {
     "thajska_kuchyna": ("thajsku kuchynu", "thajska kuchyna", "thajska vecera", "thajsku veceru", "thajsk"),
     "cinska_kuchyna": ("cinsku kuchynu", "cinska kuchyna", "cinska vecera", "cinsku veceru", "cinsk"),
     "pad_thai": ("pad thai", "padthai", "pad-thai"),
+    "tempura": ("tempura",),
+    "okonomiyaki": ("okonomiyaki",),
+    "takoyaki": ("takoyaki",),
+    "shabu_shabu": ("shabu shabu", "shabu-shabu", "hot pot", "hotpot", "hot-pot"),
+    "onigiri": ("onigiri", "ryżové gulky", "ryzove gulky"),
+    "yakisoba": ("yakisoba", "yaki soba"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
