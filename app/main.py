@@ -637,13 +637,19 @@ RELATED_PRODUCT_QUERIES = {
     "hainanese_chicken": [
         "sojova omacka", "sezamovy olej", "zazvor", "cesnak",
     ],
+    "yukgaejang": [
+        "gochujang", "sojova omacka", "sezamovy olej", "ryzovy ocot",
+    ],
+    "bossam": [
+        "gochujang", "sojova omacka", "sezamovy olej", "kimchi",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
     "kimchi": ("kimchi", "kimci"),
     "sushi": ("sushi", "susi", "sushi ryza", "susi ryza", "maki", "maki rolky", "california roll", "futomaki", "hosomaki", "uramaki", "nigiri", "temaki", "sashimi"),
     "gochujang": ("gochujang", "gochu jang", "gochuang"),
-    "ramen": ("ramen", "ramyun", "ramyeon"),
+    "ramen": ("ramen", "ramyun", "ramyeon", "tonkotsu", "tantanmen"),
     "kari": ("kari", "curry"),
     "pho": ("pho",),
     "pad_thai": ("pad thai", "padthai"),
@@ -658,9 +664,9 @@ RELATED_SUBJECT_ALIASES = {
     "azijske_dezerty": ("azijske dezerty", "azijsky dezert", "na dezert", "dezert ky"),
     "jarne_zavitky": ("jarne zavitky", "spring rolls", "jarnych zavitkov", "jarne rolky", "nemecke zavitky"),
     "teriyaki": ("teriyaki", "teriyaki kuracie", "teriyaki losos", "teriyaki omacku"),
-    "miso_polievka": ("miso polievku", "miso polievka", "miso soup", "miso sopu", "miso polevku", "miso polievky", "miso polievke"),
+    "miso_polievka": ("miso", "miso polievku", "miso polievka", "miso soup", "miso sopu", "miso polevku", "miso polievky", "miso polievke"),
     "fried_rice": ("fried rice", "smazena ryza", "vysmazena ryza", "ryza na panvici", "vyprazana ryza", "vyprazanu ryzu", "smazenu ryzu", "smaza ryzu", "smazim ryzu"),
-    "bulgogi": ("bulgogi",),
+    "bulgogi": ("bulgogi", "galbi", "galby", "galbi jjim"),
     "tteokbokki": ("tteokbokki", "ddukbokki", "tteok", "dduk"),
     "tom_yum": ("tom yum", "tom yam", "tom kha"),
     "japchae": ("japchae", "jap chae", "korejske sklenene rezance"),
@@ -703,7 +709,7 @@ RELATED_SUBJECT_ALIASES = {
     "oyakodon": ("oyakodon", "oyako don"),
     "karaage": ("karaage",),
     "yangnyeom_chicken": ("yangnyeom chicken", "yangnyeom", "chimaek", "korean fried chicken", "korean chicken"),
-    "samgyeopsal": ("samgyeopsal",),
+    "samgyeopsal": ("samgyeopsal", "pork belly"),
     "bun_bo_hue": ("bun bo hue", "bun bo"),
     "banh_xeo": ("banh xeo",),
     "mapo_tofu": ("mapo tofu", "mapo"),
@@ -726,6 +732,8 @@ RELATED_SUBJECT_ALIASES = {
     "gimbap": ("gimbap", "kimbap"),
     "tangsu_yuk": ("tangsu yuk", "tangsu"),
     "hainanese_chicken": ("hainanese chicken", "hainanese rice", "hainan chicken"),
+    "yukgaejang": ("yukgaejang",),
+    "bossam": ("bossam",),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
