@@ -461,6 +461,7 @@ ALLERGEN_TERMS = {
 }
 
 OUT_OF_DOMAIN_MARKERS = (
+    # --- potravinovy obchod: existujuce markery ---
     "bicykl",
     "notebook",
     "opravujete telefon",
@@ -488,6 +489,70 @@ OUT_OF_DOMAIN_MARKERS = (
     "zdravotn",
     "diagnoz",
     "jedalnick",
+    # --- elektronika ---
+    "televizor",
+    "televiz",
+    "smartphon",
+    "laptop",
+    "pocitac",
+    "sluchadl",
+    "reproduktor",
+    "fotoaparat",
+    "tlaciare",
+    "hernu konzol",
+    "mobil telefon",
+    "kupim telefon",
+    "aky telefon",
+    # --- oblecenie a obuv ---
+    "oblecen",
+    "topank",
+    "sandal",
+    "nohavic",
+    "sukn",
+    "saty",
+    "sveter",
+    "ponozk",
+    "spodna bielizen",
+    "tenisk",
+    # --- nabytok a domacnost ---
+    "nabytok",
+    "nabytku",
+    "matrac",
+    "kreslo",
+    "skrink",
+    "komoda",
+    # --- vozidla ---
+    "auto servis",
+    "pneumatik",
+    "motorka",
+    "elektricke auto",
+    "ojazdene auto",
+    # --- nehnutelnosti ---
+    "nehnutelnost",
+    "prenajom bytu",
+    "kupim byt",
+    "predaj domu",
+    "realitna",
+    # --- kozmetika ---
+    "parfum",
+    "kozmetika",
+    "lak na nechty",
+    # --- financie ---
+    "kryptomien",
+    "bitcoin",
+    "investici",
+    # --- praca a zamestnanie ---
+    "zivotopis",
+    "pracovnu ponuku",
+    "pracovne miesto",
+    # --- sport a volny cas ---
+    "lyze",
+    "lyzovania",
+    "futbalov",
+    "basketbal",
+    # --- cestovanie ---
+    "hotelovu rezervaci",
+    "dovolenk",
 )
 
 # BUG-03 fix: OpenAI client singleton – nevytvara novy connection pool pri kazdom requeste
