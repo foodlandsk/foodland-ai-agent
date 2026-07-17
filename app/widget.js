@@ -1011,7 +1011,7 @@
           hasProducts
         )
       );
-      conversationHistory.push({role: "user", content: backendText});
+      conversationHistory.push({role: "user", content: text});
       conversationHistory.push({role: "assistant", content: data.answer || ""});
       scrollToBottom();
       addRecipes(data.recipes);
