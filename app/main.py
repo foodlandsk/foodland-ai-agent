@@ -1209,6 +1209,10 @@ def detect_related_subject(message: str) -> str | None:
 
 def detect_allergen_intent(message: str) -> str | None:
     normalized_message = normalize(message)
+    # Recept query bez explicitnej alergenicke otazky -> nie je allergen intent
+    _allergen_explicit = ("alerg", "intoler", "bezlepk", "bez soj", "bez lakt", "celiak")
+    if "recept" in normalized_message and not any(e in normalized_message for e in _allergen_explicit):
+        return None
     if "rybi" in normalized_message and "omack" in normalized_message and any(
         marker in normalized_message for marker in ("vegan", "vegans", "nahrad", "alternativ")
     ):
