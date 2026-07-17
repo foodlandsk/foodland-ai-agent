@@ -562,6 +562,33 @@ RELATED_PRODUCT_QUERIES = {
         "dashi",
         "sake",
     ],
+    "karaage": [
+        "sojova omacka", "sake", "zazvor", "cesnak", "sezamovy olej", "mirin",
+    ],
+    "yangnyeom_chicken": [
+        "gochujang", "sojova omacka", "ryzovy ocot", "cesnak", "zazvor", "sezamovy olej",
+    ],
+    "samgyeopsal": [
+        "sojova omacka", "sezamovy olej", "gochujang", "ryzovy ocot", "sesam",
+    ],
+    "bun_bo_hue": [
+        "rybacia omacka", "ryzove rezance", "citronova trava", "sojova omacka", "sriracha",
+    ],
+    "banh_xeo": [
+        "ryzova muka", "kokosove mlieko", "rybacia omacka", "sriracha",
+    ],
+    "mapo_tofu": [
+        "tofu", "gochujang", "sojova omacka", "sezamovy olej", "cesnak", "zazvor",
+    ],
+    "kung_pao": [
+        "sojova omacka", "ryzovy ocot", "sezamovy olej", "zazvor", "cesnak", "sriracha",
+    ],
+    "dim_sum": [
+        "sojova omacka", "sezamovy olej", "ustricova omacka", "zazvor", "hoisin omacka",
+    ],
+    "dakgalbi": [
+        "gochujang", "sojova omacka", "sezamovy olej", "ryzovy ocot",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -602,7 +629,7 @@ RELATED_SUBJECT_ALIASES = {
     "onigiri": ("onigiri", "ryżové gulky", "ryzove gulky", "ryzove gulky", "onigiri"),
     "yakisoba": ("yakisoba", "yaki soba", "yakisobu", "yaki sobu", "yakisoby"),
     "udon": ("udon", "udonom", "udonove nudle", "udonovu polievku"),
-    "soba": ("soba nudle", "soba rezance", "sobove nudle"),
+    "soba": ("soba", "soba nudle", "soba rezance", "sobove nudle"),
     "mandu": ("mandu",),
     "wonton": ("wonton", "wonton soup", "wontonova polievka"),
     "laksa": ("laksa",),
@@ -626,6 +653,15 @@ RELATED_SUBJECT_ALIASES = {
     "bao_bun": ("bao bun", "bao", "baozi", "parovany bun", "parovane buchty"),
     "gyudon": ("gyudon", "hovaezi don", "beef bowl"),
     "oyakodon": ("oyakodon", "oyako don"),
+    "karaage": ("karaage",),
+    "yangnyeom_chicken": ("yangnyeom chicken", "yangnyeom", "chimaek"),
+    "samgyeopsal": ("samgyeopsal",),
+    "bun_bo_hue": ("bun bo hue", "bun bo"),
+    "banh_xeo": ("banh xeo",),
+    "mapo_tofu": ("mapo tofu", "mapo"),
+    "kung_pao": ("kung pao", "kung pao chicken"),
+    "dim_sum": ("dim sum", "dimsum", "dumpling", "dumplingy"),
+    "dakgalbi": ("dakgalbi",),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
