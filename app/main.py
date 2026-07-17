@@ -434,7 +434,7 @@ RELATED_SUBJECT_ALIASES = {
     "takoyaki": ("takoyaki",),
     "shabu_shabu": ("shabu shabu", "shabu-shabu", "hot pot", "hotpot", "hot-pot", "hot potu", "hotpotu"),
     "onigiri": ("onigiri", "ryżové gulky", "ryzove gulky", "ryzove gulky", "onigiri"),
-    "yakisoba": ("yakisoba", "yaki soba"),
+    "yakisoba": ("yakisoba", "yaki soba", "yakisobu", "yaki sobu", "yakisoby"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
