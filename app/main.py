@@ -425,6 +425,45 @@ RECIPE_INTENT_MARKERS = (
     "ako urobim",
 )
 
+
+ALREADY_HAVE_MARKERS = (
+    "mam ",
+    "mam doma ",
+    "mam uz ",
+    "kupil som ",
+    "vlastnim ",
+)
+
+ALREADY_HAVE_SUBJECT_MAP = {
+    "sojova_omacka": ("sojovu omacku", "sojovej omacke", "sojova omacka", "sojovku", "sojovou omackou"),
+    "kimchi": ("kimchi",),
+    "ramen": ("ramen", "ramyeon", "ramyun"),
+    "ryza": ("ryzu", "ryzou", "ryzy", "bielu ryzu", "jasminovu ryzu", "sushi ryzu"),
+    "kokos": ("kokosove mlieko", "kokosoveho mlieka", "kokosovym mliekom"),
+    "miso": ("miso pastu", "miso pastu", "miso"),
+    "nori": ("nori", "morske riasy"),
+    "tofu": ("tofu",),
+    "gochujang": ("gochujang",),
+    "sriracha": ("sriracha",),
+    "sezamovy_olej": ("sezamovy olej", "sezamovym olejom"),
+    "kari": ("kari pastu", "kari omacku", "kari", "curry"),
+}
+
+ALREADY_HAVE_COMPLEMENT_QUERIES = {
+    "sojova_omacka": ["mirin", "ryzovy ocot", "hoisin omacka", "sezamovy olej", "dashi"],
+    "kimchi": ["ramen rezance", "gochujang", "jazminova ryza", "sezamovy olej", "miso pasta"],
+    "ramen": ["miso pasta", "wakame", "kimchi", "sezamovy olej", "dashi"],
+    "ryza": ["sojova omacka", "rybacia omacka", "mirin", "tofu", "kimchi"],
+    "kokos": ["kari pasta cervena", "rybacia omacka", "jazminova ryza", "sriracha"],
+    "miso": ["dashi", "tofu", "wakame", "ramen rezance", "nori"],
+    "nori": ["sushi ryza", "wasabi", "ryzovy ocot", "nakladany zazvor", "sojova omacka"],
+    "tofu": ["sojova omacka", "sezamovy olej", "gochujang", "miso pasta", "rybacia omacka"],
+    "gochujang": ["sezamovy olej", "jazminova ryza", "kimchi", "ssamjang", "ramen"],
+    "sriracha": ["kokosove mlieko", "rybacia omacka", "jazminova ryza", "ramen"],
+    "sezamovy_olej": ["sojova omacka", "ryzovy ocot", "mirin", "gochujang", "kimchi"],
+    "kari": ["kokosove mlieko", "jazminova ryza", "rybacia omacka", "koriander", "sriracha"],
+}
+
 ALLERGEN_INTENT_MARKERS = (
     "alerg",
     "alergen",
@@ -682,10 +721,13 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "intent": "unknown",
         }
 
+    already_have_subject = detect_already_have_subject(chat_request.message)
     special_subject = detect_special_product_subject(chat_request.message)
     related_subject = detect_related_subject(chat_request.message)
     needs_composition_caution = is_composition_caution_search(chat_request.message)
-    if special_subject:
+    if already_have_subject:
+        matches = complement_products_for_subject(products, already_have_subject, chat_request.limit)
+    elif special_subject:
         matches = special_products_for_subject(products, special_subject, chat_request.limit)
     elif related_subject:
         matches = related_products_for_subject(products, related_subject, chat_request.limit)
@@ -706,7 +748,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
             "products": matches,
             "knowledge": knowledge_summary(knowledge_matches),
-            "intent": "related_products" if related_subject else "product_search",
+            "intent": "related_products" if (related_subject or already_have_subject) else "product_search",
         }
 
     try:
@@ -757,7 +799,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "answer": answer_text,
             "products": matches,
             "knowledge": knowledge_summary(knowledge_matches),
-            "intent": "related_products" if related_subject else "product_search",
+            "intent": "related_products" if (related_subject or already_have_subject) else "product_search",
         }
     except (RateLimitError, APITimeoutError, APIConnectionError) as exc:
         logger.warning("OpenAI transient error after retries: %s", exc)
@@ -1207,6 +1249,35 @@ def detect_related_subject(message: str) -> str | None:
         return "kimchi"
 
     return None
+
+
+def detect_already_have_subject(message: str) -> str | None:
+    """Detekuje vzor 'mám X / kúpil som X / vlastním X' a vracia kanonický kľúč subjektu."""
+    normalized_message = normalize(message)
+    # Musí obsahovať marker 'mám' / 'kúpil som' / 'vlastním'
+    if not any(marker in normalized_message for marker in ALREADY_HAVE_MARKERS):
+        return None
+    for subject_key, aliases in ALREADY_HAVE_SUBJECT_MAP.items():
+        if any(alias in normalized_message for alias in aliases):
+            return subject_key
+    return None
+
+
+def complement_products_for_subject(products_list: list, subject_key: str, limit: int) -> list[dict]:
+    """Vráti komplementárne produkty k tomu, čo zákazník už má."""
+    seen: set[str] = set()
+    recommendations: list[dict] = []
+    for query in ALREADY_HAVE_COMPLEMENT_QUERIES.get(subject_key, []):
+        for product in search_products(products_list, query, 3):
+            key = product.get("id") or product.get("link") or product.get("title")
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            recommendations.append(product)
+            if len(recommendations) >= limit:
+                return recommendations
+            break
+    return recommendations
 
 
 def detect_allergen_intent(message: str) -> str | None:
