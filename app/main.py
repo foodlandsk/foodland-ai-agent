@@ -1039,6 +1039,7 @@ RELATED_INTENT_MARKERS = (
     "skus", "pridat",
     "serve", "pair", "side dish", "goes well",
     "podavat", "dodat", "dobavit",
+    "prep", "food prep",
 )
 
 RECIPE_INTENT_MARKERS = (
