@@ -664,6 +664,10 @@ RELATED_PRODUCT_QUERIES = {
     "bossam": [
         "gochujang", "sojova omacka", "sezamovy olej", "kimchi",
     ],
+    "special_occasion": [
+        "sushi ryza", "nori", "wasabi", "ryzovy ocot",
+        "sojova omacka", "sezamovy olej", "jazminova ryza",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -764,6 +768,12 @@ RELATED_SUBJECT_ALIASES = {
     "hainanese_chicken": ("hainanese chicken", "hainanese rice", "hainan chicken"),
     "yukgaejang": ("yukgaejang",),
     "bossam": ("bossam",),
+    "special_occasion": (
+        "svadba", "svadb", "narodeninov", "narozenin", "vianoc", "silvester",
+        "novy rok", "sviatok", "romantick", "specialn",
+        "priatelk", "anniversary", "wedding", "birthday", "christmas",
+        "new year", "date night", "valentin",
+    ),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
@@ -1041,6 +1051,8 @@ RELATED_INTENT_MARKERS = (
     "podavat", "dodat", "dobavit",
     "prep", "food prep",
     "kuchyn", "veci", "potrebuj", "koupit",
+    "svadba", "sviatok", "vianoc", "silvester", "novy rok",
+    "romantick", "specialn", "priatelk", "co si dat", "valentin",
 )
 
 RECIPE_INTENT_MARKERS = (
