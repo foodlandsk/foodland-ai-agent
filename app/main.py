@@ -1077,6 +1077,7 @@ RELATED_INTENT_MARKERS = (
     "ktor", "lepsi", "doplnok",
     "doplni", "kombin", "s cim",
     "nosi", "servir", "spar", "prispiev",
+    "ochutna", "vyuzi", "zvys",
 )
 
 RECIPE_INTENT_MARKERS = (
