@@ -1059,6 +1059,8 @@ RELATED_INTENT_MARKERS = (
     "robit", "zostalo", "dochut", "poloz", "koreni", "dnes",
     "nahrad", "alternativ", "namiesto", "replacement", "substitute", "instead",
     "jedl", "vecer",
+    "darek", "darcek", "gift", "present", "mnozstvo", "kus",
+    "jednoduch", "maju rad", "pacia", "miluj",
 )
 
 RECIPE_INTENT_MARKERS = (
