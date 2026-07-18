@@ -583,6 +583,9 @@ RELATED_PRODUCT_QUERIES = {
     "jajangmyeon": [
         "sojova omacka", "sezamovy olej", "ryzove rezance", "ustricova omacka",
     ],
+    "bento": [
+        "sojova omacka", "mirin", "nori", "sezamovy olej", "ryzovy ocot",
+    ],
     "yangnyeom_chicken": [
         "gochujang", "sojova omacka", "ryzovy ocot", "cesnak", "zazvor", "sezamovy olej",
     ],
@@ -732,6 +735,9 @@ RELATED_SUBJECT_ALIASES = {
     "adobo": ("adobo", "filipino adobo"),
     "malatang": ("malatang", "mala tang", "mala hotpot"),
     "jajangmyeon": ("jajangmyeon", "jajangmyon", "black bean noodles"),
+    "asian_noodles": ("noodle", "noodles", "noodle soup", "asian noodles", "asian noodle"),
+    "medium_spicy": ("spicy food", "hot food", "spicy dinner", "spicy meal", "pikantne jedlo", "horuce jedlo"),
+    "bento": ("bento", "bento box", "bento lunch"),
     "yangnyeom_chicken": ("yangnyeom chicken", "yangnyeom", "chimaek", "korean fried chicken", "korean chicken"),
     "samgyeopsal": ("samgyeopsal", "pork belly"),
     "bun_bo_hue": ("bun bo hue", "bun bo"),
@@ -1022,6 +1028,7 @@ RELATED_INTENT_MARKERS = (
     "supplies", "party",
     "making", "tonight", "want to make", "need to make", "going to make",
     "want to cook", "going to cook", "how to make", "i make",
+    "ideas", "food ideas", "dinner ideas",
 )
 
 RECIPE_INTENT_MARKERS = (
