@@ -1076,6 +1076,7 @@ RELATED_INTENT_MARKERS = (
     "omack", "nieco", "ake", "aky", "akou",
     "ktor", "lepsi", "doplnok",
     "doplni", "kombin", "s cim",
+    "nosi", "servir", "spar", "prispiev",
 )
 
 RECIPE_INTENT_MARKERS = (
