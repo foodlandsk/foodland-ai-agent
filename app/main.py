@@ -701,7 +701,7 @@ RELATED_SUBJECT_ALIASES = {
     "thajska_kuchyna": ("thajsku kuchynu", "thajska kuchyna", "thajska vecera", "thajsku veceru", "thajsk", "thai"),
     "cinska_kuchyna": ("cinsku kuchynu", "cinska kuchyna", "cinska vecera", "cinsku veceru", "cinsk", "chinese"),
     "pad_thai": ("pad thai", "padthai", "pad-thai"),
-    "tempura": ("tempura", "tempuru", "tempury", "tempurou"),
+    "tempura": ("tempura", "tempuru", "tempury", "tempurou", "tempur"),
     "okonomiyaki": ("okonomiyaki",),
     "takoyaki": ("takoyaki",),
     "shabu_shabu": ("shabu shabu", "shabu-shabu", "hot pot", "hotpot", "hot-pot", "hot potu", "hotpotu"),
@@ -773,6 +773,7 @@ RELATED_SUBJECT_ALIASES = {
         "novy rok", "sviatok", "romantick", "specialn",
         "priatelk", "anniversary", "wedding", "birthday", "christmas",
         "new year", "date night", "valentin",
+        "vikend", "nedel", "sobot", "dnes", "dnesna",
     ),
 }
 
@@ -1053,6 +1054,7 @@ RELATED_INTENT_MARKERS = (
     "kuchyn", "veci", "potrebuj", "koupit",
     "svadba", "sviatok", "vianoc", "silvester", "novy rok",
     "romantick", "specialn", "priatelk", "co si dat", "valentin",
+    "robit", "zostalo", "dochut", "poloz", "koreni", "dnes",
 )
 
 RECIPE_INTENT_MARKERS = (
