@@ -1037,6 +1037,8 @@ RELATED_INTENT_MARKERS = (
     "sauce", "oil", "seasoning", "spice", "sides", "noodle",
     "korenie", "olej", "rezanc", "polevk", "ocot",
     "skus", "pridat",
+    "serve", "pair", "side dish", "goes well",
+    "podavat", "dodat", "dobavit",
 )
 
 RECIPE_INTENT_MARKERS = (
