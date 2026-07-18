@@ -746,7 +746,7 @@ RELATED_SUBJECT_ALIASES = {
     "oyakodon": ("oyakodon", "oyako don"),
     "karaage": ("karaage",),
     "tonkatsu": ("tonkatsu",),
-    "gyoza": ("gyoza", "jiaozi"),
+    "gyoza": ("gyoza", "gyozu", "gyozy", "gyozou", "jiaozi"),
     "yakitori": ("yakitori",),
     "adobo": ("adobo", "filipino adobo"),
     "malatang": ("malatang", "mala tang", "mala hotpot"),
@@ -1085,7 +1085,7 @@ RELATED_INTENT_MARKERS = (
     "ochut", "vyuzi", "zvys",
     # garnish/fill/spread/EN pairing
     "posyp", "napln", "namaz", "ozob", "cim",
-    "condiment", "go with", "goes with", "could i", "can i",
+    "condiment", "go with", "goes with", "could i", "can i", "ide k",
 )
 
 RECIPE_INTENT_MARKERS = (
@@ -1117,7 +1117,7 @@ ALREADY_HAVE_SUBJECT_MAP = {
     "sojova_omacka": ("sojovu omacku", "sojovej omacke", "sojova omacka", "sojovku", "sojovou omackou"),
     "kimchi": ("kimchi",),
     "ramen": ("ramen", "ramyeon", "ramyun"),
-    "ryza": ("ryzu", "ryzou", "ryzy", "bielu ryzu", "jasminovu ryzu", "sushi ryzu"),
+    "ryza": ("ryzu", "ryzou", "ryzy", "ryze", "ryzi", "bielu ryzu", "jasminovu ryzu", "jasminovej", "jasminov", "sushi ryzu"),
     "kokos": ("kokosove mlieko", "kokosoveho mlieka", "kokosovym mliekom"),
     "miso": ("miso pastu", "miso pastu", "miso"),
     "nori": ("nori", "morske riasy"),
