@@ -1029,6 +1029,7 @@ RELATED_INTENT_MARKERS = (
     "making", "tonight", "want to make", "need to make", "going to make",
     "want to cook", "going to cook", "how to make", "i make",
     "ideas", "food ideas", "dinner ideas",
+    "should i", "night", "grocery", "shopping list", "items", "needed",
 )
 
 RECIPE_INTENT_MARKERS = (
