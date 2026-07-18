@@ -664,6 +664,10 @@ RELATED_PRODUCT_QUERIES = {
     "bossam": [
         "gochujang", "sojova omacka", "sezamovy olej", "kimchi",
     ],
+    "dashi": [
+        "kombu", "katsuobushi", "bonito vlocky", "shiitake houby",
+        "miso pasta", "sojova omacka", "rybacia omacka",
+    ],
     "special_occasion": [
         "sushi ryza", "nori", "wasabi", "ryzovy ocot",
         "sojova omacka", "sezamovy olej", "jazminova ryza",
@@ -674,7 +678,7 @@ RELATED_SUBJECT_ALIASES = {
     "kimchi": ("kimchi", "kimci"),
     "sushi": ("sushi", "susi", "sushi ryza", "susi ryza", "maki", "maki rolky", "california roll", "futomaki", "hosomaki", "uramaki", "nigiri", "temaki", "sashimi"),
     "gochujang": ("gochujang", "gochu jang", "gochuang"),
-    "ramen": ("ramen", "ramyun", "ramyeon", "tonkotsu", "tantanmen", "noodle soup", "noodle broth", "soup noodles"),
+    "ramen": ("ramen", "ramyun", "ramyeon", "tonkotsu", "tantanmen", "noodle soup", "noodle broth", "soup noodles", "nudl", "nudle", "nudlov"),
     "kari": ("kari", "curry"),
     "pho": ("pho",),
     "pad_thai": ("pad thai", "padthai"),
@@ -707,7 +711,7 @@ RELATED_SUBJECT_ALIASES = {
     "takoyaki": ("takoyaki",),
     "shabu_shabu": ("shabu shabu", "shabu-shabu", "hot pot", "hotpot", "hot-pot", "hot potu", "hotpotu"),
     "onigiri": ("onigiri", "ryżové gulky", "ryzove gulky", "ryzove gulky", "onigiri"),
-    "yakisoba": ("yakisoba", "yaki soba", "yakisobu", "yaki sobu", "yakisoby"),
+    "yakisoba": ("yakisoba", "yaki soba", "yakisobu", "yaki sobu", "yakisoby", "yakisobe"),
     "udon": ("udon", "udonom", "udonove nudle", "udonovu polievku"),
     "soba": ("soba", "soba nudle", "soba rezance", "sobove nudle"),
     "mandu": ("mandu",),
@@ -769,6 +773,7 @@ RELATED_SUBJECT_ALIASES = {
     "hainanese_chicken": ("hainanese chicken", "hainanese rice", "hainan chicken"),
     "yukgaejang": ("yukgaejang",),
     "bossam": ("bossam",),
+    "dashi": ("dashi", "dashi vyvar", "dashi stock", "dashi buljon", "dashiho"),
     "special_occasion": (
         "svadba", "svadb", "narodeninov", "narozenin", "vianoc", "silvester",
         "novy rok", "sviatok", "romantick", "specialn",
@@ -1065,6 +1070,7 @@ RELATED_INTENT_MARKERS = (
     # beverage pairing, ingredient-type questions, recommendation, usage/substitution
     "najleps", "pijem", "pije", "pijeme", "pouzit", "mozem",
     "omack", "nieco", "ake", "aky", "akou",
+    "ktor", "lepsi", "doplnok",
 )
 
 RECIPE_INTENT_MARKERS = (
