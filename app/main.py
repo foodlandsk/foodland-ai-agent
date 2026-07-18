@@ -1098,6 +1098,8 @@ RELATED_INTENT_MARKERS = (
     "condiment", "go with", "goes with", "could i", "can i", "ide k",
     # flavour/quality comparative adjectives
     "pikan", "chutnejsi", "zdrav", "sladk", "kysl",
+    # EN usage/method queries
+    "best way", "how to use", "season", "objedn",
 )
 
 RECIPE_INTENT_MARKERS = (
