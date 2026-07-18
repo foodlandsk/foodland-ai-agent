@@ -1057,6 +1057,8 @@ RELATED_INTENT_MARKERS = (
     "svadba", "sviatok", "vianoc", "silvester", "novy rok",
     "romantick", "specialn", "priatelk", "co si dat", "valentin",
     "robit", "zostalo", "dochut", "poloz", "koreni", "dnes",
+    "nahrad", "alternativ", "namiesto", "replacement", "substitute", "instead",
+    "jedl", "vecer",
 )
 
 RECIPE_INTENT_MARKERS = (
