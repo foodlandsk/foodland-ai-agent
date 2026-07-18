@@ -702,7 +702,7 @@ RELATED_SUBJECT_ALIASES = {
     "poke_bowl": ("poke bowl", "poke", "poke boul"),
     "korejsky_gril": ("korejsky gril", "korejsky bbq", "korejsky barbecue", "kbbq", "korean bbq"),
     "thajske_kari": ("thajske kari", "thajske curry", "thajsky curry", "thajskeho curry", "thai curry"),
-    "sojova_omacka": ("sojovej omacke", "k sojovej omacke", "doplnky k sojovej", "sojova omacka"),
+    "sojova_omacka": ("sojovej omacke", "k sojovej omacke", "doplnky k sojovej", "sojova omacka", "sojov", "soja sos", "soy sauce"),
     "wok": ("woku", "wok", "stir fry", "stir-fry", "na woku", "smaz", "smazit", "smazenie", "vysmaz"),
     "beginner_kit": ("zacinam azijsky", "zacinam varit azijsky", "zacinam s azijskou", "azijska spajza", "co si kupit ako prv", "zacinam varit", "prvy krat azij", "prvy krat varit azij", "krat korejsk", "krat japonsk", "krat thajsk", "krat cinsk", "azijsk", "azijskeho", "azijsku kuchyn", "azijske jedlo", "azijsku vecer", "nieco azij", "nejake azij", "asian", "east asian", "southeast asian", "spicy asian", "vegetarian asian", "vegan asian", "asijsk", "asijsku", "asijskej",
         "azijsk", "azijsku", "azijskej", "azia", "azii", "azijsky"),
@@ -1096,6 +1096,8 @@ RELATED_INTENT_MARKERS = (
     # garnish/fill/spread/EN pairing
     "posyp", "napln", "namaz", "ozob", "cim",
     "condiment", "go with", "goes with", "could i", "can i", "ide k",
+    # flavour/quality comparative adjectives
+    "pikan", "chutnejsi", "zdrav", "sladk", "kysl",
 )
 
 RECIPE_INTENT_MARKERS = (
