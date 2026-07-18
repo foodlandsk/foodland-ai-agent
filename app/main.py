@@ -664,6 +664,9 @@ RELATED_PRODUCT_QUERIES = {
     "bossam": [
         "gochujang", "sojova omacka", "sezamovy olej", "kimchi",
     ],
+    "wakame": [
+        "miso pasta", "tofu", "sojova omacka", "nori", "ryzovy ocot", "sezamovy olej",
+    ],
     "dashi": [
         "kombu", "katsuobushi", "bonito vlocky", "shiitake houby",
         "miso pasta", "sojova omacka", "rybacia omacka",
@@ -773,6 +776,7 @@ RELATED_SUBJECT_ALIASES = {
     "hainanese_chicken": ("hainanese chicken", "hainanese rice", "hainan chicken"),
     "yukgaejang": ("yukgaejang",),
     "bossam": ("bossam",),
+    "wakame": ("wakame", "wakamy", "wakamu", "wakamom"),
     "dashi": ("dashi", "dashi vyvar", "dashi stock", "dashi buljon", "dashiho"),
     "special_occasion": (
         "svadba", "svadb", "narodeninov", "narozenin", "vianoc", "silvester",
@@ -1071,6 +1075,7 @@ RELATED_INTENT_MARKERS = (
     "najleps", "pijem", "pije", "pijeme", "pouzit", "mozem",
     "omack", "nieco", "ake", "aky", "akou",
     "ktor", "lepsi", "doplnok",
+    "doplni", "kombin", "s cim",
 )
 
 RECIPE_INTENT_MARKERS = (
