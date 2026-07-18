@@ -683,6 +683,10 @@ RELATED_PRODUCT_QUERIES = {
         "kari pasta cervena", "kari pasta zelena", "rybacia omacka",
         "jazminova ryza", "sriracha", "lemongrass", "tamarind",
     ],
+    "rybacia_omacka": [
+        "sojova omacka", "tamari", "miso pasta",
+        "bezlepkova sojova omacka", "kokosove aminokyseliny",
+    ],
     "special_occasion": [
         "sushi ryza", "nori", "wasabi", "ryzovy ocot",
         "sojova omacka", "sezamovy olej", "jazminova ryza",
@@ -793,6 +797,7 @@ RELATED_SUBJECT_ALIASES = {
     "spring_roll": ("spring roll", "spring rollu", "spring rollom", "spring rollov", "jarny zavin", "jarneho zavinu", "rice paper", "ryzovy papier"),
     "ryza": ("ryzu", "ryzou", "ryzy", "ryze", "ryzi", "jasminovu ryzu", "jasminovej", "jasminov", "basmati", "sushi ryzu", "bielu ryzu"),
     "kokos": ("kokosov", "kokosove", "kokosoveho", "kokosovym", "kokosove mlieko", "coconut"),
+    "rybacia_omacka": ("rybacia omacka", "rybacou omackou", "rybaci omacku", "rybac", "fish sauce", "nuoc mam", "nuoc nam"),
     "special_occasion": (
         "svadba", "svadb", "narodeninov", "narozenin", "vianoc", "silvester",
         "novy rok", "sviatok", "romantick", "specialn",
@@ -1102,6 +1107,9 @@ RELATED_INTENT_MARKERS = (
     "best way", "how to use", "season", "objedn",
     # ingredient composition queries SK
     "obsah", "sklad", "z coho", "ide do", "obsahuj",
+    # diet/health/texture/substitution queries
+    "bezgluten", "nizkokalor", "dietn", "verzia",
+    "chrumkav", "kremov", "umami", "nahrad",
 )
 
 RECIPE_INTENT_MARKERS = (
