@@ -1100,6 +1100,8 @@ RELATED_INTENT_MARKERS = (
     "pikan", "chutnejsi", "zdrav", "sladk", "kysl",
     # EN usage/method queries
     "best way", "how to use", "season", "objedn",
+    # ingredient composition queries SK
+    "obsah", "sklad", "z coho", "ide do", "obsahuj",
 )
 
 RECIPE_INTENT_MARKERS = (
