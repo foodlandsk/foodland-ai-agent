@@ -683,6 +683,14 @@ RELATED_PRODUCT_QUERIES = {
         "kari pasta cervena", "kari pasta zelena", "rybacia omacka",
         "jazminova ryza", "sriracha", "lemongrass", "tamarind",
     ],
+    "chili": [
+        "sriracha", "gochujang", "sambal oelek", "chili olej",
+        "thajske chili", "chili pasta",
+    ],
+    "nori": [
+        "sushi ryza", "ryzovy ocot", "wasabi", "sojova omacka",
+        "sezamovy olej", "furikake",
+    ],
     "rybacia_omacka": [
         "sojova omacka", "tamari", "miso pasta",
         "bezlepkova sojova omacka", "kokosove aminokyseliny",
@@ -798,6 +806,8 @@ RELATED_SUBJECT_ALIASES = {
     "ryza": ("ryzu", "ryzou", "ryzy", "ryze", "ryzi", "jasminovu ryzu", "jasminovej", "jasminov", "basmati", "sushi ryzu", "bielu ryzu"),
     "kokos": ("kokosov", "kokosove", "kokosoveho", "kokosovym", "kokosove mlieko", "coconut"),
     "rybacia_omacka": ("rybacia omacka", "rybacou omackou", "rybaci omacku", "rybac", "fish sauce", "nuoc mam", "nuoc nam"),
+    "chili": ("chili", "chilli", "chili omacka", "chili paste", "chili paprika", "chili sauce"),
+    "nori": ("nori", "nori list", "nori listov", "nori sheets", "nori sheet"),
     "special_occasion": (
         "svadba", "svadb", "narodeninov", "narozenin", "vianoc", "silvester",
         "novy rok", "sviatok", "romantick", "specialn",
@@ -1110,6 +1120,9 @@ RELATED_INTENT_MARKERS = (
     # diet/health/texture/substitution queries
     "bezgluten", "nizkokalor", "dietn", "verzia",
     "chrumkav", "kremov", "umami", "nahrad",
+    # heat/spice balancing, garnish, decoration, storage
+    "zniz", "palivost", "zmier", "ostrost", "neutral",
+    "garnish", "ozdobi", "uchov",
 )
 
 RECIPE_INTENT_MARKERS = (
