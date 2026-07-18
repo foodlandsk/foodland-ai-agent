@@ -1033,6 +1033,7 @@ RELATED_INTENT_MARKERS = (
     "what to get", "stuff for", "things to buy", "week", "pantry",
     "dokup", "zobrat", "zoznam",
     "at home", "cook", "easy", "learn to",
+    "budget", "toppings", "topping", "upgrade", "to buy",
 )
 
 RECIPE_INTENT_MARKERS = (
