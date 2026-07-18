@@ -671,6 +671,10 @@ RELATED_PRODUCT_QUERIES = {
         "kombu", "katsuobushi", "bonito vlocky", "shiitake houby",
         "miso pasta", "sojova omacka", "rybacia omacka",
     ],
+    "spring_roll": [
+        "ryzovy papier", "rice paper", "ryzove vermicelli", "sladkokyselka",
+        "sojova omacka", "sezamovy olej", "chili omacka", "koriander",
+    ],
     "special_occasion": [
         "sushi ryza", "nori", "wasabi", "ryzovy ocot",
         "sojova omacka", "sezamovy olej", "jazminova ryza",
@@ -778,6 +782,7 @@ RELATED_SUBJECT_ALIASES = {
     "bossam": ("bossam",),
     "wakame": ("wakame", "wakamy", "wakamu", "wakamom"),
     "dashi": ("dashi", "dashi vyvar", "dashi stock", "dashi buljon", "dashiho"),
+    "spring_roll": ("spring roll", "spring rollu", "spring rollom", "spring rollov", "jarny zavin", "jarneho zavinu", "rice paper", "ryzovy papier"),
     "special_occasion": (
         "svadba", "svadb", "narodeninov", "narozenin", "vianoc", "silvester",
         "novy rok", "sviatok", "romantick", "specialn",
@@ -1077,7 +1082,10 @@ RELATED_INTENT_MARKERS = (
     "ktor", "lepsi", "doplnok",
     "doplni", "kombin", "s cim",
     "nosi", "servir", "spar", "prispiev",
-    "ochutna", "vyuzi", "zvys",
+    "ochut", "vyuzi", "zvys",
+    # garnish/fill/spread/EN pairing
+    "posyp", "napln", "namaz", "ozob", "cim",
+    "condiment", "go with", "goes with", "could i", "can i",
 )
 
 RECIPE_INTENT_MARKERS = (
