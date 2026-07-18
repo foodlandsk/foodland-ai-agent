@@ -1061,6 +1061,7 @@ RELATED_INTENT_MARKERS = (
     "jedl", "vecer",
     "darek", "darcek", "gift", "present", "mnozstvo", "kus",
     "jednoduch", "maju rad", "pacia", "miluj",
+    "varil", "prvykrat", "zleps", "marin", "namach", "japons",
 )
 
 RECIPE_INTENT_MARKERS = (
@@ -1390,7 +1391,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     knowledge_matches = search_knowledge(knowledge, chat_request.message)
 
     allergen_term = detect_allergen_intent(chat_request.message)
-    if allergen_term:
+    if allergen_term and not detect_related_subject(chat_request.message):
         allergen_matches = allergen_product_matches(chat_request.message, chat_request.limit)
         log_question(chat_request.message, client_key, len(allergen_matches))
         return {
