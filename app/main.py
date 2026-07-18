@@ -675,6 +675,14 @@ RELATED_PRODUCT_QUERIES = {
         "ryzovy papier", "rice paper", "ryzove vermicelli", "sladkokyselka",
         "sojova omacka", "sezamovy olej", "chili omacka", "koriander",
     ],
+    "ryza": [
+        "ryzovy ocot", "sojova omacka", "miso pasta", "sezamovy olej",
+        "nori", "furikake", "kimchi", "tofu",
+    ],
+    "kokos": [
+        "kari pasta cervena", "kari pasta zelena", "rybacia omacka",
+        "jazminova ryza", "sriracha", "lemongrass", "tamarind",
+    ],
     "special_occasion": [
         "sushi ryza", "nori", "wasabi", "ryzovy ocot",
         "sojova omacka", "sezamovy olej", "jazminova ryza",
@@ -783,6 +791,8 @@ RELATED_SUBJECT_ALIASES = {
     "wakame": ("wakame", "wakamy", "wakamu", "wakamom"),
     "dashi": ("dashi", "dashi vyvar", "dashi stock", "dashi buljon", "dashiho"),
     "spring_roll": ("spring roll", "spring rollu", "spring rollom", "spring rollov", "jarny zavin", "jarneho zavinu", "rice paper", "ryzovy papier"),
+    "ryza": ("ryzu", "ryzou", "ryzy", "ryze", "ryzi", "jasminovu ryzu", "jasminovej", "jasminov", "basmati", "sushi ryzu", "bielu ryzu"),
+    "kokos": ("kokosov", "kokosove", "kokosoveho", "kokosovym", "kokosove mlieko", "coconut"),
     "special_occasion": (
         "svadba", "svadb", "narodeninov", "narozenin", "vianoc", "silvester",
         "novy rok", "sviatok", "romantick", "specialn",
