@@ -1062,6 +1062,9 @@ RELATED_INTENT_MARKERS = (
     "darek", "darcek", "gift", "present", "mnozstvo", "kus",
     "jednoduch", "maju rad", "pacia", "miluj",
     "varil", "prvykrat", "zleps", "marin", "namach", "japons",
+    # beverage pairing, ingredient-type questions, recommendation, usage/substitution
+    "najleps", "pijem", "pije", "pijeme", "pouzit", "mozem",
+    "omack", "nieco", "ake", "aky", "akou",
 )
 
 RECIPE_INTENT_MARKERS = (
