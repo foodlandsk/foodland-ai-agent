@@ -1937,9 +1937,6 @@ def detect_special_product_subject(message: str) -> str | None:
 
 def detect_related_subject(message: str) -> str | None:
     normalized_message = normalize(message)
-    if is_gluten_free_search(normalized_message):
-        return None
-
     if not any(marker in normalized_message for marker in RELATED_INTENT_MARKERS):
         return None
 
