@@ -806,6 +806,7 @@
   const notice = root.querySelector(".fl-ai-notice");
   const messages = root.querySelector(".fl-ai-messages");
   let conversationHistory = [];
+  const sessionId = Math.random().toString(36).slice(2, 12);
   const form = root.querySelector(".fl-ai-form");
   const input = root.querySelector(".fl-ai-input");
   const submit = root.querySelector(".fl-ai-submit");
@@ -1073,7 +1074,7 @@
     const response = await fetch(`${apiBaseUrl}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: backendText, limit: 6, conversation_history: conversationHistory }),
+      body: JSON.stringify({ message: backendText, limit: 6, conversation_history: conversationHistory, session_id: sessionId }),
     });
     if (response.status === 429) throw new Error("RATE_LIMIT");
     if (!response.ok) throw new Error("REQUEST_FAILED");
@@ -1159,3 +1160,4 @@
     }
   });
 })();
+ 
