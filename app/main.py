@@ -805,6 +805,9 @@ RELATED_PRODUCT_QUERIES = {
     "samgyeopsal": [
         "sojova omacka", "sezamovy olej", "gochujang", "ryzovy ocot", "sesam",
     ],
+    "bun_bo_nam_bo": [
+        "ryzove rezance", "rybacia omacka", "hoisin", "sezamovy olej", "arasidy", "citronova trava",
+    ],
     "bun_bo_hue": [
         "rybacia omacka", "ryzove rezance", "citronova trava", "sojova omacka", "sriracha",
     ],
@@ -1083,6 +1086,7 @@ RELATED_SUBJECT_ALIASES = {
     "bento": ("bento", "bento box", "bento lunch", "benta", "bente", "do benta", "bent"),
     "yangnyeom_chicken": ("yangnyeom chicken", "yangnyeom", "chimaek", "korean fried chicken", "korean chicken"),
     "samgyeopsal": ("samgyeopsal", "pork belly"),
+    "bun_bo_nam_bo": ("bun bo nam bo", "bun bo nam", "vietnamsky hovadzi salat", "hovadzi salat s rezancami", "bun bo juh"),
     "bun_bo_hue": ("bun bo hue", "bun bo"),
     "banh_xeo": ("banh xeo",),
     "mapo_tofu": ("mapo tofu", "mapo"),
@@ -1182,6 +1186,12 @@ RELATED_SUBJECT_ALIASES = {
     "oolong": ("oolong", "oolong caj", "wu long", "wulong", "oolong tea"),
     "kondenzovane_mlieko": ("kondenzovane mlieko", "kondenzovaneho mlieka", "kondenzovanym mliekem", "sweetened condensed milk", "sladzene kondenzovane mlieko"),
 
+}
+
+RECIPE_URL_OVERRIDES: dict[str, str] = {
+    "bun bo nam bo": "https://www.foodland.sk/recepty/vietnamska-specialita-bun-bo-nam-bo/",
+    "bun bo nam": "https://www.foodland.sk/recepty/vietnamska-specialita-bun-bo-nam-bo/",
+    "vietnamsky hovadzi salat": "https://www.foodland.sk/recepty/vietnamska-specialita-bun-bo-nam-bo/",
 }
 
 SPECIAL_PRODUCT_QUERIES = {
@@ -2281,6 +2291,12 @@ def first_record_value(record: dict, markers: tuple[str, ...]) -> str:
 
 
 def first_recipe_link(record: dict, title: str) -> str:
+    # Check hardcoded URL overrides by title
+    normalized_title = normalize(title)
+    for recipe_key, recipe_url in RECIPE_URL_OVERRIDES.items():
+        if recipe_key in normalized_title:
+            return recipe_url
+
     for key, value in record.items():
         text = str(value or "").strip()
         normalized_key = normalize(str(key))
