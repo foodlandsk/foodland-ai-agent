@@ -706,6 +706,10 @@ RELATED_PRODUCT_QUERIES = {
         "sushi ryza", "nori", "wasabi", "ryzovy ocot",
         "sojova omacka", "sezamovy olej", "jazminova ryza",
     ],
+    "sezamovy_olej": [
+        "sojova omacka", "ryzovy ocot", "mirin", "gochujang", "hoisin",
+        "sezamove semienka", "toasted sesame seeds",
+    ],
     "ponzu": [
         "ponzu", "sojova omacka", "ryzovy ocot", "mirin", "yuzu",
     ],
@@ -726,8 +730,8 @@ RELATED_SUBJECT_ALIASES = {
     "bibimbap": ("bibimbap",),
     "gyoza": ("gyoza", "gyozu", "gyozy", "gyozou"),
     "poke_bowl": ("poke bowl", "poke", "poke boul"),
-    "korejsky_gril": ("korejsky gril", "korejsky bbq", "korejsky barbecue", "kbbq", "korean bbq"),
-    "thajske_kari": ("thajske kari", "thajske curry", "thajsky curry", "thajskeho curry", "thai curry"),
+    "korejsky_gril": ("korejsky gril", "korejsky bbq", "korejsky barbecue", "kbbq", "korean bbq", "korejsku barbecue", "korejskeho grilu", "korejskeho bbq", "korejsky grill"),
+    "thajske_kari": ("thajske kari", "thajske curry", "thajsky curry", "thajskeho curry", "thai curry", "thajskemu kari", "thajskeho kari", "thajskou kari", "thajskej kari"),
     "sojova_omacka": ("sojovej omacke", "k sojovej omacke", "doplnky k sojovej", "sojova omacka", "sojov", "soja sos", "soy sauce"),
     "wok": ("woku", "wok", "stir fry", "stir-fry", "na woku", "smaz", "smazit", "smazenie", "vysmaz"),
     "beginner_kit": ("zacinam azijsky", "zacinam varit azijsky", "zacinam s azijskou", "azijska spajza", "co si kupit ako prv", "zacinam varit", "prvy krat azij", "prvy krat varit azij", "krat korejsk", "krat japonsk", "krat thajsk", "krat cinsk", "azijsk", "azijskeho", "azijsku kuchyn", "azijske jedlo", "azijsku vecer", "nieco azij", "nejake azij", "asian", "east asian", "southeast asian", "spicy asian", "vegetarian asian", "vegan asian", "asijsk", "asijsku", "asijskej",
@@ -823,6 +827,7 @@ RELATED_SUBJECT_ALIASES = {
     "rybacia_omacka": ("rybacia omacka", "rybacou omackou", "rybaci omacku", "rybac", "fish sauce", "nuoc mam", "nuoc nam"),
     "chili": ("chili", "chilli", "chili omacka", "chili paste", "chili paprika", "chili sauce"),
     "nori": ("nori", "nori list", "nori listov", "nori sheets", "nori sheet"),
+    "sezamovy_olej": ("sezamovy olej", "sezamoveho oleja", "sezamovym olejom", "sesame oil", "sezam olej", "dark sesame", "toasted sesame"),
     "ponzu": ("ponzu", "ponzu omacku", "ponzu sauce", "ponzu shoyu", "ponzu yuzu"),
     "potsticker": ("potsticker", "potstickeram", "guo tie", "pot sticker", "pot-sticker"),
     "special_occasion": (
@@ -1152,6 +1157,10 @@ RELATED_INTENT_MARKERS = (
     "priloha", "caj", "vino", "pivo", "tofu", "protein", "bielkovin", "baza", "co do",
     # what-is / what-to-put / Czech food spelling / all pouzi* forms
     "co je", "co dat", "jidl", "pouziva",
+    # Slovak dative preposition k/ku/ko + space — strongest pairing signal possible
+    "k ", "ku ", "ko ",
+    # finger food / snack context
+    "finger food",
 )
 
 RECIPE_INTENT_MARKERS = (
