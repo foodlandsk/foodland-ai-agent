@@ -791,9 +791,9 @@
     <div class="fl-ai-launcher-wrap">
       <div class="fl-ai-label-block">
         <span class="fl-ai-label-title">💬 Poraďte sa s Mei</span>
-      </div>
+    </div>
     <button class="fl-ai-launcher" type="button" aria-label="Otvoriť Foodland poradcu">
-      <canvas id="fl-mei-canvas" class="fl-ai-avatar"></canvas>
+      <img class="fl-ai-avatar" src="${apiBaseUrl.replace(/\/$/, "")}/static/mei-avatar.png" alt="Foodland Mei" loading="lazy" />
     </button>
     </div>
   `;
@@ -1160,90 +1160,3 @@
   });
 })();
 
-// Mei 3D Avatar
-(function initMeiAvatar(){
-  var cfg = window.FoodlandAI || {};
-  var scriptSrc = document.currentScript && document.currentScript.src ? document.currentScript.src : "";
-  var scriptBase = scriptSrc ? scriptSrc.replace(/\/static\/widget\.js(?:\?.*)?$/, "") : "";
-  var staticBase = cfg.staticBaseUrl || scriptBase || cfg.apiBaseUrl || window.location.origin;
-  var modelUrl = cfg.avatarGlbUrl || (staticBase.replace(/\/$/, "") + "/static/foodland-mei-avatar-rigged.glb");
-  var threeUrl = cfg.threeUrl || "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
-  var loaderUrl = cfg.gltfLoaderUrl || "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js";
-  var use3D = cfg.use3DAvatar !== false;
-
-  function _ls(url,cb){
-    var existing = document.querySelector('script[data-fl-mei-src="' + url + '"]');
-    if (existing) {
-      if (existing.dataset.loaded === "true") cb();
-      else existing.addEventListener("load", cb, { once: true });
-      return;
-    }
-    var s=document.createElement('script');
-    s.src=url;
-    s.async=true;
-    s.dataset.flMeiSrc=url;
-    s.onload=function(){s.dataset.loaded="true";cb();};
-    s.onerror=function(){console.warn('[Mei] load fail',url);};
-    document.head.appendChild(s);
-  }
-  function _wfc(id,cb,n){var el=document.getElementById(id);if(el){cb(el);return;}if((n||0)>50)return;setTimeout(function(){_wfc(id,cb,(n||0)+1);},100);}
-  function _drawFallback(canvas){
-    var dpr=Math.min(window.devicePixelRatio||1,2);
-    canvas.width=62*dpr;canvas.height=62*dpr;canvas.style.width="62px";canvas.style.height="62px";
-    var c=canvas.getContext("2d");
-    if(!c)return;
-    c.scale(dpr,dpr);
-    var g=c.createRadialGradient(24,18,4,31,31,31);
-    g.addColorStop(0,"#fff2df");g.addColorStop(.52,"#b93324");g.addColorStop(1,"#4e100d");
-    c.fillStyle=g;c.beginPath();c.arc(31,31,31,0,Math.PI*2);c.fill();
-    c.strokeStyle="#e3ad4f";c.lineWidth=2;c.beginPath();c.arc(31,31,28,0,Math.PI*2);c.stroke();
-    c.fillStyle="#fff8ec";c.font="700 17px Arial, sans-serif";c.textAlign="center";c.textBaseline="middle";c.fillText("Mei",31,32);
-  }
-  function _init(canvas){
-    _drawFallback(canvas);
-    if(!use3D || !window.THREE || !window.THREE.GLTFLoader) return;
-
-    var R=new THREE.WebGLRenderer({canvas:canvas,alpha:true,antialias:true,powerPreference:"low-power"});
-    R.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
-    R.setSize(62,62,false);
-    if (R.outputEncoding !== undefined && THREE.sRGBEncoding) R.outputEncoding=THREE.sRGBEncoding;
-    var scene=new THREE.Scene();
-    var cam=new THREE.PerspectiveCamera(28,1,0.1,20);
-    cam.position.set(0,-5.2,2.25);
-    cam.lookAt(0,0,1.5);
-    scene.add(new THREE.AmbientLight(0xffffff,2.2));
-    var dl=new THREE.DirectionalLight(0xffffff,2.5);
-    dl.position.set(2,-3,4);scene.add(dl);
-    var loader=new THREE.GLTFLoader();
-    loader.load(modelUrl,function(gltf){
-      var model=gltf.scene;
-      model.scale.setScalar(0.62);
-      model.position.set(0,0,-0.62);
-      model.rotation.set(-0.05,0,0);
-      scene.add(model);
-      var mixer=null;
-      if(gltf.animations&&gltf.animations.length){
-        mixer=new THREE.AnimationMixer(model);
-        var clip=THREE.AnimationClip.findByName(gltf.animations,"thinking")||gltf.animations[0];
-        var act=mixer.clipAction(clip);
-        act.setLoop(THREE.LoopRepeat,Infinity);act.play();
-      }
-      var clock=new THREE.Clock();
-      (function animate(){
-        requestAnimationFrame(animate);
-        if(mixer)mixer.update(clock.getDelta());
-        model.rotation.z=Math.sin(Date.now()*0.0012)*0.015;
-        R.render(scene,cam);
-      })();
-    },undefined,function(e){console.warn('[Mei] GLB err',e);});
-  }
-  _wfc('fl-mei-canvas',function(canvas){
-    _drawFallback(canvas);
-    if(!use3D)return;
-    _ls(threeUrl,function(){
-      _ls(loaderUrl,function(){
-        _init(canvas);
-      });
-    });
-  });
-})();
