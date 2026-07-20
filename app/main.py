@@ -162,12 +162,13 @@ RELATED_PRODUCT_QUERIES = {
     ],
     "ramen": [
         "ramen rezance",
+        "dashi", "bonito",
         "miso pasta",
+        "bambusove vyhonky",
+        "nori",
         "wakame",
-        "kimchi",
-        "sezamovy olej",
-        "sojova omacka",
-        "sriracha",
+        "sojova omacka", "sezamovy olej",
+        "sriracha", "gochujang",
     ],
     "kari": [
         "kokosove mlieko",
@@ -706,6 +707,9 @@ RELATED_PRODUCT_QUERIES = {
         "sushi ryza", "nori", "wasabi", "ryzovy ocot",
         "sojova omacka", "sezamovy olej", "jazminova ryza",
     ],
+    "wasabi": [
+        "wasabi", "sojova omacka", "ryzovy ocot", "nori", "sushi ryza",
+    ],
     "sezamovy_olej": [
         "sojova omacka", "ryzovy ocot", "mirin", "gochujang", "hoisin",
         "sezamove semienka", "toasted sesame seeds",
@@ -737,7 +741,7 @@ RELATED_SUBJECT_ALIASES = {
     "beginner_kit": ("zacinam azijsky", "zacinam varit azijsky", "zacinam s azijskou", "azijska spajza", "co si kupit ako prv", "zacinam varit", "prvy krat azij", "prvy krat varit azij", "krat korejsk", "krat japonsk", "krat thajsk", "krat cinsk", "azijsk", "azijskeho", "azijsku kuchyn", "azijske jedlo", "azijsku vecer", "nieco azij", "nejake azij", "asian", "east asian", "southeast asian", "spicy asian", "vegetarian asian", "vegan asian", "asijsk", "asijsku", "asijskej",
         "azijsk", "azijsku", "azijskej", "azia", "azii", "azijsky"),
     "azijske_dezerty": ("azijske dezerty", "azijsky dezert", "na dezert", "dezert ky"),
-    "jarne_zavitky": ("jarne zavitky", "spring rolls", "jarnych zavitkov", "jarne rolky", "nemecke zavitky"),
+    "jarne_zavitky": ("jarne zavitky", "spring rolls", "jarnych zavitkov", "jarne rolky", "nemecke zavitky", "jarnym zavinkom", "jarneho zavitku", "jarnych zavinkov", "jarne zaviny"),
     "teriyaki": ("teriyaki", "teriyaki kuracie", "teriyaki losos", "teriyaki omacku"),
     "miso_polievka": ("miso", "miso polievku", "miso polievka", "miso soup", "miso sopu", "miso polevku", "miso polievky", "miso polievke"),
     "fried_rice": ("fried rice", "smazena ryza", "vysmazena ryza", "ryza na panvici", "vyprazana ryza", "vyprazanu ryzu", "smazenu ryzu", "smaza ryzu", "smazim ryzu", "rice dish", "rice bowl", "rice meal"),
@@ -764,7 +768,7 @@ RELATED_SUBJECT_ALIASES = {
     "laksa": ("laksa",),
     "banh_mi": ("banh mi",),
     "congee": ("congee", "ryzova kasa", "ryzovu kasu"),
-    "matcha": ("matcha",),
+    "matcha": ("matcha", "matche", "matchu", "matchou", "matchom", "matcha latte", "matcha tea"),
     "mochi": ("mochi",),
     "bubble_tea": ("bubble tea", "boba", "boba tea", "bubble tea"),
     "edamame": ("edamame",),
@@ -827,6 +831,7 @@ RELATED_SUBJECT_ALIASES = {
     "rybacia_omacka": ("rybacia omacka", "rybacou omackou", "rybaci omacku", "rybac", "fish sauce", "nuoc mam", "nuoc nam"),
     "chili": ("chili", "chilli", "chili omacka", "chili paste", "chili paprika", "chili sauce"),
     "nori": ("nori", "nori list", "nori listov", "nori sheets", "nori sheet"),
+    "wasabi": ("wasabi", "wasabi pasta", "wasabi prasok", "wasabi omacka"),
     "sezamovy_olej": ("sezamovy olej", "sezamoveho oleja", "sezamovym olejom", "sesame oil", "sezam olej", "dark sesame", "toasted sesame"),
     "ponzu": ("ponzu", "ponzu omacku", "ponzu sauce", "ponzu shoyu", "ponzu yuzu"),
     "potsticker": ("potsticker", "potstickeram", "guo tie", "pot sticker", "pot-sticker"),
@@ -1161,6 +1166,8 @@ RELATED_INTENT_MARKERS = (
     "k ", "ku ", "ko ",
     # finger food / snack context
     "finger food",
+    # meatless / plant-based queries
+    "bez mas", "bez mäs",
 )
 
 RECIPE_INTENT_MARKERS = (
