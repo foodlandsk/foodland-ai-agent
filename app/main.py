@@ -762,6 +762,12 @@ RELATED_PRODUCT_QUERIES = {
     "ryba": [
         "rybacia omacka", "sweet chili omacka", "wasabi", "sojova omacka", "citronova trava",
     ],
+    "hovadzie": [
+        "teriyaki omacka", "sojova omacka", "sezamovy olej", "gochujang", "hoisin omacka",
+    ],
+    "kreveta": [
+        "sweet chili omacka", "sojova omacka", "sriracha", "citronova trava", "wasabi",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -820,7 +826,7 @@ RELATED_SUBJECT_ALIASES = {
     "japansk": ("japanske ranajky", "japanska snidana"),
     "grilovanie": ("grilovacku", "grilovat", "grilovanie", "na gril", "grilu", "grilovacky"),
     "asian_snack": ("k filmu", "k serialu", "na film", "na serial", "k pivu azij", "snack azij"),
-    "tom_yum": ("tom yum", "tom yum polievka", "thajska polievka", "thajskej polievky", "tom yum soup"),
+    "tom_yum": ("tom yum", "tom yum polievka", "thajska polievka", "thajskej polievky", "tom yum soup", "citronova trava", "lemongrass", "galangal", "kaffirove listy", "kaffir lime"),
     "jjigae": ("jjigae", "sundubu jjigae", "sundubu", "doenjang jjigae", "doenjang", "korejsky stew"),
     "nam_van": ("nam van", "goi cuon", "vietnamske rolky", "cerstve rolky"),
     "sukiyaki": ("sukiyaki",),
@@ -887,12 +893,14 @@ RELATED_SUBJECT_ALIASES = {
     "sriracha": ("sriracha", "sriracha omacka", "sriracha sauce", "sriracha hot sauce"),
     "hoisin": ("hoisin", "hoisin omacka", "hoisin sauce"),
     "ustricova_omacka": ("ustricova omacka", "ustricovej omacky", "oyster sauce", "ustricovou omackou"),
-    "sojova_omacka": ("sojova omacka", "sojovej omacky", "sojovou omackou", "svetla soja", "tmava soja", "soy sauce", "sojou"),
+    "sojova_omacka": ("sojova omacka", "sojovej omacky", "sojovou omackou", "svetla soja", "tmava soja", "soy sauce", "sojou", "tamari omacka"),
     "tamarind": ("tamarind", "tamarindova pasta", "tamarind paste", "tamarindovy"),
     "tofu": ("tofu", "tofuom", "tofuovi", "firm tofu", "silk tofu", "hedvabne tofu", "silken tofu"),
     "losos": ("losos", "lososa", "lososu", "lososom", "lososovi", "salmon", "lososovy"),
     "kuraci": ("kuraci", "kuracie", "kuraciemu", "kurace", "kuracim", "chicken", "kure"),
     "ryba": ("ryba", "rybu", "rybe", "rybou", "ryby", "rybaci", "fish", "sea food", "seafood"),
+    "hovadzie": ("hovadzie", "hovadziu", "hovadziemu", "hovadze", "beef", "hovadzeho", "steak"),
+    "kreveta": ("kreveta", "krevety", "krevetam", "krevetami", "shrimp", "prawns", "garnele", "krevetove"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
