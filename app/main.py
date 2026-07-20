@@ -132,15 +132,12 @@ DEFAULT_RUNTIME_LOG_DIR = Path(tempfile.gettempdir()) / "foodland-ai-agent"
 
 RELATED_PRODUCT_QUERIES = {
     "kimchi": [
-        "gochujang",
-        "gochugaru",
-        "cervena cili paprika",
-        "rybacia omacka",
-        "ryzova muka",
-        "sezamovy olej",
-        "sojova omacka",
         "ramen",
         "jazminova ryza",
+        "sezamovy olej",
+        "gochujang",
+        "tofu",
+        "kimchi",
     ],
     "sushi": [
         "nori",
@@ -756,6 +753,15 @@ RELATED_PRODUCT_QUERIES = {
     "tofu": [
         "tofu", "sojova omacka", "sezamovy olej", "miso pasta", "gochujang",
     ],
+    "losos": [
+        "teriyaki omacka", "wasabi", "sojova omacka", "sezamovy olej", "zazvor",
+    ],
+    "kuraci": [
+        "teriyaki omacka", "sojova omacka", "sezamovy olej", "gochujang", "karaage",
+    ],
+    "ryba": [
+        "rybacia omacka", "sweet chili omacka", "wasabi", "sojova omacka", "citronova trava",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -782,7 +788,7 @@ RELATED_SUBJECT_ALIASES = {
     "fried_rice": ("fried rice", "smazena ryza", "vysmazena ryza", "ryza na panvici", "vyprazana ryza", "vyprazanu ryzu", "smazenu ryzu", "smaza ryzu", "smazim ryzu", "rice dish", "rice bowl", "rice meal"),
     "bulgogi": ("bulgogi", "galbi", "galby", "galbi jjim"),
     "tteokbokki": ("tteokbokki", "ddukbokki", "tteok", "dduk"),
-    "tom_yum": ("tom yum", "tom yam", "tom kha"),
+    "tom_yum": ("tom yum", "tom yam", "tom kha", "citronova trava", "lemongrass", "galangal", "kaffirove listy", "kaffir lime"),
     "japchae": ("japchae", "jap chae", "korejske sklenene rezance"),
     "vietnamska_kuchyna": ("vietnamsku kuchynu", "vietnamska kuchyna", "vietnamska vecera", "vietnam", "vietnamsk"),
     "japonska_kuchyna": ("japonsku kuchynu", "japonska kuchyna", "japonska vecera", "japonsku veceru", "japonsk", "japansk", "japanese", "j-food", "j food"),
@@ -858,7 +864,7 @@ RELATED_SUBJECT_ALIASES = {
     "yukgaejang": ("yukgaejang",),
     "bossam": ("bossam",),
     "wakame": ("wakame", "wakamy", "wakamu", "wakamom"),
-    "dashi": ("dashi", "dashi vyvar", "dashi stock", "dashi buljon", "dashiho"),
+    "dashi": ("dashi", "dashi vyvar", "dashi stock", "dashi buljon", "dashiho", "bonito", "bonito vlocky", "katsuobushi"),
     "spring_roll": ("spring roll", "spring rollu", "spring rollom", "spring rollov", "jarny zavin", "jarneho zavinu", "rice paper", "ryzovy papier"),
     "ryza": ("ryzu", "ryzou", "ryzy", "ryze", "ryzi", "jasminovu ryzu", "jasminovej", "jasminov", "basmati", "sushi ryzu", "bielu ryzu"),
     "kokos": ("kokosov", "kokosove", "kokosoveho", "kokosovym", "kokosove mlieko", "coconut", "kokosova smotana", "kokosova smetan"),
@@ -881,9 +887,12 @@ RELATED_SUBJECT_ALIASES = {
     "sriracha": ("sriracha", "sriracha omacka", "sriracha sauce", "sriracha hot sauce"),
     "hoisin": ("hoisin", "hoisin omacka", "hoisin sauce"),
     "ustricova_omacka": ("ustricova omacka", "ustricovej omacky", "oyster sauce", "ustricovou omackou"),
-    "sojova_omacka": ("sojova omacka", "sojovej omacky", "sojovou omackou", "svetla soja", "tmava soja", "soy sauce", "tamari"),
+    "sojova_omacka": ("sojova omacka", "sojovej omacky", "sojovou omackou", "svetla soja", "tmava soja", "soy sauce", "sojou"),
     "tamarind": ("tamarind", "tamarindova pasta", "tamarind paste", "tamarindovy"),
     "tofu": ("tofu", "tofuom", "tofuovi", "firm tofu", "silk tofu", "hedvabne tofu", "silken tofu"),
+    "losos": ("losos", "lososa", "lososu", "lososom", "lososovi", "salmon", "lososovy"),
+    "kuraci": ("kuraci", "kuracie", "kuraciemu", "kurace", "kuracim", "chicken", "kure"),
+    "ryba": ("ryba", "rybu", "rybe", "rybou", "ryby", "rybaci", "fish", "sea food", "seafood"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
