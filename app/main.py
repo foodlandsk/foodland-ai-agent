@@ -83,6 +83,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=1000)
     limit: int = Field(default=6, ge=1, le=12)
     conversation_history: list[dict] = Field(default_factory=list)
+    session_id: str = Field(default="", max_length=64)
 
 
 class ProductSearchRequest(BaseModel):
@@ -1863,7 +1864,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     allergen_term = detect_allergen_intent(chat_request.message)
     if allergen_term and not detect_related_subject(chat_request.message):
         allergen_matches = allergen_product_matches(chat_request.message, chat_request.limit)
-        log_question(chat_request.message, client_key, len(allergen_matches))
+        log_question(chat_request.message, client_key, len(allergen_matches), intent="allergen_safety", session_id=chat_request.session_id)
         return {
             "answer": allergen_safety_answer(allergen_term),
             "products": allergen_matches,
@@ -1875,7 +1876,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if is_faq_intent(chat_request.message):
         faq_answer = best_direct_faq_answer(chat_request.message, knowledge) or best_faq_answer(knowledge_matches)
     if faq_answer and is_faq_intent(chat_request.message):
-        log_question(chat_request.message, client_key, 0)
+        log_question(chat_request.message, client_key, 0, intent="faq", session_id=chat_request.session_id)
         return {
             "answer": faq_answer,
             "products": [],
@@ -1885,7 +1886,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
 
     if is_random_recipe_intent(chat_request.message):
         random_rec = get_random_recipe(knowledge)
-        log_question(chat_request.message, client_key, 0)
+        log_question(chat_request.message, client_key, 0, intent="recipe", session_id=chat_request.session_id)
         return {
             "answer": recipe_answer("general", [random_rec] if random_rec else []),
             "recipes": [random_rec] if random_rec else [],
@@ -1897,7 +1898,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     recipe_subject = detect_recipe_subject(chat_request.message)
     if recipe_subject:
         recipes = recipe_results(knowledge_matches, chat_request.limit, chat_request.message, knowledge)
-        log_question(chat_request.message, client_key, 0)
+        log_question(chat_request.message, client_key, 0, intent="recipe", session_id=chat_request.session_id)
         return {
             "answer": recipe_answer(recipe_subject, recipes),
             "recipes": recipes,
@@ -1907,7 +1908,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         }
 
     if detect_out_of_domain(chat_request.message) and not detect_related_subject(chat_request.message):
-        log_question(chat_request.message, client_key, 0)
+        log_question(chat_request.message, client_key, 0, intent="unknown", session_id=chat_request.session_id)
         return {
             "answer": "Na toto neviem spoľahlivo odpovedať ako Foodland poradca. Skúste sa opýtať na produkty, objednávku, dopravu alebo platbu na Foodland.sk.",
             "products": [],
@@ -1927,7 +1928,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         matches = related_products_for_subject(products, related_subject, chat_request.limit)
     else:
         matches = search_products(products, chat_request.message, chat_request.limit)
-    log_question(chat_request.message, client_key, len(matches))
+    log_question(chat_request.message, client_key, len(matches), intent="related_products" if related_subject else "product_search", session_id=chat_request.session_id)
 
     if not matches and not knowledge_matches:
         return {
@@ -2087,7 +2088,7 @@ def enforce_rate_limit(client_key: str) -> None:
     events.append(now)
 
 
-def log_question(message: str, client_key: str, matches_count: int) -> None:
+def log_question(message: str, client_key: str, matches_count: int, intent: str = "", session_id: str = "") -> None:
     path = Path(os.getenv("ANALYTICS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "question_analytics.jsonl")))
     salt = os.getenv("ANALYTICS_SALT", "")
     record = {
@@ -2095,6 +2096,8 @@ def log_question(message: str, client_key: str, matches_count: int) -> None:
         "client_hash": hashlib.sha256(f"{salt}:{client_key}".encode("utf-8")).hexdigest()[:24],
         "message": message[:1000],
         "matches_count": matches_count,
+        "intent": intent,
+        "session_id": session_id,
     }
     if os.getenv("ANALYTICS_INCLUDE_IP", "false").lower() == "true":
         record["ip"] = client_key
