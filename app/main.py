@@ -738,6 +738,24 @@ RELATED_PRODUCT_QUERIES = {
         "sojova omacka", "chili olej", "ryzovy ocot",
         "sezamovy olej", "gochujang", "sriracha",
     ],
+    "sriracha": [
+        "sriracha", "gochujang", "chili omacka", "chili olej",
+    ],
+    "hoisin": [
+        "hoisin omacka", "sezamovy olej", "sojova omacka", "ustricova omacka",
+    ],
+    "ustricova_omacka": [
+        "ustricova omacka", "sojova omacka", "sezamovy olej", "sriracha",
+    ],
+    "sojova_omacka": [
+        "sojova omacka", "tamari", "mirin", "ryzovy ocot",
+    ],
+    "tamarind": [
+        "tamarind pasta", "rybacia omacka", "kokosove mlieko", "hnedy cukor",
+    ],
+    "tofu": [
+        "tofu", "sojova omacka", "sezamovy olej", "miso pasta", "gochujang",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -843,14 +861,14 @@ RELATED_SUBJECT_ALIASES = {
     "dashi": ("dashi", "dashi vyvar", "dashi stock", "dashi buljon", "dashiho"),
     "spring_roll": ("spring roll", "spring rollu", "spring rollom", "spring rollov", "jarny zavin", "jarneho zavinu", "rice paper", "ryzovy papier"),
     "ryza": ("ryzu", "ryzou", "ryzy", "ryze", "ryzi", "jasminovu ryzu", "jasminovej", "jasminov", "basmati", "sushi ryzu", "bielu ryzu"),
-    "kokos": ("kokosov", "kokosove", "kokosoveho", "kokosovym", "kokosove mlieko", "coconut"),
+    "kokos": ("kokosov", "kokosove", "kokosoveho", "kokosovym", "kokosove mlieko", "coconut", "kokosova smotana", "kokosova smetan"),
     "mirin": ("mirin", "mirine", "mirinom", "mirinu"),
     "rybacia_omacka": ("rybacia omacka", "rybacou omackou", "rybaci omacku", "rybac", "fish sauce", "nuoc mam", "nuoc nam"),
     "chili": ("chili", "chilli", "chili omacka", "chili paste", "chili paprika", "chili sauce"),
     "nori": ("nori", "nori list", "nori listov", "nori sheets", "nori sheet"),
     "wasabi": ("wasabi", "wasabi pasta", "wasabi prasok", "wasabi omacka"),
     "sezamovy_olej": ("sezamovy olej", "sezamoveho oleja", "sezamovym olejom", "sesame oil", "sezam olej", "dark sesame", "toasted sesame"),
-    "ponzu": ("ponzu", "ponzu omacku", "ponzu sauce", "ponzu shoyu", "ponzu yuzu"),
+    "ponzu": ("ponzu", "ponzu omacku", "ponzu sauce", "ponzu shoyu", "ponzu yuzu", "yuzu"),
     "potsticker": ("potsticker", "potstickeram", "guo tie", "pot sticker", "pot-sticker"),
     "special_occasion": (
         "svadba", "svadb", "narodeninov", "narozenin", "vianoc", "silvester",
@@ -860,6 +878,12 @@ RELATED_SUBJECT_ALIASES = {
         "vikend", "nedel", "sobot", "dnes", "dnesna",
         "host", "hosti", "ludi", "clovek", "osob",
     ),
+    "sriracha": ("sriracha", "sriracha omacka", "sriracha sauce", "sriracha hot sauce"),
+    "hoisin": ("hoisin", "hoisin omacka", "hoisin sauce"),
+    "ustricova_omacka": ("ustricova omacka", "ustricovej omacky", "oyster sauce", "ustricovou omackou"),
+    "sojova_omacka": ("sojova omacka", "sojovej omacky", "sojovou omackou", "svetla soja", "tmava soja", "soy sauce", "tamari"),
+    "tamarind": ("tamarind", "tamarindova pasta", "tamarind paste", "tamarindovy"),
+    "tofu": ("tofu", "tofuom", "tofuovi", "firm tofu", "silk tofu", "hedvabne tofu", "silken tofu"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
@@ -1185,6 +1209,8 @@ RELATED_INTENT_MARKERS = (
     "finger food",
     # meatless / plant-based queries
     "bez mas", "bez mäs",
+    "na co",
+    "vs",
 )
 
 RECIPE_INTENT_MARKERS = (
