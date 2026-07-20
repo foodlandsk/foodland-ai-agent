@@ -432,10 +432,9 @@
         .fl-ai-avatar {
           width: 100%;
           height: 100%;
-          border-radius: 50%;
-          object-fit: cover;
-          object-position: 50% 20%;
           display: block;
+          object-fit: fill;
+          object-view-box: inset(13% 58% 53% 8%);
         }}
     .fl-ai-panel {
       position: fixed;
