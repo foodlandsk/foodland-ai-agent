@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import os
+import random
 import re
 import tempfile
 import time
@@ -1534,6 +1535,16 @@ RECIPE_INTENT_MARKERS = (
     "ako urobim",
 )
 
+RANDOM_RECIPE_INTENT_MARKERS = (
+    "co dnes varit",
+    "co dnes uvarimc",
+    "co uvarimc dnes",
+    "nahodny recept",
+    "nahodne recept",
+    "co by som dnes",
+    "co si dat dnes",
+)
+
 
 ALREADY_HAVE_MARKERS = (
     "mam ",
@@ -1872,6 +1883,17 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "intent": "faq",
         }
 
+    if is_random_recipe_intent(chat_request.message):
+        random_rec = get_random_recipe(knowledge)
+        log_question(chat_request.message, client_key, 0)
+        return {
+            "answer": recipe_answer("general", [random_rec] if random_rec else []),
+            "recipes": [random_rec] if random_rec else [],
+            "products": [],
+            "knowledge": knowledge_summary(knowledge_matches),
+            "intent": "recipe",
+        }
+
     recipe_subject = detect_recipe_subject(chat_request.message)
     if recipe_subject:
         recipes = recipe_results(knowledge_matches, chat_request.limit, chat_request.message, knowledge)
@@ -2198,6 +2220,18 @@ def is_recipe_intent(normalized_message: str) -> bool:
     if any(marker in normalized_message for marker in RECIPE_INTENT_MARKERS):
         return True
     return any(token.startswith(("rec", "recep")) for token in tokenize(normalized_message))
+
+
+def is_random_recipe_intent(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(marker in normalized_message for marker in RANDOM_RECIPE_INTENT_MARKERS)
+
+
+def get_random_recipe(all_knowledge: dict) -> dict | None:
+    all_recipes = all_knowledge.get("sections", {}).get("Recipes", [])
+    if not all_recipes:
+        return None
+    return recipe_card(random.choice(all_recipes))
 
 
 def recipe_results(
