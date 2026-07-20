@@ -706,6 +706,9 @@ RELATED_PRODUCT_QUERIES = {
         "sushi ryza", "nori", "wasabi", "ryzovy ocot",
         "sojova omacka", "sezamovy olej", "jazminova ryza",
     ],
+    "ponzu": [
+        "ponzu", "sojova omacka", "ryzovy ocot", "mirin", "yuzu",
+    ],
     "potsticker": [
         "sojova omacka", "chili olej", "ryzovy ocot",
         "sezamovy olej", "gochujang", "sriracha",
@@ -715,7 +718,7 @@ RELATED_PRODUCT_QUERIES = {
 RELATED_SUBJECT_ALIASES = {
     "kimchi": ("kimchi", "kimci"),
     "sushi": ("sushi", "susi", "sushi ryza", "susi ryza", "maki", "maki rolky", "california roll", "futomaki", "hosomaki", "uramaki", "nigiri", "temaki", "sashimi"),
-    "gochujang": ("gochujang", "gochu jang", "gochuang"),
+    "gochujang": ("gochujang", "gochu jang", "gochuang", "gochugaru", "korean chili flakes", "koreanska cili"),
     "ramen": ("ramen", "ramyun", "ramyeon", "tonkotsu", "tantanmen", "noodle soup", "noodle broth", "soup noodles", "nudl", "nudle", "nudlov"),
     "kari": ("kari", "curry"),
     "pho": ("pho",),
@@ -820,6 +823,7 @@ RELATED_SUBJECT_ALIASES = {
     "rybacia_omacka": ("rybacia omacka", "rybacou omackou", "rybaci omacku", "rybac", "fish sauce", "nuoc mam", "nuoc nam"),
     "chili": ("chili", "chilli", "chili omacka", "chili paste", "chili paprika", "chili sauce"),
     "nori": ("nori", "nori list", "nori listov", "nori sheets", "nori sheet"),
+    "ponzu": ("ponzu", "ponzu omacku", "ponzu sauce", "ponzu shoyu", "ponzu yuzu"),
     "potsticker": ("potsticker", "potstickeram", "guo tie", "pot sticker", "pot-sticker"),
     "special_occasion": (
         "svadba", "svadb", "narodeninov", "narozenin", "vianoc", "silvester",
@@ -1146,6 +1150,8 @@ RELATED_INTENT_MARKERS = (
     "upgrad", "typick", "charakter", "autent",
     # side-dish, beverage-pairing (tea/wine/beer with dish), protein, ingredient-into-dish, recipe-base
     "priloha", "caj", "vino", "pivo", "tofu", "protein", "bielkovin", "baza", "co do",
+    # what-is / what-to-put / Czech food spelling / all pouzi* forms
+    "co je", "co dat", "jidl", "pouziva",
 )
 
 RECIPE_INTENT_MARKERS = (
