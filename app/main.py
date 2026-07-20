@@ -766,7 +766,7 @@ RELATED_SUBJECT_ALIASES = {
     "oyakodon": ("oyakodon", "oyako don"),
     "karaage": ("karaage",),
     "tonkatsu": ("tonkatsu",),
-    "gyoza": ("gyoza", "gyozu", "gyozy", "gyozou", "jiaozi"),
+    "gyoza": ("gyoza", "gyozu", "gyozy", "gyozou", "gyoze", "gyozam", "jiaozi"),
     "yakitori": ("yakitori",),
     "adobo": ("adobo", "filipino adobo"),
     "malatang": ("malatang", "mala tang", "mala hotpot"),
@@ -1123,6 +1123,8 @@ RELATED_INTENT_MARKERS = (
     # heat/spice balancing, garnish, decoration, storage
     "zniz", "palivost", "zmier", "ostrost", "neutral",
     "garnish", "ozdobi", "uchov",
+    # ratio/comparison/sourcing/side-dish queries
+    "pomer", "rozdiel", "zohnat", "prikrm",
 )
 
 RECIPE_INTENT_MARKERS = (
