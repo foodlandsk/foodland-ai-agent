@@ -131,6 +131,16 @@ _RATE_LIMIT_MAX_CLIENTS = 50_000  # BUG-02: ochrana pamate – max pocet trackov
 DEFAULT_RUNTIME_LOG_DIR = Path(tempfile.gettempdir()) / "foodland-ai-agent"
 
 RELATED_PRODUCT_QUERIES = {
+    "kimchi_recipe": [
+        "gochugaru",
+        "gochujang",
+        "rybacia omacka",
+        "ryzova muka",
+        "cervena cili paprika",
+        "sezamovy olej",
+        "sojova omacka",
+        "nakladana kapusta",
+    ],
     "kimchi": [
         "ramen",
         "jazminova ryza",
@@ -780,6 +790,7 @@ RELATED_PRODUCT_QUERIES = {
 }
 
 RELATED_SUBJECT_ALIASES = {
+    "kimchi_recipe": ("vyrobu kimchi", "kimchi ingrediencie", "kimchi recept", "kimchi navod", "spravit kimchi", "pripravit kimchi", "urobim kimchi", "kimchi suroviny", "ako vyrob kimchi"),
     "kimchi": ("kimchi", "kimci"),
     "sushi": ("sushi", "susi", "sushi ryza", "susi ryza", "maki", "maki rolky", "california roll", "futomaki", "hosomaki", "uramaki", "nigiri", "temaki", "sashimi"),
     "gochujang": ("gochujang", "gochu jang", "gochuang", "gochugaru", "korean chili flakes", "koreanska cili"),
