@@ -1132,6 +1132,8 @@ RELATED_INTENT_MARKERS = (
     "pomer", "rozdiel", "zohnat", "prikrm",
     # thickening/seasoning/mixing/marinating
     "zahust", "dochuc", "naklad", "zmiesat",
+    # flavor enrichment / intensification
+    "obohati", "intenz", "zintenz", "povys", "hutnej",
 )
 
 RECIPE_INTENT_MARKERS = (
