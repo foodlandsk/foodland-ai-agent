@@ -1546,9 +1546,9 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                     "odkazuj na predchádzajúce správy v konverzácii."
                     "Ak zákazník hovorí, že produkt UŽ MÁ ('mám X', 'kúpil som X', 'vlastním X'), "
                     "odporúčaj výhradne iné, komplementárne produkty – nie ďalšie varianty toho istého. "
-                    "FORMÁT ODPOVEDE pri odporúčaniach produktov: Najprv vypíš odporúčané produkty "
-                    "(každý na novom riadku: Názov produktu – cena EUR). "
-                    "Potom napíš 1–2 vety s vysvetlením, prečo sa tieto produkty k otázke hodia."
+                    "FORMÁT ODPOVEDE pri odporúčaniach produktov: Produkty sú zákazníkovi zobrazené ako karty nižšie, "
+                    "NEOPISUJ ich znova v texte (neopakuj názvy ani ceny). "
+                    "Namiesto toho napíš iba 1–2 vety: prečo tieto produkty k danej otázke patria a ako ich použiť."
                 ),
             },
         ]
