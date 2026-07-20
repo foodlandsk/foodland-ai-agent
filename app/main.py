@@ -768,6 +768,15 @@ RELATED_PRODUCT_QUERIES = {
     "kreveta": [
         "sweet chili omacka", "sojova omacka", "sriracha", "citronova trava", "wasabi",
     ],
+    "panko": [
+        "panko strobanka", "teriyaki omacka", "tonkatsu omacka", "sojova omacka", "karaage",
+    ],
+    "sake": [
+        "mirin", "ryzovy ocot", "sojova omacka", "dashi", "sake na varen",
+    ],
+    "shiitake": [
+        "sojova omacka", "sezamovy olej", "miso pasta", "dashi", "oyster sauce",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -901,6 +910,9 @@ RELATED_SUBJECT_ALIASES = {
     "ryba": ("ryba", "rybu", "rybe", "rybou", "ryby", "rybaci", "fish", "sea food", "seafood"),
     "hovadzie": ("hovadzie", "hovadziu", "hovadziemu", "hovadze", "beef", "hovadzeho", "steak"),
     "kreveta": ("kreveta", "krevety", "krevetam", "krevetami", "shrimp", "prawns", "garnele", "krevetove"),
+    "panko": ("panko", "panko strobanka", "panko obalenie", "japanese breadcrumbs", "strobanka panko"),
+    "sake": ("sake", "sake na varen", "varecke sake", "rice wine", "japanese sake", "varenie sake"),
+    "shiitake": ("shiitake", "shiitake houby", "shiitake huby", "shiitake grib", "dried shiitake", "susene shiitake"),
 }
 
 SPECIAL_PRODUCT_QUERIES = {
@@ -1228,6 +1240,7 @@ RELATED_INTENT_MARKERS = (
     "bez mas", "bez mäs",
     "na co",
     "vs",
+    "varen",
 )
 
 RECIPE_INTENT_MARKERS = (
