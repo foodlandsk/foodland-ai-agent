@@ -183,6 +183,7 @@ RELATED_PRODUCT_QUERIES = {
         "sriracha",
         "hoisin",
         "mung fazulove klicky",
+        "vietnamsky caj", "zeleny caj", "jasminovy caj",
     ],
     "pad_thai": [
         "ryzove rezance",
@@ -703,6 +704,10 @@ RELATED_PRODUCT_QUERIES = {
         "sushi ryza", "nori", "wasabi", "ryzovy ocot",
         "sojova omacka", "sezamovy olej", "jazminova ryza",
     ],
+    "potsticker": [
+        "sojova omacka", "chili olej", "ryzovy ocot",
+        "sezamovy olej", "gochujang", "sriracha",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -776,7 +781,7 @@ RELATED_SUBJECT_ALIASES = {
     "malatang": ("malatang", "mala tang", "mala hotpot"),
     "jajangmyeon": ("jajangmyeon", "jajangmyon", "black bean noodles"),
     "asian_noodles": ("asian noodles", "asian noodle", "stir fry noodles"),
-    "medium_spicy": ("spicy food", "hot food", "spicy dinner", "spicy meal", "pikantne jedlo", "horuce jedlo", "hot sauce", "chili sauce", "sriracha dinner"),
+    "medium_spicy": ("spicy food", "hot food", "spicy dinner", "spicy meal", "pikantne jedlo", "horuce jedlo", "hot sauce", "chili sauce", "sriracha dinner", "spicy", "pikantne"),
     "bento": ("bento", "bento box", "bento lunch"),
     "yangnyeom_chicken": ("yangnyeom chicken", "yangnyeom", "chimaek", "korean fried chicken", "korean chicken"),
     "samgyeopsal": ("samgyeopsal", "pork belly"),
@@ -784,7 +789,7 @@ RELATED_SUBJECT_ALIASES = {
     "banh_xeo": ("banh xeo",),
     "mapo_tofu": ("mapo tofu", "mapo"),
     "kung_pao": ("kung pao", "kung pao chicken"),
-    "dim_sum": ("dim sum", "dimsum", "dumpling", "dumplingy"),
+    "dim_sum": ("dim sum", "dimsum", "dumpling", "dumplingy", "dumplingom", "plnene testo"),
     "dakgalbi": ("dakgalbi",),
     "char_siu": ("char siu", "char-siu", "cinsky bbq"),
     "som_tam": ("som tam", "som tum", "papajovy salat"),
@@ -813,6 +818,7 @@ RELATED_SUBJECT_ALIASES = {
     "rybacia_omacka": ("rybacia omacka", "rybacou omackou", "rybaci omacku", "rybac", "fish sauce", "nuoc mam", "nuoc nam"),
     "chili": ("chili", "chilli", "chili omacka", "chili paste", "chili paprika", "chili sauce"),
     "nori": ("nori", "nori list", "nori listov", "nori sheets", "nori sheet"),
+    "potsticker": ("potsticker", "potstickeram", "guo tie", "pot sticker", "pot-sticker"),
     "special_occasion": (
         "svadba", "svadb", "narodeninov", "narozenin", "vianoc", "silvester",
         "novy rok", "sviatok", "romantick", "specialn",
@@ -1136,6 +1142,8 @@ RELATED_INTENT_MARKERS = (
     "obohati", "intenz", "zintenz", "povys", "hutnej",
     # upgrade / typical / cuisine-characteristic queries
     "upgrad", "typick", "charakter", "autent",
+    # side-dish, beverage-pairing (tea/wine/beer with dish), protein, ingredient-into-dish, recipe-base
+    "priloha", "caj", "vino", "pivo", "tofu", "protein", "bielkovin", "baza", "co do",
 )
 
 RECIPE_INTENT_MARKERS = (
