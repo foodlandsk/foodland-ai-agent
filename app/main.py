@@ -1134,6 +1134,8 @@ RELATED_INTENT_MARKERS = (
     "zahust", "dochuc", "naklad", "zmiesat",
     # flavor enrichment / intensification
     "obohati", "intenz", "zintenz", "povys", "hutnej",
+    # upgrade / typical / cuisine-characteristic queries
+    "upgrad", "typick", "charakter", "autent",
 )
 
 RECIPE_INTENT_MARKERS = (
