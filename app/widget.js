@@ -485,13 +485,19 @@
     .fl-ai-mark {
       width: 34px;
       height: 34px;
-      display: grid;
+      display: block;
       flex: 0 0 auto;
-      place-items: center;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.16);
-      font-weight: 800;
-      font-size: 15px;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.55);
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+    }
+    .fl-ai-mark img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
     }
     .fl-ai-title { margin: 0; color: #fff; font-size: 15px; line-height: 1.2; font-weight: 800; }
     .fl-ai-status { margin-top: 2px; color: #E8F6EE; font-size: 12px; line-height: 1.2; }
@@ -769,7 +775,9 @@
     <section class="fl-ai-panel" aria-label="Foodland Mei">
       <header class="fl-ai-header">
         <div class="fl-ai-brand">
-          <div class="fl-ai-mark">FL</div>
+          <div class="fl-ai-mark">
+            <img src="${apiBaseUrl.replace(/\/$/, "")}/static/mei-avatar.png" alt="Foodland Mei" loading="lazy" />
+          </div>
           <div>
             <p class="fl-ai-title">Foodland Mei</p>
             <div class="fl-ai-status">AI poradkyňa pre ázijskú kuchyňu</div>
