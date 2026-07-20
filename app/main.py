@@ -141,6 +141,14 @@ RELATED_PRODUCT_QUERIES = {
         "sojova omacka",
         "nakladana kapusta",
     ],
+    "ryzovy_ocot": [
+        "sushi ryza",
+        "nori",
+        "wasabi",
+        "sojova omacka",
+        "sezamovy olej",
+        "nakladany zazvor",
+    ],
     "kimchi": [
         "ramen",
         "jazminova ryza",
@@ -917,13 +925,15 @@ RELATED_SUBJECT_ALIASES = {
     "tamarind": ("tamarind", "tamarindova pasta", "tamarind paste", "tamarindovy"),
     "tofu": ("tofu", "tofuom", "tofuovi", "firm tofu", "silk tofu", "hedvabne tofu", "silken tofu"),
     "losos": ("losos", "lososa", "lososu", "lososom", "lososovi", "salmon", "lososovy"),
-    "kuraci": ("kuraci", "kuracie", "kuraciemu", "kurace", "kuracim", "chicken", "kure"),
+    "kuraci": ("kuraci", "kuracie", "kuraciemu", "kurace", "kuracim", "kuracom", "kuraciom", "chicken", "kure"),
     "ryba": ("ryba", "rybu", "rybe", "rybou", "ryby", "rybaci", "fish", "sea food", "seafood"),
-    "hovadzie": ("hovadzie", "hovadziu", "hovadziemu", "hovadze", "beef", "hovadzeho", "steak"),
+    "hovadzie": ("hovadzie", "hovadziu", "hovadziemu", "hovadze", "beef", "hovadzeho", "hovadzinym", "hovadzimu", "steak"),
     "kreveta": ("kreveta", "krevety", "krevetam", "krevetami", "shrimp", "prawns", "garnele", "krevetove"),
     "panko": ("panko", "panko strobanka", "panko obalenie", "japanese breadcrumbs", "strobanka panko"),
     "sake": ("sake", "sake na varen", "varecke sake", "rice wine", "japanese sake", "varenie sake"),
     "shiitake": ("shiitake", "shiitake houby", "shiitake huby", "shiitake grib", "dried shiitake", "susene shiitake"),
+    "ryzovy_ocot": ("ryzovy ocot", "rice vinegar", "ocot sushi", "sushi ocot", "ryzoveho octu", "ryzovym octom"),
+
 }
 
 SPECIAL_PRODUCT_QUERIES = {
@@ -1251,6 +1261,7 @@ RELATED_INTENT_MARKERS = (
     "bez mas", "bez mäs",
     "na co",
     "vs",
+    "co s",
     "varen",
 )
 
