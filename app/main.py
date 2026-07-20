@@ -683,6 +683,10 @@ RELATED_PRODUCT_QUERIES = {
         "kari pasta cervena", "kari pasta zelena", "rybacia omacka",
         "jazminova ryza", "sriracha", "lemongrass", "tamarind",
     ],
+    "mirin": [
+        "sojova omacka", "sake", "ryzovy ocot", "dashi",
+        "ginger", "cesnak", "sezamovy olej",
+    ],
     "chili": [
         "sriracha", "gochujang", "sambal oelek", "chili olej",
         "thajske chili", "chili pasta",
@@ -805,6 +809,7 @@ RELATED_SUBJECT_ALIASES = {
     "spring_roll": ("spring roll", "spring rollu", "spring rollom", "spring rollov", "jarny zavin", "jarneho zavinu", "rice paper", "ryzovy papier"),
     "ryza": ("ryzu", "ryzou", "ryzy", "ryze", "ryzi", "jasminovu ryzu", "jasminovej", "jasminov", "basmati", "sushi ryzu", "bielu ryzu"),
     "kokos": ("kokosov", "kokosove", "kokosoveho", "kokosovym", "kokosove mlieko", "coconut"),
+    "mirin": ("mirin", "mirine", "mirinom", "mirinu"),
     "rybacia_omacka": ("rybacia omacka", "rybacou omackou", "rybaci omacku", "rybac", "fish sauce", "nuoc mam", "nuoc nam"),
     "chili": ("chili", "chilli", "chili omacka", "chili paste", "chili paprika", "chili sauce"),
     "nori": ("nori", "nori list", "nori listov", "nori sheets", "nori sheet"),
@@ -1125,6 +1130,8 @@ RELATED_INTENT_MARKERS = (
     "garnish", "ozdobi", "uchov",
     # ratio/comparison/sourcing/side-dish queries
     "pomer", "rozdiel", "zohnat", "prikrm",
+    # thickening/seasoning/mixing/marinating
+    "zahust", "dochuc", "naklad", "zmiesat",
 )
 
 RECIPE_INTENT_MARKERS = (
