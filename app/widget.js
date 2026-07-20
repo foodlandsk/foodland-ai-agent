@@ -1,6 +1,6 @@
 ﻿(function () {
   const config = window.FoodlandAI || {};
-  const apiBaseUrl = config.apiBaseUrl || "https://ai.foodland.sk";
+  const apiBaseUrl = config.apiBaseUrl || "https://foodland-ai-agent-production.up.railway.app";
   const isDemoPage = window.location.protocol === "file:" || /\/static\/widget\.html$/.test(window.location.pathname);
   const demoMode = Boolean(config.demoMode && config.allowDemoMode && isDemoPage);
   const maxQuestionsPerMinute = config.maxQuestionsPerMinute || 8;
@@ -494,10 +494,11 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
     }
     .fl-ai-mark img {
-      width: 100%;
-      height: 100%;
+      width: 76%;
+      height: 76%;
       display: block;
-      object-fit: cover;
+      margin: 12%;
+      object-fit: contain;
     }
     .fl-ai-title { margin: 0; color: #fff; font-size: 15px; line-height: 1.2; font-weight: 800; }
     .fl-ai-status { margin-top: 2px; color: #E8F6EE; font-size: 12px; line-height: 1.2; }
@@ -776,7 +777,7 @@
       <header class="fl-ai-header">
         <div class="fl-ai-brand">
           <div class="fl-ai-mark">
-            <img src="${apiBaseUrl.replace(/\/$/, "")}/static/mei-avatar.png" alt="Foodland Mei" loading="lazy" />
+            <img src="${apiBaseUrl.replace(/\/$/, "")}/static/foodland-symbol.png" alt="Foodland" loading="lazy" />
           </div>
           <div>
             <p class="fl-ai-title">Foodland Mei</p>
