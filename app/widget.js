@@ -434,6 +434,18 @@
       white-space: nowrap;
       pointer-events: none;
       backdrop-filter: blur(4px);
+    }
+    .fl-ai-label-sub {
+      background: rgba(20, 40, 28, 0.55);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 8px;
+      white-space: nowrap;
+      backdrop-filter: blur(4px);
+      pointer-events: none;
+    }
     
         .fl-ai-avatar {
           width: 100%;
@@ -819,7 +831,7 @@
     function openPanel() {
     panel.classList.add("is-open");
     if (messages.children.length === 0) {
-      addMessage("assistant", "<strong>Ahojte!</strong><br><br>Som Mei a rada vám pomôžem objaviť svet ázijskej kuchyne.<br><br>Môžem odporučiť recept, nájsť vhodné produkty, poradiť s varením alebo pomôcť nahradiť ingredienciu.");
+      addMessage("assistant", "Ahojte!\n\nSom Mei a rada vám pomôžem objaviť svet ázijskej kuchyne.\n\nMôžem odporučiť recept, nájsť vhodné produkty, poradiť s varením alebo pomôcť nahradiť ingredienciu.");
       addSuggestions();
     }
     window.setTimeout(function () { input.focus(); }, 50);
@@ -1078,7 +1090,7 @@
 
   function renderText(text) {
     const escaped = escapeHtml(String(text || ""));
-    return escaped.replace(
+    return escaped.replace(/\n/g, '<br>').replace(
       /https?:\/\/[^\s\)\]"'<>]+/g,
       function (url) {
         return '<a href="' + url + '" target="_blank" rel="noopener" style="color:#299B5E;word-break:break-all;">' + url + '<\/a>';
