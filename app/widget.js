@@ -752,13 +752,13 @@
   const root = document.createElement("div");
   root.className = "fl-ai-root";
   root.innerHTML = `
-    <section class="fl-ai-panel" aria-label="Foodland poradca">
+    <section class="fl-ai-panel" aria-label="Foodland Mei">
       <header class="fl-ai-header">
         <div class="fl-ai-brand">
           <div class="fl-ai-mark">FL</div>
           <div>
-            <p class="fl-ai-title">Foodland poradca</p>
-            <div class="fl-ai-status">Produkty, ceny a odporúčania</div>
+            <p class="fl-ai-title">Foodland Mei</p>
+            <div class="fl-ai-status">AI poradkyňa pre ázijskú kuchyňu</div>
           </div>
         </div>
         <button class="fl-ai-close" type="button" aria-label="Minimalizovať chat">
@@ -797,7 +797,7 @@
   const submit = root.querySelector(".fl-ai-submit");
 
   function addSuggestions() {
-    const items = ["Kimchi", "Sriracha", "Sójová omáčka", "Recept na ramen"];
+    const items = ["Čo dnes variť?", "Recept na ramen", "Čím nahradiť mirin?", "Najlepšia sushi ryža", "Kokosové mlieko"];
     const wrap = document.createElement("div");
     wrap.className = "fl-ai-suggestions";
     items.forEach(function (label) {
@@ -819,7 +819,7 @@
     function openPanel() {
     panel.classList.add("is-open");
     if (messages.children.length === 0) {
-      addMessage("assistant", "Dobrý deň, s čím vám pomôžem? Môžete sa pýtať na produkty, ceny alebo odporúčania.");
+      addMessage("assistant", "<strong>Ahojte!</strong><br><br>Som Mei a rada vám pomôžem objaviť svet ázijskej kuchyne.<br><br>Môžem odporučiť recept, nájsť vhodné produkty, poradiť s varením alebo pomôcť nahradiť ingredienciu.");
       addSuggestions();
     }
     window.setTimeout(function () { input.focus(); }, 50);
