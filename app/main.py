@@ -978,6 +978,33 @@ RELATED_PRODUCT_QUERIES = {
     "shiitake": [
         "sojova omacka", "sezamovy olej", "miso pasta", "dashi", "oyster sauce",
     ],
+    "lotus_root": [
+        "sojova omacka", "ryzovy ocot", "sezamovy olej", "dashi", "mirin", "sezamove semienka",
+    ],
+    "cierne_hriby": [
+        "sojova omacka", "sezamovy olej", "ustricova omacka", "cesnak", "zazvor", "wok omacka",
+    ],
+    "ryzova_muka": [
+        "kokosove mlieko", "pandan", "tapiokove perly", "mango", "cukrovy sirup", "sezamove semienka",
+    ],
+    "tapiokove_perly": [
+        "zeleny caj", "matcha", "kokosove mlieko", "med", "ovocny sirup", "bubble tea",
+    ],
+    "sezamova_pasta": [
+        "sezamovy olej", "sojova omacka", "ryzovy ocot", "cesnak", "gochujang", "miso pasta",
+    ],
+    "zeleny_caj": [
+        "matcha", "med", "citron", "sencha", "japonsky caj", "zeleny caj", "sojove mlieko",
+    ],
+    "cierny_caj": [
+        "med", "citron", "chai", "caj", "mliecne mlieko", "cierny caj",
+    ],
+    "oolong": [
+        "med", "matcha", "zeleny caj", "sencha", "caj",
+    ],
+    "kondenzovane_mlieko": [
+        "bubble tea", "tapiokove perly", "kokosove mlieko", "mango", "ovocny sirup", "matcha",
+    ],
 }
 
 RELATED_SUBJECT_ALIASES = {
@@ -1145,6 +1172,15 @@ RELATED_SUBJECT_ALIASES = {
     "yakiniku": ("yakiniku", "yakiniku omacka", "korean bbq", "japanese bbq", "yakiniku sauce"),
     "omurice": ("omurice", "omu rice", "japonska omeleta", "omurajisu"),
     "chahan": ("chahan", "cahan", "japanese fried rice", "yakimeshi", "yaki meshi"),
+    "lotus_root": ("lotus root", "lotusovy koren", "renkon", "lotus chips", "lotusoveho korena", "lotusovym korenom"),
+    "cierne_hriby": ("cierne hriby", "ciernymi hrybmi", "ciernych hrib", "wood ear", "black fungus", "mu err", "cloud ear", "drevene hriby"),
+    "ryzova_muka": ("ryzova muka", "ryzovej muky", "ryzovou mukou", "rice flour", "glutinous rice flour", "lepkava ryzova muka"),
+    "tapiokove_perly": ("tapiokove perly", "tapioka", "tapiocove perly", "boba perly", "tapioca pearls", "tapiokovy skrob"),
+    "sezamova_pasta": ("sezamova pasta", "tahini", "sezamovej pasty", "sesame paste", "tahini pasta"),
+    "zeleny_caj": ("zeleny caj", "zeleneho caju", "zelenym cajom", "green tea", "zelenemu caju"),
+    "cierny_caj": ("cierny caj", "cierneho caju", "ciernym cajom", "black tea", "ciernemu caju"),
+    "oolong": ("oolong", "oolong caj", "wu long", "wulong", "oolong tea"),
+    "kondenzovane_mlieko": ("kondenzovane mlieko", "kondenzovaneho mlieka", "kondenzovanym mliekem", "sweetened condensed milk", "sladzene kondenzovane mlieko"),
 
 }
 
