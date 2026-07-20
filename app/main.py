@@ -787,7 +787,7 @@ RELATED_SUBJECT_ALIASES = {
     "jajangmyeon": ("jajangmyeon", "jajangmyon", "black bean noodles"),
     "asian_noodles": ("asian noodles", "asian noodle", "stir fry noodles"),
     "medium_spicy": ("spicy food", "hot food", "spicy dinner", "spicy meal", "pikantne jedlo", "horuce jedlo", "hot sauce", "chili sauce", "sriracha dinner", "spicy", "pikantne"),
-    "bento": ("bento", "bento box", "bento lunch"),
+    "bento": ("bento", "bento box", "bento lunch", "benta", "bente", "do benta", "bent"),
     "yangnyeom_chicken": ("yangnyeom chicken", "yangnyeom", "chimaek", "korean fried chicken", "korean chicken"),
     "samgyeopsal": ("samgyeopsal", "pork belly"),
     "bun_bo_hue": ("bun bo hue", "bun bo"),
