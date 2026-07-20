@@ -401,15 +401,32 @@
       color: #fff;
       cursor: pointer;
       pointer-events: auto;
-      box-shadow: 0 14px 34px rgba(41, 155, 94, 0.34);
-      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+      transition: transform 160ms ease, background 160ms ease;
     }
     .fl-ai-launcher:hover {
       transform: translateY(-2px);
       background: #238750;
-      box-shadow: 0 18px 40px rgba(41, 155, 94, 0.42);
     }
     .fl-ai-launcher svg { width: 28px; height: 28px; display: block; }
+    .fl-ai-launcher-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      pointer-events: auto;
+    }
+    .fl-ai-agent-name {
+      background: rgba(20, 40, 28, 0.72);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      padding: 3px 9px;
+      border-radius: 10px;
+      white-space: nowrap;
+      pointer-events: none;
+      backdrop-filter: blur(4px);
+    }
     .fl-ai-panel {
       position: fixed;
       right: 20px;
@@ -743,12 +760,15 @@
         <button class="fl-ai-submit" type="submit">Poslať</button>
       </form>
     </section>
+    <div class="fl-ai-launcher-wrap">
+      <span class="fl-ai-agent-name">Mei 美</span>
     <button class="fl-ai-launcher" type="button" aria-label="Otvoriť Foodland poradcu">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M5 6.8A4.8 4.8 0 0 1 9.8 2h4.4A4.8 4.8 0 0 1 19 6.8v4.8a4.8 4.8 0 0 1-4.8 4.8h-2.8L7 20v-3.8a4.8 4.8 0 0 1-2-3.9V6.8Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
         <path d="M8.5 8.5h7M8.5 12h4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
       </svg>
     </button>
+    </div>
   `;
   document.body.appendChild(root);
 
