@@ -131,6 +131,28 @@ _RATE_LIMIT_MAX_CLIENTS = 50_000  # BUG-02: ochrana pamate – max pocet trackov
 DEFAULT_RUNTIME_LOG_DIR = Path(tempfile.gettempdir()) / "foodland-ai-agent"
 
 RELATED_PRODUCT_QUERIES = {
+    "cesnak": [
+        "sojova omacka",
+        "sezamovy olej",
+        "miso pasta",
+        "gochujang",
+        "chili omacka",
+        "hoisin omacka",
+    ],
+    "nakladany_zazvor": [
+        "sushi ryza",
+        "nori",
+        "wasabi",
+        "sojova omacka",
+        "ryzovy ocot",
+    ],
+    "nuoc_cham": [
+        "rybacia omacka",
+        "ryzovy papier",
+        "sweet chili omacka",
+        "sriracha",
+        "lime",
+    ],
     "kimchi_recipe": [
         "gochugaru",
         "gochujang",
@@ -816,7 +838,7 @@ RELATED_SUBJECT_ALIASES = {
     "beginner_kit": ("zacinam azijsky", "zacinam varit azijsky", "zacinam s azijskou", "azijska spajza", "co si kupit ako prv", "zacinam varit", "prvy krat azij", "prvy krat varit azij", "krat korejsk", "krat japonsk", "krat thajsk", "krat cinsk", "azijsk", "azijskeho", "azijsku kuchyn", "azijske jedlo", "azijsku vecer", "nieco azij", "nejake azij", "asian", "east asian", "southeast asian", "spicy asian", "vegetarian asian", "vegan asian", "asijsk", "asijsku", "asijskej",
         "azijsk", "azijsku", "azijskej", "azia", "azii", "azijsky"),
     "azijske_dezerty": ("azijske dezerty", "azijsky dezert", "na dezert", "dezert ky"),
-    "jarne_zavitky": ("jarne zavitky", "spring rolls", "jarnych zavitkov", "jarne rolky", "nemecke zavitky", "jarnym zavinkom", "jarneho zavitku", "jarnych zavinkov", "jarne zaviny"),
+    "jarne_zavitky": ("jarne zavitky", "spring rolls", "jarnych zavitkov", "jarne rolky", "nemecke zavitky", "jarnym zavinkom", "jarneho zavitku", "jarnych zavinkov", "jarne zaviny", "jarny zavitok", "jarneho zavitka", "spring roll"),
     "teriyaki": ("teriyaki", "teriyaki kuracie", "teriyaki losos", "teriyaki omacku"),
     "miso_polievka": ("miso", "miso polievku", "miso polievka", "miso soup", "miso sopu", "miso polevku", "miso polievky", "miso polievke"),
     "fried_rice": ("fried rice", "smazena ryza", "vysmazena ryza", "ryza na panvici", "vyprazana ryza", "vyprazanu ryzu", "smazenu ryzu", "smaza ryzu", "smazim ryzu", "rice dish", "rice bowl", "rice meal"),
@@ -845,7 +867,7 @@ RELATED_SUBJECT_ALIASES = {
     "congee": ("congee", "ryzova kasa", "ryzovu kasu"),
     "matcha": ("matcha", "matche", "matchu", "matchou", "matchom", "matcha latte", "matcha tea"),
     "mochi": ("mochi",),
-    "bubble_tea": ("bubble tea", "boba", "boba tea", "bubble tea"),
+    "bubble_tea": ("bubble tea", "boba", "boba tea", "bubble tea", "bubbletea", "boba drink", "bubble drink"),
     "edamame": ("edamame",),
     "tonkatsu": ("tonkatsu",),
     "agedashi_tofu": ("agedashi tofu", "agedashi",),
@@ -907,7 +929,7 @@ RELATED_SUBJECT_ALIASES = {
     "chili": ("chili", "chilli", "chili omacka", "chili paste", "chili paprika", "chili sauce"),
     "nori": ("nori", "nori list", "nori listov", "nori sheets", "nori sheet"),
     "wasabi": ("wasabi", "wasabi pasta", "wasabi prasok", "wasabi omacka"),
-    "sezamovy_olej": ("sezamovy olej", "sezamoveho oleja", "sezamovym olejom", "sesame oil", "sezam olej", "dark sesame", "toasted sesame"),
+    "sezamovy_olej": ("sezamovy olej", "sezamoveho oleja", "sezamovym olejom", "sesame oil", "sezam olej", "dark sesame", "toasted sesame", "sezamove semienka", "sezamovych semienok", "sesame seeds", "sezamovych semen"),
     "ponzu": ("ponzu", "ponzu omacku", "ponzu sauce", "ponzu shoyu", "ponzu yuzu", "yuzu"),
     "potsticker": ("potsticker", "potstickeram", "guo tie", "pot sticker", "pot-sticker"),
     "special_occasion": (
@@ -933,6 +955,10 @@ RELATED_SUBJECT_ALIASES = {
     "sake": ("sake", "sake na varen", "varecke sake", "rice wine", "japanese sake", "varenie sake"),
     "shiitake": ("shiitake", "shiitake houby", "shiitake huby", "shiitake grib", "dried shiitake", "susene shiitake"),
     "ryzovy_ocot": ("ryzovy ocot", "rice vinegar", "ocot sushi", "sushi ocot", "ryzoveho octu", "ryzovym octom"),
+
+    "cesnak": ("cesnak", "cesnakom", "cesnaku", "cesnakovy olej", "garlic", "cesnakoveho", "cesnakova"),
+    "nakladany_zazvor": ("nakladany zazvor", "nakladanym zazvorom", "nakladaneho zazvoru", "pickled ginger", "sushi ginger", "gari"),
+    "nuoc_cham": ("nuoc cham", "nuoc mam", "vietnamese omacka", "viet dipping", "viet sauce"),
 
 }
 
