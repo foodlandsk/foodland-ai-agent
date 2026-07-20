@@ -454,7 +454,7 @@
           height: 100%;
           display: block;
           object-fit: cover;
-        }}
+        }
     .fl-ai-panel {
       position: fixed;
       right: 20px;
