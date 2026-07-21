@@ -2925,6 +2925,49 @@ def search_autocomplete(
         if normalized_query in phrase or normalized_query in replacement or any(token in tokenize(phrase) for token in query_tokens):
             add_suggestion({"type": "synonym", "label": replacement, "query": replacement, "score": 92})
 
+    if should_use_fast_autocomplete():
+        product_hits = personalize_products(search_products(products_list, query, max(limit * 2, 12)), profile)
+        for index, product in enumerate(product_hits[: max(limit, 8)]):
+            label = str(product.get("title", "")).strip()
+            if not label or should_skip_autocomplete_product(raw_query_tokens, product):
+                continue
+            availability = str(product.get("availability", ""))
+            available = availability in {"in_stock", "in stock", "Skladom", "skladom"}
+            add_suggestion(
+                {
+                    "type": "product",
+                    "label": label,
+                    "query": label,
+                    "score": 145 - index + int(product.get("personalization_score", 0)) * 8,
+                    "url": product.get("link") or product.get("url") or "",
+                    "image": product.get("image_link") or "",
+                    "badge": "Skladom" if available else "",
+                    "brand": product.get("brand") or "",
+                }
+            )
+        for index, item in enumerate(autocomplete_suggestions(products_list, query, max(limit * 2, 8))):
+            if item.get("type") == "product":
+                continue
+            score_by_type = {"synonym": 112, "brand": 104, "category": 98}
+            item["score"] = score_by_type.get(str(item.get("type", "")), 90) - index
+            add_suggestion(item)
+        for index, recipe in enumerate(lightweight_recipe_autocomplete(all_knowledge, query, limit)):
+            add_suggestion(
+                {
+                    "type": "recipe",
+                    "label": recipe["title"],
+                    "query": f"recept na {recipe['title']}",
+                    "score": 118 - index,
+                    "url": recipe.get("link") or "",
+                    "badge": recipe.get("cuisine") or "Recept",
+                }
+            )
+        ordered = diverse_autocomplete_items(suggestions.values(), limit)
+        return [
+            {key: value for key, value in item.items() if key != "score" and value not in ("", None)}
+            for item in ordered
+        ]
+
     product_hits = search_products(products_list, query, max(limit * 4, 30))
     product_hits = personalize_products(product_hits, profile)
     for index, product in enumerate(product_hits[: max(limit, 8)]):
@@ -3047,6 +3090,40 @@ def diverse_autocomplete_items(items, limit: int) -> list[dict]:
         if len(selected) >= target:
             break
     return selected
+
+
+def should_use_fast_autocomplete() -> bool:
+    return os.getenv("FOODLAND_FAST_AUTOCOMPLETE", "true").strip().lower() not in {"0", "false", "no"}
+
+
+def lightweight_recipe_autocomplete(all_knowledge: dict, query: str, limit: int = 3) -> list[dict]:
+    normalized_query = normalize(query).strip()
+    if len(normalized_query) < 3:
+        return []
+    query_tokens = tokenize(query)
+    if not query_tokens:
+        return []
+
+    recipes = all_knowledge.get("sections", {}).get("Recipes", [])
+    ranked: list[tuple[int, dict]] = []
+    for record in recipes:
+        recipe = recipe_card(record)
+        title = str(recipe.get("title", ""))
+        text = normalize(recipe_search_text(record, recipe))
+        title_tokens = tokenize(title)
+        all_tokens = tokenize(text)
+        token_hits = len(query_tokens & title_tokens)
+        field_hits = len(query_tokens & all_tokens)
+        direct = normalized_query in normalize(title) or normalize(title).startswith(normalized_query)
+        fuzzy = fuzzy_hits(query_tokens, title_tokens)
+        score = (40 if direct else 0) + 14 * token_hits + 5 * field_hits + 6 * fuzzy
+        if "recept" in normalize(query):
+            score += 18
+        if score > 0 and recipe.get("title"):
+            ranked.append((score + recipe_subject_score(detect_recipe_subject(query), recipe), recipe))
+
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    return [recipe for _, recipe in ranked[: max(1, min(limit, 4))]]
 
 
 AUTOCOMPLETE_INTENTS = {

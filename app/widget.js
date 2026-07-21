@@ -954,6 +954,8 @@
   const autocomplete = root.querySelector(".fl-ai-autocomplete");
   document.body.appendChild(autocomplete);
   let suggestTimer = null;
+  let suggestAbortController = null;
+  const autocompleteCache = new Map();
   let activeSuggestionIndex = -1;
   let currentSuggestions = [];
 
@@ -1139,24 +1141,41 @@
       closeAutocomplete();
       return;
     }
+    const cacheKey = query.toLowerCase();
+    if (autocompleteCache.has(cacheKey)) {
+      renderAutocomplete(autocompleteCache.get(cacheKey));
+      return;
+    }
+    if (suggestAbortController) {
+      suggestAbortController.abort();
+    }
+    suggestAbortController = new AbortController();
     try {
       let response = await fetch(`${apiBaseUrl}/search/autocomplete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, limit: 7, client_id: clientId }),
+        signal: suggestAbortController.signal,
       });
       if (!response.ok) {
         response = await fetch(`${apiBaseUrl}/products/suggest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query, limit: 7 }),
+          signal: suggestAbortController.signal,
         });
       }
       if (!response.ok) return closeAutocomplete();
       const data = await response.json();
       if (input.value.trim() !== query) return;
-      renderAutocomplete(data.suggestions || []);
+      const suggestions = data.suggestions || [];
+      autocompleteCache.set(cacheKey, suggestions);
+      if (autocompleteCache.size > 40) {
+        autocompleteCache.delete(autocompleteCache.keys().next().value);
+      }
+      renderAutocomplete(suggestions);
     } catch (e) {
+      if (e && e.name === "AbortError") return;
       closeAutocomplete();
     }
   }
@@ -1508,7 +1527,7 @@
     window.clearTimeout(suggestTimer);
     suggestTimer = window.setTimeout(function () {
       fetchAutocomplete(input.value);
-    }, 180);
+    }, 320);
   });
 
   input.addEventListener("focus", function () {
