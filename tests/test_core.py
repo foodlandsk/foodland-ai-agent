@@ -431,6 +431,36 @@ class TestIntentDetection:
             assert "pho" in nrm(titles) or "banh" in nrm(titles) or "vietnamsk" in nrm(titles) or "bun" in nrm(titles)
             assert "pad thai" not in nrm(titles)
 
+    def test_cuisine_recipe_queries_return_matching_country_recipes(self, knowledge):
+        cases = (
+            ("thajské recepty", ("pad thai", "tom yum", "tom kha", "satay")),
+            ("recepty z Thajska", ("pad thai", "tom yum", "tom kha", "satay")),
+            ("kórejské recepty", ("kimchi", "japchae", "bulgogi", "bibimbap", "gimbap")),
+            ("recepty z Kórey", ("kimchi", "japchae", "bulgogi", "bibimbap", "gimbap")),
+            ("japonské recepty", ("udon", "teriyaki", "kuromame", "shoyu", "miso")),
+            ("recepty z Japonska", ("udon", "teriyaki", "kuromame", "shoyu", "miso")),
+            ("čínske recepty", ("kung pao", "pekingsk", "ma po", "suan la tang")),
+            ("recepty z Číny", ("kung pao", "pekingsk", "ma po", "suan la tang")),
+            ("indické recepty", ("makhani", "tikka", "tandoori", "biryani")),
+            ("recepty z Indie", ("makhani", "tikka", "tandoori", "biryani")),
+            ("indonézske recepty", ("nasi goreng", "mie goreng", "rendang")),
+            ("recepty z Indonézie", ("nasi goreng", "mie goreng", "rendang")),
+            ("malajské recepty", ("rendang", "nasi lemak")),
+            ("recepty z Malajzie", ("rendang", "nasi lemak")),
+            ("singapurské recepty", ("hainanske", "singapurske")),
+            ("recepty zo Singapuru", ("hainanske", "singapurske")),
+            ("filipínske recepty", ("sinigang",)),
+            ("recepty z Filipín", ("sinigang",)),
+        )
+
+        for query, expected_terms in cases:
+            matches = search_knowledge(knowledge, query)
+            recipes = main.recipe_results(matches, 4, query, knowledge)
+            titles = nrm(" | ".join(recipe["title"] for recipe in recipes))
+
+            assert recipes, query
+            assert any(term in titles for term in expected_terms), query
+
     def test_pad_thai_related_subject_typos(self):
         for query in ("ingrediencie na padthai", "ingrediencie na pad tai", "ingrediencie na pat thai"):
             assert main.detect_related_subject(query) == "pad_thai"
