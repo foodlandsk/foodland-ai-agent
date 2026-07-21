@@ -269,17 +269,15 @@ class TestChatWithMockOpenAI:
             main._openai_client = None
 
             # Mockujeme _call_openai_with_retry aby nevykonalo realne HTTP volanie
-            with mock.patch.object(main, "_call_openai_with_retry", return_value=openai_response):
+            with mock.patch.object(main, "_get_openai_client", return_value=mock.MagicMock()), \
+                 mock.patch.object(main, "_call_openai_with_retry", return_value=openai_response):
                 # Nastavime produkty priamo do main.products
                 original_products = getattr(main, "products", [])
                 main.products = SAMPLE_PRODUCTS
                 try:
-                    import asyncio
-                    result = asyncio.get_event_loop().run_until_complete(
-                        main.chat(
-                            _make_chat_request(message),
-                            _mock_http_request(),
-                        )
+                    result = main.chat(
+                        _make_chat_request(message),
+                        _mock_http_request(),
                     )
                 finally:
                     main.products = original_products
@@ -305,12 +303,9 @@ class TestChatWithMockOpenAI:
                 original_products = getattr(main, "products", [])
                 main.products = SAMPLE_PRODUCTS
                 try:
-                    import asyncio
-                    result = asyncio.get_event_loop().run_until_complete(
-                        main.chat(
-                            _make_chat_request("ake je dnes pocasie v Bratislave?"),
-                            _mock_http_request(),
-                        )
+                    result = main.chat(
+                        _make_chat_request("ake je dnes pocasie v Bratislave?"),
+                        _mock_http_request(),
                     )
                 finally:
                     main.products = original_products
@@ -327,12 +322,9 @@ class TestChatWithMockOpenAI:
             original_products = getattr(main, "products", [])
             main.products = SAMPLE_PRODUCTS
             try:
-                import asyncio
-                result = asyncio.get_event_loop().run_until_complete(
-                    main.chat(
-                        _make_chat_request("bezlepkova sojova omacka"),
-                        _mock_http_request(),
-                    )
+                result = main.chat(
+                    _make_chat_request("bezlepkova sojova omacka"),
+                    _mock_http_request(),
                 )
             finally:
                 main.products = original_products
@@ -469,19 +461,18 @@ class TestOpenAIRetry:
 
         with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-fake-key"}):
             main._openai_client = None
-            with mock.patch.object(
-                main, "_call_openai_with_retry",
-                side_effect=APIConnectionError("connection refused")
-            ):
+            with mock.patch.object(main, "_get_openai_client", return_value=mock.MagicMock()), \
+                 mock.patch.object(
+                     main,
+                     "_call_openai_with_retry",
+                     side_effect=APIConnectionError("connection refused")
+                 ):
                 original_products = getattr(main, "products", [])
                 main.products = SAMPLE_PRODUCTS
                 try:
-                    import asyncio
-                    result = asyncio.get_event_loop().run_until_complete(
-                        main.chat(
-                            _make_chat_request("bezlepkova omacka"),
-                            _mock_http_request(),
-                        )
+                    result = main.chat(
+                        _make_chat_request("bezlepkova omacka"),
+                        _mock_http_request(),
                     )
                 finally:
                     main.products = original_products

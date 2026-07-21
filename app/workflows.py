@@ -110,7 +110,7 @@ def detect_workflow(
 
 WORKFLOW_CONTRACTS: dict[str, dict] = {
     "allergen_safety": {
-        "allowed_sources": ["FAQ", "Products_AI"],
+        "allowed_sources": ["FAQ", "Products_AI", "products"],
         "rules": [
             "never_assert_allergen_free_by_name_only",
             "always_refer_to_product_detail",
@@ -181,7 +181,9 @@ WORKFLOW_CONTRACTS: dict[str, dict] = {
 
 def get_contract(intent: str) -> dict:
     """Vrati kontrakt pre dany workflow. Bezpecny fallback na product_search."""
-    return WORKFLOW_CONTRACTS.get(intent, WORKFLOW_CONTRACTS["product_search"])
+    contract = dict(WORKFLOW_CONTRACTS.get(intent, WORKFLOW_CONTRACTS["product_search"]))
+    contract.setdefault("quality_rules", contract.get("rules", []))
+    return contract
 
 
 def build_grounded_ids(products: list[dict]) -> set[str]:

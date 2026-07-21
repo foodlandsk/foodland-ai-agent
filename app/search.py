@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 
 from app.feed import Product
 
@@ -112,7 +112,13 @@ def tokenize(value: str) -> set[str]:
     return expanded
 
 
-def search_products(products: list[Product], query: str, limit: int = 8) -> list[dict]:
+def product_value(product: Product | dict, key: str, default=""):
+    if isinstance(product, dict):
+        return product.get(key, default)
+    return getattr(product, key, default)
+
+
+def search_products(products: list[Product] | list[dict], query: str, limit: int = 8) -> list[dict]:
     query_tokens = tokenize(query)
     if not query_tokens:
         return []
@@ -122,11 +128,11 @@ def search_products(products: list[Product], query: str, limit: int = 8) -> list
 
     ranked: list[tuple[int, bool, Product]] = []
     for product in products:
-        title_tokens = tokenize(product.title)
-        category_tokens = tokenize(product.product_type)
-        brand_tokens = tokenize(product.brand)
-        description_tokens = tokenize(product.description)
-        normalized_title = normalize(product.title)
+        title_tokens = tokenize(str(product_value(product, "title", "")))
+        category_tokens = tokenize(str(product_value(product, "product_type", product_value(product, "category", ""))))
+        brand_tokens = tokenize(str(product_value(product, "brand", "")))
+        description_tokens = tokenize(str(product_value(product, "description", "")))
+        normalized_title = normalize(str(product_value(product, "title", "")))
 
         title_hits = len(query_tokens & title_tokens)
         brand_hits = len(query_tokens & brand_tokens)
@@ -157,7 +163,7 @@ def search_products(products: list[Product], query: str, limit: int = 8) -> list
         strong_match = bool(title_hits or brand_hits or category_hits or normalized_query in normalized_title)
 
         # Availability should only break ties among relevant matches.
-        if score > 0 and product.availability == "in_stock":
+        if score > 0 and product_value(product, "availability", "") in {"in_stock", "in stock"}:
             score += 1
 
         if score > 0:
@@ -178,8 +184,16 @@ def search_products(products: list[Product], query: str, limit: int = 8) -> list
     return [format_product(product) for _, _, product in ranked[:limit]]
 
 
-def format_product(product: Product) -> dict:
-    data = asdict(product)
+def format_product(product: Product | dict) -> dict:
+    if isinstance(product, dict):
+        data = dict(product)
+        if "effective_price" not in data:
+            data["effective_price"] = data.get("sale_price") if data.get("sale_price") is not None else data.get("price")
+        if "product_type" not in data and "category" in data:
+            data["product_type"] = data.get("category", "")
+        return data
+
+    data = asdict(product) if is_dataclass(product) else dict(product)
     data["effective_price"] = product.effective_price
     return data
 

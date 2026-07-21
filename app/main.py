@@ -2171,7 +2171,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             },
         ]
         # Pridaj historiu konverzacie (max 10 sprav)
-        for msg in getattr(chat_request, "conversation_history", [])[-10:]:
+        conversation_history = getattr(chat_request, "conversation_history", None) or []
+        for msg in conversation_history[-10:]:
             if isinstance(msg, dict) and msg.get("role") in ("user", "assistant") and isinstance(msg.get("content"), str):
                 messages.append({"role": msg["role"], "content": msg["content"][:2000]})
         # Pridaj aktualnu otazku so vsetkym kontextom
@@ -2630,7 +2631,7 @@ def detect_special_product_subject(message: str) -> str | None:
         return "rice_side"
     if "snack" in normalized_message and any(marker in normalized_message for marker in ("det", "dieta", "deti")):
         return "kids_snack"
-    if "rybi" in normalized_message and "omack" in normalized_message and any(
+    if any(term in normalized_message for term in ("rybi", "rybac")) and "omack" in normalized_message and any(
         marker in normalized_message for marker in ("vegan", "vegans", "nahrad", "alternativ")
     ):
         return "vegan_fish_sauce_replacement"
@@ -2700,12 +2701,10 @@ def detect_allergen_intent(message: str) -> str | None:
     _allergen_explicit = ("alerg", "intoler", "bezlepk", "bez soj", "bez lakt", "celiak")
     if "recept" in normalized_message and not any(e in normalized_message for e in _allergen_explicit):
         return None
-    if "rybi" in normalized_message and "omack" in normalized_message and any(
+    if any(term in normalized_message for term in ("rybi", "rybac")) and "omack" in normalized_message and any(
         marker in normalized_message for marker in ("vegan", "vegans", "nahrad", "alternativ")
     ):
         return None
-    if "bezlepk" in normalized_message:
-        return "lepok"
     if ("celiak" in normalized_message or "vhodn" in normalized_message) and any(
         term in normalized_message for term in ("bez lepku", "bezlepk", "celiak")
     ):
@@ -2734,6 +2733,9 @@ def detect_allergen_intent(message: str) -> str | None:
         for phrase in ("sojova omacka", "sojovu omacku", "sojovka", "tamari")
     ):
         return None
+
+    if "bezlepk" in normalized_message:
+        return "lepok"
 
     if not any(marker in normalized_message for marker in ALLERGEN_INTENT_MARKERS):
         return None

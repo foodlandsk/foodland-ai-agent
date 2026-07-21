@@ -101,6 +101,12 @@ def validate_answer(
     Returns:
         GroundingResult so sanitizovanou odpovedou a zoznamom naruseni
     """
+    if strict_prices and allowed_prices is None and allowed_product_ids:
+        looks_like_prices = all(re.fullmatch(r"\d+(?:\.\d{2})?", str(value)) for value in allowed_product_ids)
+        if looks_like_prices:
+            allowed_prices = {str(value) for value in allowed_product_ids}
+            allowed_product_ids = None
+
     violations: list[str] = []
     removed_product_refs: list[str] = []
 

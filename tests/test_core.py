@@ -69,7 +69,12 @@ def _install_stubs():
         ("openai", types.ModuleType("openai")),
     ]:
         sys.modules[name] = mod
+    class _OpenAIError(Exception):
+        pass
     sys.modules["openai"].OpenAI = lambda **kw: None
+    sys.modules["openai"].RateLimitError = type("RateLimitError", (_OpenAIError,), {})
+    sys.modules["openai"].APITimeoutError = type("APITimeoutError", (_OpenAIError,), {})
+    sys.modules["openai"].APIConnectionError = type("APIConnectionError", (_OpenAIError,), {})
     os.environ.setdefault("RATE_LIMIT_PER_MINUTE", "100000")
 
 _install_stubs()
