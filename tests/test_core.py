@@ -416,6 +416,21 @@ class TestIntentDetection:
             titles = " | ".join(recipe["title"] for recipe in recipes)
             assert "pad thai" in nrm(titles), query
 
+    def test_vietnamese_cuisine_recipe_queries_return_recipes(self, knowledge):
+        for query in (
+            "recepty Vietnamskej kuchyne",
+            "vietnamske recepty",
+            "ukaz recepty vietnamskej kuchyne",
+            "recepty z Vietnamu",
+        ):
+            matches = search_knowledge(knowledge, query)
+            recipes = main.recipe_results(matches, 4, query, knowledge)
+            titles = " | ".join(recipe["title"] for recipe in recipes)
+
+            assert recipes, query
+            assert "pho" in nrm(titles) or "banh" in nrm(titles) or "vietnamsk" in nrm(titles) or "bun" in nrm(titles)
+            assert "pad thai" not in nrm(titles)
+
     def test_pad_thai_related_subject_typos(self):
         for query in ("ingrediencie na padthai", "ingrediencie na pad tai", "ingrediencie na pat thai"):
             assert main.detect_related_subject(query) == "pad_thai"

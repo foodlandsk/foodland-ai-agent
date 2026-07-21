@@ -2962,6 +2962,15 @@ def recipe_results(
     results: list[tuple[int, dict]] = []
     seen_titles: set[str] = set()
     wanted_tokens = recipe_query_tokens(message)
+    cuisine_subject = detect_recipe_cuisine(message)
+
+    if cuisine_subject and all_knowledge:
+        recipes = [
+            {"record": record, "score": 0}
+            for record in all_knowledge.get("sections", {}).get("Recipes", [])
+            if recipe_matches_cuisine(record, cuisine_subject)
+        ]
+        wanted_tokens = {token for token in wanted_tokens if not is_recipe_cuisine_query_token(token)}
 
     if not recipes and not wanted_tokens and all_knowledge:
         recipes = [
@@ -3012,6 +3021,98 @@ def recipe_search_text(record: dict, recipe: dict) -> str:
         if normalized_key in {"sk_url", "sk"} or "poznamka" in normalized_key:
             values.append(str(value))
     return " ".join(values)
+
+
+RECIPE_CUISINE_MARKERS = {
+    "vietnam": ("vietnam", "vietnamsk", "vietnamska", "vietnamske", "vietnamskej", "vietnamsku"),
+    "thai": ("thai", "thajsk", "thajska", "thajske", "thajskej", "thajsku"),
+    "korean": ("korejsk", "korejska", "korejske", "korejskej", "korejsku", "korean"),
+    "japanese": ("japonsk", "japonska", "japonske", "japonskej", "japonsku", "japansk", "japanese"),
+    "chinese": ("cinsk", "cinska", "cinske", "cinskej", "cinsku", "chinese"),
+    "indian": ("indick", "indicka", "indicke", "indickej", "indiu", "india", "indian"),
+    "indonesian": ("indonez", "indonezska", "indonezske", "indonezskej", "indonesia"),
+    "malaysian": ("malajsk", "malajska", "malajske", "malajskej", "malaysia"),
+    "singapore": ("singapur", "singapursk", "singapurska", "singapurske"),
+    "filipino": ("filipin", "filipinska", "filipinske", "filipinskej", "philippines"),
+}
+
+RECIPE_CUISINE_QUERY_TOKENS = {
+    "vietnam",
+    "vietnamsk",
+    "vietnamska",
+    "vietnamske",
+    "vietnamskej",
+    "vietnamsku",
+    "thai",
+    "thajsk",
+    "thajska",
+    "thajske",
+    "thajskej",
+    "thajsku",
+    "korejsk",
+    "korejska",
+    "korejske",
+    "korejskej",
+    "korejsku",
+    "japonsk",
+    "japonska",
+    "japonske",
+    "japonskej",
+    "japonsku",
+    "cinsk",
+    "cinska",
+    "cinske",
+    "cinskej",
+    "cinsku",
+    "indick",
+    "indicka",
+    "indicke",
+    "indickej",
+    "indonez",
+    "malajsk",
+    "singapur",
+    "filipin",
+    "kuchyna",
+    "kuchyne",
+    "kuchyni",
+    "kuchynu",
+}
+
+
+def detect_recipe_cuisine(message: str) -> str | None:
+    normalized_message = normalize(message)
+    for cuisine, markers in RECIPE_CUISINE_MARKERS.items():
+        if any(marker in normalized_message for marker in markers):
+            return cuisine
+    return None
+
+
+def is_recipe_cuisine_query_token(token: str) -> bool:
+    if token in RECIPE_CUISINE_QUERY_TOKENS:
+        return True
+    return token.startswith(
+        (
+            "vietnam",
+            "vietnamsk",
+            "thajsk",
+            "korejsk",
+            "japonsk",
+            "japansk",
+            "cinsk",
+            "indick",
+            "indonez",
+            "malajsk",
+            "singapur",
+            "filipin",
+            "kuchyn",
+        )
+    )
+
+
+def recipe_matches_cuisine(record: dict, cuisine: str) -> bool:
+    recipe = recipe_card(record)
+    text = normalize(" ".join([recipe_search_text(record, recipe), " ".join(str(value) for value in record.values())]))
+    return any(marker in text for marker in RECIPE_CUISINE_MARKERS.get(cuisine, ()))
 
 
 def recipe_query_tokens(message: str) -> set[str]:
