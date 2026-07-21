@@ -478,6 +478,19 @@ class TestWorkflows:
         assert candidates[0]["quantity"] == 1
         assert candidates[0]["reason"] == "Ingrediencie na kimchi"
 
+    def test_recommendation_annotations_feed_cart_candidates(self):
+        products = [
+            {"id": "FL_100", "title": "Sushi ryza 1kg", "effective_price": 4.99, "currency": "EUR", "link": "https://foodland.sk/sushi-ryza/"},
+            {"id": "FL_101", "title": "Ryzovy ocot 500ml", "effective_price": 3.50, "currency": "EUR", "link": "https://foodland.sk/ryzovy-ocot/"},
+        ]
+        main.annotate_recommendations(products, "related_products", "sushi", None, None, "co k sushi")
+        candidates = main.cart_candidates_for_response(products, "related_products", "sushi")
+
+        assert products[0]["recommendation_reason"]
+        assert products[0]["recommendation_group"] == "Zaklad"
+        assert candidates[0]["recommendation_reason"] == products[0]["recommendation_reason"]
+        assert candidates[0]["recommendation_group"] == "Zaklad"
+
 class TestAllergenSafetyAnswer:
     def test_answer_contains_verify_instruction(self):
         answer = main.allergen_safety_answer("lepok")

@@ -617,6 +617,16 @@
       font-size: 12px;
       line-height: 1.25;
     }
+    .fl-ai-product-reason {
+      margin: 0 0 7px;
+      color: #52645a;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .fl-ai-product-group {
+      color: #299B5E;
+      font-weight: 800;
+    }
     .fl-ai-price { color: #299B5E; font-weight: 800; }
     .fl-ai-product-link {
       display: inline-flex;
@@ -993,6 +1003,7 @@
             <span>${escapeHtml(availability)}</span>
             ${product.brand ? `<span>${escapeHtml(product.brand)}</span>` : ""}
           </div>
+          ${product.recommendation_reason ? `<p class="fl-ai-product-reason"><span class="fl-ai-product-group">${escapeHtml(product.recommendation_group || "Odporúčané")}</span>: ${escapeHtml(product.recommendation_reason)}</p>` : ""}
           <div class="fl-ai-product-actions">
             <a class="fl-ai-product-link" href="${escapeAttr(product.link || "#")}" target="_blank" rel="noopener">Zobraziť</a>
           </div>

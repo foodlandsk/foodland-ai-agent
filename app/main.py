@@ -47,6 +47,7 @@ from app.knowledge_builder import (
     save_knowledge,
 )
 from app.search import normalize, products_context, search_products, tokenize
+from app.workflows import products_to_cart_candidates
 
 
 logging.basicConfig(
@@ -2127,6 +2128,12 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     else:
         matches = search_products(products, contextual_message, chat_request.limit)
     intent = "related_products" if related_subject else "product_search"
+    annotate_recommendations(matches, intent, related_subject, already_have_subject, special_subject, contextual_message)
+    cart_candidates = cart_candidates_for_response(
+        matches,
+        intent,
+        related_subject or already_have_subject or special_subject or contextual_message,
+    )
     update_session_memory(memory_key, chat_request.message, intent, matches, [], knowledge_matches)
     log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id)
 
@@ -2142,6 +2149,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         return {
             "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
             "products": matches,
+            "cart_candidates": cart_candidates,
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "related_products" if (related_subject or already_have_subject) else "product_search",
         }
@@ -2196,6 +2204,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         return {
             "answer": answer_text,
             "products": matches,
+            "cart_candidates": cart_candidates,
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "related_products" if (related_subject or already_have_subject) else "product_search",
         }
@@ -2205,6 +2214,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         return {
             "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
             "products": matches,
+            "cart_candidates": cart_candidates,
             "knowledge": knowledge_summary(knowledge_matches),
             "warning": "Služba je momentálne preťažená, zobrazujem nájdené produkty.",
         }
@@ -2214,6 +2224,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         return {
             "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
             "products": matches,
+            "cart_candidates": cart_candidates,
             "knowledge": knowledge_summary(knowledge_matches),
             "warning": "Odpoveď sa nepodarilo vygenerovať, zobrazujem nájdené produkty.",
         }
@@ -2243,6 +2254,63 @@ def allowed_answer_urls(matches: list[dict], knowledge_matches: dict | None) -> 
                     urls.add(text)
 
     return urls
+
+
+def annotate_recommendations(
+    matches: list[dict],
+    intent: str,
+    related_subject: str | None = None,
+    already_have_subject: str | None = None,
+    special_subject: str | None = None,
+    query: str = "",
+) -> None:
+    context = related_subject or already_have_subject or special_subject or query
+    for index, product in enumerate(matches or [], start=1):
+        group = recommendation_group(product)
+        product["recommendation_group"] = group
+        product["recommendation_priority"] = index
+        product["recommendation_reason"] = recommendation_reason(product, group, intent, context)
+
+
+def recommendation_group(product: dict) -> str:
+    text = normalize(" ".join(str(product.get(key, "")) for key in ("title", "product_type", "category", "description")))
+    if any(marker in text for marker in ("ryza", "rezance", "nudle", "papier", "nori")):
+        return "Zaklad"
+    if any(marker in text for marker in ("omack", "sauce", "ocot", "mirin", "olej", "dashi", "miso", "pasta")):
+        return "Dochutenie"
+    if any(marker in text for marker in ("chili", "cili", "sriracha", "gochujang", "wasabi", "kimchi")):
+        return "Pikantne"
+    if any(marker in text for marker in ("kokos", "mlieko", "tofu", "hub", "shiitake", "zazvor", "cesnak")):
+        return "Doplnok"
+    return "Odporucane"
+
+
+def recommendation_reason(product: dict, group: str, intent: str, context: str | None) -> str:
+    title = normalize(str(product.get("title", "")))
+    context_text = str(context or "").replace("_", " ").strip()
+    if intent == "related_products" and context_text:
+        return f"Hodi sa k teme {context_text} ako {group.lower()} nakupu."
+    if "bezlepk" in title or "tamari" in title:
+        return "Vhodny kandidat pri bezlepkovom vybere; zlozenie si overte v detaile produktu."
+    if group == "Zaklad":
+        return "Tvori zaklad jedla alebo prilohu, ktoru budete pravdepodobne potrebovat."
+    if group == "Dochutenie":
+        return "Doda jedlu typicku azijsku chut a dobre doplni hlavne suroviny."
+    if group == "Pikantne":
+        return "Prida pikantnost alebo fermentovanu chut podla stylu jedla."
+    return "Dobry doplnok k vybranej teme alebo predoslemu hladaniu."
+
+
+def cart_candidates_for_response(matches: list[dict], intent: str, context: str | None = None) -> list[dict]:
+    if intent not in {"related_products", "product_search"}:
+        return []
+    reason = f"Odporucanie Foodland Mei: {str(context or intent).replace('_', ' ')[:80]}"
+    candidates = products_to_cart_candidates(matches or [], reason)
+    for candidate, product in zip(candidates, matches or []):
+        candidate["recommendation_group"] = product.get("recommendation_group", "Odporucane")
+        candidate["recommendation_reason"] = product.get("recommendation_reason", reason)
+        candidate["priority"] = product.get("recommendation_priority", 0)
+    return candidates
 
 
 def sanitize_answer_links(answer: str, allowed_urls: set[str]) -> str:
