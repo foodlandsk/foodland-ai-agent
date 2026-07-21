@@ -2283,6 +2283,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     recipe_subject = detect_recipe_subject(contextual_message)
     if recipe_subject:
         recipes = recipe_results(knowledge_matches, chat_request.limit, contextual_message, knowledge)
+        recipe_articles = recipe_article_results(articles, contextual_message, knowledge, chat_request.limit)
         recipe_product_subject = recipe_related_product_subject(contextual_message, recipe_subject, recipes)
         recipe_products = (
             related_products_for_subject(products, recipe_product_subject, max(chat_request.limit, 8))
@@ -2303,7 +2304,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "answer": recipe_products_answer(recipe_product_subject, recipes) if recipe_products else recipe_answer(recipe_subject, recipes),
             "recipes": recipes,
             "products": recipe_products,
-            "articles": articles,
+            "articles": recipe_articles,
             "cart_candidates": cart_candidates_for_response(recipe_products, intent, recipe_product_subject),
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": intent,
@@ -3218,6 +3219,38 @@ RECIPE_CUISINE_QUERY_TOKENS = {
 }
 
 
+ARTICLE_CULINARY_MARKERS = (
+    "kuchyn",
+    "recept",
+    "jedal",
+    "jedlo",
+    "chut",
+    "potrav",
+    "ingredien",
+    "omac",
+    "rezanc",
+    "poliev",
+    "ryz",
+    "snack",
+    "pochut",
+    "kimchi",
+    "miso",
+    "udon",
+    "ramen",
+    "shoyu",
+    "mochi",
+    "pho",
+    "pad thai",
+    "tom yum",
+    "kung pao",
+    "tofu",
+    "biryani",
+    "rendang",
+    "nasi",
+    "sinigang",
+)
+
+
 def detect_recipe_cuisine(message: str) -> str | None:
     normalized_message = normalize(message)
     for cuisine, markers in RECIPE_CUISINE_MARKERS.items():
@@ -3315,6 +3348,41 @@ def article_results(knowledge_matches: dict | None, limit: int = 3) -> list[dict
         if len(results) >= max(1, min(limit, 3)):
             break
     return results
+
+
+def recipe_article_results(
+    articles: list[dict],
+    message: str,
+    all_knowledge: dict | None = None,
+    limit: int = 3,
+) -> list[dict]:
+    cuisine = detect_recipe_cuisine(message)
+    if not cuisine:
+        return articles
+    filtered = [article for article in articles if article_matches_cuisine(article, cuisine)]
+    if filtered or not all_knowledge:
+        return filtered[: max(1, min(limit, 3))]
+
+    results: list[dict] = []
+    seen_titles: set[str] = set()
+    for record in all_knowledge.get("sections", {}).get("Magazine", []):
+        article = article_card(record)
+        title_key = normalize(article.get("title", ""))
+        if article.get("title") and title_key not in seen_titles and article_matches_cuisine(article, cuisine):
+            seen_titles.add(title_key)
+            results.append(article)
+        if len(results) >= max(1, min(limit, 3)):
+            break
+    return results
+
+
+def article_matches_cuisine(article: dict, cuisine: str) -> bool:
+    text = normalize(
+        " ".join(str(article.get(key, "")) for key in ("title", "topic", "note", "link"))
+    )
+    has_cuisine = any(marker in text for marker in RECIPE_CUISINE_MARKERS.get(cuisine, ()))
+    has_culinary_context = any(marker in text for marker in ARTICLE_CULINARY_MARKERS)
+    return has_cuisine and has_culinary_context
 
 
 def article_card(record: dict) -> dict:

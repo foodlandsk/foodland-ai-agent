@@ -658,6 +658,17 @@ class TestKnowledgeSearch:
         assert articles[0]["title"]
         assert articles[0]["link"].startswith("https://")
 
+    def test_recipe_cuisine_articles_match_requested_country(self, knowledge):
+        articles = main.article_results(search_knowledge(knowledge, "recepty z Kórey"), 3)
+        filtered = main.recipe_article_results(articles, "recepty z Kórey", knowledge)
+        titles = nrm(" | ".join(article["title"] for article in filtered))
+
+        assert filtered
+        assert "korej" in titles or "kimchi" in titles
+        assert "cinsk" not in titles
+        assert "azijske recepty" not in titles
+        assert "olympij" not in titles
+
     def test_article_product_filter_keeps_direct_kimchi_products(self, knowledge, products):
         articles = main.article_results(search_knowledge(knowledge, "co je kimchi"), 3)
         subject = main.detect_article_product_subject("co je kimchi", articles)
