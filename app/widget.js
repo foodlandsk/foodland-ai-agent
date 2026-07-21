@@ -1035,6 +1035,10 @@
       category: "Kategória",
       recipe: "Recept",
       synonym: "Tip",
+      buy_intent: "Kúpiť",
+      cook_intent: "Variť",
+      explain_intent: "Vysvetliť",
+      replace_intent: "Náhrada",
     }[type] || "Tip";
   }
 

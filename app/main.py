@@ -2851,6 +2851,9 @@ def search_autocomplete(
         score += sum(POPULAR_AUTOCOMPLETE_BOOSTS.get(token, 0) for token in query_tokens & all_tokens)
         return score
 
+    for item in autocomplete_intent_suggestions(query):
+        add_suggestion(item)
+
     for phrase, replacement in PHRASE_SYNONYMS.items():
         if normalized_query in phrase or normalized_query in replacement or any(token in tokenize(phrase) for token in query_tokens):
             add_suggestion({"type": "synonym", "label": replacement, "query": replacement, "score": 92})
@@ -2949,7 +2952,17 @@ def diverse_autocomplete_items(items, limit: int) -> list[dict]:
     ordered = sorted(items, key=lambda item: int(item.get("score", 0)), reverse=True)
     selected: list[dict] = []
     type_counts: Counter[str] = Counter()
-    soft_caps = {"product": 5, "brand": 2, "category": 2, "recipe": 2, "synonym": 2}
+    soft_caps = {
+        "product": 3,
+        "brand": 2,
+        "category": 2,
+        "recipe": 2,
+        "synonym": 2,
+        "buy_intent": 1,
+        "cook_intent": 1,
+        "explain_intent": 1,
+        "replace_intent": 1,
+    }
 
     for item in ordered:
         item_type = str(item.get("type", "tip"))
@@ -2967,6 +2980,175 @@ def diverse_autocomplete_items(items, limit: int) -> list[dict]:
         if len(selected) >= target:
             break
     return selected
+
+
+AUTOCOMPLETE_INTENTS = {
+    "buy": {
+        "type": "buy_intent",
+        "label": "Kúpiť {subject}",
+        "query": "{subject}",
+        "badge": "Kúpiť",
+        "markers": (
+            "kupit",
+            "chcem kupit",
+            "mate",
+            "predavate",
+            "skladom",
+            "cena",
+            "najdi",
+            "hladam",
+            "ukaz",
+            "potrebujem",
+            "produkt",
+            "produkty",
+        ),
+    },
+    "cook": {
+        "type": "cook_intent",
+        "label": "Variť s {subject}",
+        "query": "recept na {subject}",
+        "badge": "Variť",
+        "markers": (
+            "recept",
+            "varit",
+            "uvarit",
+            "pripravit",
+            "postup",
+            "ingrediencie",
+            "suroviny",
+            "co potrebujem",
+            "co varit",
+        ),
+    },
+    "explain": {
+        "type": "explain_intent",
+        "label": "Čo je {subject}?",
+        "query": "čo je {subject}",
+        "badge": "Vysvetliť",
+        "markers": (
+            "co je",
+            "čo je",
+            "vysvetli",
+            "znamena",
+            "ako chut",
+            "na co je",
+            "pouzitie",
+            "rozdiel",
+        ),
+    },
+    "replace": {
+        "type": "replace_intent",
+        "label": "Čím nahradiť {subject}?",
+        "query": "čím nahradiť {subject}",
+        "badge": "Náhrada",
+        "markers": (
+            "nahrad",
+            "namiesto",
+            "alternativ",
+            "alternativa",
+            "cim nahradit",
+            "čím nahradiť",
+            "nemam",
+            "nemám",
+        ),
+    },
+}
+
+
+AUTOCOMPLETE_INTENT_FILLER = (
+    "chcem",
+    "kupit",
+    "kúpiť",
+    "mate",
+    "máte",
+    "predavate",
+    "predávate",
+    "skladom",
+    "cena",
+    "najdi",
+    "hladam",
+    "hľadám",
+    "ukaz",
+    "ukáž",
+    "potrebujem",
+    "produkt",
+    "produkty",
+    "recept",
+    "varit",
+    "variť",
+    "uvarit",
+    "uvariť",
+    "pripravit",
+    "pripraviť",
+    "postup",
+    "ingrediencie",
+    "suroviny",
+    "co",
+    "čo",
+    "je",
+    "vysvetli",
+    "znamena",
+    "znamená",
+    "ako",
+    "chuti",
+    "chutí",
+    "na",
+    "pouzitie",
+    "použitie",
+    "rozdiel",
+    "cim",
+    "čím",
+    "nahradit",
+    "nahradiť",
+    "nahrad",
+    "namiesto",
+    "alternativ",
+    "alternativa",
+    "nemam",
+    "nemám",
+)
+
+
+def autocomplete_intent_suggestions(query: str) -> list[dict]:
+    subject = autocomplete_subject(query)
+    if len(normalize(subject)) < 2:
+        return []
+
+    normalized_query = normalize(query)
+    matched_intents = [
+        intent
+        for intent, config in AUTOCOMPLETE_INTENTS.items()
+        if any(marker in normalized_query for marker in config["markers"])
+    ]
+    if not matched_intents:
+        matched_intents = ["buy", "cook", "explain", "replace"]
+
+    suggestions: list[dict] = []
+    for index, intent in enumerate(matched_intents):
+        config = AUTOCOMPLETE_INTENTS[intent]
+        strong_match = any(marker in normalized_query for marker in config["markers"])
+        score = (230 if strong_match else 190) - index
+        suggestions.append(
+            {
+                "type": config["type"],
+                "label": config["label"].format(subject=subject),
+                "query": config["query"].format(subject=subject),
+                "score": score,
+                "badge": config["badge"],
+            }
+        )
+    return suggestions
+
+
+def autocomplete_subject(query: str) -> str:
+    normalized_query = normalize(query)
+    tokens = [
+        token
+        for token in normalized_query.split()
+        if token not in AUTOCOMPLETE_INTENT_FILLER and len(token) >= 2
+    ]
+    subject = " ".join(tokens).strip()
+    return subject[:60]
 
 
 def should_skip_autocomplete_product(raw_query_tokens: set[str], product: dict) -> bool:

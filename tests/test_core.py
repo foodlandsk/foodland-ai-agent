@@ -370,9 +370,28 @@ class TestSearchProducts:
         labels = nrm(" | ".join(item["label"] for item in suggestions))
 
         assert suggestions
+        assert "buy_intent" in types_found
+        assert "cook_intent" in types_found
+        assert "explain_intent" in types_found
+        assert "replace_intent" in types_found
         assert "product" in types_found
         assert "recipe" in types_found
         assert "kimchi" in labels
+
+    def test_search_autocomplete_detects_explicit_intents(self, products, knowledge):
+        cases = {
+            "chcem kupit kimchi": ("buy_intent", "kupit kimchi", "kimchi"),
+            "recept kimchi": ("cook_intent", "varit s kimchi", "recept na kimchi"),
+            "co je kimchi": ("explain_intent", "co je kimchi", "co je kimchi"),
+            "cim nahradit mirin": ("replace_intent", "cim nahradit mirin", "cim nahradit mirin"),
+        }
+        for query, (expected_type, expected_label, expected_query) in cases.items():
+            suggestions = main.search_autocomplete(products, knowledge, query, 8)
+            first = suggestions[0]
+
+            assert first["type"] == expected_type, (query, suggestions[:3])
+            assert expected_label in nrm(first["label"])
+            assert expected_query in nrm(first["query"])
 
     def test_search_autocomplete_handles_padthai_typo(self, products, knowledge):
         suggestions = main.search_autocomplete(products, knowledge, "padthai", 8)
