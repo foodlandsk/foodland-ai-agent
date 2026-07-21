@@ -54,6 +54,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```text
 GET  http://localhost:8000/health
 POST http://localhost:8000/products/search
+POST http://localhost:8000/search/autocomplete
 POST http://localhost:8000/knowledge/search
 POST http://localhost:8000/chat
 GET  http://localhost:8000/static/widget.html
@@ -110,6 +111,34 @@ LOG_LEVEL=INFO
 ```
 
 Ak `OPENAI_API_KEY` nie je nastaveny, `/chat` vrati fallback odpoved z lokalneho vyhladavania.
+
+## Search autocomplete
+
+Endpoint:
+
+```text
+POST /search/autocomplete
+```
+
+Body:
+
+```json
+{
+  "query": "kimchi",
+  "limit": 8,
+  "client_id": "anonymny-client-id-z-widgetu"
+}
+```
+
+Vracia miesane navrhy pre okienko pisania:
+
+- `product` - produkt so skladovym badge, obrazkom a URL,
+- `brand` - znacka,
+- `category` - kategoria,
+- `recipe` - recept z knowledge databazy,
+- `synonym` - opraveny alebo rozsireny dotaz.
+
+Radenie kombinuje zhodu v nazve, synonymá, preklepy, popularitu, dostupnost produktu, znacku, kategoriu a anonymnu dlhodobu pamat pouzivatela.
 
 ## Admin analytika otazok
 

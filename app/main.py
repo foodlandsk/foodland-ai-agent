@@ -47,7 +47,18 @@ from app.knowledge_builder import (
     build_product_snapshot,
     save_knowledge,
 )
-from app.search import autocomplete_suggestions, normalize, products_context, search_products, tokenize
+from app.search import (
+    PHRASE_SYNONYMS,
+    autocomplete_suggestions,
+    format_product,
+    fuzzy_hits,
+    normalize,
+    products_context,
+    raw_tokens,
+    search_products,
+    strict_product_match,
+    tokenize,
+)
 from app.workflows import products_to_cart_candidates
 
 
@@ -97,6 +108,12 @@ class ProductSearchRequest(BaseModel):
 class ProductSuggestRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=120)
     limit: int = Field(default=8, ge=1, le=12)
+
+
+class SearchAutocompleteRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=120)
+    limit: int = Field(default=8, ge=1, le=12)
+    client_id: str = Field(default="", max_length=96)
 
 
 class KnowledgeSearchRequest(BaseModel):
@@ -1999,6 +2016,22 @@ def product_suggest(request: ProductSuggestRequest) -> dict:
     return {"suggestions": autocomplete_suggestions(products, request.query, request.limit)}
 
 
+@app.post("/search/autocomplete")
+def search_autocomplete_endpoint(request: SearchAutocompleteRequest, fastapi_request: Request) -> dict:
+    client_key = get_client_key(fastapi_request)
+    profile_key = user_memory_key(request.client_id, client_key)
+    user_profile = get_user_memory(profile_key) if USER_MEMORY_ENABLED else {}
+    return {
+        "suggestions": search_autocomplete(
+            products,
+            knowledge,
+            request.query,
+            request.limit,
+            user_profile,
+        )
+    }
+
+
 @app.post("/knowledge/search")
 def knowledge_search(request: KnowledgeSearchRequest) -> dict:
     results = search_knowledge(knowledge, request.query)
@@ -2764,10 +2797,201 @@ def personalization_score(text: str, item: dict, profile: dict) -> int:
     score += profile_marker_score(text, profile.get("subjects", {}), RELATED_SUBJECT_ALIASES, 3)
     score += profile_marker_score(text, profile.get("diet_terms", {}), DIET_TERM_MARKERS, 3)
     score += profile_text_score(text, profile.get("product_titles", {}), 1, max_weight=2)
+    score += profile_text_score(text, profile.get("product_brands", {}), 4, max_weight=6)
     brand = normalize(str(item.get("brand", "")))
     if brand:
         score += profile_text_score(brand, profile.get("product_brands", {}), 2, max_weight=6)
     return score
+
+
+def search_autocomplete(
+    products_list: list[Product] | list[dict],
+    all_knowledge: dict,
+    query: str,
+    limit: int = 8,
+    profile: dict | None = None,
+) -> list[dict]:
+    normalized_query = normalize(query).strip()
+    if len(normalized_query) < 2:
+        return []
+
+    query_tokens = tokenize(query)
+    raw_query_tokens = raw_tokens(query)
+    suggestions: dict[str, dict] = {}
+
+    def add_suggestion(item: dict) -> None:
+        label = " ".join(str(item.get("label") or "").split())
+        if not label:
+            return
+        item["label"] = label[:120]
+        item.setdefault("query", label)
+        item.setdefault("score", 0)
+        key = f"{item.get('type', 'tip')}:{normalize(label)}"
+        existing = suggestions.get(key)
+        if not existing or int(item["score"]) > int(existing.get("score", 0)):
+            suggestions[key] = item
+
+    def text_score(label: str, extra_text: str = "") -> int:
+        text = normalize(" ".join([label, extra_text]))
+        label_tokens = tokenize(label)
+        all_tokens = tokenize(" ".join([label, extra_text]))
+        token_hits = len(query_tokens & label_tokens)
+        field_hits = len(query_tokens & all_tokens)
+        fuzzy_label_hits = fuzzy_hits(query_tokens, label_tokens)
+        direct = normalized_query in text or text.startswith(normalized_query)
+        prefix = any(token.startswith(normalized_query) for token in label_tokens) if len(normalized_query) >= 3 else False
+        if not direct and not prefix and not token_hits and not field_hits and not fuzzy_label_hits:
+            return 0
+        score = 0
+        score += 28 if direct else 0
+        score += 18 if prefix else 0
+        score += 12 * token_hits
+        score += 5 * field_hits
+        score += 7 * fuzzy_label_hits
+        score += sum(POPULAR_AUTOCOMPLETE_BOOSTS.get(token, 0) for token in query_tokens & all_tokens)
+        return score
+
+    for phrase, replacement in PHRASE_SYNONYMS.items():
+        if normalized_query in phrase or normalized_query in replacement or any(token in tokenize(phrase) for token in query_tokens):
+            add_suggestion({"type": "synonym", "label": replacement, "query": replacement, "score": 92})
+
+    product_hits = search_products(products_list, query, max(limit * 4, 30))
+    product_hits = personalize_products(product_hits, profile)
+    for index, product in enumerate(product_hits[: max(limit, 8)]):
+        label = str(product.get("title", "")).strip()
+        base = text_score(
+            label,
+            " ".join(str(product.get(key, "")) for key in ("brand", "product_type", "category", "description")),
+        )
+        if base <= 0:
+            continue
+        availability = str(product.get("availability", ""))
+        available = availability in {"in_stock", "in stock", "Skladom", "skladom"}
+        score = 80 + base - index
+        score += 24 if available else -30 if availability else 0
+        score += int(product.get("personalization_score", 0)) * 6
+        if not strict_product_match(raw_query_tokens, normalize(label)):
+            continue
+        if should_skip_autocomplete_product(raw_query_tokens, product):
+            continue
+        add_suggestion(
+            {
+                "type": "product",
+                "label": label,
+                "query": label,
+                "score": score,
+                "url": product.get("link") or product.get("url") or "",
+                "image": product.get("image_link") or "",
+                "badge": "Skladom" if available else "",
+                "brand": product.get("brand") or "",
+            }
+        )
+
+    brand_scores: Counter[str] = Counter()
+    category_scores: Counter[str] = Counter()
+    for product in products_list:
+        product_data = format_product(product)
+        title = str(product_data.get("title", ""))
+        brand = str(product_data.get("brand", ""))
+        category = str(product_data.get("product_type", product_data.get("category", "")))
+        availability = str(product_data.get("availability", ""))
+        availability_boost = 8 if availability in {"in_stock", "in stock"} else 0
+        if brand:
+            score = text_score(brand, title) + availability_boost
+            if score > 0:
+                brand_scores[brand] = max(brand_scores[brand], score + 45)
+        for part in re.split(r"[>/|]", category):
+            clean_part = " ".join(part.split())
+            if not clean_part or len(clean_part) < 3:
+                continue
+            if "shoyu" in raw_query_tokens and any(marker in normalize(clean_part) for marker in ("krek", "snack")):
+                continue
+            score = text_score(clean_part, title) + availability_boost
+            if score > 0:
+                category_scores[clean_part] = max(category_scores[clean_part], score + 36)
+
+    for brand, score in brand_scores.most_common(limit):
+        normalized_brand = normalize(brand)
+        score += profile_text_score(normalized_brand, (profile or {}).get("product_brands", {}), 4, max_weight=6)
+        add_suggestion({"type": "brand", "label": brand, "query": brand, "score": score})
+
+    for category, score in category_scores.most_common(limit):
+        add_suggestion({"type": "category", "label": category, "query": category, "score": score})
+
+    recipes = recipe_results(search_knowledge(all_knowledge, query), limit, query, all_knowledge)
+    recipes = personalize_recipes(recipes, profile)
+    for index, recipe in enumerate(recipes):
+        label = str(recipe.get("title", "")).strip()
+        score = text_score(label, " ".join(str(recipe.get(key, "")) for key in ("cuisine", "note", "link")))
+        if score <= 0:
+            continue
+        score += 75 - index + int(recipe.get("personalization_score", 0)) * 2
+        add_suggestion(
+            {
+                "type": "recipe",
+                "label": label,
+                "query": f"recept na {label}",
+                "score": score,
+                "url": recipe.get("link") or "",
+                "badge": recipe.get("cuisine") or "Recept",
+            }
+        )
+
+    ordered = diverse_autocomplete_items(suggestions.values(), limit)
+    return [
+        {key: value for key, value in item.items() if key != "score" and value not in ("", None)}
+        for item in ordered
+    ]
+
+
+def diverse_autocomplete_items(items, limit: int) -> list[dict]:
+    target = max(1, min(limit, 12))
+    ordered = sorted(items, key=lambda item: int(item.get("score", 0)), reverse=True)
+    selected: list[dict] = []
+    type_counts: Counter[str] = Counter()
+    soft_caps = {"product": 5, "brand": 2, "category": 2, "recipe": 2, "synonym": 2}
+
+    for item in ordered:
+        item_type = str(item.get("type", "tip"))
+        if type_counts[item_type] >= soft_caps.get(item_type, 2):
+            continue
+        selected.append(item)
+        type_counts[item_type] += 1
+        if len(selected) >= target:
+            return selected
+
+    for item in ordered:
+        if item in selected:
+            continue
+        selected.append(item)
+        if len(selected) >= target:
+            break
+    return selected
+
+
+def should_skip_autocomplete_product(raw_query_tokens: set[str], product: dict) -> bool:
+    text = product_profile_text(product)
+    if "shoyu" in raw_query_tokens and any(marker in text for marker in ("krek", "cracker", "snack")):
+        return True
+    return False
+
+
+POPULAR_AUTOCOMPLETE_BOOSTS = {
+    "kimchi": 16,
+    "sushi": 14,
+    "ramen": 13,
+    "gochujang": 12,
+    "sriracha": 11,
+    "miso": 10,
+    "nori": 9,
+    "pho": 9,
+    "pad": 8,
+    "thai": 8,
+    "ryza": 7,
+    "rezance": 7,
+    "kokosove": 6,
+    "sojova": 6,
+}
 
 
 def profile_marker_score(text: str, bucket: dict, marker_map: dict, weight: int) -> int:

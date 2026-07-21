@@ -364,6 +364,39 @@ class TestSearchProducts:
         assert "shoyu" in nrm(shoyu_labels) or "sojova omacka" in nrm(shoyu_labels)
         assert "shoju" not in nrm(shoyu_labels)
 
+    def test_search_autocomplete_returns_mixed_results(self, products, knowledge):
+        suggestions = main.search_autocomplete(products, knowledge, "kimchi", 8)
+        types_found = {item["type"] for item in suggestions}
+        labels = nrm(" | ".join(item["label"] for item in suggestions))
+
+        assert suggestions
+        assert "product" in types_found
+        assert "recipe" in types_found
+        assert "kimchi" in labels
+
+    def test_search_autocomplete_handles_padthai_typo(self, products, knowledge):
+        suggestions = main.search_autocomplete(products, knowledge, "padthai", 8)
+        labels = nrm(" | ".join(item["label"] for item in suggestions))
+
+        assert suggestions
+        assert "pad thai" in labels
+
+    def test_search_autocomplete_keeps_soju_and_shoyu_separate(self, products, knowledge):
+        soju = nrm(" | ".join(item["label"] for item in main.search_autocomplete(products, knowledge, "soju", 8)))
+        shoyu = nrm(" | ".join(item["label"] for item in main.search_autocomplete(products, knowledge, "shoyu", 8)))
+
+        assert "soju" in soju
+        assert "shoyu" in shoyu or "sojova omacka" in shoyu
+        assert "soju" not in shoyu
+        assert "krek" not in shoyu
+
+    def test_search_autocomplete_boosts_favorite_brand(self, products, knowledge):
+        profile = {"product_brands": {"JONGGA": 5}, "cuisines": {}, "subjects": {}, "diet_terms": {}, "product_titles": {}}
+        suggestions = main.search_autocomplete(products, knowledge, "kimchi", 8, profile)
+        first_product = next(item for item in suggestions if item["type"] == "product")
+
+        assert "jongga" in nrm(first_product.get("brand", "") + " " + first_product["label"])
+
 
 class TestIntentDetection:
     def test_allergen_arasidy(self):

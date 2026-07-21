@@ -1021,6 +1021,7 @@
       product: "Produkt",
       brand: "Značka",
       category: "Kategória",
+      recipe: "Recept",
       synonym: "Tip",
     }[type] || "Tip";
   }
@@ -1064,10 +1065,10 @@
       return;
     }
     try {
-      const response = await fetch(`${apiBaseUrl}/products/suggest`, {
+      const response = await fetch(`${apiBaseUrl}/search/autocomplete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, limit: 7 }),
+        body: JSON.stringify({ query, limit: 7, client_id: clientId }),
       });
       if (!response.ok) return closeAutocomplete();
       const data = await response.json();
