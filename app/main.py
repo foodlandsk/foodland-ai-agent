@@ -2096,6 +2096,18 @@ def admin_analytics_intents(
     return {"intents": intent_rows(events)}
 
 
+@app.get("/admin/analytics/tasks")
+def admin_analytics_tasks(
+    days: int = 7,
+    limit: int = 20,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    require_admin_token(x_admin_token)
+    events = read_analytics_events(days)
+    errors = read_error_events(days)
+    return {"action_items": analytics_action_items(events, errors, limit)}
+
+
 def session_memory_key(session_id: str, client_key: str) -> str:
     raw_session = re.sub(r"[^a-zA-Z0-9_-]", "", str(session_id or ""))[:64]
     if raw_session:
@@ -3438,6 +3450,7 @@ def analytics_report(events: list[dict], errors: list[dict] | None = None, limit
         "no_results": no_result_rows(events, safe_limit),
         "intents": intent_rows(events),
         "weak_spots": weak_spot_rows(events, errors, safe_limit),
+        "action_items": analytics_action_items(events, errors, safe_limit),
     }
 
 
@@ -3513,6 +3526,136 @@ def weak_spot_rows(events: list[dict], errors: list[dict] | None = None, limit: 
         rows.append({"area": f"backend:{event_name}", "count": count, "note": "Backend chyba v sledovanom období."})
     rows.sort(key=lambda row: row["count"], reverse=True)
     return rows[: max(1, min(limit, 100))]
+
+
+def analytics_action_items(events: list[dict], errors: list[dict] | None = None, limit: int = 20) -> list[dict]:
+    errors = errors or []
+    safe_limit = max(1, min(int(limit or 20), 100))
+    items: list[dict] = []
+
+    for row in no_result_rows(events, safe_limit):
+        items.append(
+            {
+                "priority": 100 + int(row.get("count", 0) or 0),
+                "type": "missing_result",
+                "title": f"Doplniť výsledok pre: {row.get('question', row.get('normalized', ''))}",
+                "question": row.get("question", ""),
+                "normalized": row.get("normalized", ""),
+                "intent": row.get("intent", ""),
+                "count": row.get("count", 0),
+                "suggested_action": suggested_analytics_action(str(row.get("intent", "")), str(row.get("normalized", "")), "missing_result"),
+            }
+        )
+
+    for row in low_relevance_rows(events, safe_limit):
+        items.append(
+            {
+                "priority": 80 + int(row.get("count", 0) or 0),
+                "type": "low_relevance",
+                "title": f"Skontrolovať slabé výsledky pre: {row.get('question', row.get('normalized', ''))}",
+                "question": row.get("question", ""),
+                "normalized": row.get("normalized", ""),
+                "intent": row.get("intent", ""),
+                "count": row.get("count", 0),
+                "avg_matches": row.get("avg_matches", 0),
+                "suggested_action": suggested_analytics_action(str(row.get("intent", "")), str(row.get("normalized", "")), "low_relevance"),
+            }
+        )
+
+    for row in top_question_rows(events, safe_limit):
+        if int(row.get("count", 0) or 0) < 2:
+            continue
+        items.append(
+            {
+                "priority": 45 + int(row.get("count", 0) or 0),
+                "type": "frequent_question",
+                "title": f"Optimalizovať častú otázku: {row.get('question', '')}",
+                "question": row.get("question", ""),
+                "normalized": row.get("normalized", ""),
+                "count": row.get("count", 0),
+                "suggested_action": suggested_analytics_action("", str(row.get("normalized", "")), "frequent_question"),
+            }
+        )
+
+    weak_intents = [
+        row for row in weak_spot_rows(events, errors, safe_limit)
+        if str(row.get("area", "")).startswith(("no_results:", "unknown_intent", "backend:"))
+    ]
+    for row in weak_intents:
+        items.append(
+            {
+                "priority": 70 + int(row.get("count", 0) or 0),
+                "type": "weak_area",
+                "title": f"Slabé miesto: {row.get('area', '')}",
+                "area": row.get("area", ""),
+                "count": row.get("count", 0),
+                "suggested_action": row.get("note", "Skontrolovať pravidlá poradcu a doplniť test."),
+            }
+        )
+
+    deduped: dict[tuple[str, str], dict] = {}
+    for item in items:
+        key = (str(item.get("type", "")), str(item.get("normalized") or item.get("area") or item.get("title", "")))
+        existing = deduped.get(key)
+        if not existing or int(item.get("priority", 0)) > int(existing.get("priority", 0)):
+            deduped[key] = item
+
+    ordered = sorted(deduped.values(), key=lambda item: int(item.get("priority", 0)), reverse=True)
+    return [
+        {key: value for key, value in item.items() if key != "priority" and value not in ("", None)}
+        for item in ordered[:safe_limit]
+    ]
+
+
+def low_relevance_rows(events: list[dict], limit: int = 20) -> list[dict]:
+    product_intents = {"product_search", "related_products", "article_products", "recipe_to_products", "allergen_safety"}
+    grouped: dict[str, dict] = {}
+    for event in events:
+        intent = str(event.get("intent") or "")
+        matches_count = int(event.get("matches_count", 0) or 0)
+        if intent not in product_intents or matches_count == 0 or matches_count > 2:
+            continue
+        message = str(event.get("message", "")).strip()
+        key = normalized_question_key(message)
+        if not key:
+            continue
+        row = grouped.setdefault(
+            key,
+            {"question": message[:240], "normalized": key, "intent": intent, "count": 0, "matches_total": 0},
+        )
+        row["count"] += 1
+        row["matches_total"] += matches_count
+    rows = []
+    for row in grouped.values():
+        count = int(row.get("count", 0) or 0)
+        if not count:
+            continue
+        rows.append(
+            {
+                "question": row["question"],
+                "normalized": row["normalized"],
+                "intent": row["intent"],
+                "count": count,
+                "avg_matches": round(float(row.get("matches_total", 0)) / count, 2),
+            }
+        )
+    rows.sort(key=lambda item: (int(item["count"]), -float(item["avg_matches"])), reverse=True)
+    return rows[: max(1, min(limit, 100))]
+
+
+def suggested_analytics_action(intent: str, normalized_question: str, issue_type: str) -> str:
+    text = normalize(normalized_question)
+    if issue_type == "frequent_question":
+        return "Pridať alebo zlepšiť rýchlu odpoveď, synonymá a regresný test pre častý dotaz."
+    if intent == "recipe" or any(token in text for token in ("recept", "varit", "pho", "ramen", "pad thai", "kimchi")):
+        return "Doplniť receptové mapovanie, suroviny k receptu a test očakávaných produktov."
+    if intent == "unknown":
+        return "Rozšíriť intent detekciu alebo pridať odmietaciu odpoveď, ak je dotaz mimo Foodland sortimentu."
+    if any(token in text for token in ("nahrad", "namiesto", "alternativ")):
+        return "Doplniť pravidlá náhrad a synonymá pre alternatívne ingrediencie."
+    if any(token in text for token in ("co je", "vysvetli", "pouzitie", "rozdiel")):
+        return "Prepojiť magazínový článok s presnejšími produktmi a pridať test relevancie."
+    return "Doplniť synonymá, produktové boost pravidlo alebo kategóriu a pridať regresný test."
 
 
 def is_no_result_event(event: dict) -> bool:

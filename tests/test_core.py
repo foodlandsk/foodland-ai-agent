@@ -871,6 +871,8 @@ class TestAdminAnalytics:
         assert report["top_questions"][0]["count"] == 2
         assert any(row["intent"] == "article_products" for row in report["intents"])
         assert any(row["area"] == "no_results" for row in report["weak_spots"])
+        assert report["action_items"]
+        assert any(item["type"] == "missing_result" for item in report["action_items"])
 
     def test_no_result_rows_group_normalized_questions(self):
         events = [
@@ -884,6 +886,21 @@ class TestAdminAnalytics:
         assert rows
         assert rows[0]["count"] == 2
         assert rows[0]["intent"] == "product_search"
+
+    def test_analytics_action_items_include_low_relevance_and_frequent_questions(self):
+        events = [
+            {"ts": 10, "message": "co je kimchi", "matches_count": 1, "intent": "article_products"},
+            {"ts": 11, "message": "co je kimchi?", "matches_count": 2, "intent": "article_products"},
+            {"ts": 12, "message": "mate wasabi xxl", "matches_count": 0, "intent": "product_search"},
+            {"ts": 13, "message": "mate wasabi xxl", "matches_count": 0, "intent": "product_search"},
+        ]
+        items = main.analytics_action_items(events, [], 10)
+        item_types = {item["type"] for item in items}
+
+        assert "missing_result" in item_types
+        assert "low_relevance" in item_types
+        assert "frequent_question" in item_types
+        assert any("synonym" in nrm(item.get("suggested_action", "")) for item in items)
 
 
 class TestGrounding:

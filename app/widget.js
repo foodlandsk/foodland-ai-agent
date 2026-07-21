@@ -804,6 +804,36 @@
       .fl-ai-form { grid-template-columns: 1fr; }
       .fl-ai-autocomplete { max-height: 180px; }
       .fl-ai-submit { min-height: 40px; }
+      .fl-ai-product {
+        grid-template-columns: 64px minmax(0, 1fr);
+        gap: 9px;
+        padding: 9px;
+      }
+      .fl-ai-product img,
+      .fl-ai-product-image-fallback {
+        width: 64px;
+        height: 64px;
+      }
+      .fl-ai-product-title { font-size: 12px; line-height: 1.25; }
+      .fl-ai-product-meta { font-size: 11px; gap: 5px; }
+      .fl-ai-product-reason {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .fl-ai-product-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+      .fl-ai-product-link,
+      .fl-ai-cart-btn {
+        width: 100%;
+        min-height: 36px;
+        padding: 7px 8px;
+      }
+      .fl-ai-show-more { min-height: 40px; }
     }
     @media (prefers-reduced-motion: reduce) {
       .fl-ai-launcher, .fl-ai-dot { transition: none; animation: none; }
@@ -1339,6 +1369,28 @@
     scrollToBottom();
   }
 
+  function cartCandidatesToProducts(candidates) {
+    if (!Array.isArray(candidates)) return [];
+    return candidates
+      .filter(function (candidate) {
+        return candidate && (candidate.title || candidate.link);
+      })
+      .map(function (candidate) {
+        return {
+          id: candidate.product_id || "",
+          title: candidate.title || "Odporúčaný produkt Foodland",
+          effective_price: typeof candidate.price === "number" ? candidate.price : null,
+          currency: candidate.currency || "EUR",
+          availability: "in_stock",
+          brand: "",
+          image_link: "",
+          link: candidate.link || "",
+          recommendation_group: candidate.recommendation_group || "Do košíka",
+          recommendation_reason: candidate.recommendation_reason || candidate.reason || "Kandidát pripravený podľa odporúčania Foodland Mei.",
+        };
+      });
+  }
+
     function scrollToBottom() {
     messages.scrollTop = messages.scrollHeight;
   }
@@ -1523,7 +1575,12 @@
       scrollToBottom();
       addRecipes(data.recipes);
       addArticles(data.articles);
-      if (data.intent !== "recipe") addProducts(data.products);
+      if (data.intent !== "recipe") {
+        addProducts(data.products);
+        if (!Array.isArray(data.products) || data.products.length === 0) {
+          addProducts(cartCandidatesToProducts(data.cart_candidates));
+        }
+      }
     } catch (error) {
       notice.hidden = true;
       loading.classList.add("error");
