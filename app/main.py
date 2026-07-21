@@ -358,7 +358,6 @@ RELATED_PRODUCT_QUERIES = {
         "nakladany zazvor",
         "sojova omacka",
         "bezlepkova sojova omacka",
-        "bambusova podlozka sushi",
     ],
     "gochujang": [
         "kimchi",
@@ -922,7 +921,7 @@ RELATED_PRODUCT_QUERIES = {
         "tandoori masala", "garam masala", "kari pasta", "jazminova ryza",
     ],
     "biryani": [
-        "basmati ryza", "biryani korenie", "garam masala", "kardamom", "skorica",
+        "basmati ryza", "biryani masala", "garam masala", "kardamom", "skorica",
     ],
     "nasi_lemak": [
         "kokosove mlieko", "jazminova ryza", "sambal", "arasidy", "rybacia omacka",
@@ -931,7 +930,7 @@ RELATED_PRODUCT_QUERIES = {
         "ryzove rezance", "kari korenie", "sojova omacka", "sezamovy olej", "sriracha",
     ],
     "sinigang": [
-        "sinigang", "tamarind", "rybacia omacka", "ryzove rezance", "chili",
+        "sinigang", "tamarind koncentrat", "tamarind pasta", "rybacia omacka", "ryzove rezance",
     ],
     "yukgaejang": [
         "gochujang", "sojova omacka", "sezamovy olej", "ryzovy ocot",
@@ -3373,6 +3372,8 @@ def related_products_for_subject(products: list[Product], subject: str, limit: i
         for product in search_products(products, query, 3):
             title = normalize(product.get("title", ""))
             title_tokens = set(title.split())
+            if not is_recipe_relevant_product(product, subject):
+                continue
             if subject == "sushi" and "ryza" in title_tokens and {"sushi", "susi"} & title_tokens:
                 continue
             if subject in {"kimchi", "gochujang"} and subject_query and subject_query in title:
@@ -3389,6 +3390,33 @@ def related_products_for_subject(products: list[Product], subject: str, limit: i
             break
 
     return recommendations
+
+
+def is_recipe_relevant_product(product: dict, subject: str | None = None) -> bool:
+    text = normalize(" ".join(str(product.get(key, "")) for key in ("title", "product_type", "category", "description")))
+    blocked_markers = (
+        "podlozka",
+        "sushi mat",
+        "miska",
+        "misky",
+        "set ",
+        "suprava",
+        "palicky",
+        "dekor",
+        "ozdoby",
+        "solarna",
+        "macka stastia",
+        "vonna tycinka",
+    )
+    if any(marker in text for marker in blocked_markers):
+        return False
+
+    snack_markers = ("krek", "snack", "pocky", "cukrik", "bonbon", "chips")
+    subject_allows_snacks = subject in {"asian_snack", "azijske_dezerty", "mochi", "matcha", "bubble_tea", "mango_sticky_rice"}
+    if not subject_allows_snacks and any(marker in text for marker in snack_markers):
+        return False
+
+    return True
 
 
 def special_products_for_subject(products: list[Product], subject: str, limit: int) -> list[dict]:

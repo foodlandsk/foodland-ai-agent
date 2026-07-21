@@ -387,6 +387,17 @@ class TestIntentDetection:
             matches = main.related_products_for_subject(products, subject, 6)
             assert matches, subject
 
+    def test_recipe_product_recommendations_exclude_tools_and_false_spices(self, products):
+        sushi_titles = " | ".join(product["title"] for product in main.related_products_for_subject(products, "sushi", 8))
+        biryani_titles = " | ".join(product["title"] for product in main.related_products_for_subject(products, "biryani", 8))
+        sinigang_titles = " | ".join(product["title"] for product in main.related_products_for_subject(products, "sinigang", 8))
+
+        assert "podlozka" not in nrm(sushi_titles)
+        assert "cierne korenie" not in nrm(biryani_titles)
+        assert "biryani" in nrm(biryani_titles)
+        assert "tamarind" in nrm(sinigang_titles)
+        assert "soba chili" not in nrm(sinigang_titles)
+
     def test_out_of_domain_bicykel(self):
         assert main.detect_out_of_domain("predate bicykle?")
 
