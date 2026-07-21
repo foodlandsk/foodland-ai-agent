@@ -1252,6 +1252,21 @@ RELATED_SUBJECT_ALIASES = {
 
 }
 
+ARTICLE_PRODUCT_QUERIES = {
+    "kimchi_article": ["kimchi"],
+    "pho_article": ["pho", "banh pho"],
+    "udon_article": ["udon rezance", "udon"],
+    "ramen_article": ["ramen rezance", "ramen"],
+    "udon_ramen_article": ["udon rezance", "ramen rezance"],
+    "tofu_article": ["tofu"],
+    "shoyu_article": ["shoyu", "sojova omacka"],
+    "tamari_article": ["tamari"],
+    "miso_article": ["miso pasta", "miso"],
+    "matcha_article": ["matcha"],
+    "mochi_article": ["mochi"],
+    "bubble_tea_article": ["bubble tea", "tapiokove perly"],
+}
+
 RECIPE_TITLE_PRODUCT_SUBJECTS = (
     ("pad thai", "pad_thai"),
     ("sushi a sashimi", "sushi"),
@@ -2262,6 +2277,11 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     already_have_subject = detect_already_have_subject(contextual_message)
     special_subject = detect_special_product_subject(contextual_message)
     related_subject = detect_related_subject(contextual_message)
+    article_product_subject = (
+        detect_article_product_subject(contextual_message, articles)
+        if articles and is_article_info_intent(chat_request.message)
+        else None
+    )
     if not related_subject and is_context_followup(chat_request.message):
         related_subject = memory_subject
     needs_composition_caution = is_composition_caution_search(contextual_message)
@@ -2269,16 +2289,25 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         matches = complement_products_for_subject(products, already_have_subject, chat_request.limit)
     elif special_subject:
         matches = special_products_for_subject(products, special_subject, chat_request.limit)
+    elif article_product_subject:
+        matches = article_products_for_subject(products, article_product_subject, chat_request.limit)
     elif related_subject:
         matches = related_products_for_subject(products, related_subject, chat_request.limit)
     else:
         matches = search_products(products, contextual_message, chat_request.limit)
-    intent = "related_products" if related_subject else "product_search"
-    annotate_recommendations(matches, intent, related_subject, already_have_subject, special_subject, contextual_message)
+    intent = "article_products" if article_product_subject else ("related_products" if related_subject else "product_search")
+    annotate_recommendations(
+        matches,
+        intent,
+        related_subject or article_product_subject,
+        already_have_subject,
+        special_subject,
+        contextual_message,
+    )
     cart_candidates = cart_candidates_for_response(
         matches,
         intent,
-        related_subject or already_have_subject or special_subject or contextual_message,
+        article_product_subject or related_subject or already_have_subject or special_subject or contextual_message,
     )
     update_session_memory(memory_key, chat_request.message, intent, matches, [], knowledge_matches)
     log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id)
@@ -2298,7 +2327,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "articles": articles,
             "cart_candidates": cart_candidates,
             "knowledge": knowledge_summary(knowledge_matches),
-            "intent": "related_products" if (related_subject or already_have_subject) else "product_search",
+            "intent": intent,
         }
 
     try:
@@ -2354,7 +2383,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "articles": articles,
             "cart_candidates": cart_candidates,
             "knowledge": knowledge_summary(knowledge_matches),
-            "intent": "related_products" if (related_subject or already_have_subject) else "product_search",
+            "intent": intent,
         }
     except (RateLimitError, APITimeoutError, APIConnectionError) as exc:
         logger.warning("OpenAI transient error after retries: %s", exc)
@@ -2456,7 +2485,7 @@ def recommendation_reason(product: dict, group: str, intent: str, context: str |
 
 
 def cart_candidates_for_response(matches: list[dict], intent: str, context: str | None = None) -> list[dict]:
-    if intent not in {"related_products", "product_search", "recipe_to_products"}:
+    if intent not in {"related_products", "product_search", "recipe_to_products", "article_products"}:
         return []
     reason = f"Odporucanie Foodland Mei: {str(context or intent).replace('_', ' ')[:80]}"
     candidates = products_to_cart_candidates(matches or [], reason)
@@ -3023,6 +3052,121 @@ def detect_related_subject(message: str) -> str | None:
         return "kimchi"
 
     return None
+
+
+def is_article_info_intent(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(
+        marker in normalized_message
+        for marker in (
+            "co je",
+            "co znamena",
+            "ako chuti",
+            "ako sa je",
+            "ako sa vyraba",
+            "aky je rozdiel",
+            "rozdiel",
+            "preco",
+            "benefity",
+            "ucinky",
+        )
+    )
+
+
+def detect_article_product_subject(message: str, articles: list[dict] | None = None) -> str | None:
+    text = normalize(" ".join([message, *[article.get("title", "") for article in articles or []]]))
+    if "kimchi" in text or "kimci" in text:
+        return "kimchi_article"
+    if "pho" in text:
+        return "pho_article"
+    if "udon" in text and "ramen" in text:
+        return "udon_ramen_article"
+    if "udon" in text:
+        return "udon_article"
+    if "ramen" in text or "ramyun" in text:
+        return "ramen_article"
+    if "tofu" in text:
+        return "tofu_article"
+    if "shoyu" in text:
+        return "shoyu_article"
+    if "tamari" in text:
+        return "tamari_article"
+    if "miso" in text:
+        return "miso_article"
+    if "matcha" in text:
+        return "matcha_article"
+    if "mochi" in text:
+        return "mochi_article"
+    if "bubble tea" in text or "boba" in text:
+        return "bubble_tea_article"
+    return None
+
+
+def article_products_for_subject(products_list: list[Product], subject: str, limit: int) -> list[dict]:
+    seen: set[str] = set()
+    recommendations: list[dict] = []
+
+    for query in ARTICLE_PRODUCT_QUERIES.get(subject, []):
+        for product in search_products(products_list, query, max(6, limit)):
+            if not is_article_relevant_product(product, subject):
+                continue
+            key = product.get("id") or product.get("link") or product.get("title")
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            recommendations.append(product)
+            if len(recommendations) >= limit:
+                return recommendations
+    return recommendations
+
+
+def is_article_relevant_product(product: dict, subject: str) -> bool:
+    title = normalize(str(product.get("title", "")))
+    text = normalize(" ".join(str(product.get(key, "")) for key in ("title", "product_type", "category", "description")))
+    title_tokens = set(title.split())
+
+    blocked_markers = (
+        "miska",
+        "misky",
+        "set ",
+        "suprava",
+        "palicky",
+        "podlozka",
+        "sushi mat",
+        "krek",
+        "snack",
+        "chips",
+        "cukrik",
+        "bonbon",
+    )
+    if any(marker in text for marker in blocked_markers):
+        return False
+
+    if subject == "kimchi_article":
+        return "kimchi" in title and not any(marker in title for marker in ("ramen", "ramyun", "instant", "polievka"))
+    if subject == "pho_article":
+        return "pho" in title or "banh pho" in title
+    if subject == "udon_article":
+        return "udon" in title
+    if subject == "ramen_article":
+        return "ramen" in title or "ramyun" in title
+    if subject == "udon_ramen_article":
+        return "udon" in title or "ramen" in title or "ramyun" in title
+    if subject == "tofu_article":
+        return "tofu" in title and "miso" not in title_tokens and "polievka" not in title_tokens
+    if subject == "shoyu_article":
+        return "shoyu" in title or ("sojova" in title_tokens and "omacka" in title_tokens)
+    if subject == "tamari_article":
+        return "tamari" in title_tokens
+    if subject == "miso_article":
+        return "miso" in title and "polievka" not in title_tokens
+    if subject == "matcha_article":
+        return "matcha" in title
+    if subject == "mochi_article":
+        return "mochi" in title
+    if subject == "bubble_tea_article":
+        return "bubble" in title or "boba" in title or "tapiok" in title
+    return True
 
 
 def detect_already_have_subject(message: str) -> str | None:

@@ -525,6 +525,37 @@ class TestKnowledgeSearch:
         assert articles[0]["title"]
         assert articles[0]["link"].startswith("https://")
 
+    def test_article_product_filter_keeps_direct_kimchi_products(self, knowledge, products):
+        articles = main.article_results(search_knowledge(knowledge, "co je kimchi"), 3)
+        subject = main.detect_article_product_subject("co je kimchi", articles)
+        matches = main.article_products_for_subject(products, subject, 6)
+        titles = " | ".join(product["title"] for product in matches)
+
+        assert subject == "kimchi_article"
+        assert matches
+        assert "kimchi" in nrm(titles)
+        assert "ramen" not in nrm(titles)
+        assert "instant" not in nrm(titles)
+
+    def test_article_product_filter_removes_weak_tofu_and_shoyu_matches(self, knowledge, products):
+        tofu_articles = main.article_results(search_knowledge(knowledge, "co je tofu"), 3)
+        tofu_subject = main.detect_article_product_subject("co je tofu", tofu_articles)
+        tofu_matches = main.article_products_for_subject(products, tofu_subject, 6)
+        tofu_titles = " | ".join(product["title"] for product in tofu_matches)
+
+        shoyu_articles = main.article_results(search_knowledge(knowledge, "co je shoyu"), 3)
+        shoyu_subject = main.detect_article_product_subject("co je shoyu", shoyu_articles)
+        shoyu_matches = main.article_products_for_subject(products, shoyu_subject, 6)
+        shoyu_titles = " | ".join(product["title"] for product in shoyu_matches)
+
+        assert tofu_subject == "tofu_article"
+        assert tofu_matches
+        assert "tofu" in nrm(tofu_titles)
+        assert "miso polievka" not in nrm(tofu_titles)
+        assert shoyu_subject == "shoyu_article"
+        assert shoyu_matches
+        assert "krek" not in nrm(shoyu_titles)
+
 
 class TestGrounding:
     ALLOWED = {"https://www.foodland.sk/product/kimchi/"}
