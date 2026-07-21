@@ -204,6 +204,19 @@ def fuzzy_hits(query_tokens: set[str], field_tokens: set[str]) -> int:
     return hits
 
 
+def raw_tokens(value: str) -> set[str]:
+    return {token for token in re.split(r"[^a-z0-9]+", normalize(value)) if token}
+
+
+def strict_product_match(raw_query_tokens: set[str], normalized_title: str) -> bool:
+    title_tokens = raw_tokens(normalized_title)
+    if "soju" in raw_query_tokens:
+        return "soju" in title_tokens
+    if "shoyu" in raw_query_tokens:
+        return "shoyu" in title_tokens or ("sojova" in title_tokens and "omacka" in title_tokens)
+    return True
+
+
 def product_value(product: Product | dict, key: str, default=""):
     if isinstance(product, dict):
         return product.get(key, default)
@@ -216,6 +229,7 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
         return []
 
     normalized_query = normalize(query)
+    raw_query_tokens = raw_tokens(query)
     wants_sushi_rice = {"ryza"} <= query_tokens and bool({"sushi", "susi"} & query_tokens)
 
     ranked: list[tuple[int, bool, Product]] = []
@@ -225,6 +239,8 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
         brand_tokens = tokenize(str(product_value(product, "brand", "")))
         description_tokens = tokenize(str(product_value(product, "description", "")))
         normalized_title = normalize(str(product_value(product, "title", "")))
+        if not strict_product_match(raw_query_tokens, normalized_title):
+            continue
 
         title_hits = len(query_tokens & title_tokens)
         brand_hits = len(query_tokens & brand_tokens)
@@ -289,6 +305,7 @@ def autocomplete_suggestions(products: list[Product] | list[dict], query: str, l
         return []
 
     query_tokens = tokenize(query)
+    raw_query_tokens = raw_tokens(query)
     suggestions: dict[str, dict] = {}
 
     def add(label: str, kind: str, score: int) -> None:
@@ -296,6 +313,8 @@ def autocomplete_suggestions(products: list[Product] | list[dict], query: str, l
         if not clean:
             return
         key = normalize(clean)
+        if kind == "product" and not strict_product_match(raw_query_tokens, key):
+            return
         label_tokens = tokenize(clean)
         token_hits = len(query_tokens & label_tokens)
         fuzzy_token_hits = fuzzy_hits(query_tokens, label_tokens)

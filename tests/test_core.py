@@ -224,6 +224,22 @@ class TestSearchProducts:
             titles = " | ".join(product.get("title", "") for product in results)
             assert "pad thai" in nrm(titles), query
 
+    def test_shoyu_does_not_match_soju_or_shoju(self, products):
+        results = search_products(products, "shoyu", 6)
+        titles = " | ".join(product.get("title", "") for product in results)
+        normalized_titles = nrm(titles)
+        assert results
+        assert "shoyu" in normalized_titles or "sojova omacka" in normalized_titles
+        assert "soju" not in normalized_titles
+        assert "shoju" not in normalized_titles
+        assert "shou" not in normalized_titles
+
+    def test_soju_prioritizes_soju_products(self, products):
+        results = search_products(products, "soju drink", 6)
+        titles = [nrm(product.get("title", "")) for product in results[:4]]
+        assert titles
+        assert all("soju" in title for title in titles)
+
     def test_luigis_style_synonym_soy_sauce(self, products):
         results = search_products(products, "soy sauce", 6)
         assert titles_contain(results, "sojova omacka", "soy sauce", "tamari")
@@ -252,6 +268,13 @@ class TestSearchProducts:
             assert suggestions, f"Missing suggestions for {query}"
             normalized_labels = nrm(labels)
             assert any(term in normalized_labels for term in expected_terms), labels
+
+    def test_autocomplete_keeps_soju_and_shoyu_separate(self, products):
+        soju_labels = " | ".join(item["label"] for item in autocomplete_suggestions(products, "soju", 6))
+        shoyu_labels = " | ".join(item["label"] for item in autocomplete_suggestions(products, "shoyu", 6))
+        assert "soju" in nrm(soju_labels)
+        assert "shoyu" in nrm(shoyu_labels) or "sojova omacka" in nrm(shoyu_labels)
+        assert "shoju" not in nrm(shoyu_labels)
 
 
 class TestIntentDetection:
