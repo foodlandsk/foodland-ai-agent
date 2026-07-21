@@ -2174,6 +2174,7 @@ def get_user_memory(profile_key: str) -> dict:
             "product_titles": {},
             "product_brands": {},
             "recipe_titles": {},
+            "intent_counts": {},
             "last_intent": "",
             "created_at": time.time(),
             "updated_at": time.time(),
@@ -2205,6 +2206,7 @@ def update_user_memory(
     profile = get_user_memory(profile_key)
     profile["last_intent"] = intent
     profile["updated_at"] = time.time()
+    bump_profile_counter(profile, "intent_counts", memory_intent_bucket(intent), limit=12)
 
     for subject in detect_memory_subjects(message):
         bump_profile_counter(profile, "subjects", subject)
@@ -2241,6 +2243,16 @@ def update_user_memory(
 
     save_user_memories()
     return profile
+
+
+def memory_intent_bucket(intent: str) -> str:
+    if intent in {"product_search", "related_products", "article_products", "allergen_safety"}:
+        return "buy"
+    if intent in {"recipe", "recipe_to_products"}:
+        return "cook"
+    if intent in {"faq", "unknown"}:
+        return "explain"
+    return normalize(intent or "unknown")
 
 
 def should_remember_product_match(message: str, product: dict) -> bool:
@@ -2851,7 +2863,7 @@ def search_autocomplete(
         score += sum(POPULAR_AUTOCOMPLETE_BOOSTS.get(token, 0) for token in query_tokens & all_tokens)
         return score
 
-    for item in autocomplete_intent_suggestions(query):
+    for item in autocomplete_intent_suggestions(query, profile):
         add_suggestion(item)
 
     for phrase, replacement in PHRASE_SYNONYMS.items():
@@ -3109,7 +3121,7 @@ AUTOCOMPLETE_INTENT_FILLER = (
 )
 
 
-def autocomplete_intent_suggestions(query: str) -> list[dict]:
+def autocomplete_intent_suggestions(query: str, profile: dict | None = None) -> list[dict]:
     subject = autocomplete_subject(query)
     if len(normalize(subject)) < 2:
         return []
@@ -3123,11 +3135,13 @@ def autocomplete_intent_suggestions(query: str) -> list[dict]:
     if not matched_intents:
         matched_intents = ["buy", "cook", "explain", "replace"]
 
+    profile_intents = profile if isinstance(profile, dict) else {}
     suggestions: list[dict] = []
     for index, intent in enumerate(matched_intents):
         config = AUTOCOMPLETE_INTENTS[intent]
         strong_match = any(marker in normalized_query for marker in config["markers"])
         score = (230 if strong_match else 190) - index
+        score += autocomplete_intent_memory_score(intent, profile_intents) if not strong_match else 0
         suggestions.append(
             {
                 "type": config["type"],
@@ -3138,6 +3152,22 @@ def autocomplete_intent_suggestions(query: str) -> list[dict]:
             }
         )
     return suggestions
+
+
+def autocomplete_intent_memory_score(intent: str, profile: dict) -> int:
+    counts = profile.get("intent_counts", {})
+    if not isinstance(counts, dict):
+        counts = {}
+    direct_count = int(counts.get(intent, 0) or 0)
+    if intent == "replace":
+        direct_count += int(counts.get("dairy_replacement", 0) or 0)
+        direct_count += int(counts.get("vegan_fish_sauce_replacement", 0) or 0)
+
+    last_intent = memory_intent_bucket(str(profile.get("last_intent", "")))
+    score = min(direct_count, 8) * 10
+    if last_intent == intent:
+        score += 14
+    return score
 
 
 def autocomplete_subject(query: str) -> str:

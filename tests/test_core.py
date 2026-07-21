@@ -393,6 +393,22 @@ class TestSearchProducts:
             assert expected_label in nrm(first["label"])
             assert expected_query in nrm(first["query"])
 
+    def test_search_autocomplete_personalizes_intent_order(self, products, knowledge):
+        cook_profile = {"intent_counts": {"cook": 5}, "last_intent": "recipe"}
+        buy_profile = {"intent_counts": {"buy": 5}, "last_intent": "product_search"}
+
+        cook_first = main.search_autocomplete(products, knowledge, "kimchi", 8, cook_profile)[0]
+        buy_first = main.search_autocomplete(products, knowledge, "kimchi", 8, buy_profile)[0]
+
+        assert cook_first["type"] == "cook_intent"
+        assert buy_first["type"] == "buy_intent"
+
+    def test_search_autocomplete_explicit_intent_beats_memory(self, products, knowledge):
+        buy_profile = {"intent_counts": {"buy": 10}, "last_intent": "product_search"}
+        first = main.search_autocomplete(products, knowledge, "recept kimchi", 8, buy_profile)[0]
+
+        assert first["type"] == "cook_intent"
+
     def test_search_autocomplete_handles_padthai_typo(self, products, knowledge):
         suggestions = main.search_autocomplete(products, knowledge, "padthai", 8)
         labels = nrm(" | ".join(item["label"] for item in suggestions))
@@ -780,11 +796,23 @@ class TestUserMemory:
         assert "korean" in profile["cuisines"]
         assert "pikantne" in profile["diet_terms"]
         assert profile["product_brands"]["JONGGA"] == 1
+        assert profile["intent_counts"]["buy"] == 1
 
         main.user_memories = None
         loaded = main.get_user_memory("client-test")
         assert "korean" in loaded["cuisines"]
         assert "JONGGA" in loaded["product_brands"]
+
+    def test_user_memory_tracks_recipe_intent_for_autocomplete(self, tmp_path, monkeypatch):
+        memory_path = tmp_path / "user_memory.json"
+        monkeypatch.setenv("USER_MEMORY_PATH", str(memory_path))
+        main.user_memories = None
+
+        main.update_user_memory("client-recipe", "recept na kimchi", "recipe", [], [{"title": "Kimchi Ramen"}])
+        main.update_user_memory("client-recipe", "recept na pho", "recipe", [], [{"title": "Pho Bo"}])
+
+        profile = main.get_user_memory("client-recipe")
+        assert profile["intent_counts"]["cook"] == 2
 
     def test_clear_user_memory_removes_profile(self, tmp_path, monkeypatch):
         memory_path = tmp_path / "user_memory.json"
