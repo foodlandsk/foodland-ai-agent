@@ -381,7 +381,7 @@
 
   const style = document.createElement("style");
   style.textContent = `
-    .fl-ai-root, .fl-ai-root * { box-sizing: border-box; letter-spacing: 0; }
+    .fl-ai-root, .fl-ai-root *, .fl-ai-autocomplete, .fl-ai-autocomplete * { box-sizing: border-box; letter-spacing: 0; }
     .fl-ai-root {
       position: fixed;
       right: max(20px, env(safe-area-inset-right));
@@ -755,7 +755,7 @@
       border-radius: 8px;
       background: #fff;
       box-shadow: 0 14px 36px rgba(20, 36, 28, 0.18);
-      z-index: 2147483003;
+      z-index: 2147483647;
     }
     .fl-ai-autocomplete.is-open { display: block; }
     .fl-ai-autocomplete button {
@@ -920,6 +920,7 @@
   const input = root.querySelector(".fl-ai-input");
   const submit = root.querySelector(".fl-ai-submit");
   const autocomplete = root.querySelector(".fl-ai-autocomplete");
+  document.body.appendChild(autocomplete);
   let suggestTimer = null;
   let activeSuggestionIndex = -1;
   let currentSuggestions = [];
@@ -1132,6 +1133,7 @@
   }
 
   function closePanel() {
+    closeAutocomplete();
     panel.classList.remove("is-open");
     setLauncherVisible(true);
   }
