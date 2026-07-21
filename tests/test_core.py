@@ -343,11 +343,11 @@ class TestIntentDetection:
 
         groups = [product["recommendation_group"] for product in matches]
         titles = " | ".join(product["title"] for product in matches)
-        first_noodle_index = groups.index("Zaklad")
+        first_noodle_index = groups.index("Základ")
 
-        assert groups[0] == "Korenie a vyvar"
+        assert groups[0] == "Korenie a vývar"
         assert first_noodle_index > 0
-        assert all(group == "Korenie a vyvar" for group in groups[:first_noodle_index])
+        assert all(group == "Korenie a vývar" for group in groups[:first_noodle_index])
         assert "rezance" in nrm(titles) or "banh pho" in nrm(titles)
 
     def test_all_known_recipes_have_product_subject(self, knowledge):
@@ -680,9 +680,10 @@ class TestWorkflows:
         candidates = main.cart_candidates_for_response(products, "related_products", "sushi")
 
         assert products[0]["recommendation_reason"]
-        assert products[0]["recommendation_group"] == "Zaklad"
+        assert products[0]["recommendation_group"] == "Základ"
+        assert "á" in products[0]["recommendation_reason"] or "í" in products[0]["recommendation_reason"]
         assert candidates[0]["recommendation_reason"] == products[0]["recommendation_reason"]
-        assert candidates[0]["recommendation_group"] == "Zaklad"
+        assert candidates[0]["recommendation_group"] == "Základ"
 
 class TestAllergenSafetyAnswer:
     def test_answer_contains_verify_instruction(self):

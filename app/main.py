@@ -2454,43 +2454,43 @@ def annotate_recommendations(
 def recommendation_group(product: dict) -> str:
     text = normalize(" ".join(str(product.get(key, "")) for key in ("title", "product_type", "category", "description")))
     if any(marker in text for marker in ("korenie", "badian", "skorica", "bujon", "vyvar", "dashi", "bonito")):
-        return "Korenie a vyvar"
+        return "Korenie a vývar"
     if any(marker in text for marker in ("ryza", "rezance", "nudle", "papier", "nori")):
-        return "Zaklad"
+        return "Základ"
     if any(marker in text for marker in ("omack", "sauce", "ocot", "mirin", "olej", "miso", "pasta")):
         return "Dochutenie"
     if any(marker in text for marker in ("chili", "cili", "sriracha", "gochujang", "wasabi", "kimchi")):
-        return "Pikantne"
+        return "Pikantné"
     if any(marker in text for marker in ("kokos", "mlieko", "tofu", "hub", "shiitake", "zazvor", "cesnak")):
         return "Doplnok"
-    return "Odporucane"
+    return "Odporúčané"
 
 
 def recommendation_reason(product: dict, group: str, intent: str, context: str | None) -> str:
     title = normalize(str(product.get("title", "")))
     context_text = str(context or "").replace("_", " ").strip()
-    if intent == "related_products" and context_text:
-        return f"Hodi sa k teme {context_text} ako {group.lower()} nakupu."
+    if intent in {"related_products", "article_products"} and context_text:
+        return f"Hodí sa k téme {context_text} ako {group.lower()} nákupu."
     if "bezlepk" in title or "tamari" in title:
-        return "Vhodny kandidat pri bezlepkovom vybere; zlozenie si overte v detaile produktu."
-    if group == "Zaklad":
-        return "Tvori zaklad jedla alebo prilohu, ktoru budete pravdepodobne potrebovat."
-    if group == "Korenie a vyvar":
-        return "Patri medzi klucove chute receptu; pri polievkach tvori aromaticky zaklad vyvaru."
+        return "Vhodný kandidát pri bezlepkovom výbere; zloženie si overte v detaile produktu."
+    if group == "Základ":
+        return "Tvorí základ jedla alebo prílohu, ktorú budete pravdepodobne potrebovať."
+    if group == "Korenie a vývar":
+        return "Patrí medzi kľúčové chute receptu; pri polievkach tvorí aromatický základ vývaru."
     if group == "Dochutenie":
-        return "Doda jedlu typicku azijsku chut a dobre doplni hlavne suroviny."
-    if group == "Pikantne":
-        return "Prida pikantnost alebo fermentovanu chut podla stylu jedla."
-    return "Dobry doplnok k vybranej teme alebo predoslemu hladaniu."
+        return "Dodá jedlu typickú ázijskú chuť a dobre doplní hlavné suroviny."
+    if group == "Pikantné":
+        return "Pridá pikantnosť alebo fermentovanú chuť podľa štýlu jedla."
+    return "Dobrý doplnok k vybranej téme alebo predchádzajúcemu hľadaniu."
 
 
 def cart_candidates_for_response(matches: list[dict], intent: str, context: str | None = None) -> list[dict]:
     if intent not in {"related_products", "product_search", "recipe_to_products", "article_products"}:
         return []
-    reason = f"Odporucanie Foodland Mei: {str(context or intent).replace('_', ' ')[:80]}"
+    reason = f"Odporúčanie Foodland Mei: {str(context or intent).replace('_', ' ')[:80]}"
     candidates = products_to_cart_candidates(matches or [], reason)
     for candidate, product in zip(candidates, matches or []):
-        candidate["recommendation_group"] = product.get("recommendation_group", "Odporucane")
+        candidate["recommendation_group"] = product.get("recommendation_group", "Odporúčané")
         candidate["recommendation_reason"] = product.get("recommendation_reason", reason)
         candidate["priority"] = product.get("recommendation_priority", 0)
     return candidates
