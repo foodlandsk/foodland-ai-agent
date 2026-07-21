@@ -461,7 +461,7 @@
     .fl-ai-panel {
       position: fixed;
       right: max(20px, env(safe-area-inset-right));
-      bottom: calc(96px + env(safe-area-inset-bottom));
+      bottom: calc(76px + env(safe-area-inset-bottom));
       z-index: 2147483001;
       width: min(410px, calc(100vw - 32px));
       height: min(640px, calc(var(--fl-ai-vh, 100vh) - 116px));
@@ -488,8 +488,8 @@
     }
     .fl-ai-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .fl-ai-mark {
-      width: 34px;
-      height: 34px;
+      width: 42px;
+      height: 42px;
       display: block;
       flex: 0 0 auto;
       overflow: hidden;
@@ -499,11 +499,11 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
     }
     .fl-ai-mark img {
-      width: 76%;
-      height: 76%;
+      width: 100%;
+      height: 100%;
       display: block;
-      margin: 12%;
-      object-fit: contain;
+      margin: 0;
+      object-fit: cover;
     }
     .fl-ai-title { margin: 0; color: #fff; font-size: 15px; line-height: 1.2; font-weight: 800; }
     .fl-ai-status { margin-top: 2px; color: #E8F6EE; font-size: 12px; line-height: 1.2; }
@@ -793,7 +793,7 @@
         bottom: max(10px, env(safe-area-inset-bottom));
       }
       .fl-ai-panel {
-        inset: auto max(8px, env(safe-area-inset-right)) calc(78px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+        inset: auto max(8px, env(safe-area-inset-right)) calc(68px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
         width: auto;
         height: min(650px, calc(var(--fl-ai-vh, 100svh) - 96px - env(safe-area-inset-top)));
         max-height: calc(var(--fl-ai-vh, 100svh) - 96px - env(safe-area-inset-top));
@@ -846,7 +846,7 @@
       <header class="fl-ai-header">
         <div class="fl-ai-brand">
           <div class="fl-ai-mark">
-            <img src="${foodlandSymbolDataUri}" alt="Foodland" loading="lazy" />
+            <img src="${meiAvatarDataUri}" alt="Foodland Mei" loading="lazy" />
           </div>
           <div>
             <p class="fl-ai-title">Foodland Mei</p>
