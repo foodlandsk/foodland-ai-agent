@@ -3233,7 +3233,68 @@ def autocomplete_subject(query: str) -> str:
         if token not in AUTOCOMPLETE_INTENT_FILLER and len(token) >= 2
     ]
     subject = " ".join(tokens).strip()
-    return subject[:60]
+    return complete_autocomplete_subject(subject)[:60]
+
+
+AUTOCOMPLETE_SUBJECT_COMPLETIONS = {
+    "kim": "kimchi",
+    "kimc": "kimchi",
+    "kimci": "kimchi",
+    "kimch": "kimchi",
+    "gochu": "gochujang",
+    "goch": "gochujang",
+    "gochuang": "gochujang",
+    "srir": "sriracha",
+    "srira": "sriracha",
+    "srirac": "sriracha",
+    "kokos": "kokosove mlieko",
+    "kokosove": "kokosove mlieko",
+    "kokosov": "kokosove mlieko",
+    "soj": "sojova omacka",
+    "sojo": "sojova omacka",
+    "sojov": "sojova omacka",
+    "sojova": "sojova omacka",
+    "soy": "sojova omacka",
+    "pad": "pad thai",
+    "padt": "pad thai",
+    "padthai": "pad thai",
+    "pat": "pad thai",
+    "ram": "ramen",
+    "rame": "ramen",
+    "ramy": "ramen",
+    "ramyu": "ramen",
+    "sus": "sushi",
+    "sush": "sushi",
+    "susi": "sushi",
+    "mir": "mirin",
+    "miri": "mirin",
+    "was": "wasabi",
+    "wasa": "wasabi",
+    "nor": "nori",
+    "hois": "hoisin omacka",
+    "hoisin": "hoisin omacka",
+    "tam": "tamari",
+    "tama": "tamari",
+    "to": "tofu",
+    "tof": "tofu",
+}
+
+
+def complete_autocomplete_subject(subject: str) -> str:
+    normalized_subject = normalize(subject).strip()
+    if not normalized_subject:
+        return subject
+    if normalized_subject in AUTOCOMPLETE_SUBJECT_COMPLETIONS:
+        return AUTOCOMPLETE_SUBJECT_COMPLETIONS[normalized_subject]
+
+    tokens = normalized_subject.split()
+    if not tokens:
+        return subject
+    last_token = tokens[-1]
+    completed = AUTOCOMPLETE_SUBJECT_COMPLETIONS.get(last_token)
+    if completed:
+        return " ".join(tokens[:-1] + [completed]).strip()
+    return subject
 
 
 def should_skip_autocomplete_product(raw_query_tokens: set[str], product: dict) -> bool:

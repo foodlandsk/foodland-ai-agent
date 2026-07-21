@@ -393,6 +393,21 @@ class TestSearchProducts:
             assert expected_label in nrm(first["label"])
             assert expected_query in nrm(first["query"])
 
+    def test_search_autocomplete_completes_partial_intent_subjects(self, products, knowledge):
+        cases = {
+            "ako varit kim": "varit s kimchi",
+            "recept na pad": "varit s pad thai",
+            "cim nahradit gochu": "cim nahradit gochujang",
+            "co je sojov": "co je sojova omacka",
+        }
+        for query, expected_label in cases.items():
+            suggestions = main.search_autocomplete(products, knowledge, query, 8)
+            first = suggestions[0]
+
+            assert expected_label in nrm(first["label"]), (query, first)
+            assert not nrm(first["label"]).endswith(" kim")
+            assert not nrm(first["label"]).endswith(" gochu")
+
     def test_search_autocomplete_personalizes_intent_order(self, products, knowledge):
         cook_profile = {"intent_counts": {"cook": 5}, "last_intent": "recipe"}
         buy_profile = {"intent_counts": {"buy": 5}, "last_intent": "product_search"}
