@@ -1126,7 +1126,7 @@
   function addLoadingMessage() {
     const message = document.createElement("div");
     message.className = "fl-ai-message assistant";
-    message.innerHTML = `<span class="fl-ai-loading">Hľadám vo Foodland produktoch <span class="fl-ai-dot"></span><span class="fl-ai-dot"></span><span class="fl-ai-dot"></span></span>`;
+    message.innerHTML = `<span class="fl-ai-loading">Hľadám najvhodnejšiu odpoveď vo Foodland poradni <span class="fl-ai-dot"></span><span class="fl-ai-dot"></span><span class="fl-ai-dot"></span></span>`;
     messages.appendChild(message);
     scrollToBottom();
     return message;
