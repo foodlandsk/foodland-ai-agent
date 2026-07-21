@@ -327,6 +327,43 @@ class TestIntentDetection:
         assert all(group == "Korenie a vyvar" for group in groups[:first_noodle_index])
         assert "rezance" in nrm(titles) or "banh pho" in nrm(titles)
 
+    def test_all_known_recipes_have_product_subject(self, knowledge):
+        recipes = knowledge.get("sections", {}).get("Recipes", [])
+        assert recipes
+        missing = []
+        for record in recipes:
+            title = main.recipe_card(record).get("title", "")
+            subject = main.recipe_product_subject_from_title(title)
+            if not subject or subject not in main.RELATED_PRODUCT_QUERIES:
+                missing.append(title)
+        assert not missing
+
+    def test_all_known_recipe_ingredient_queries_have_related_subject(self, knowledge):
+        recipes = knowledge.get("sections", {}).get("Recipes", [])
+        assert recipes
+        missing = []
+        for record in recipes:
+            title = main.recipe_card(record).get("title", "")
+            subject = main.detect_related_subject(f"ingrediencie na {title}")
+            if not subject or subject not in main.RELATED_PRODUCT_QUERIES:
+                missing.append(title)
+        assert not missing
+
+    def test_recipe_product_subject_samples_return_products(self, products):
+        subjects = [
+            "tom_kha",
+            "bun_cha",
+            "banh_gio",
+            "tikka_masala",
+            "biryani",
+            "nasi_lemak",
+            "sinigang",
+            "thit_dong",
+        ]
+        for subject in subjects:
+            matches = main.related_products_for_subject(products, subject, 6)
+            assert matches, subject
+
     def test_out_of_domain_bicykel(self):
         assert main.detect_out_of_domain("predate bicykle?")
 

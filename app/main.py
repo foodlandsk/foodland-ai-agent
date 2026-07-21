@@ -745,6 +745,14 @@ RELATED_PRODUCT_QUERIES = {
         "sriracha",
         "sojova omacka",
     ],
+    "tom_kha": [
+        "kokosove mlieko",
+        "citronova trava",
+        "galangal",
+        "kaffirove listy",
+        "rybacia omacka",
+        "sriracha",
+    ],
     "jjigae": [
         "gochujang",
         "doenjang pasta",
@@ -820,8 +828,17 @@ RELATED_PRODUCT_QUERIES = {
     "bun_bo_nam_bo": [
         "ryzove rezance", "rybacia omacka", "hoisin", "sezamovy olej", "arasidy", "citronova trava",
     ],
+    "bun_cha": [
+        "ryzove rezance", "rybacia omacka", "ryzovy ocot", "cesnak", "chili omacka", "arasidy",
+    ],
+    "thit_dong": [
+        "rybacia omacka", "shiitake huby", "susene huby", "sojova omacka", "chili omacka",
+    ],
     "bun_bo_hue": [
         "rybacia omacka", "ryzove rezance", "citronova trava", "sojova omacka", "sriracha",
+    ],
+    "banh_gio": [
+        "ryzova muka", "rybacia omacka", "sojova omacka", "shiitake", "chili omacka",
     ],
     "banh_xeo": [
         "ryzova muka", "kokosove mlieko", "rybacia omacka", "sriracha",
@@ -891,6 +908,30 @@ RELATED_PRODUCT_QUERIES = {
     ],
     "hainanese_chicken": [
         "sojova omacka", "sezamovy olej", "zazvor", "cesnak",
+    ],
+    "mango_sticky_rice": [
+        "lepkava ryza", "kokosove mlieko", "mango", "sezamove semienka",
+    ],
+    "sesame_balls": [
+        "ryzova muka", "sezamove semienka", "kokosove mlieko", "matcha",
+    ],
+    "tikka_masala": [
+        "garam masala", "kari pasta", "kokosove mlieko", "jazminova ryza", "chili",
+    ],
+    "tandoori": [
+        "tandoori masala", "garam masala", "kari pasta", "jazminova ryza", "chili",
+    ],
+    "biryani": [
+        "basmati ryza", "biryani korenie", "garam masala", "kardamom", "skorica",
+    ],
+    "nasi_lemak": [
+        "kokosove mlieko", "jazminova ryza", "sambal", "arasidy", "rybacia omacka",
+    ],
+    "singapore_noodles": [
+        "ryzove rezance", "kari korenie", "sojova omacka", "sezamovy olej", "sriracha",
+    ],
+    "sinigang": [
+        "sinigang", "tamarind", "rybacia omacka", "ryzove rezance", "chili",
     ],
     "yukgaejang": [
         "gochujang", "sojova omacka", "sezamovy olej", "ryzovy ocot",
@@ -1080,6 +1121,7 @@ RELATED_SUBJECT_ALIASES = {
     "grilovanie": ("grilovacku", "grilovat", "grilovanie", "na gril", "grilu", "grilovacky"),
     "asian_snack": ("k filmu", "k serialu", "na film", "na serial", "k pivu azij", "snack azij"),
     "tom_yum": ("tom yum", "tom yum polievka", "thajska polievka", "thajskej polievky", "tom yum soup", "citronova trava", "lemongrass", "galangal", "kaffirove listy", "kaffir lime"),
+    "tom_kha": ("tom kha", "tom kha gai", "kokosova kuracia polievka", "thajska kokosova polievka"),
     "jjigae": ("jjigae", "sundubu jjigae", "sundubu", "doenjang jjigae", "doenjang", "korejsky stew"),
     "nam_van": ("nam van", "goi cuon", "vietnamske rolky", "cerstve rolky"),
     "sukiyaki": ("sukiyaki",),
@@ -1099,7 +1141,9 @@ RELATED_SUBJECT_ALIASES = {
     "yangnyeom_chicken": ("yangnyeom chicken", "yangnyeom", "chimaek", "korean fried chicken", "korean chicken"),
     "samgyeopsal": ("samgyeopsal", "pork belly"),
     "bun_bo_nam_bo": ("bun bo nam bo", "bun bo nam", "vietnamsky hovadzi salat", "hovadzi salat s rezancami", "bun bo juh"),
+    "bun_cha": ("bun cha", "bún chả"),
     "bun_bo_hue": ("bun bo hue", "bun bo"),
+    "banh_gio": ("banh gio", "bánh giò", "parene pyramídove knedliky", "parene pyramidove knedliky"),
     "banh_xeo": ("banh xeo",),
     "mapo_tofu": ("mapo tofu", "mapo"),
     "kung_pao": ("kung pao", "kung pao chicken"),
@@ -1113,6 +1157,15 @@ RELATED_SUBJECT_ALIASES = {
     "larb": ("larb",),
     "chow_mein": ("chow mein", "chowmein", "chow-mein"),
     "satay": ("satay", "sate", "satay kura"),
+    "mango_sticky_rice": ("mango sticky rice", "lepkava ryza s mangom", "sladka lepkava ryza"),
+    "sesame_balls": ("sezamove gulocky", "banh ran", "bánh rán"),
+    "tikka_masala": ("tikka masala", "murgh makhani", "maslove kura"),
+    "tandoori": ("tandoori", "tandoori masala"),
+    "biryani": ("biryani", "kuracie biryani"),
+    "nasi_lemak": ("nasi lemak",),
+    "singapore_noodles": ("singapurske rezance", "singapore noodles"),
+    "sinigang": ("sinigang", "filipinska kysla polievka"),
+    "thit_dong": ("thit dong", "thit ong", "vietnamska huspenina", "huspenina"),
     "khao_pad": ("khao pad",),
     "crying_tiger": ("crying tiger",),
     "banchan": ("banchan", "korejske prilohy"),
@@ -1199,6 +1252,69 @@ RELATED_SUBJECT_ALIASES = {
     "kondenzovane_mlieko": ("kondenzovane mlieko", "kondenzovaneho mlieka", "kondenzovanym mliekem", "sweetened condensed milk", "sladzene kondenzovane mlieko"),
 
 }
+
+RECIPE_TITLE_PRODUCT_SUBJECTS = (
+    ("pad thai", "pad_thai"),
+    ("sushi a sashimi", "sushi"),
+    ("satay", "satay"),
+    ("tom kha", "tom_kha"),
+    ("tom yum", "tom_yum"),
+    ("kokosove kari", "thajske_kari"),
+    ("tekvicou", "thajske_kari"),
+    ("ciernej ryze", "ryza"),
+    ("cierna ryza", "ryza"),
+    ("lepkava ryza", "mango_sticky_rice"),
+    ("mangom", "mango_sticky_rice"),
+    ("pho bo", "pho"),
+    ("pho ga", "pho"),
+    ("banh mi", "banh_mi"),
+    ("nem cuon", "nam_van"),
+    ("jarne zavitky", "nam_van"),
+    ("bun cha", "bun_cha"),
+    ("bun bo nam bo", "bun_bo_nam_bo"),
+    ("nuoc cham", "nuoc_cham"),
+    ("banh gio", "banh_gio"),
+    ("vietnamsky zeleninovy salat", "vietnamska_kuchyna"),
+    ("rybacou omackou", "rybacia_omacka"),
+    ("thit dong", "thit_dong"),
+    ("thit ong", "thit_dong"),
+    ("huspenina", "thit_dong"),
+    ("jazminova ryza", "ryza"),
+    ("banh ran", "sesame_balls"),
+    ("sezamove gulocky", "sesame_balls"),
+    ("kimchi ramen", "ramen"),
+    ("jjigae", "jjigae"),
+    ("japchae", "japchae"),
+    ("kimchi recept", "kimchi_recipe"),
+    ("bulgogi", "bulgogi"),
+    ("kimchi prazena ryza", "fried_rice"),
+    ("bibimbap", "bibimbap"),
+    ("gimbap", "gimbap"),
+    ("kuracie kari", "kari"),
+    ("udon", "udon"),
+    ("teriyaki tofu", "teriyaki"),
+    ("kuromame gohan", "ryza"),
+    ("yakiudon", "yakisoba"),
+    ("miso polievka", "miso_polievka"),
+    ("tempura", "tempura"),
+    ("shoyu ramen", "ramen"),
+    ("kung pao", "kung_pao"),
+    ("pekingska kacica", "cinska_kuchyna"),
+    ("ma po tofu", "mapo_tofu"),
+    ("mapo tofu", "mapo_tofu"),
+    ("suan la tang", "cinska_kuchyna"),
+    ("murgh makhani", "tikka_masala"),
+    ("tikka masala", "tikka_masala"),
+    ("tandoori", "tandoori"),
+    ("biryani", "biryani"),
+    ("nasi goreng", "nasi_goreng"),
+    ("mie goreng", "mee_goreng"),
+    ("rendang", "rendang"),
+    ("nasi lemak", "nasi_lemak"),
+    ("hainanske", "hainanese_chicken"),
+    ("singapurske rezance", "singapore_noodles"),
+    ("sinigang", "sinigang"),
+)
 
 RECIPE_URL_OVERRIDES: dict[str, str] = {
     "bun bo nam bo": "https://www.foodland.sk/recepty/vietnamska-specialita-bun-bo-nam-bo/",
@@ -2104,7 +2220,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     recipe_subject = detect_recipe_subject(contextual_message)
     if recipe_subject:
         recipes = recipe_results(knowledge_matches, chat_request.limit, contextual_message, knowledge)
-        recipe_product_subject = recipe_related_product_subject(contextual_message, recipe_subject)
+        recipe_product_subject = recipe_related_product_subject(contextual_message, recipe_subject, recipes)
         recipe_products = (
             related_products_for_subject(products, recipe_product_subject, max(chat_request.limit, 8))
             if wants_recipe_products(contextual_message) and recipe_product_subject
@@ -2540,12 +2656,31 @@ def wants_recipe_products(message: str) -> bool:
     )
 
 
-def recipe_related_product_subject(message: str, recipe_subject: str | None) -> str | None:
+def recipe_related_product_subject(
+    message: str,
+    recipe_subject: str | None,
+    recipes: list[dict] | None = None,
+) -> str | None:
+    message_subject = recipe_product_subject_from_title(message)
+    if message_subject:
+        return message_subject
     related_subject = detect_related_subject(message)
     if related_subject:
         return related_subject
     if recipe_subject in RELATED_PRODUCT_QUERIES:
         return recipe_subject
+    for recipe in recipes or []:
+        subject = recipe_product_subject_from_title(recipe.get("title", ""))
+        if subject:
+            return subject
+    return None
+
+
+def recipe_product_subject_from_title(title: str) -> str | None:
+    normalized_title = normalize(title)
+    for marker, subject in RECIPE_TITLE_PRODUCT_SUBJECTS:
+        if marker in normalized_title:
+            return subject
     return None
 
 
@@ -2819,6 +2954,10 @@ def detect_related_subject(message: str) -> str | None:
 
     if "pho" in normalized_message:
         return "pho"
+
+    title_subject = recipe_product_subject_from_title(normalized_message)
+    if title_subject and title_subject in RELATED_PRODUCT_QUERIES:
+        return title_subject
 
     for subject, aliases in RELATED_SUBJECT_ALIASES.items():
         if any(alias in normalized_message for alias in aliases):
