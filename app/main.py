@@ -2504,10 +2504,15 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     contextual_message = contextualize_message(chat_request.message, memory)
     memory_subject = best_memory_subject(memory)
 
-    knowledge_matches = search_knowledge(knowledge, contextual_message)
-    articles = article_results(knowledge_matches, chat_request.limit)
-
     allergen_term = detect_allergen_intent(chat_request.message)
+    is_faq_query = is_faq_intent(chat_request.message)
+    is_random_recipe_query = is_random_recipe_intent(chat_request.message)
+    recipe_subject = detect_recipe_subject(contextual_message)
+    needs_article_context = is_article_info_intent(chat_request.message)
+    needs_knowledge = is_faq_query or is_random_recipe_query or bool(recipe_subject) or needs_article_context
+    knowledge_matches = search_knowledge(knowledge, contextual_message) if needs_knowledge else {}
+    articles = article_results(knowledge_matches, chat_request.limit) if knowledge_matches else []
+
     if allergen_term and not detect_related_subject(chat_request.message):
         allergen_matches = allergen_product_matches(chat_request.message, chat_request.limit)
         allergen_matches = personalize_products(allergen_matches, user_profile)
@@ -2524,9 +2529,9 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         }
 
     faq_answer = None
-    if is_faq_intent(chat_request.message):
+    if is_faq_query:
         faq_answer = best_direct_faq_answer(chat_request.message, knowledge) or best_faq_answer(knowledge_matches)
-    if faq_answer and is_faq_intent(chat_request.message):
+    if faq_answer and is_faq_query:
         update_session_memory(memory_key, chat_request.message, "faq", [], [], knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, "faq", [], [])
         log_question(chat_request.message, client_key, 0, intent="faq", session_id=session_id)
@@ -2539,7 +2544,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "intent": "faq",
         }
 
-    if is_random_recipe_intent(chat_request.message):
+    if is_random_recipe_query:
         random_rec = get_random_recipe(knowledge)
         random_recipes = [random_rec] if random_rec else []
         random_recipes = personalize_recipes(random_recipes, user_profile)
@@ -2556,7 +2561,6 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "intent": "recipe",
         }
 
-    recipe_subject = detect_recipe_subject(contextual_message)
     if recipe_subject:
         recipes = recipe_results(knowledge_matches, chat_request.limit, contextual_message, knowledge)
         recipes = personalize_recipes(recipes, user_profile)
@@ -2641,6 +2645,10 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     update_session_memory(memory_key, chat_request.message, intent, matches, [], knowledge_matches)
     updated_profile = update_user_memory(profile_key, chat_request.message, intent, matches, [])
     log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id)
+
+    if not matches and not knowledge_matches and not needs_knowledge:
+        knowledge_matches = search_knowledge(knowledge, contextual_message)
+        articles = article_results(knowledge_matches, chat_request.limit) if knowledge_matches else []
 
     if not matches and not knowledge_matches:
         return {
