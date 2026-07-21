@@ -3483,6 +3483,7 @@ def recipe_results(
     seen_titles: set[str] = set()
     wanted_tokens = recipe_query_tokens(message)
     cuisine_subject = detect_recipe_cuisine(message)
+    recipe_subject = detect_recipe_subject(message)
 
     if cuisine_subject and all_knowledge:
         recipes = [
@@ -3522,12 +3523,25 @@ def recipe_results(
             seen_titles.add(title_key)
             title_tokens = tokenize(recipe.get("title", ""))
             score = int(item.get("score", 0)) + (10 * len(wanted_tokens & title_tokens)) + (3 * token_hits)
+            score += recipe_subject_score(recipe_subject, recipe)
             results.append((score, recipe))
         if len(results) >= max(1, min(limit, 4)) and not wanted_tokens:
             break
 
     results.sort(key=lambda item: item[0], reverse=True)
     return [recipe for _, recipe in results[: max(1, min(limit, 4))]]
+
+
+def recipe_subject_score(subject: str | None, recipe: dict) -> int:
+    if not subject:
+        return 0
+    title = normalize(recipe.get("title", ""))
+    if subject == "kimchi":
+        if "kimchi recept" in title or ("tradicny" in title and "kimchi" in title):
+            return 80
+        if "kimchi" in title:
+            return 24
+    return 0
 
 
 def recipe_search_text(record: dict, recipe: dict) -> str:

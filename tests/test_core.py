@@ -426,6 +426,16 @@ class TestIntentDetection:
         subj = main.detect_recipe_subject("recept na kimchi")
         assert subj == "kimchi"
 
+    def test_kimchi_recipe_prioritizes_making_kimchi_and_keeps_related_recipes(self, knowledge):
+        query = "recept na kimchi"
+        matches = search_knowledge(knowledge, query)
+        recipes = main.recipe_results(matches, 4, query, knowledge)
+        titles = [nrm(recipe["title"]) for recipe in recipes]
+
+        assert recipes
+        assert "tradicny kimchi recept" in titles[0]
+        assert any("kimchi ramen" in title or "kimchi jjigae" in title for title in titles[1:])
+
     def test_recipe_results_match_ingredient_query(self, knowledge):
         query = "recept z kokosového mlieka"
         matches = search_knowledge(knowledge, query)
