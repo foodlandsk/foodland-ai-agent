@@ -149,6 +149,10 @@ def tokenize(value: str) -> set[str]:
             expanded.update({"ryza", "ryzovy"})
         if token == "paper":
             expanded.update({"papier"})
+        if token.startswith("kokos"):
+            expanded.update({"kokos", "kokosove", "kokosova", "kokosovy"})
+        if token.startswith("mliek") or token.startswith("mliec") or token == "mliko":
+            expanded.update({"mlieko", "mlieka", "mliecny"})
         if token.startswith("kredit"):
             expanded.add("kredit")
         if token.startswith("srirach") or token.startswith("srirac") or token.startswith("sirach"):

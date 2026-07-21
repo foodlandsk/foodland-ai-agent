@@ -274,6 +274,22 @@ class TestIntentDetection:
         subj = main.detect_recipe_subject("recept na kimchi")
         assert subj == "kimchi"
 
+    def test_recipe_results_match_ingredient_query(self, knowledge):
+        query = "recept z kokosového mlieka"
+        matches = search_knowledge(knowledge, query)
+        recipes = main.recipe_results(matches, 4, query, knowledge)
+        titles = " | ".join(recipe["title"] for recipe in recipes)
+        assert recipes
+        assert "kokos" in nrm(titles) or "tom kha gai" in nrm(titles)
+
+    def test_recipe_results_do_not_overmatch_short_tokens(self, knowledge):
+        query = "recept na pho bo"
+        matches = search_knowledge(knowledge, query)
+        recipes = main.recipe_results(matches, 4, query, knowledge)
+        titles = " | ".join(recipe["title"] for recipe in recipes)
+        assert "pho" in nrm(titles)
+        assert "pad thai" not in nrm(titles)
+
     def test_out_of_domain_bicykel(self):
         assert main.detect_out_of_domain("predate bicykle?")
 

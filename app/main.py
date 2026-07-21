@@ -2523,7 +2523,7 @@ def recipe_results(
     all_knowledge: dict | None = None,
 ) -> list[dict]:
     recipes = (knowledge_matches or {}).get("Recipes", [])
-    results: list[dict] = []
+    results: list[tuple[int, dict]] = []
     seen_titles: set[str] = set()
     wanted_tokens = recipe_query_tokens(message)
 
@@ -2533,20 +2533,49 @@ def recipe_results(
             for record in all_knowledge.get("sections", {}).get("Recipes", [])
         ]
 
-    for item in recipes:
+    candidate_records = list(recipes)
+    if wanted_tokens and all_knowledge:
+        known_titles = {
+            normalize(recipe_card(item.get("record", {})).get("title", ""))
+            for item in candidate_records
+        }
+        for record in all_knowledge.get("sections", {}).get("Recipes", []):
+            title_key = normalize(recipe_card(record).get("title", ""))
+            if title_key and title_key not in known_titles:
+                candidate_records.append({"record": record, "score": 0})
+                known_titles.add(title_key)
+
+    for item in candidate_records:
         record = item.get("record", {})
         recipe = recipe_card(record)
         title_key = normalize(recipe.get("title", ""))
-        recipe_tokens = tokenize(" ".join([recipe.get("title", ""), recipe.get("cuisine", "")]))
-        if wanted_tokens and not (wanted_tokens & recipe_tokens):
+        recipe_tokens = tokenize(recipe_search_text(record, recipe))
+        token_hits = len(wanted_tokens & recipe_tokens)
+        if wanted_tokens and token_hits == 0:
             continue
         if recipe["title"] and title_key not in seen_titles:
             seen_titles.add(title_key)
-            results.append(recipe)
-        if len(results) >= max(1, min(limit, 4)):
+            title_tokens = tokenize(recipe.get("title", ""))
+            score = int(item.get("score", 0)) + (10 * len(wanted_tokens & title_tokens)) + (3 * token_hits)
+            results.append((score, recipe))
+        if len(results) >= max(1, min(limit, 4)) and not wanted_tokens:
             break
 
-    return results
+    results.sort(key=lambda item: item[0], reverse=True)
+    return [recipe for _, recipe in results[: max(1, min(limit, 4))]]
+
+
+def recipe_search_text(record: dict, recipe: dict) -> str:
+    values = [
+        recipe.get("title", ""),
+        recipe.get("cuisine", ""),
+        recipe.get("note", ""),
+    ]
+    for key, value in record.items():
+        normalized_key = normalize(str(key))
+        if normalized_key in {"sk_url", "sk"} or "poznamka" in normalized_key:
+            values.append(str(value))
+    return " ".join(values)
 
 
 def recipe_query_tokens(message: str) -> set[str]:
@@ -2581,8 +2610,9 @@ def recipe_query_tokens(message: str) -> set[str]:
         "ponukate",
         "ukaz",
         "daj",
+        "thai",
     }
-    return {token for token in tokenize(message) if token not in stop_words and len(token) > 1}
+    return {token for token in tokenize(message) if token not in stop_words and len(token) > 2}
 
 
 def recipe_card(record: dict) -> dict:
