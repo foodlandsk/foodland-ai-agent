@@ -744,12 +744,12 @@
     }
     .fl-ai-submit:disabled { cursor: not-allowed; opacity: 0.55; }
     .fl-ai-autocomplete {
-      position: absolute;
+      position: fixed;
       left: 0;
-      right: 0;
-      bottom: calc(100% + 6px);
+      top: 0;
+      width: 320px;
       display: none;
-      max-height: 220px;
+      max-height: min(220px, calc(var(--fl-ai-vh, 100vh) - 24px));
       overflow: auto;
       border: 1px solid #d7e4dc;
       border-radius: 8px;
@@ -927,6 +927,7 @@
   function updateViewportHeight() {
     const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
     root.style.setProperty("--fl-ai-vh", `${Math.max(320, Math.round(viewportHeight))}px`);
+    positionAutocomplete();
   }
 
   updateViewportHeight();
@@ -1017,6 +1018,10 @@
     autocomplete.classList.remove("is-open");
     input.setAttribute("aria-expanded", "false");
     input.removeAttribute("aria-activedescendant");
+    autocomplete.style.left = "";
+    autocomplete.style.top = "";
+    autocomplete.style.width = "";
+    autocomplete.style.maxHeight = "";
     autocomplete.innerHTML = "";
   }
 
@@ -1052,6 +1057,31 @@
     });
     autocomplete.classList.add("is-open");
     input.setAttribute("aria-expanded", "true");
+    positionAutocomplete();
+  }
+
+  function positionAutocomplete() {
+    if (!autocomplete.classList.contains("is-open")) return;
+    const rect = input.getBoundingClientRect();
+    const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    const viewportWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+    const gap = 6;
+    const sidePadding = 8;
+    const desiredWidth = Math.max(220, Math.min(rect.width, viewportWidth - (sidePadding * 2)));
+    const left = Math.max(sidePadding, Math.min(rect.left, viewportWidth - desiredWidth - sidePadding));
+    const spaceAbove = rect.top - sidePadding;
+    const spaceBelow = viewportHeight - rect.bottom - sidePadding;
+    const availableSpace = Math.max(spaceAbove, spaceBelow);
+    const maxHeight = Math.min(220, Math.max(120, availableSpace - gap));
+
+    autocomplete.style.width = `${Math.round(desiredWidth)}px`;
+    autocomplete.style.left = `${Math.round(left)}px`;
+    autocomplete.style.maxHeight = `${Math.round(maxHeight)}px`;
+    if (spaceAbove >= 150 || spaceAbove > spaceBelow) {
+      autocomplete.style.top = `${Math.max(sidePadding, Math.round(rect.top - maxHeight - gap))}px`;
+    } else {
+      autocomplete.style.top = `${Math.min(viewportHeight - 80, Math.round(rect.bottom + gap))}px`;
+    }
   }
 
   function applySuggestion(index) {
@@ -1417,6 +1447,10 @@
     }, 180);
   });
 
+  input.addEventListener("focus", function () {
+    if (input.value.trim().length >= 2) fetchAutocomplete(input.value);
+  });
+
   input.addEventListener("keydown", function (event) {
     if (!autocomplete.classList.contains("is-open")) return;
     if (event.key === "Escape") {
@@ -1442,6 +1476,8 @@
   input.addEventListener("blur", function () {
     window.setTimeout(closeAutocomplete, 120);
   });
+
+  window.addEventListener("scroll", positionAutocomplete, true);
 
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
