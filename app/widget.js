@@ -709,10 +709,12 @@
       border-top: 1px solid #e0e8e2;
       background: white;
       position: relative;
+      z-index: 4;
     }
     .fl-ai-input-wrap {
       position: relative;
       min-width: 0;
+      z-index: 5;
     }
     .fl-ai-input {
       width: 100%;
@@ -753,7 +755,7 @@
       border-radius: 8px;
       background: #fff;
       box-shadow: 0 14px 36px rgba(20, 36, 28, 0.18);
-      z-index: 2;
+      z-index: 2147483003;
     }
     .fl-ai-autocomplete.is-open { display: block; }
     .fl-ai-autocomplete button {
@@ -1065,11 +1067,18 @@
       return;
     }
     try {
-      const response = await fetch(`${apiBaseUrl}/search/autocomplete`, {
+      let response = await fetch(`${apiBaseUrl}/search/autocomplete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, limit: 7, client_id: clientId }),
       });
+      if (!response.ok) {
+        response = await fetch(`${apiBaseUrl}/products/suggest`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, limit: 7 }),
+        });
+      }
       if (!response.ok) return closeAutocomplete();
       const data = await response.json();
       if (input.value.trim() !== query) return;
