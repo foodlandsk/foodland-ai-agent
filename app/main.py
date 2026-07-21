@@ -2177,6 +2177,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     memory_subject = best_memory_subject(memory)
 
     knowledge_matches = search_knowledge(knowledge, contextual_message)
+    articles = article_results(knowledge_matches, chat_request.limit)
 
     allergen_term = detect_allergen_intent(chat_request.message)
     if allergen_term and not detect_related_subject(chat_request.message):
@@ -2186,6 +2187,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         return {
             "answer": allergen_safety_answer(allergen_term),
             "products": allergen_matches,
+            "articles": articles,
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "allergen_safety",
         }
@@ -2199,6 +2201,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         return {
             "answer": faq_answer,
             "products": [],
+            "articles": articles,
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "faq",
         }
@@ -2212,6 +2215,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "answer": recipe_answer("general", random_recipes),
             "recipes": random_recipes,
             "products": [],
+            "articles": articles,
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "recipe",
         }
@@ -2239,6 +2243,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "answer": recipe_products_answer(recipe_product_subject, recipes) if recipe_products else recipe_answer(recipe_subject, recipes),
             "recipes": recipes,
             "products": recipe_products,
+            "articles": articles,
             "cart_candidates": cart_candidates_for_response(recipe_products, intent, recipe_product_subject),
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": intent,
@@ -2290,6 +2295,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         return {
             "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
             "products": matches,
+            "articles": articles,
             "cart_candidates": cart_candidates,
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "related_products" if (related_subject or already_have_subject) else "product_search",
@@ -2345,6 +2351,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         return {
             "answer": answer_text,
             "products": matches,
+            "articles": articles,
             "cart_candidates": cart_candidates,
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "related_products" if (related_subject or already_have_subject) else "product_search",
@@ -2355,6 +2362,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         return {
             "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
             "products": matches,
+            "articles": articles,
             "cart_candidates": cart_candidates,
             "knowledge": knowledge_summary(knowledge_matches),
             "warning": "Služba je momentálne preťažená, zobrazujem nájdené produkty.",
@@ -2365,6 +2373,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         return {
             "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
             "products": matches,
+            "articles": articles,
             "cart_candidates": cart_candidates,
             "knowledge": knowledge_summary(knowledge_matches),
             "warning": "Odpoveď sa nepodarilo vygenerovať, zobrazujem nájdené produkty.",
@@ -2812,6 +2821,32 @@ def recipe_card(record: dict) -> dict:
     }
 
 
+def article_results(knowledge_matches: dict | None, limit: int = 3) -> list[dict]:
+    results: list[dict] = []
+    seen_titles: set[str] = set()
+    for hit in (knowledge_matches or {}).get("Magazine", []):
+        article = article_card(hit.get("record", {}))
+        title_key = normalize(article.get("title", ""))
+        if article["title"] and title_key not in seen_titles:
+            seen_titles.add(title_key)
+            results.append(article)
+        if len(results) >= max(1, min(limit, 3)):
+            break
+    return results
+
+
+def article_card(record: dict) -> dict:
+    title = first_record_value(record, ("Clanok", "článok", "article", "nazov", "nĂˇzov"))
+    topic = first_record_value(record, ("Tema", "téma", "topic"))
+    note = first_record_value(record, ("PoznĂˇmka", "Poznamka", "note"))
+    return {
+        "title": title,
+        "topic": topic,
+        "note": note,
+        "link": first_article_link(record, title),
+    }
+
+
 def first_record_value(record: dict, markers: tuple[str, ...]) -> str:
     normalized_markers = tuple(normalize(marker) for marker in markers)
     for key, value in record.items():
@@ -2839,6 +2874,20 @@ def first_recipe_link(record: dict, title: str) -> str:
     if title:
         return f"https://www.foodland.sk/?s={quote_plus(title)}"
     return "https://www.foodland.sk/recepty/"
+
+
+def first_article_link(record: dict, title: str) -> str:
+    for key, value in record.items():
+        text = str(value or "").strip()
+        normalized_key = normalize(str(key))
+        if text.startswith(("http://", "https://")) and any(
+            marker in normalized_key for marker in ("sk_url", "url", "link", "odkaz")
+        ):
+            return text
+
+    if title:
+        return f"https://www.foodland.sk/blog/?s={quote_plus(title)}"
+    return "https://www.foodland.sk/blog/"
 
 
 def recipe_answer(subject: str, recipes: list[dict] | None = None) -> str:

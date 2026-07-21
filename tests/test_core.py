@@ -517,6 +517,14 @@ class TestKnowledgeSearch:
         results = search_knowledge(knowledge, "")
         assert results == {}
 
+    def test_magazine_results_return_article_cards(self, knowledge):
+        results = search_knowledge(knowledge, "čo je kimchi")
+        articles = main.article_results(results, 3)
+
+        assert articles
+        assert articles[0]["title"]
+        assert articles[0]["link"].startswith("https://")
+
 
 class TestGrounding:
     ALLOWED = {"https://www.foodland.sk/product/kimchi/"}

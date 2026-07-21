@@ -662,8 +662,8 @@
     .fl-ai-cart-btn:hover:not(:disabled) { background: #238750; }
     .fl-ai-cart-btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .fl-ai-cart-btn.is-added { background: #238750; }
-    .fl-ai-recipes { display: grid; gap: 10px; margin: 0 0 12px; }
-    .fl-ai-recipe {
+    .fl-ai-recipes, .fl-ai-articles { display: grid; gap: 10px; margin: 0 0 12px; }
+    .fl-ai-recipe, .fl-ai-article {
       display: grid;
       gap: 8px;
       padding: 12px;
@@ -672,20 +672,20 @@
       background: #fff;
       box-shadow: 0 8px 20px rgba(29, 48, 38, 0.06);
     }
-    .fl-ai-recipe-title {
+    .fl-ai-recipe-title, .fl-ai-article-title {
       margin: 0;
       color: #221F20;
       font-size: 14px;
       line-height: 1.28;
       font-weight: 800;
     }
-    .fl-ai-recipe-meta {
+    .fl-ai-recipe-meta, .fl-ai-article-meta {
       color: #5d6d63;
       font-size: 12px;
       line-height: 1.35;
     }
     .fl-ai-notice[hidden] { display: none; }
-    .fl-ai-recipe-link {
+    .fl-ai-recipe-link, .fl-ai-article-link {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -1073,6 +1073,28 @@
     scrollToBottom();
   }
 
+  function addArticles(articles) {
+    if (!Array.isArray(articles) || articles.length === 0) return;
+
+    const wrap = document.createElement("div");
+    wrap.className = "fl-ai-articles";
+    articles.slice(0, 3).forEach(function (article) {
+      const title = article.title || "Foodland článok";
+      const topic = article.topic || "Foodland magazín";
+      const note = article.note ? ` · ${article.note}` : "";
+      const card = document.createElement("article");
+      card.className = "fl-ai-article";
+      card.innerHTML = `
+        <h3 class="fl-ai-article-title">${escapeHtml(title)}</h3>
+        <div class="fl-ai-article-meta">${escapeHtml(topic + note)}</div>
+        <a class="fl-ai-article-link" href="${escapeAttr(article.link || "https://www.foodland.sk/blog/")}" target="_blank" rel="noopener">Otvoriť článok</a>
+      `;
+      wrap.appendChild(card);
+    });
+    messages.appendChild(wrap);
+    scrollToBottom();
+  }
+
   async function addToCart(product) {
     const productLink = product.link || "";
     const isOnFoodland = window.location.hostname.includes("foodland.sk");
@@ -1367,6 +1389,7 @@
       conversationHistory.push({role: "assistant", content: data.answer || ""});
       scrollToBottom();
       addRecipes(data.recipes);
+      addArticles(data.articles);
       if (data.intent !== "recipe") addProducts(data.products);
     } catch (error) {
       notice.hidden = true;
