@@ -218,6 +218,12 @@ class TestSearchProducts:
         results = search_products(products, "pad thai", 4)
         assert len(results) > 0
 
+    def test_pad_thai_typos_find_products(self, products):
+        for query in ("padthai", "pad tai", "pat thai"):
+            results = search_products(products, query, 4)
+            titles = " | ".join(product.get("title", "") for product in results)
+            assert "pad thai" in nrm(titles), query
+
     def test_luigis_style_synonym_soy_sauce(self, products):
         results = search_products(products, "soy sauce", 6)
         assert titles_contain(results, "sojova omacka", "soy sauce", "tamari")
@@ -237,6 +243,8 @@ class TestSearchProducts:
             "kokosove mliko": ("kokos", "mlieko"),
             "sojovka": ("sojova", "omacka"),
             "chin su": ("chin",),
+            "padthai": ("pad thai",),
+            "pat thai": ("pad thai",),
         }
         for query, expected_terms in cases.items():
             suggestions = autocomplete_suggestions(products, query, 6)
@@ -289,6 +297,17 @@ class TestIntentDetection:
         titles = " | ".join(recipe["title"] for recipe in recipes)
         assert "pho" in nrm(titles)
         assert "pad thai" not in nrm(titles)
+
+    def test_pad_thai_recipe_typos(self, knowledge):
+        for query in ("recept na padthai", "recept na pad tai", "recept na pat thai"):
+            matches = search_knowledge(knowledge, query)
+            recipes = main.recipe_results(matches, 4, query, knowledge)
+            titles = " | ".join(recipe["title"] for recipe in recipes)
+            assert "pad thai" in nrm(titles), query
+
+    def test_pad_thai_related_subject_typos(self):
+        for query in ("ingrediencie na padthai", "ingrediencie na pad tai", "ingrediencie na pat thai"):
+            assert main.detect_related_subject(query) == "pad_thai"
 
     def test_recipe_product_intent_is_explicit(self):
         assert not main.wants_recipe_products("recept na pho bo")

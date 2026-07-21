@@ -21,6 +21,9 @@ PHRASE_SYNONYMS = {
     "hot sauce": "chili omacka",
     "sojovka": "sojova omacka",
     "chin su": "chin-su",
+    "padthai": "pad thai",
+    "pad tai": "pad thai",
+    "pat thai": "pad thai",
 }
 
 TOKEN_SYNONYMS = {
