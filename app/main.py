@@ -86,6 +86,7 @@ class ChatRequest(BaseModel):
     limit: int = Field(default=6, ge=1, le=12)
     conversation_history: list[dict] = Field(default_factory=list)
     session_id: str = Field(default="", max_length=64)
+    client_id: str = Field(default="", max_length=96)
 
 
 class ProductSearchRequest(BaseModel):
@@ -100,6 +101,10 @@ class ProductSuggestRequest(BaseModel):
 
 class KnowledgeSearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=300)
+
+
+class MemoryClearRequest(BaseModel):
+    client_id: str = Field(default="", max_length=96)
 
 
 def load_products() -> list[Product]:
@@ -140,7 +145,10 @@ _RATE_LIMIT_MAX_CLIENTS = 50_000  # BUG-02: ochrana pamate – max pocet trackov
 DEFAULT_RUNTIME_LOG_DIR = Path(tempfile.gettempdir()) / "foodland-ai-agent"
 SESSION_MEMORY_TTL_SECONDS = int(os.getenv("SESSION_MEMORY_TTL_SECONDS", "1800"))
 SESSION_MEMORY_MAX_SESSIONS = int(os.getenv("SESSION_MEMORY_MAX_SESSIONS", "20000"))
+USER_MEMORY_ENABLED = os.getenv("USER_MEMORY_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
+USER_MEMORY_MAX_PROFILES = int(os.getenv("USER_MEMORY_MAX_PROFILES", "50000"))
 session_memories: dict[str, dict] = {}
+user_memories: dict[str, dict] | None = None
 
 RELATED_PRODUCT_QUERIES = {
     "cesnak": [
@@ -2000,6 +2008,17 @@ def knowledge_search(request: KnowledgeSearchRequest) -> dict:
     }
 
 
+@app.post("/memory/clear")
+def clear_user_memory(clear_request: MemoryClearRequest, request: Request) -> dict:
+    client_key = get_client_key(request)
+    profile_key = user_memory_key(clear_request.client_id, client_key)
+    memories = load_user_memories()
+    removed = profile_key in memories
+    memories.pop(profile_key, None)
+    save_user_memories()
+    return {"cleared": removed}
+
+
 @app.get("/admin/analytics/summary")
 def admin_analytics_summary(
     days: int = 7,
@@ -2050,6 +2069,181 @@ def session_memory_key(session_id: str, client_key: str) -> str:
         return raw_session
     digest = hashlib.sha256(str(client_key or "unknown").encode("utf-8")).hexdigest()[:24]
     return f"anon-{digest}"
+
+
+def user_memory_key(client_id: str, client_key: str) -> str:
+    raw_client = re.sub(r"[^a-zA-Z0-9_-]", "", str(client_id or ""))[:96]
+    if raw_client:
+        return raw_client
+    digest = hashlib.sha256(str(client_key or "unknown").encode("utf-8")).hexdigest()[:24]
+    return f"anon-{digest}"
+
+
+def user_memory_path() -> Path:
+    return Path(os.getenv("USER_MEMORY_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "user_memory.json")))
+
+
+def load_user_memories() -> dict[str, dict]:
+    global user_memories
+    if user_memories is not None:
+        return user_memories
+    user_memories = {}
+    if not USER_MEMORY_ENABLED:
+        return user_memories
+
+    path = user_memory_path()
+    if not path.exists():
+        return user_memories
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            data = json.load(handle)
+        if isinstance(data, dict):
+            user_memories = {
+                str(key): value
+                for key, value in data.items()
+                if isinstance(value, dict)
+            }
+    except Exception as exc:
+        logger.error("Failed to read user memory %s: %s", path, exc, exc_info=True)
+        user_memories = {}
+    return user_memories
+
+
+def save_user_memories() -> None:
+    if not USER_MEMORY_ENABLED or user_memories is None:
+        return
+    path = user_memory_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(pruned_user_memories(user_memories), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        logger.error("Failed to write user memory %s: %s", path, exc, exc_info=True)
+
+
+def pruned_user_memories(memories: dict[str, dict]) -> dict[str, dict]:
+    if len(memories) <= USER_MEMORY_MAX_PROFILES:
+        return memories
+    sorted_items = sorted(memories.items(), key=lambda item: float(item[1].get("updated_at", 0)), reverse=True)
+    return dict(sorted_items[:USER_MEMORY_MAX_PROFILES])
+
+
+def get_user_memory(profile_key: str) -> dict:
+    memories = load_user_memories()
+    profile = memories.get(profile_key)
+    if not profile:
+        profile = {
+            "subjects": {},
+            "diet_terms": {},
+            "cuisines": {},
+            "product_titles": {},
+            "product_brands": {},
+            "recipe_titles": {},
+            "last_intent": "",
+            "created_at": time.time(),
+            "updated_at": time.time(),
+        }
+        memories[profile_key] = profile
+    return profile
+
+
+def bump_profile_counter(profile: dict, key: str, value: str, weight: int = 1, limit: int = 40) -> None:
+    normalized_value = redact_memory_text(str(value or "")).strip()
+    if not normalized_value:
+        return
+    bucket = profile.setdefault(key, {})
+    bucket[normalized_value] = int(bucket.get(normalized_value, 0)) + weight
+    if len(bucket) > limit:
+        keep = sorted(bucket.items(), key=lambda item: item[1], reverse=True)[:limit]
+        profile[key] = dict(keep)
+
+
+def update_user_memory(
+    profile_key: str,
+    message: str,
+    intent: str,
+    matches: list[dict] | None = None,
+    recipes: list[dict] | None = None,
+) -> dict:
+    if not USER_MEMORY_ENABLED:
+        return {}
+    profile = get_user_memory(profile_key)
+    profile["last_intent"] = intent
+    profile["updated_at"] = time.time()
+
+    for subject in detect_memory_subjects(message):
+        bump_profile_counter(profile, "subjects", subject)
+    for term in detect_diet_terms(message):
+        bump_profile_counter(profile, "diet_terms", term)
+    for cuisine in detect_cuisines_from_text(message):
+        bump_profile_counter(profile, "cuisines", cuisine)
+
+    for product in (matches or [])[:6]:
+        if not should_remember_product_match(message, product):
+            continue
+        title = str(product.get("title") or "").strip()
+        brand = str(product.get("brand") or "").strip()
+        if title:
+            bump_profile_counter(profile, "product_titles", title)
+            for subject in detect_memory_subjects(title):
+                bump_profile_counter(profile, "subjects", subject)
+            for cuisine in detect_cuisines_from_text(title):
+                bump_profile_counter(profile, "cuisines", cuisine)
+        if brand:
+            bump_profile_counter(profile, "product_brands", brand)
+
+    for recipe in (recipes or [])[:4]:
+        title = str(recipe.get("title") or "").strip()
+        cuisine = str(recipe.get("cuisine") or "").strip()
+        if title:
+            bump_profile_counter(profile, "recipe_titles", title)
+            for subject in detect_memory_subjects(title):
+                bump_profile_counter(profile, "subjects", subject)
+            for detected_cuisine in detect_cuisines_from_text(title):
+                bump_profile_counter(profile, "cuisines", detected_cuisine)
+        for detected_cuisine in detect_cuisines_from_text(cuisine):
+            bump_profile_counter(profile, "cuisines", detected_cuisine)
+
+    save_user_memories()
+    return profile
+
+
+def should_remember_product_match(message: str, product: dict) -> bool:
+    message_tokens = {token for token in tokenize(message) if len(token) > 3}
+    if not message_tokens:
+        return False
+    product_tokens = set(tokenize(str(product.get("title", ""))))
+    direct_hits = message_tokens & product_tokens
+    if direct_hits:
+        return True
+    product_text = product_profile_text(product)
+    detected_subjects = set(detect_memory_subjects(message))
+    return any(
+        subject in detected_subjects and any(alias in product_text for alias in aliases)
+        for subject, aliases in RELATED_SUBJECT_ALIASES.items()
+    )
+
+
+def public_user_memory_summary(profile: dict | None) -> dict:
+    profile = profile or {}
+    return {
+        "top_subjects": top_profile_values(profile, "subjects", 5),
+        "top_cuisines": top_profile_values(profile, "cuisines", 5),
+        "diet_terms": top_profile_values(profile, "diet_terms", 5),
+        "favorite_brands": top_profile_values(profile, "product_brands", 5),
+    }
+
+
+def top_profile_values(profile: dict, key: str, limit: int = 5) -> list[str]:
+    bucket = profile.get(key, {})
+    if not isinstance(bucket, dict):
+        return []
+    return [
+        str(value)
+        for value, _ in sorted(bucket.items(), key=lambda item: int(item[1]), reverse=True)[:limit]
+    ]
 
 
 def get_session_memory(memory_key: str) -> dict:
@@ -2179,6 +2373,15 @@ def detect_memory_subjects(text: str) -> list[str]:
     return subjects[:4]
 
 
+def detect_cuisines_from_text(text: str) -> list[str]:
+    normalized_text = normalize(text)
+    cuisines: list[str] = []
+    for cuisine, markers in RECIPE_CUISINE_MARKERS.items():
+        if any(marker in normalized_text for marker in markers):
+            cuisines.append(cuisine)
+    return cuisines[:4]
+
+
 def detect_diet_terms(text: str) -> list[str]:
     normalized_text = normalize(text)
     terms: list[str] = []
@@ -2233,6 +2436,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     session_id = getattr(chat_request, "session_id", "") or ""
     memory_key = session_memory_key(session_id, client_key)
     memory = get_session_memory(memory_key)
+    profile_key = user_memory_key(getattr(chat_request, "client_id", ""), client_key)
+    user_profile = get_user_memory(profile_key) if USER_MEMORY_ENABLED else {}
     contextual_message = contextualize_message(chat_request.message, memory)
     memory_subject = best_memory_subject(memory)
 
@@ -2242,13 +2447,16 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     allergen_term = detect_allergen_intent(chat_request.message)
     if allergen_term and not detect_related_subject(chat_request.message):
         allergen_matches = allergen_product_matches(chat_request.message, chat_request.limit)
+        allergen_matches = personalize_products(allergen_matches, user_profile)
         update_session_memory(memory_key, chat_request.message, "allergen_safety", allergen_matches, [], knowledge_matches)
+        updated_profile = update_user_memory(profile_key, chat_request.message, "allergen_safety", allergen_matches, [])
         log_question(chat_request.message, client_key, len(allergen_matches), intent="allergen_safety", session_id=session_id)
         return {
             "answer": allergen_safety_answer(allergen_term),
             "products": allergen_matches,
             "articles": articles,
             "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
             "intent": "allergen_safety",
         }
 
@@ -2257,19 +2465,23 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         faq_answer = best_direct_faq_answer(chat_request.message, knowledge) or best_faq_answer(knowledge_matches)
     if faq_answer and is_faq_intent(chat_request.message):
         update_session_memory(memory_key, chat_request.message, "faq", [], [], knowledge_matches)
+        updated_profile = update_user_memory(profile_key, chat_request.message, "faq", [], [])
         log_question(chat_request.message, client_key, 0, intent="faq", session_id=session_id)
         return {
             "answer": faq_answer,
             "products": [],
             "articles": articles,
             "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
             "intent": "faq",
         }
 
     if is_random_recipe_intent(chat_request.message):
         random_rec = get_random_recipe(knowledge)
         random_recipes = [random_rec] if random_rec else []
+        random_recipes = personalize_recipes(random_recipes, user_profile)
         update_session_memory(memory_key, chat_request.message, "recipe", [], random_recipes, knowledge_matches)
+        updated_profile = update_user_memory(profile_key, chat_request.message, "recipe", [], random_recipes)
         log_question(chat_request.message, client_key, 0, intent="recipe", session_id=session_id)
         return {
             "answer": recipe_answer("general", random_recipes),
@@ -2277,12 +2489,14 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "products": [],
             "articles": articles,
             "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
             "intent": "recipe",
         }
 
     recipe_subject = detect_recipe_subject(contextual_message)
     if recipe_subject:
         recipes = recipe_results(knowledge_matches, chat_request.limit, contextual_message, knowledge)
+        recipes = personalize_recipes(recipes, user_profile)
         recipe_articles = recipe_article_results(articles, contextual_message, knowledge, chat_request.limit)
         recipe_product_subject = recipe_related_product_subject(contextual_message, recipe_subject, recipes)
         recipe_products = (
@@ -2290,6 +2504,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             if wants_recipe_products(contextual_message) and recipe_product_subject
             else []
         )
+        recipe_products = personalize_products(recipe_products, user_profile)
         intent = "recipe_to_products" if recipe_products else "recipe"
         if recipe_products:
             annotate_recommendations(
@@ -2299,6 +2514,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                 query=contextual_message,
             )
         update_session_memory(memory_key, chat_request.message, intent, recipe_products, recipes, knowledge_matches)
+        updated_profile = update_user_memory(profile_key, chat_request.message, intent, recipe_products, recipes)
         log_question(chat_request.message, client_key, 0, intent=intent, session_id=session_id)
         return {
             "answer": recipe_products_answer(recipe_product_subject, recipes) if recipe_products else recipe_answer(recipe_subject, recipes),
@@ -2307,16 +2523,19 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "articles": recipe_articles,
             "cart_candidates": cart_candidates_for_response(recipe_products, intent, recipe_product_subject),
             "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
             "intent": intent,
         }
 
     if detect_out_of_domain(chat_request.message) and not detect_related_subject(chat_request.message):
         update_session_memory(memory_key, chat_request.message, "unknown", [], [], knowledge_matches)
+        updated_profile = update_user_memory(profile_key, chat_request.message, "unknown", [], [])
         log_question(chat_request.message, client_key, 0, intent="unknown", session_id=session_id)
         return {
             "answer": "Na toto neviem spoľahlivo odpovedať ako Foodland poradca. Skúste sa opýtať na produkty, objednávku, dopravu alebo platbu na Foodland.sk.",
             "products": [],
             "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
             "intent": "unknown",
         }
 
@@ -2341,6 +2560,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         matches = related_products_for_subject(products, related_subject, chat_request.limit)
     else:
         matches = search_products(products, contextual_message, chat_request.limit)
+    matches = personalize_products(matches, user_profile)
     intent = "article_products" if article_product_subject else ("related_products" if related_subject else "product_search")
     annotate_recommendations(
         matches,
@@ -2356,6 +2576,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         article_product_subject or related_subject or already_have_subject or special_subject or contextual_message,
     )
     update_session_memory(memory_key, chat_request.message, intent, matches, [], knowledge_matches)
+    updated_profile = update_user_memory(profile_key, chat_request.message, intent, matches, [])
     log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id)
 
     if not matches and not knowledge_matches:
@@ -2373,6 +2594,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "articles": articles,
             "cart_candidates": cart_candidates,
             "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
             "intent": intent,
         }
 
@@ -2429,6 +2651,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "articles": articles,
             "cart_candidates": cart_candidates,
             "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
             "intent": intent,
         }
     except (RateLimitError, APITimeoutError, APIConnectionError) as exc:
@@ -2495,6 +2718,78 @@ def annotate_recommendations(
         product["recommendation_group"] = group
         product["recommendation_priority"] = index
         product["recommendation_reason"] = recommendation_reason(product, group, intent, context)
+
+
+def personalize_products(matches: list[dict], profile: dict | None) -> list[dict]:
+    if not matches or not profile:
+        return matches
+    ranked: list[tuple[int, int, dict]] = []
+    for index, product in enumerate(matches):
+        score = personalization_score(product_profile_text(product), product, profile)
+        if score > 0:
+            product["personalized"] = True
+            product["personalization_score"] = score
+        ranked.append((score, -index, product))
+    ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [product for _, _, product in ranked]
+
+
+def personalize_recipes(recipes: list[dict], profile: dict | None) -> list[dict]:
+    if not recipes or not profile:
+        return recipes
+    ranked: list[tuple[int, int, dict]] = []
+    for index, recipe in enumerate(recipes):
+        text = normalize(" ".join(str(recipe.get(key, "")) for key in ("title", "cuisine", "note", "link")))
+        score = personalization_score(text, {}, profile)
+        if score > 0:
+            recipe["personalized"] = True
+            recipe["personalization_score"] = score
+        ranked.append((score, -index, recipe))
+    ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [recipe for _, _, recipe in ranked]
+
+
+def product_profile_text(product: dict) -> str:
+    return normalize(
+        " ".join(
+            str(product.get(key, ""))
+            for key in ("title", "brand", "product_type", "category", "description")
+        )
+    )
+
+
+def personalization_score(text: str, item: dict, profile: dict) -> int:
+    score = 0
+    score += profile_marker_score(text, profile.get("cuisines", {}), RECIPE_CUISINE_MARKERS, 4)
+    score += profile_marker_score(text, profile.get("subjects", {}), RELATED_SUBJECT_ALIASES, 3)
+    score += profile_marker_score(text, profile.get("diet_terms", {}), DIET_TERM_MARKERS, 3)
+    score += profile_text_score(text, profile.get("product_titles", {}), 1, max_weight=2)
+    brand = normalize(str(item.get("brand", "")))
+    if brand:
+        score += profile_text_score(brand, profile.get("product_brands", {}), 2, max_weight=6)
+    return score
+
+
+def profile_marker_score(text: str, bucket: dict, marker_map: dict, weight: int) -> int:
+    if not isinstance(bucket, dict):
+        return 0
+    score = 0
+    for key, count in bucket.items():
+        markers = marker_map.get(key, (key,))
+        if any(marker in text for marker in markers):
+            score += min(int(count), 5) * weight
+    return score
+
+
+def profile_text_score(text: str, bucket: dict, weight: int, max_weight: int = 5) -> int:
+    if not isinstance(bucket, dict):
+        return 0
+    score = 0
+    for key, count in bucket.items():
+        normalized_key = normalize(str(key))
+        if normalized_key and normalized_key in text:
+            score += min(int(count), max_weight) * weight
+    return score
 
 
 def recommendation_group(product: dict) -> str:
@@ -3249,6 +3544,15 @@ ARTICLE_CULINARY_MARKERS = (
     "nasi",
     "sinigang",
 )
+
+
+DIET_TERM_MARKERS = {
+    "bezlepkove": ("bezlepk", "gluten free", "tamari"),
+    "veganske": ("vegan", "vegansk", "tofu", "rastlinn"),
+    "vegetarianske": ("vegetarian", "vegetariansk", "tofu", "rastlinn"),
+    "jemne": ("jemne", "mild", "nepaliv"),
+    "pikantne": ("pikant", "chili", "cili", "sriracha", "gochujang", "wasabi", "kimchi"),
+}
 
 
 def detect_recipe_cuisine(message: str) -> str | None:

@@ -9,6 +9,7 @@
   const recentQuestions = [];
   let lastProductSubject = "";
   let lastRecipeSubject = "";
+  const clientId = getOrCreateClientId();
 
   const demoProducts = [
     {
@@ -884,6 +885,34 @@
   const messages = root.querySelector(".fl-ai-messages");
   let conversationHistory = [];
   const sessionId = Math.random().toString(36).slice(2, 12);
+
+  function getOrCreateClientId() {
+    const storageKey = "foodland_ai_client_id";
+    try {
+      const existing = window.localStorage && window.localStorage.getItem(storageKey);
+      if (existing && /^[a-zA-Z0-9_-]{12,96}$/.test(existing)) return existing;
+      const generated = "fl-" + randomId(24);
+      window.localStorage && window.localStorage.setItem(storageKey, generated);
+      return generated;
+    } catch (error) {
+      return "fl-session-" + randomId(18);
+    }
+  }
+
+  function randomId(length) {
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const bytes = new Uint8Array(length);
+    if (window.crypto && window.crypto.getRandomValues) {
+      window.crypto.getRandomValues(bytes);
+    } else {
+      for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    let result = "";
+    for (let i = 0; i < bytes.length; i += 1) {
+      result += chars[bytes[i] % chars.length];
+    }
+    return result;
+  }
   const form = root.querySelector(".fl-ai-form");
   const input = root.querySelector(".fl-ai-input");
   const submit = root.querySelector(".fl-ai-submit");
@@ -1319,7 +1348,13 @@
     const response = await fetch(`${apiBaseUrl}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: backendText, limit: 6, conversation_history: conversationHistory, session_id: sessionId }),
+      body: JSON.stringify({
+        message: backendText,
+        limit: 6,
+        conversation_history: conversationHistory,
+        session_id: sessionId,
+        client_id: clientId,
+      }),
     });
     if (response.status === 429) throw new Error("RATE_LIMIT");
     if (!response.ok) throw new Error("REQUEST_FAILED");

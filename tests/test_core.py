@@ -701,6 +701,54 @@ class TestKnowledgeSearch:
         assert "krek" not in nrm(shoyu_titles)
 
 
+class TestUserMemory:
+    def test_user_memory_persists_culinary_preferences(self, tmp_path, monkeypatch):
+        memory_path = tmp_path / "user_memory.json"
+        monkeypatch.setenv("USER_MEMORY_PATH", str(memory_path))
+        main.user_memories = None
+
+        profile = main.update_user_memory(
+            "client-test",
+            "mam rad korejske pikantne kimchi",
+            "product_search",
+            [{"title": "Kimchi JONGGA 300g", "brand": "JONGGA"}],
+            [],
+        )
+
+        assert "korean" in profile["cuisines"]
+        assert "pikantne" in profile["diet_terms"]
+        assert profile["product_brands"]["JONGGA"] == 1
+
+        main.user_memories = None
+        loaded = main.get_user_memory("client-test")
+        assert "korean" in loaded["cuisines"]
+        assert "JONGGA" in loaded["product_brands"]
+
+    def test_clear_user_memory_removes_profile(self, tmp_path, monkeypatch):
+        memory_path = tmp_path / "user_memory.json"
+        monkeypatch.setenv("USER_MEMORY_PATH", str(memory_path))
+        main.user_memories = None
+        main.update_user_memory("client-clear", "kimchi", "product_search", [], [])
+
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.clear_user_memory(main.MemoryClearRequest(client_id="client-clear"), request)
+
+        assert result == {"cleared": True}
+        assert "client-clear" not in main.load_user_memories()
+
+    def test_personalize_products_boosts_matching_cuisine(self):
+        profile = {"cuisines": {"korean": 3}, "subjects": {}, "diet_terms": {}, "product_titles": {}, "product_brands": {}}
+        product_rows = [
+            {"title": "Jazmínová ryža 1kg", "brand": "AAA"},
+            {"title": "Kimchi JONGGA 300g", "brand": "JONGGA"},
+        ]
+
+        ranked = main.personalize_products(product_rows, profile)
+
+        assert ranked[0]["title"] == "Kimchi JONGGA 300g"
+        assert ranked[0]["personalized"] is True
+
+
 class TestAdminAnalytics:
     def test_analytics_report_summarizes_questions_and_weak_spots(self):
         events = [

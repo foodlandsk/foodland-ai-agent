@@ -101,6 +101,9 @@ ANALYTICS_LOG_PATH=/tmp/foodland-ai-agent/question_analytics.jsonl
 ERROR_LOG_PATH=/tmp/foodland-ai-agent/backend_errors.jsonl
 ANALYTICS_INCLUDE_IP=false
 ANALYTICS_SALT=<nahodny tajny retazec>
+USER_MEMORY_ENABLED=true
+USER_MEMORY_PATH=/tmp/foodland-ai-agent/user_memory.json
+USER_MEMORY_MAX_PROFILES=50000
 ADMIN_ANALYTICS_TOKEN=<volitelne>
 ADMIN_RELOAD_TOKEN=<volitelne>
 LOG_LEVEL=INFO
@@ -126,6 +129,39 @@ GET /admin/analytics/intents?days=7
 ```
 
 Prehlad vracia najcastejsie otazky, otazky bez vysledku, rozdelenie intentov a slabe miesta poradcu.
+
+## Dlhodoba pamat pouzivatela
+
+Widget posiela anonymny `client_id` ulozeny v prehliadaci cez `localStorage`. Backend podla neho uklada zhrnuty profil do `USER_MEMORY_PATH`.
+
+Pamät si neuklada cele konverzacie ani osobne udaje. Uklada iba kulinarske signaly:
+
+- oblubene temy a receptove okruhy,
+- kuchyne, napriklad korejska alebo vietnamska,
+- dietne preferencie, napriklad pikantne, veganske alebo bezlepkove,
+- najcastejsie produkty, recepty a znacky.
+
+Tieto signaly sa potom pouziju na jemne preradenie odporucani. Relevantne produkty ostavaju v odpovedi, ale produkty z oblubenej kuchyne, oblubene znacky alebo preferovane typy jedal mozu ist vyssie.
+
+Pamät sa da vypnut nastavenim:
+
+```text
+USER_MEMORY_ENABLED=false
+```
+
+Pouzivatelovu anonymnu pamat je mozne vymazat cez:
+
+```text
+POST /memory/clear
+```
+
+Body:
+
+```json
+{
+  "client_id": "<client_id z widgetu>"
+}
+```
 
 ### Nastavenie tokenu na Railway
 
