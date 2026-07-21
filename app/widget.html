@@ -55,7 +55,6 @@
       const isLocalFile = window.location.protocol === "file:";
       window.FoodlandAI = {
         apiBaseUrl: isLocalFile ? "https://foodland-ai-agent-production.up.railway.app" : window.location.origin,
-        use3DAvatar: true,
         demoMode: params.get("demo") === "1",
         allowDemoMode: true,
       };

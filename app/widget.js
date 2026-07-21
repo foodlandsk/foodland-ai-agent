@@ -383,8 +383,8 @@
     .fl-ai-root, .fl-ai-root * { box-sizing: border-box; letter-spacing: 0; }
     .fl-ai-root {
       position: fixed;
-      right: 20px;
-      bottom: 20px;
+      right: max(20px, env(safe-area-inset-right));
+      bottom: max(20px, env(safe-area-inset-bottom));
       z-index: 2147483000;
       font-family: "Open Sans", Arial, sans-serif;
       color: #221F20;
@@ -459,15 +459,17 @@
         }
     .fl-ai-panel {
       position: fixed;
-      right: 20px;
-      bottom: 96px;
+      right: max(20px, env(safe-area-inset-right));
+      bottom: calc(96px + env(safe-area-inset-bottom));
       z-index: 2147483001;
       width: min(410px, calc(100vw - 32px));
-      height: min(640px, calc(100vh - 116px));
+      height: min(640px, calc(var(--fl-ai-vh, 100vh) - 116px));
+      max-height: calc(var(--fl-ai-vh, 100vh) - 116px);
       display: none;
       flex-direction: column;
       pointer-events: auto;
       overflow: hidden;
+      overscroll-behavior: contain;
       border: 1px solid #d9e5dc;
       border-radius: 8px;
       background: #fff;
@@ -526,6 +528,8 @@
     .fl-ai-messages {
       flex: 1;
       overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
       padding: 14px;
       background: #F8F8F8;
     }
@@ -726,11 +730,15 @@
       50% { opacity: 1; transform: translateY(-2px); }
     }
     @media (max-width: 520px) {
-      .fl-ai-root { right: 12px; bottom: 12px; }
+      .fl-ai-root {
+        right: max(10px, env(safe-area-inset-right));
+        bottom: max(10px, env(safe-area-inset-bottom));
+      }
       .fl-ai-panel {
-        inset: auto 10px 84px 10px;
+        inset: auto max(8px, env(safe-area-inset-right)) calc(78px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
         width: auto;
-        height: min(650px, calc(100vh - 104px));
+        height: min(650px, calc(var(--fl-ai-vh, 100svh) - 96px - env(safe-area-inset-top)));
+        max-height: calc(var(--fl-ai-vh, 100svh) - 96px - env(safe-area-inset-top));
       }
       .fl-ai-launcher { width: 58px; height: 58px; }
       .fl-ai-form { grid-template-columns: 1fr; }
@@ -821,6 +829,24 @@
   const input = root.querySelector(".fl-ai-input");
   const submit = root.querySelector(".fl-ai-submit");
 
+  function updateViewportHeight() {
+    const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    root.style.setProperty("--fl-ai-vh", `${Math.max(320, Math.round(viewportHeight))}px`);
+  }
+
+  updateViewportHeight();
+  window.addEventListener("resize", updateViewportHeight);
+  window.addEventListener("orientationchange", updateViewportHeight);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", updateViewportHeight);
+  }
+
+  function shouldAutoFocusInput() {
+    const isSmallScreen = window.matchMedia("(max-width: 520px)").matches;
+    const isTouch = navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+    return !isSmallScreen && !isTouch;
+  }
+
   function addSuggestions() {
     const items = ["Čo dnes variť?", "Recept na ramen", "Čím nahradiť mirin?", "Najlepšia sushi ryža", "Kokosové mlieko"];
     const wrap = document.createElement("div");
@@ -847,11 +873,15 @@
       addMessage("assistant", "Ahojte!\n\nSom Mei a rada vám pomôžem objaviť svet ázijskej kuchyne.\n\nMôžem odporučiť recept, nájsť vhodné produkty, poradiť s varením alebo pomôcť nahradiť ingredienciu.");
       addSuggestions();
     }
-    window.setTimeout(function () { input.focus(); }, 50);
+    if (shouldAutoFocusInput()) {
+      window.setTimeout(function () { input.focus(); }, 50);
+    }
   }
 
   function closePanel() {
     panel.classList.remove("is-open");
+    const lb = document.querySelector('.fl-ai-label-block');
+    if (lb) lb.style.display = '';
   }
 
   function addMessage(role, text, variant) {
