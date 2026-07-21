@@ -299,6 +299,37 @@ class TestRelatedProducts:
             assert "wasabi" not in title and "sriracha" not in title
 
 
+class TestSessionMemory:
+    def test_followup_uses_last_subject(self):
+        main.session_memories.clear()
+        key = main.session_memory_key("memory-test-1", "127.0.0.1")
+        memory = main.get_session_memory(key)
+        main.update_session_memory(key, "Chcem varit sushi", "product_search", [], [], {})
+
+        contextual = main.contextualize_message("a co k tomu?", memory)
+
+        assert "sushi" in main.normalize(contextual)
+        assert main.detect_related_subject(contextual) == "sushi"
+
+    def test_diet_preference_is_remembered(self):
+        main.session_memories.clear()
+        key = main.session_memory_key("memory-test-2", "127.0.0.1")
+        memory = main.get_session_memory(key)
+        main.update_session_memory(key, "Som celiak, hladam bezlepkove veci", "allergen_safety", [], [], {})
+
+        contextual = main.contextualize_message("ake omacky odporucas?", memory)
+
+        assert "bezlepkove" in main.normalize(contextual)
+
+    def test_memory_redacts_contact_details(self):
+        redacted = main.redact_memory_text("Moj email je test@example.com a telefon +421 900 123 456")
+
+        assert "test@example.com" not in redacted
+        assert "+421" not in redacted
+        assert "[email]" in redacted
+        assert "[phone]" in redacted
+
+
 class TestFAQ:
     def test_faq_shipping_cost(self, knowledge):
         answer = main.best_direct_faq_answer("kolko stoji doprava?", knowledge)

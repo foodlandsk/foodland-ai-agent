@@ -312,7 +312,6 @@ class TestChatWithMockOpenAI:
                             _mock_http_request(),
                         )
                     )
-                    )
                 finally:
                     main.products = original_products
                     main._openai_client = None

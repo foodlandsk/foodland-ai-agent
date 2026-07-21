@@ -131,6 +131,9 @@ translation_index: dict[str, dict[str, "Product"]] = {}
 rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 _RATE_LIMIT_MAX_CLIENTS = 50_000  # BUG-02: ochrana pamate – max pocet trackovanych klientov
 DEFAULT_RUNTIME_LOG_DIR = Path(tempfile.gettempdir()) / "foodland-ai-agent"
+SESSION_MEMORY_TTL_SECONDS = int(os.getenv("SESSION_MEMORY_TTL_SECONDS", "1800"))
+SESSION_MEMORY_MAX_SESSIONS = int(os.getenv("SESSION_MEMORY_MAX_SESSIONS", "20000"))
+session_memories: dict[str, dict] = {}
 
 RELATED_PRODUCT_QUERIES = {
     "cesnak": [
@@ -1854,17 +1857,205 @@ def knowledge_search(request: KnowledgeSearchRequest) -> dict:
     }
 
 
+def session_memory_key(session_id: str, client_key: str) -> str:
+    raw_session = re.sub(r"[^a-zA-Z0-9_-]", "", str(session_id or ""))[:64]
+    if raw_session:
+        return raw_session
+    digest = hashlib.sha256(str(client_key or "unknown").encode("utf-8")).hexdigest()[:24]
+    return f"anon-{digest}"
+
+
+def get_session_memory(memory_key: str) -> dict:
+    now = time.time()
+    prune_session_memories(now)
+    memory = session_memories.get(memory_key)
+    if not memory:
+        memory = {
+            "queries": deque(maxlen=6),
+            "subjects": deque(maxlen=5),
+            "diet_terms": deque(maxlen=4),
+            "product_titles": deque(maxlen=8),
+            "recipe_titles": deque(maxlen=5),
+            "last_intent": "",
+            "updated_at": now,
+        }
+        session_memories[memory_key] = memory
+    memory["updated_at"] = now
+    return memory
+
+
+def prune_session_memories(now: float | None = None) -> None:
+    now = now or time.time()
+    if len(session_memories) <= SESSION_MEMORY_MAX_SESSIONS:
+        expired = [
+            key
+            for key, memory in session_memories.items()
+            if now - float(memory.get("updated_at", 0)) > SESSION_MEMORY_TTL_SECONDS
+        ]
+    else:
+        sorted_items = sorted(session_memories.items(), key=lambda item: float(item[1].get("updated_at", 0)))
+        expired = [key for key, _ in sorted_items[: max(1, len(session_memories) - SESSION_MEMORY_MAX_SESSIONS)]]
+
+    for key in expired:
+        session_memories.pop(key, None)
+
+
+def contextualize_message(message: str, memory: dict | None) -> str:
+    if not memory:
+        return message
+
+    parts = [message]
+    if is_context_followup(message):
+        subject = best_memory_subject(memory)
+        if subject:
+            parts.append(subject.replace("_", " "))
+    for term in list(memory.get("diet_terms", []))[-2:]:
+        if term and term not in normalize(" ".join(parts)):
+            parts.append(term)
+    return " ".join(parts).strip()
+
+
+def is_context_followup(message: str) -> bool:
+    normalized_message = normalize(message).strip()
+    if len(tokenize(normalized_message)) <= 3 and any(
+        marker in normalized_message
+        for marker in ("k tomu", "co este", "este nieco", "dopln", "hodia", "odporuc", "a co", "a este")
+    ):
+        return True
+    return normalized_message in {
+        "co k tomu",
+        "a co k tomu",
+        "co este",
+        "a este nieco",
+        "co odporucas",
+        "doplnky",
+        "ake doplnky",
+        "co chyba",
+        "co mi chyba",
+    }
+
+
+def best_memory_subject(memory: dict | None) -> str | None:
+    if not memory:
+        return None
+    subjects = list(memory.get("subjects", []))
+    return subjects[-1] if subjects else None
+
+
+def update_session_memory(
+    memory_key: str,
+    message: str,
+    intent: str,
+    matches: list[dict] | None = None,
+    recipes: list[dict] | None = None,
+    knowledge_matches: dict | None = None,
+) -> dict:
+    memory = get_session_memory(memory_key)
+    memory["last_intent"] = intent
+    memory["queries"].append(redact_memory_text(message))
+
+    for subject in detect_memory_subjects(message):
+        append_unique(memory["subjects"], subject)
+    for term in detect_diet_terms(message):
+        append_unique(memory["diet_terms"], term)
+
+    for product in (matches or [])[:4]:
+        title = product.get("title")
+        if title:
+            append_unique(memory["product_titles"], redact_memory_text(str(title))[:120])
+            for subject in detect_memory_subjects(str(title)):
+                append_unique(memory["subjects"], subject)
+
+    for recipe in (recipes or [])[:3]:
+        title = recipe.get("title")
+        if title:
+            append_unique(memory["recipe_titles"], redact_memory_text(str(title))[:120])
+            for subject in detect_memory_subjects(str(title)):
+                append_unique(memory["subjects"], subject)
+
+    for hit in (knowledge_matches or {}).get("Recipes", [])[:2]:
+        record = hit.get("record", {})
+        title = first_record_value(record, ("Recept", "recipe", "nazov", "názov"))
+        if title:
+            append_unique(memory["recipe_titles"], redact_memory_text(title)[:120])
+
+    memory["updated_at"] = time.time()
+    return memory
+
+
+def detect_memory_subjects(text: str) -> list[str]:
+    normalized_text = normalize(text)
+    subjects: list[str] = []
+    for subject, aliases in RELATED_SUBJECT_ALIASES.items():
+        if any(alias in normalized_text for alias in aliases):
+            subjects.append(subject)
+    return subjects[:4]
+
+
+def detect_diet_terms(text: str) -> list[str]:
+    normalized_text = normalize(text)
+    terms: list[str] = []
+    if any(marker in normalized_text for marker in ("bezlepk", "celiak", "bez lepku")):
+        terms.append("bezlepkove")
+    if any(marker in normalized_text for marker in ("vegan", "vegans")):
+        terms.append("veganske")
+    if any(marker in normalized_text for marker in ("vegetarian", "vegetariansk")):
+        terms.append("vegetarianske")
+    if any(marker in normalized_text for marker in ("nepaliv", "jemne", "menej paliv", "nie paliv")):
+        terms.append("jemne")
+    if any(marker in normalized_text for marker in ("paliv", "pikant", "chilli", "chili")):
+        terms.append("pikantne")
+    return terms
+
+
+def append_unique(values: deque, value: str) -> None:
+    if value in values:
+        try:
+            values.remove(value)
+        except ValueError:
+            pass
+    values.append(value)
+
+
+def redact_memory_text(text: str) -> str:
+    cleaned = re.sub(r"[\w.+-]+@[\w-]+\.[\w.-]+", "[email]", str(text))
+    cleaned = re.sub(r"\+?\d[\d\s().-]{6,}\d", "[phone]", cleaned)
+    return cleaned[:200]
+
+
+def session_memory_context(memory: dict | None) -> str:
+    if not memory:
+        return "bez ulozeneho kontextu"
+    parts = []
+    if memory.get("subjects"):
+        parts.append("temy: " + ", ".join(list(memory["subjects"])[-3:]))
+    if memory.get("diet_terms"):
+        parts.append("preferencie: " + ", ".join(list(memory["diet_terms"])[-3:]))
+    if memory.get("product_titles"):
+        parts.append("posledne produkty: " + "; ".join(list(memory["product_titles"])[-3:]))
+    if memory.get("recipe_titles"):
+        parts.append("posledne recepty: " + "; ".join(list(memory["recipe_titles"])[-2:]))
+    return " | ".join(parts) if parts else "bez ulozeneho kontextu"
+
+
 @app.post("/chat")
 def chat(chat_request: ChatRequest, request: Request) -> dict:
     client_key = get_client_key(request)
     enforce_rate_limit(client_key)
 
-    knowledge_matches = search_knowledge(knowledge, chat_request.message)
+    session_id = getattr(chat_request, "session_id", "") or ""
+    memory_key = session_memory_key(session_id, client_key)
+    memory = get_session_memory(memory_key)
+    contextual_message = contextualize_message(chat_request.message, memory)
+    memory_subject = best_memory_subject(memory)
+
+    knowledge_matches = search_knowledge(knowledge, contextual_message)
 
     allergen_term = detect_allergen_intent(chat_request.message)
     if allergen_term and not detect_related_subject(chat_request.message):
         allergen_matches = allergen_product_matches(chat_request.message, chat_request.limit)
-        log_question(chat_request.message, client_key, len(allergen_matches), intent="allergen_safety", session_id=chat_request.session_id)
+        update_session_memory(memory_key, chat_request.message, "allergen_safety", allergen_matches, [], knowledge_matches)
+        log_question(chat_request.message, client_key, len(allergen_matches), intent="allergen_safety", session_id=session_id)
         return {
             "answer": allergen_safety_answer(allergen_term),
             "products": allergen_matches,
@@ -1876,7 +2067,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if is_faq_intent(chat_request.message):
         faq_answer = best_direct_faq_answer(chat_request.message, knowledge) or best_faq_answer(knowledge_matches)
     if faq_answer and is_faq_intent(chat_request.message):
-        log_question(chat_request.message, client_key, 0, intent="faq", session_id=chat_request.session_id)
+        update_session_memory(memory_key, chat_request.message, "faq", [], [], knowledge_matches)
+        log_question(chat_request.message, client_key, 0, intent="faq", session_id=session_id)
         return {
             "answer": faq_answer,
             "products": [],
@@ -1886,19 +2078,22 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
 
     if is_random_recipe_intent(chat_request.message):
         random_rec = get_random_recipe(knowledge)
-        log_question(chat_request.message, client_key, 0, intent="recipe", session_id=chat_request.session_id)
+        random_recipes = [random_rec] if random_rec else []
+        update_session_memory(memory_key, chat_request.message, "recipe", [], random_recipes, knowledge_matches)
+        log_question(chat_request.message, client_key, 0, intent="recipe", session_id=session_id)
         return {
-            "answer": recipe_answer("general", [random_rec] if random_rec else []),
-            "recipes": [random_rec] if random_rec else [],
+            "answer": recipe_answer("general", random_recipes),
+            "recipes": random_recipes,
             "products": [],
             "knowledge": knowledge_summary(knowledge_matches),
             "intent": "recipe",
         }
 
-    recipe_subject = detect_recipe_subject(chat_request.message)
+    recipe_subject = detect_recipe_subject(contextual_message)
     if recipe_subject:
-        recipes = recipe_results(knowledge_matches, chat_request.limit, chat_request.message, knowledge)
-        log_question(chat_request.message, client_key, 0, intent="recipe", session_id=chat_request.session_id)
+        recipes = recipe_results(knowledge_matches, chat_request.limit, contextual_message, knowledge)
+        update_session_memory(memory_key, chat_request.message, "recipe", [], recipes, knowledge_matches)
+        log_question(chat_request.message, client_key, 0, intent="recipe", session_id=session_id)
         return {
             "answer": recipe_answer(recipe_subject, recipes),
             "recipes": recipes,
@@ -1908,7 +2103,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         }
 
     if detect_out_of_domain(chat_request.message) and not detect_related_subject(chat_request.message):
-        log_question(chat_request.message, client_key, 0, intent="unknown", session_id=chat_request.session_id)
+        update_session_memory(memory_key, chat_request.message, "unknown", [], [], knowledge_matches)
+        log_question(chat_request.message, client_key, 0, intent="unknown", session_id=session_id)
         return {
             "answer": "Na toto neviem spoľahlivo odpovedať ako Foodland poradca. Skúste sa opýtať na produkty, objednávku, dopravu alebo platbu na Foodland.sk.",
             "products": [],
@@ -1916,10 +2112,12 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "intent": "unknown",
         }
 
-    already_have_subject = detect_already_have_subject(chat_request.message)
-    special_subject = detect_special_product_subject(chat_request.message)
-    related_subject = detect_related_subject(chat_request.message)
-    needs_composition_caution = is_composition_caution_search(chat_request.message)
+    already_have_subject = detect_already_have_subject(contextual_message)
+    special_subject = detect_special_product_subject(contextual_message)
+    related_subject = detect_related_subject(contextual_message)
+    if not related_subject and is_context_followup(chat_request.message):
+        related_subject = memory_subject
+    needs_composition_caution = is_composition_caution_search(contextual_message)
     if already_have_subject:
         matches = complement_products_for_subject(products, already_have_subject, chat_request.limit)
     elif special_subject:
@@ -1927,8 +2125,10 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     elif related_subject:
         matches = related_products_for_subject(products, related_subject, chat_request.limit)
     else:
-        matches = search_products(products, chat_request.message, chat_request.limit)
-    log_question(chat_request.message, client_key, len(matches), intent="related_products" if related_subject else "product_search", session_id=chat_request.session_id)
+        matches = search_products(products, contextual_message, chat_request.limit)
+    intent = "related_products" if related_subject else "product_search"
+    update_session_memory(memory_key, chat_request.message, intent, matches, [], knowledge_matches)
+    log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id)
 
     if not matches and not knowledge_matches:
         return {
@@ -1971,7 +2171,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             },
         ]
         # Pridaj historiu konverzacie (max 10 sprav)
-        for msg in chat_request.conversation_history[-10:]:
+        for msg in getattr(chat_request, "conversation_history", [])[-10:]:
             if isinstance(msg, dict) and msg.get("role") in ("user", "assistant") and isinstance(msg.get("content"), str):
                 messages.append({"role": msg["role"], "content": msg["content"][:2000]})
         # Pridaj aktualnu otazku so vsetkym kontextom
