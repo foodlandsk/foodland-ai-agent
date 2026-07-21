@@ -882,6 +882,7 @@
 
   const panel = root.querySelector(".fl-ai-panel");
   const launcher = root.querySelector(".fl-ai-launcher");
+  const launcherWrap = root.querySelector(".fl-ai-launcher-wrap");
   const closeButton = root.querySelector(".fl-ai-close");
   const notice = root.querySelector(".fl-ai-notice");
   const messages = root.querySelector(".fl-ai-messages");
@@ -1000,6 +1001,7 @@
 
     function openPanel() {
     panel.classList.add("is-open");
+    setLauncherVisible(false);
     if (messages.children.length === 0) {
       addMessage("assistant", "Ahojte!\n\nSom Mei a rada vám pomôžem objaviť svet ázijskej kuchyne.\n\nMôžem odporučiť recept, nájsť vhodné produkty, poradiť s varením alebo pomôcť nahradiť ingredienciu.");
       addSuggestions();
@@ -1101,8 +1103,11 @@
 
   function closePanel() {
     panel.classList.remove("is-open");
-    const lb = document.querySelector('.fl-ai-label-block');
-    if (lb) lb.style.display = '';
+    setLauncherVisible(true);
+  }
+
+  function setLauncherVisible(visible) {
+    if (launcherWrap) launcherWrap.style.display = visible ? "" : "none";
   }
 
   function addMessage(role, text, variant) {
@@ -1402,8 +1407,6 @@
   launcher.addEventListener("click", function () {
     if (panel.classList.contains("is-open")) closePanel();
     else openPanel();
-    const lb = document.querySelector('.fl-ai-label-block');
-    if (lb) lb.style.display = panel.classList.contains("is-open") ? 'none' : '';
   });
   closeButton.addEventListener("click", closePanel);
 
