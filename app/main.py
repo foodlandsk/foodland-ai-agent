@@ -3407,6 +3407,7 @@ def is_recipe_relevant_product(product: dict, subject: str | None = None) -> boo
         "solarna",
         "macka stastia",
         "vonna tycinka",
+        "ananasova cili",
     )
     if any(marker in text for marker in blocked_markers):
         return False

@@ -397,6 +397,9 @@ class TestIntentDetection:
         assert "biryani" in nrm(biryani_titles)
         assert "tamarind" in nrm(sinigang_titles)
         assert "soba chili" not in nrm(sinigang_titles)
+        for subject in ("banh_gio", "bun_cha", "nuoc_cham", "thit_dong"):
+            titles = " | ".join(product["title"] for product in main.related_products_for_subject(products, subject, 8))
+            assert "ananasova cili" not in nrm(titles)
 
     def test_out_of_domain_bicykel(self):
         assert main.detect_out_of_domain("predate bicykle?")
