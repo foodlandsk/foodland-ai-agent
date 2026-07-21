@@ -127,6 +127,46 @@ GET /admin/analytics/intents?days=7
 
 Prehlad vracia najcastejsie otazky, otazky bez vysledku, rozdelenie intentov a slabe miesta poradcu.
 
+### Nastavenie tokenu na Railway
+
+Token vygenerujte lokalne v PowerShelli:
+
+```powershell
+.\scripts\generate_admin_analytics_token.ps1
+```
+
+V Railway nastavte hodnotu do premennej:
+
+```text
+ADMIN_ANALYTICS_TOKEN=<vygenerovana-hodnota-bez-uvodzoviek>
+```
+
+Po zmene premennej spustite novy deploy alebo redeploy sluzby.
+
+Token nikdy nevkladajte do Google Tag Managera, widgetu ani verejneho JavaScriptu. Ak bol token omylom zverejneny v chate, logu alebo screenshote, vygenerujte novy a hodnotu v Railway vymenite.
+
+### Test cez PowerShell
+
+Pri rucnom teste musi byt token v PowerShelli v uvodzovkach:
+
+```powershell
+$token = '<ADMIN_ANALYTICS_TOKEN>'
+
+Invoke-RestMethod `
+  -Uri "https://foodland-ai-agent-production.up.railway.app/admin/analytics/summary?days=7&limit=10" `
+  -Headers @{ "x-admin-token" = $token } |
+ConvertTo-Json -Depth 6
+```
+
+Alebo pouzite pripraveny helper:
+
+```powershell
+.\scripts\get_admin_analytics.ps1 -Token '<ADMIN_ANALYTICS_TOKEN>' -Endpoint summary -Days 7 -Limit 10
+.\scripts\get_admin_analytics.ps1 -Token '<ADMIN_ANALYTICS_TOKEN>' -Endpoint top-questions -Days 7 -Limit 20
+.\scripts\get_admin_analytics.ps1 -Token '<ADMIN_ANALYTICS_TOKEN>' -Endpoint no-results -Days 7 -Limit 20
+.\scripts\get_admin_analytics.ps1 -Token '<ADMIN_ANALYTICS_TOKEN>' -Endpoint intents -Days 7
+```
+
 ## Widget embed
 
 Po nasadeni backendu vlozte do Foodland.sk:
