@@ -46,7 +46,7 @@ from app.knowledge_builder import (
     build_product_snapshot,
     save_knowledge,
 )
-from app.search import normalize, products_context, search_products, tokenize
+from app.search import autocomplete_suggestions, normalize, products_context, search_products, tokenize
 from app.workflows import products_to_cart_candidates
 
 
@@ -90,6 +90,11 @@ class ChatRequest(BaseModel):
 class ProductSearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=300)
     limit: int = Field(default=8, ge=1, le=30)
+
+
+class ProductSuggestRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=120)
+    limit: int = Field(default=8, ge=1, le=12)
 
 
 class KnowledgeSearchRequest(BaseModel):
@@ -1847,6 +1852,11 @@ def health() -> dict:
 @app.post("/products/search")
 def product_search(request: ProductSearchRequest) -> dict:
     return {"products": search_products(products, request.query, request.limit)}
+
+
+@app.post("/products/suggest")
+def product_suggest(request: ProductSuggestRequest) -> dict:
+    return {"suggestions": autocomplete_suggestions(products, request.query, request.limit)}
 
 
 @app.post("/knowledge/search")

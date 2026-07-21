@@ -7,6 +7,49 @@ from dataclasses import asdict, is_dataclass
 from app.feed import Product
 
 
+PHRASE_SYNONYMS = {
+    "soja sos": "sojova omacka",
+    "soy sauce": "sojova omacka",
+    "fish sauce": "rybacia omacka",
+    "rice vinegar": "ryzovy ocot",
+    "rice paper": "ryzovy papier",
+    "coconut milk": "kokosove mlieko",
+    "sushi rice": "sushi ryza",
+    "glass noodles": "sklenene rezance",
+    "spring rolls": "jarne zavitky",
+    "hot sauce": "chili omacka",
+}
+
+TOKEN_SYNONYMS = {
+    "sos": {"omacka"},
+    "omaca": {"omacka"},
+    "omaka": {"omacka"},
+    "susi": {"sushi"},
+    "soy": {"sojova"},
+    "soya": {"sojova"},
+    "coconut": {"kokosove"},
+    "kokos": {"kokosove"},
+    "milk": {"mlieko"},
+    "chilli": {"chili"},
+    "cili": {"chili"},
+    "nudle": {"rezance"},
+    "noodles": {"rezance", "nudle"},
+    "vinegar": {"ocot"},
+}
+
+POPULARITY_BOOSTS = {
+    "sushi": 7,
+    "kimchi": 7,
+    "ramen": 6,
+    "gochujang": 6,
+    "sriracha": 5,
+    "kokosove": 4,
+    "sojova": 4,
+    "ryza": 4,
+    "nori": 3,
+    "miso": 3,
+}
+
 STOPWORDS = {
     "a",
     "aj",
@@ -63,14 +106,24 @@ def normalize(value: str) -> str:
     return ascii_text.lower()
 
 
+def expand_query(value: str) -> str:
+    normalized = normalize(value)
+    additions: list[str] = []
+    for phrase, replacement in PHRASE_SYNONYMS.items():
+        if phrase in normalized:
+            additions.append(replacement)
+    return " ".join([value, *additions]).strip()
+
+
 def tokenize(value: str) -> set[str]:
     tokens = {
         token
-        for token in re.split(r"[^a-z0-9]+", normalize(value))
+        for token in re.split(r"[^a-z0-9]+", normalize(expand_query(value)))
         if len(token) >= 2 and token not in STOPWORDS
     }
     expanded = set(tokens)
     for token in tokens:
+        expanded.update(TOKEN_SYNONYMS.get(token, set()))
         if token.startswith("bezlepk"):
             expanded.update({"bezlepkovy", "bezlepkova", "bezlepkovu", "bezlepkove"})
         if token.startswith("sojov"):
@@ -112,6 +165,33 @@ def tokenize(value: str) -> set[str]:
     return expanded
 
 
+def edit_distance(a: str, b: str, max_distance: int = 2) -> int:
+    if abs(len(a) - len(b)) > max_distance:
+        return max_distance + 1
+    previous = list(range(len(b) + 1))
+    for i, ca in enumerate(a, start=1):
+        current = [i]
+        row_min = i
+        for j, cb in enumerate(b, start=1):
+            cost = 0 if ca == cb else 1
+            current.append(min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost))
+            row_min = min(row_min, current[-1])
+        if row_min > max_distance:
+            return max_distance + 1
+        previous = current
+    return previous[-1]
+
+
+def fuzzy_hits(query_tokens: set[str], field_tokens: set[str]) -> int:
+    hits = 0
+    for query_token in query_tokens:
+        if len(query_token) < 4:
+            continue
+        if any(edit_distance(query_token, field_token, 1 if len(query_token) <= 6 else 2) <= (1 if len(query_token) <= 6 else 2) for field_token in field_tokens):
+            hits += 1
+    return hits
+
+
 def product_value(product: Product | dict, key: str, default=""):
     if isinstance(product, dict):
         return product.get(key, default)
@@ -138,12 +218,17 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
         brand_hits = len(query_tokens & brand_tokens)
         category_hits = len(query_tokens & category_tokens)
         description_hits = len(query_tokens & description_tokens)
+        fuzzy_title_hits = fuzzy_hits(query_tokens, title_tokens)
+        fuzzy_category_hits = fuzzy_hits(query_tokens, category_tokens)
 
         score = 0
         score += 8 * title_hits
         score += 5 * brand_hits
         score += 4 * category_hits
         score += description_hits
+        score += 4 * fuzzy_title_hits
+        score += 2 * fuzzy_category_hits
+        score += sum(POPULARITY_BOOSTS.get(token, 0) for token in query_tokens & (title_tokens | category_tokens))
 
         if normalized_query in normalized_title:
             score += 12
@@ -160,11 +245,13 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
             if "ocot" in title_tokens or "vinegar" in title_tokens:
                 score -= 30
 
-        strong_match = bool(title_hits or brand_hits or category_hits or normalized_query in normalized_title)
+        strong_match = bool(title_hits or brand_hits or category_hits or fuzzy_title_hits or normalized_query in normalized_title)
 
-        # Availability should only break ties among relevant matches.
-        if score > 0 and product_value(product, "availability", "") in {"in_stock", "in stock"}:
-            score += 1
+        availability = str(product_value(product, "availability", ""))
+        if score > 0 and availability in {"in_stock", "in stock"}:
+            score += 3
+        elif score > 0 and availability:
+            score -= 2
 
         if score > 0:
             ranked.append((score, strong_match, product))
@@ -182,6 +269,43 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
         ranked = strong_ranked + weak_ranked
 
     return [format_product(product) for _, _, product in ranked[:limit]]
+
+
+def autocomplete_suggestions(products: list[Product] | list[dict], query: str, limit: int = 8) -> list[dict]:
+    normalized_query = normalize(query).strip()
+    if len(normalized_query) < 2:
+        return []
+
+    suggestions: dict[str, dict] = {}
+
+    def add(label: str, kind: str, score: int) -> None:
+        clean = " ".join(str(label or "").split())
+        if not clean:
+            return
+        key = normalize(clean)
+        if normalized_query not in key and not key.startswith(normalized_query):
+            return
+        existing = suggestions.get(key)
+        if not existing or score > existing["score"]:
+            suggestions[key] = {"label": clean[:80], "query": clean, "type": kind, "score": score}
+
+    for phrase, replacement in PHRASE_SYNONYMS.items():
+        add(replacement, "synonym", 80)
+        add(phrase, "synonym", 70)
+
+    for product in products:
+        title = str(product_value(product, "title", ""))
+        brand = str(product_value(product, "brand", ""))
+        category = str(product_value(product, "product_type", product_value(product, "category", "")))
+        availability = str(product_value(product, "availability", ""))
+        availability_score = 5 if availability in {"in_stock", "in stock"} else 0
+        add(title, "product", 60 + availability_score)
+        add(brand, "brand", 45 + availability_score)
+        for part in re.split(r"[>/|]", category):
+            add(part, "category", 35 + availability_score)
+
+    ordered = sorted(suggestions.values(), key=lambda item: item["score"], reverse=True)
+    return [{k: v for k, v in item.items() if k != "score"} for item in ordered[:limit]]
 
 
 def format_product(product: Product | dict) -> dict:

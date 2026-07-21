@@ -707,6 +707,7 @@
       padding: 12px;
       border-top: 1px solid #e0e8e2;
       background: white;
+      position: relative;
     }
     .fl-ai-input {
       width: 100%;
@@ -735,6 +736,46 @@
       cursor: pointer;
     }
     .fl-ai-submit:disabled { cursor: not-allowed; opacity: 0.55; }
+    .fl-ai-autocomplete {
+      position: absolute;
+      left: 12px;
+      right: 102px;
+      bottom: calc(100% - 2px);
+      display: none;
+      max-height: 220px;
+      overflow: auto;
+      border: 1px solid #d7e4dc;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 14px 36px rgba(20, 36, 28, 0.18);
+      z-index: 2;
+    }
+    .fl-ai-autocomplete.is-open { display: block; }
+    .fl-ai-autocomplete button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 11px;
+      border: 0;
+      border-bottom: 1px solid #eef3f0;
+      background: #fff;
+      color: #221F20;
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .fl-ai-autocomplete button:hover,
+    .fl-ai-autocomplete button.is-active {
+      background: #f2faf5;
+    }
+    .fl-ai-suggest-type {
+      color: #299B5E;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
     @keyframes fl-ai-pulse {
       0%, 100% { opacity: 0.35; transform: translateY(0); }
       50% { opacity: 1; transform: translateY(-2px); }
@@ -752,6 +793,7 @@
       }
       .fl-ai-launcher { width: 58px; height: 58px; }
       .fl-ai-form { grid-template-columns: 1fr; }
+      .fl-ai-autocomplete { right: 12px; }
       .fl-ai-submit { min-height: 40px; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -814,6 +856,7 @@
       <div class="fl-ai-messages" aria-live="polite"></div>
       <form class="fl-ai-form">
         <input class="fl-ai-input" type="text" placeholder="Napíšte, čo hľadáte..." autocomplete="off" />
+        <div class="fl-ai-autocomplete" role="listbox" aria-label="Návrhy vyhľadávania"></div>
         <button class="fl-ai-submit" type="submit">Poslať</button>
       </form>
     </section>
@@ -838,6 +881,10 @@
   const form = root.querySelector(".fl-ai-form");
   const input = root.querySelector(".fl-ai-input");
   const submit = root.querySelector(".fl-ai-submit");
+  const autocomplete = root.querySelector(".fl-ai-autocomplete");
+  let suggestTimer = null;
+  let activeSuggestionIndex = -1;
+  let currentSuggestions = [];
 
   function updateViewportHeight() {
     const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
@@ -885,6 +932,83 @@
     }
     if (shouldAutoFocusInput()) {
       window.setTimeout(function () { input.focus(); }, 50);
+    }
+  }
+
+  function closeAutocomplete() {
+    currentSuggestions = [];
+    activeSuggestionIndex = -1;
+    autocomplete.classList.remove("is-open");
+    autocomplete.innerHTML = "";
+  }
+
+  function suggestionTypeLabel(type) {
+    return {
+      product: "Produkt",
+      brand: "Značka",
+      category: "Kategória",
+      synonym: "Tip",
+    }[type] || "Tip";
+  }
+
+  function renderAutocomplete(items) {
+    currentSuggestions = Array.isArray(items) ? items : [];
+    activeSuggestionIndex = -1;
+    autocomplete.innerHTML = "";
+    if (!currentSuggestions.length) {
+      closeAutocomplete();
+      return;
+    }
+    currentSuggestions.forEach(function (item, index) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("role", "option");
+      btn.innerHTML = `<span>${escapeHtml(item.label || item.query || "")}</span><span class="fl-ai-suggest-type">${escapeHtml(suggestionTypeLabel(item.type))}</span>`;
+      btn.addEventListener("mousedown", function (event) {
+        event.preventDefault();
+        applySuggestion(index);
+      });
+      autocomplete.appendChild(btn);
+    });
+    autocomplete.classList.add("is-open");
+  }
+
+  function applySuggestion(index) {
+    const item = currentSuggestions[index];
+    if (!item) return;
+    input.value = item.query || item.label || "";
+    closeAutocomplete();
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  }
+
+  async function fetchAutocomplete(value) {
+    const query = value.trim();
+    if (query.length < 2 || demoMode) {
+      closeAutocomplete();
+      return;
+    }
+    try {
+      const response = await fetch(`${apiBaseUrl}/products/suggest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, limit: 7 }),
+      });
+      if (!response.ok) return closeAutocomplete();
+      const data = await response.json();
+      if (input.value.trim() !== query) return;
+      renderAutocomplete(data.suggestions || []);
+    } catch (e) {
+      closeAutocomplete();
+    }
+  }
+
+  function updateActiveSuggestion(nextIndex) {
+    const buttons = autocomplete.querySelectorAll("button");
+    buttons.forEach(function (button) { button.classList.remove("is-active"); });
+    activeSuggestionIndex = nextIndex;
+    if (buttons[activeSuggestionIndex]) {
+      buttons[activeSuggestionIndex].classList.add("is-active");
+      buttons[activeSuggestionIndex].scrollIntoView({ block: "nearest" });
     }
   }
 
@@ -1168,10 +1292,44 @@
   });
   closeButton.addEventListener("click", closePanel);
 
+  input.addEventListener("input", function () {
+    window.clearTimeout(suggestTimer);
+    suggestTimer = window.setTimeout(function () {
+      fetchAutocomplete(input.value);
+    }, 180);
+  });
+
+  input.addEventListener("keydown", function (event) {
+    if (!autocomplete.classList.contains("is-open")) return;
+    if (event.key === "Escape") {
+      closeAutocomplete();
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      updateActiveSuggestion(Math.min(currentSuggestions.length - 1, activeSuggestionIndex + 1));
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      updateActiveSuggestion(Math.max(0, activeSuggestionIndex - 1));
+      return;
+    }
+    if (event.key === "Enter" && activeSuggestionIndex >= 0) {
+      event.preventDefault();
+      applySuggestion(activeSuggestionIndex);
+    }
+  });
+
+  input.addEventListener("blur", function () {
+    window.setTimeout(closeAutocomplete, 120);
+  });
+
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
     const text = input.value.trim();
     if (!text) return;
+    closeAutocomplete();
 
     if (!canAskNow()) {
       addMessage("assistant", "Poslali ste veľa otázok za krátky čas. Skúste prosím o chvíľu.", "error");

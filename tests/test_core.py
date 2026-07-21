@@ -80,7 +80,7 @@ def _install_stubs():
 _install_stubs()
 
 from app.feed import load_products_json
-from app.search import normalize, tokenize, search_products
+from app.search import autocomplete_suggestions, normalize, tokenize, search_products
 from app.knowledge import load_knowledge_json, search_knowledge, best_faq_answer
 from app.grounding import validate_answer, collect_allowed_urls, collect_allowed_prices
 from app.workflows import detect_workflow, get_contract, products_to_cart_candidates
@@ -217,6 +217,20 @@ class TestSearchProducts:
     def test_pad_thai_found(self, products):
         results = search_products(products, "pad thai", 4)
         assert len(results) > 0
+
+    def test_luigis_style_synonym_soy_sauce(self, products):
+        results = search_products(products, "soy sauce", 6)
+        assert titles_contain(results, "sojova omacka", "soy sauce", "tamari")
+
+    def test_luigis_style_typo_coconut_milk(self, products):
+        results = search_products(products, "coconat milk", 6)
+        assert titles_contain(results, "kokosove mlieko", "coconut milk")
+
+    def test_autocomplete_suggestions(self, products):
+        suggestions = autocomplete_suggestions(products, "sush", 6)
+        labels = " | ".join(item["label"] for item in suggestions)
+        assert suggestions
+        assert "sushi" in nrm(labels) or "susi" in nrm(labels)
 
 
 class TestIntentDetection:
