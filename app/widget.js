@@ -709,6 +709,10 @@
       background: white;
       position: relative;
     }
+    .fl-ai-input-wrap {
+      position: relative;
+      min-width: 0;
+    }
     .fl-ai-input {
       width: 100%;
       min-width: 0;
@@ -738,9 +742,9 @@
     .fl-ai-submit:disabled { cursor: not-allowed; opacity: 0.55; }
     .fl-ai-autocomplete {
       position: absolute;
-      left: 12px;
-      right: 102px;
-      bottom: calc(100% - 2px);
+      left: 0;
+      right: 0;
+      bottom: calc(100% + 6px);
       display: none;
       max-height: 220px;
       overflow: auto;
@@ -793,7 +797,7 @@
       }
       .fl-ai-launcher { width: 58px; height: 58px; }
       .fl-ai-form { grid-template-columns: 1fr; }
-      .fl-ai-autocomplete { right: 12px; }
+      .fl-ai-autocomplete { max-height: 180px; }
       .fl-ai-submit { min-height: 40px; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -855,8 +859,10 @@
       <div class="fl-ai-notice" hidden>Pri alergiách, zložení a dostupnosti si prosím overte detail produktu.</div>
       <div class="fl-ai-messages" aria-live="polite"></div>
       <form class="fl-ai-form">
-        <input class="fl-ai-input" type="text" placeholder="Napíšte, čo hľadáte..." autocomplete="off" />
-        <div class="fl-ai-autocomplete" role="listbox" aria-label="Návrhy vyhľadávania"></div>
+        <div class="fl-ai-input-wrap">
+          <input class="fl-ai-input" type="text" placeholder="Napíšte, čo hľadáte..." autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="fl-ai-autocomplete" />
+          <div class="fl-ai-autocomplete" id="fl-ai-autocomplete" role="listbox" aria-label="Návrhy vyhľadávania"></div>
+        </div>
         <button class="fl-ai-submit" type="submit">Poslať</button>
       </form>
     </section>
@@ -939,6 +945,8 @@
     currentSuggestions = [];
     activeSuggestionIndex = -1;
     autocomplete.classList.remove("is-open");
+    input.setAttribute("aria-expanded", "false");
+    input.removeAttribute("aria-activedescendant");
     autocomplete.innerHTML = "";
   }
 
@@ -962,6 +970,7 @@
     currentSuggestions.forEach(function (item, index) {
       const btn = document.createElement("button");
       btn.type = "button";
+      btn.id = `fl-ai-suggest-${index}`;
       btn.setAttribute("role", "option");
       btn.innerHTML = `<span>${escapeHtml(item.label || item.query || "")}</span><span class="fl-ai-suggest-type">${escapeHtml(suggestionTypeLabel(item.type))}</span>`;
       btn.addEventListener("mousedown", function (event) {
@@ -971,6 +980,7 @@
       autocomplete.appendChild(btn);
     });
     autocomplete.classList.add("is-open");
+    input.setAttribute("aria-expanded", "true");
   }
 
   function applySuggestion(index) {
@@ -1008,6 +1018,7 @@
     activeSuggestionIndex = nextIndex;
     if (buttons[activeSuggestionIndex]) {
       buttons[activeSuggestionIndex].classList.add("is-active");
+      input.setAttribute("aria-activedescendant", buttons[activeSuggestionIndex].id);
       buttons[activeSuggestionIndex].scrollIntoView({ block: "nearest" });
     }
   }
