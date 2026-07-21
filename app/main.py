@@ -1956,7 +1956,8 @@ def _get_openai_client() -> OpenAI | None:
     if not api_key:
         return None
     if _openai_client is None:
-        _openai_client = OpenAI(api_key=api_key)
+        timeout = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "6"))
+        _openai_client = OpenAI(api_key=api_key, timeout=timeout, max_retries=0)
     return _openai_client
 
 
@@ -1973,7 +1974,12 @@ def _call_openai_with_retry(client: OpenAI, messages: list[dict], model: str) ->
     Zavola OpenAI chat completion s retry pri transientnych chybach.
     Vracia text odpovede alebo prazdny retazec ak choices[0].message.content je None.
     """
-    response = client.chat.completions.create(model=model, messages=messages)
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=0.2,
+        max_tokens=int(os.getenv("OPENAI_MAX_TOKENS", "120")),
+    )
     return response.choices[0].message.content or ""
 
 
@@ -2642,6 +2648,18 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "products": [],
         }
 
+    if should_use_fast_chat_answer(intent, matches, knowledge_matches, needs_composition_caution):
+        return {
+            "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
+            "products": matches,
+            "articles": articles,
+            "cart_candidates": cart_candidates,
+            "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": intent,
+            "response_mode": "fast",
+        }
+
     client = _get_openai_client()
     if not client:
         logger.debug("No OPENAI_API_KEY set, using fallback answer.")
@@ -2733,6 +2751,23 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "knowledge": knowledge_summary(knowledge_matches),
             "warning": "Odpoveď sa nepodarilo vygenerovať, zobrazujem nájdené produkty.",
         }
+
+
+def should_use_fast_chat_answer(
+    intent: str,
+    matches: list[dict],
+    knowledge_matches: dict | None,
+    needs_composition_caution: bool = False,
+) -> bool:
+    if os.getenv("FOODLAND_FAST_RESPONSES", "true").strip().lower() in {"0", "false", "no"}:
+        return False
+    if needs_composition_caution:
+        return True
+    if intent in {"product_search", "related_products", "article_products", "recipe_to_products"} and matches:
+        return True
+    if intent in {"faq", "recipe", "unknown", "allergen_safety"}:
+        return True
+    return bool(matches and not knowledge_matches)
 
 
 def get_client_key(request: Request) -> str:

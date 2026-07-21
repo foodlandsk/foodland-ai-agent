@@ -264,7 +264,7 @@ class TestChatWithMockOpenAI:
         - mocknutym _call_openai_with_retry
         - fake OPENAI_API_KEY
         """
-        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-fake-key"}):
+        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-fake-key", "FOODLAND_FAST_RESPONSES": "false"}):
             # Resetujeme singleton klienta aby nacital novy fake key
             main._openai_client = None
 
@@ -294,9 +294,30 @@ class TestChatWithMockOpenAI:
         assert "products" in result
         assert isinstance(result["products"], list)
 
+    def test_fast_mode_skips_openai_for_product_search(self):
+        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-fake-key", "FOODLAND_FAST_RESPONSES": "true"}):
+            main._openai_client = None
+            openai_called = []
+            with mock.patch.object(main, "_get_openai_client", return_value=mock.MagicMock()), \
+                 mock.patch.object(main, "_call_openai_with_retry", side_effect=lambda *a, **kw: openai_called.append(1) or ""):
+                original_products = getattr(main, "products", [])
+                main.products = SAMPLE_PRODUCTS
+                try:
+                    result = main.chat(
+                        _make_chat_request("bezlepkova sojova omacka"),
+                        _mock_http_request(),
+                    )
+                finally:
+                    main.products = original_products
+                    main._openai_client = None
+
+        assert openai_called == []
+        assert result["response_mode"] == "fast"
+        assert result["products"]
+
     def test_out_of_domain_no_openai_call(self):
         """Out-of-domain query nema volat OpenAI – vrati priamu odpoved."""
-        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-fake-key"}):
+        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-fake-key", "FOODLAND_FAST_RESPONSES": "true"}):
             main._openai_client = None
             openai_called = []
             with mock.patch.object(main, "_call_openai_with_retry", side_effect=lambda *a, **kw: openai_called.append(1) or ""):
@@ -459,7 +480,7 @@ class TestOpenAIRetry:
         """Chat endpoint vracia fallback (nie 500) ked OpenAI permanentne zlyha."""
         _, _, APIConnectionError = self._get_openai_errors()
 
-        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-fake-key"}):
+        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-fake-key", "FOODLAND_FAST_RESPONSES": "false"}):
             main._openai_client = None
             with mock.patch.object(main, "_get_openai_client", return_value=mock.MagicMock()), \
                  mock.patch.object(

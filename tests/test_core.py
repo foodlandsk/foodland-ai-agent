@@ -903,6 +903,16 @@ class TestAdminAnalytics:
         assert any("synonym" in nrm(item.get("suggested_action", "")) for item in items)
 
 
+class TestFastResponses:
+    def test_fast_response_enabled_for_product_matches(self, monkeypatch):
+        monkeypatch.setenv("FOODLAND_FAST_RESPONSES", "true")
+        assert main.should_use_fast_chat_answer("product_search", [{"title": "Kimchi"}], {})
+
+    def test_fast_response_can_be_disabled(self, monkeypatch):
+        monkeypatch.setenv("FOODLAND_FAST_RESPONSES", "false")
+        assert not main.should_use_fast_chat_answer("product_search", [{"title": "Kimchi"}], {})
+
+
 class TestGrounding:
     ALLOWED = {"https://www.foodland.sk/product/kimchi/"}
 
