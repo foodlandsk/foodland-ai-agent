@@ -488,8 +488,8 @@
     }
     .fl-ai-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .fl-ai-mark {
-      width: 42px;
-      height: 42px;
+      width: 50px;
+      height: 50px;
       display: block;
       flex: 0 0 auto;
       overflow: hidden;
@@ -499,11 +499,12 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
     }
     .fl-ai-mark img {
-      width: 100%;
-      height: 100%;
+      width: 118%;
+      height: 118%;
       display: block;
-      margin: 0;
+      margin: -7% 0 0 -9%;
       object-fit: cover;
+      object-position: center 34%;
     }
     .fl-ai-title { margin: 0; color: #fff; font-size: 15px; line-height: 1.2; font-weight: 800; }
     .fl-ai-status { margin-top: 2px; color: #E8F6EE; font-size: 12px; line-height: 1.2; }
@@ -799,6 +800,7 @@
         max-height: calc(var(--fl-ai-vh, 100svh) - 96px - env(safe-area-inset-top));
       }
       .fl-ai-launcher { width: 58px; height: 58px; }
+      .fl-ai-mark { width: 48px; height: 48px; }
       .fl-ai-form { grid-template-columns: 1fr; }
       .fl-ai-autocomplete { max-height: 180px; }
       .fl-ai-submit { min-height: 40px; }
@@ -1064,12 +1066,16 @@
   function positionAutocomplete() {
     if (!autocomplete.classList.contains("is-open")) return;
     const rect = input.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
     const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
     const viewportWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
     const gap = 6;
     const sidePadding = 8;
-    const desiredWidth = Math.max(220, Math.min(rect.width, viewportWidth - (sidePadding * 2)));
-    const left = Math.max(sidePadding, Math.min(rect.left, viewportWidth - desiredWidth - sidePadding));
+    const panelPadding = 12;
+    const panelWidth = panelRect.width || rect.width;
+    const desiredWidth = Math.max(220, Math.min(panelWidth - (panelPadding * 2), viewportWidth - (sidePadding * 2)));
+    const preferredLeft = panelRect.width ? panelRect.left + panelPadding : rect.left;
+    const left = Math.max(sidePadding, Math.min(preferredLeft, viewportWidth - desiredWidth - sidePadding));
     const spaceAbove = rect.top - sidePadding;
     const spaceBelow = viewportHeight - rect.bottom - sidePadding;
     const availableSpace = Math.max(spaceAbove, spaceBelow);
