@@ -685,6 +685,15 @@ class TestWorkflows:
         assert candidates[0]["recommendation_reason"] == products[0]["recommendation_reason"]
         assert candidates[0]["recommendation_group"] == "Základ"
 
+    def test_article_recommendation_reason_is_human_readable(self):
+        product = {"id": "FL_100", "title": "Kimchi krajané JONGGA 1000 g"}
+        main.annotate_recommendations([product], "article_products", "kimchi_article")
+        reason = product["recommendation_reason"]
+
+        assert "kimchi_article" not in reason
+        assert "_" not in reason
+        assert "Ak vás zaujal článok o kimchi" in reason
+
 class TestAllergenSafetyAnswer:
     def test_answer_contains_verify_instruction(self):
         answer = main.allergen_safety_answer("lepok")

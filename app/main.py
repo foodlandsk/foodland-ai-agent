@@ -2468,20 +2468,43 @@ def recommendation_group(product: dict) -> str:
 
 def recommendation_reason(product: dict, group: str, intent: str, context: str | None) -> str:
     title = normalize(str(product.get("title", "")))
-    context_text = str(context or "").replace("_", " ").strip()
-    if intent in {"related_products", "article_products"} and context_text:
-        return f"Hodí sa k téme {context_text} ako {group.lower()} nákupu."
+    context_text = recommendation_context_label(context)
+    if intent == "article_products" and context_text:
+        return f"Ak vás zaujal článok o {context_text}, toto je priamo súvisiaci produkt."
+    if intent == "related_products" and context_text:
+        return f"K {context_text} sa hodí, keď chcete nákup doplniť o ďalšiu surovinu alebo dochutenie."
     if "bezlepk" in title or "tamari" in title:
         return "Vhodný kandidát pri bezlepkovom výbere; zloženie si overte v detaile produktu."
     if group == "Základ":
-        return "Tvorí základ jedla alebo prílohu, ktorú budete pravdepodobne potrebovať."
+        return "Je to jedna zo základných surovín, bez ktorej sa dané jedlo pripravuje ťažšie."
     if group == "Korenie a vývar":
-        return "Patrí medzi kľúčové chute receptu; pri polievkach tvorí aromatický základ vývaru."
+        return "Pomáha postaviť chuť vývaru a dodá jedlu typickú vôňu."
     if group == "Dochutenie":
-        return "Dodá jedlu typickú ázijskú chuť a dobre doplní hlavné suroviny."
+        return "Doladí slanosť, kyslosť alebo umami, takže jedlo nebude chutiť plocho."
     if group == "Pikantné":
-        return "Pridá pikantnosť alebo fermentovanú chuť podľa štýlu jedla."
-    return "Dobrý doplnok k vybranej téme alebo predchádzajúcemu hľadaniu."
+        return "Pridá pikantnosť alebo fermentovanú chuť, ak chcete výraznejší výsledok."
+    return "Je to praktický doplnok, ktorý sa pri tejto kuchyni často zíde."
+
+
+def recommendation_context_label(context: str | None) -> str:
+    raw_context = str(context or "").strip()
+    if not raw_context:
+        return ""
+    labels = {
+        "kimchi_article": "kimchi",
+        "pho_article": "pho",
+        "udon_article": "udon rezancoch",
+        "ramen_article": "ramene",
+        "udon_ramen_article": "udon a ramen rezancoch",
+        "tofu_article": "tofu",
+        "shoyu_article": "shoyu",
+        "tamari_article": "tamari",
+        "miso_article": "miso paste",
+        "matcha_article": "matcha",
+        "mochi_article": "mochi",
+        "bubble_tea_article": "bubble tea",
+    }
+    return labels.get(raw_context, raw_context.replace("_", " "))
 
 
 def cart_candidates_for_response(matches: list[dict], intent: str, context: str | None = None) -> list[dict]:
