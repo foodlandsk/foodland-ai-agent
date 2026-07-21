@@ -14,10 +14,13 @@ PHRASE_SYNONYMS = {
     "rice vinegar": "ryzovy ocot",
     "rice paper": "ryzovy papier",
     "coconut milk": "kokosove mlieko",
+    "kokosove mliko": "kokosove mlieko",
     "sushi rice": "sushi ryza",
     "glass noodles": "sklenene rezance",
     "spring rolls": "jarne zavitky",
     "hot sauce": "chili omacka",
+    "sojovka": "sojova omacka",
+    "chin su": "chin-su",
 }
 
 TOKEN_SYNONYMS = {
@@ -27,9 +30,11 @@ TOKEN_SYNONYMS = {
     "susi": {"sushi"},
     "soy": {"sojova"},
     "soya": {"sojova"},
+    "sojovka": {"sojova", "omacka"},
     "coconut": {"kokosove"},
     "kokos": {"kokosove"},
     "milk": {"mlieko"},
+    "mliko": {"mlieko"},
     "chilli": {"chili"},
     "cili": {"chili"},
     "nudle": {"rezance"},
@@ -276,6 +281,7 @@ def autocomplete_suggestions(products: list[Product] | list[dict], query: str, l
     if len(normalized_query) < 2:
         return []
 
+    query_tokens = tokenize(query)
     suggestions: dict[str, dict] = {}
 
     def add(label: str, kind: str, score: int) -> None:
@@ -283,8 +289,15 @@ def autocomplete_suggestions(products: list[Product] | list[dict], query: str, l
         if not clean:
             return
         key = normalize(clean)
-        if normalized_query not in key and not key.startswith(normalized_query):
+        label_tokens = tokenize(clean)
+        token_hits = len(query_tokens & label_tokens)
+        fuzzy_token_hits = fuzzy_hits(query_tokens, label_tokens)
+        direct_match = normalized_query in key or key.startswith(normalized_query)
+        if not direct_match and not token_hits and not fuzzy_token_hits:
             return
+        score += 18 if direct_match else 0
+        score += 8 * token_hits
+        score += 4 * fuzzy_token_hits
         existing = suggestions.get(key)
         if not existing or score > existing["score"]:
             suggestions[key] = {"label": clean[:80], "query": clean, "type": kind, "score": score}

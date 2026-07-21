@@ -232,6 +232,19 @@ class TestSearchProducts:
         assert suggestions
         assert "sushi" in nrm(labels) or "susi" in nrm(labels)
 
+    def test_autocomplete_handles_common_foodland_queries(self, products):
+        cases = {
+            "kokosove mliko": ("kokos", "mlieko"),
+            "sojovka": ("sojova", "omacka"),
+            "chin su": ("chin",),
+        }
+        for query, expected_terms in cases.items():
+            suggestions = autocomplete_suggestions(products, query, 6)
+            labels = " | ".join(item["label"] for item in suggestions)
+            assert suggestions, f"Missing suggestions for {query}"
+            normalized_labels = nrm(labels)
+            assert any(term in normalized_labels for term in expected_terms), labels
+
 
 class TestIntentDetection:
     def test_allergen_arasidy(self):
