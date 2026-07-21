@@ -290,6 +290,24 @@ class TestIntentDetection:
         assert "pho" in nrm(titles)
         assert "pad thai" not in nrm(titles)
 
+    def test_recipe_product_intent_is_explicit(self):
+        assert not main.wants_recipe_products("recept na pho bo")
+        assert main.wants_recipe_products("recept na pho bo a produkty")
+        assert main.wants_recipe_products("co potrebujem k receptu pho bo")
+
+    def test_pho_recipe_products_prioritize_spices_then_noodles(self, products):
+        matches = main.related_products_for_subject(products, "pho", 8)
+        main.annotate_recommendations(matches, "recipe_to_products", related_subject="pho")
+
+        groups = [product["recommendation_group"] for product in matches]
+        titles = " | ".join(product["title"] for product in matches)
+        first_noodle_index = groups.index("Zaklad")
+
+        assert groups[0] == "Korenie a vyvar"
+        assert first_noodle_index > 0
+        assert all(group == "Korenie a vyvar" for group in groups[:first_noodle_index])
+        assert "rezance" in nrm(titles) or "banh pho" in nrm(titles)
+
     def test_out_of_domain_bicykel(self):
         assert main.detect_out_of_domain("predate bicykle?")
 

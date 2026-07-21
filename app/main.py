@@ -389,9 +389,10 @@ RELATED_PRODUCT_QUERIES = {
     ],
     "pho": [
         "korenie na pho", "pho korenie",
-        "banh pho", "pho rezance", "ryzove rezance",
         "badián", "skorica",
-        "bujón", "hovadzi bujón", "kuraci bujón",
+        "bujón",
+        "banh pho", "pho rezance", "ryzove rezance",
+        "hovadzi bujón", "kuraci bujón",
         "rybacia omacka",
         "koriander", "mung fazulove klicky",
         "hoisin", "sriracha",
@@ -2103,14 +2104,29 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     recipe_subject = detect_recipe_subject(contextual_message)
     if recipe_subject:
         recipes = recipe_results(knowledge_matches, chat_request.limit, contextual_message, knowledge)
-        update_session_memory(memory_key, chat_request.message, "recipe", [], recipes, knowledge_matches)
-        log_question(chat_request.message, client_key, 0, intent="recipe", session_id=session_id)
+        recipe_product_subject = recipe_related_product_subject(contextual_message, recipe_subject)
+        recipe_products = (
+            related_products_for_subject(products, recipe_product_subject, max(chat_request.limit, 8))
+            if wants_recipe_products(contextual_message) and recipe_product_subject
+            else []
+        )
+        intent = "recipe_to_products" if recipe_products else "recipe"
+        if recipe_products:
+            annotate_recommendations(
+                recipe_products,
+                intent,
+                related_subject=recipe_product_subject,
+                query=contextual_message,
+            )
+        update_session_memory(memory_key, chat_request.message, intent, recipe_products, recipes, knowledge_matches)
+        log_question(chat_request.message, client_key, 0, intent=intent, session_id=session_id)
         return {
-            "answer": recipe_answer(recipe_subject, recipes),
+            "answer": recipe_products_answer(recipe_product_subject, recipes) if recipe_products else recipe_answer(recipe_subject, recipes),
             "recipes": recipes,
-            "products": [],
+            "products": recipe_products,
+            "cart_candidates": cart_candidates_for_response(recipe_products, intent, recipe_product_subject),
             "knowledge": knowledge_summary(knowledge_matches),
-            "intent": "recipe",
+            "intent": intent,
         }
 
     if detect_out_of_domain(chat_request.message) and not detect_related_subject(chat_request.message):
@@ -2284,9 +2300,11 @@ def annotate_recommendations(
 
 def recommendation_group(product: dict) -> str:
     text = normalize(" ".join(str(product.get(key, "")) for key in ("title", "product_type", "category", "description")))
+    if any(marker in text for marker in ("korenie", "badian", "skorica", "bujon", "vyvar", "dashi", "bonito")):
+        return "Korenie a vyvar"
     if any(marker in text for marker in ("ryza", "rezance", "nudle", "papier", "nori")):
         return "Zaklad"
-    if any(marker in text for marker in ("omack", "sauce", "ocot", "mirin", "olej", "dashi", "miso", "pasta")):
+    if any(marker in text for marker in ("omack", "sauce", "ocot", "mirin", "olej", "miso", "pasta")):
         return "Dochutenie"
     if any(marker in text for marker in ("chili", "cili", "sriracha", "gochujang", "wasabi", "kimchi")):
         return "Pikantne"
@@ -2304,6 +2322,8 @@ def recommendation_reason(product: dict, group: str, intent: str, context: str |
         return "Vhodny kandidat pri bezlepkovom vybere; zlozenie si overte v detaile produktu."
     if group == "Zaklad":
         return "Tvori zaklad jedla alebo prilohu, ktoru budete pravdepodobne potrebovat."
+    if group == "Korenie a vyvar":
+        return "Patri medzi klucove chute receptu; pri polievkach tvori aromaticky zaklad vyvaru."
     if group == "Dochutenie":
         return "Doda jedlu typicku azijsku chut a dobre doplni hlavne suroviny."
     if group == "Pikantne":
@@ -2312,7 +2332,7 @@ def recommendation_reason(product: dict, group: str, intent: str, context: str |
 
 
 def cart_candidates_for_response(matches: list[dict], intent: str, context: str | None = None) -> list[dict]:
-    if intent not in {"related_products", "product_search"}:
+    if intent not in {"related_products", "product_search", "recipe_to_products"}:
         return []
     reason = f"Odporucanie Foodland Mei: {str(context or intent).replace('_', ' ')[:80]}"
     candidates = products_to_cart_candidates(matches or [], reason)
@@ -2498,6 +2518,37 @@ def detect_recipe_subject(message: str) -> str | None:
     return "general"
 
 
+def wants_recipe_products(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(
+        marker in normalized_message
+        for marker in (
+            "ingredien",
+            "surovin",
+            "produkt",
+            "kupit",
+            "nakup",
+            "nakupny zoznam",
+            "co potrebujem",
+            "co treba",
+            "co mi chyba",
+            "co chyba",
+            "do kosika",
+            "k receptu",
+            "k recept",
+        )
+    )
+
+
+def recipe_related_product_subject(message: str, recipe_subject: str | None) -> str | None:
+    related_subject = detect_related_subject(message)
+    if related_subject:
+        return related_subject
+    if recipe_subject in RELATED_PRODUCT_QUERIES:
+        return recipe_subject
+    return None
+
+
 def is_recipe_intent(normalized_message: str) -> bool:
     if any(marker in normalized_message for marker in RECIPE_INTENT_MARKERS):
         return True
@@ -2663,6 +2714,19 @@ def recipe_answer(subject: str, recipes: list[dict] | None = None) -> str:
         return "Našiel som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie."
 
     return "Receptovú otázku som zachytil, ale nemám dosť detailov na presný recept. Skúste napísať napríklad: recept na kimchi alebo recept na pad thai."
+
+
+def recipe_products_answer(subject: str | None, recipes: list[dict] | None = None) -> str:
+    subject_text = str(subject or "recept").replace("_", " ")
+    if recipes:
+        return (
+            f"Našiel som recept a k nemu relevantné produkty pre {subject_text}. "
+            "Najprv dávam kľúčové korenie alebo vývar, potom základ ako rezance či ryžu a nakoniec dochutenie."
+        )
+    return (
+        f"K receptu pre {subject_text} som našiel relevantné produkty. "
+        "Sú zoradené od kľúčových surovín po doplnky."
+    )
 
 
 def detect_special_product_subject(message: str) -> str | None:
