@@ -916,10 +916,10 @@ RELATED_PRODUCT_QUERIES = {
         "ryzova muka", "sezamove semienka", "kokosove mlieko", "matcha",
     ],
     "tikka_masala": [
-        "garam masala", "kari pasta", "kokosove mlieko", "jazminova ryza", "chili",
+        "garam masala", "kari pasta", "kokosove mlieko", "jazminova ryza",
     ],
     "tandoori": [
-        "tandoori masala", "garam masala", "kari pasta", "jazminova ryza", "chili",
+        "tandoori masala", "garam masala", "kari pasta", "jazminova ryza",
     ],
     "biryani": [
         "basmati ryza", "biryani korenie", "garam masala", "kardamom", "skorica",
