@@ -17,9 +17,11 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import types
 import unicodedata
+from collections import defaultdict
 from pathlib import Path
 
 import pytest
@@ -116,6 +118,13 @@ def titles_contain(results, *terms) -> bool:
 def top3_contains(results, term) -> bool:
     top = " | ".join(r.get("title", "") for r in results[:3])
     return nrm(term) in nrm(top)
+
+
+def compact_product_title(title: str) -> str:
+    text = re.sub(r"\b\d+[,.]?\d*\s*(g|kg|ml|l|ks|cm|mm|listov)\b", " ", title, flags=re.I)
+    text = re.sub(r"\b\d+\s*[x×]\s*\d+\b", " ", text, flags=re.I)
+    text = re.sub(r"[^\w\s-]+", " ", text, flags=re.UNICODE)
+    return " ".join(text.split()) or title
 
 
 class TestNormalize:
@@ -247,6 +256,85 @@ class TestSearchProducts:
     def test_luigis_style_typo_coconut_milk(self, products):
         results = search_products(products, "coconat milk", 6)
         assert titles_contain(results, "kokosove mlieko", "coconut milk")
+
+    def test_product_catalog_has_required_fields(self, products):
+        required = ("id", "title", "link", "image_link", "price", "availability")
+        missing = []
+        invalid_urls = []
+        invalid_prices = []
+        duplicates = defaultdict(list)
+        seen = defaultdict(dict)
+
+        for index, product in enumerate(products):
+            for key in required:
+                if getattr(product, key, None) in (None, ""):
+                    missing.append((index, key, getattr(product, "title", "")))
+            for key in ("id", "link"):
+                value = getattr(product, key, "")
+                if value in seen[key]:
+                    duplicates[key].append((seen[key][value], index, value))
+                else:
+                    seen[key][value] = index
+            title_key = normalize(getattr(product, "title", "")).strip()
+            if title_key in seen["title"]:
+                duplicates["title"].append((seen["title"][title_key], index, getattr(product, "title", "")))
+            else:
+                seen["title"][title_key] = index
+            for key in ("link", "image_link"):
+                value = str(getattr(product, key, "") or "")
+                if not value.startswith(("https://", "http://")):
+                    invalid_urls.append((index, key, value))
+            price = getattr(product, "price", None)
+            sale_price = getattr(product, "sale_price", None)
+            if not isinstance(price, (int, float)) or price <= 0:
+                invalid_prices.append((index, getattr(product, "title", ""), price))
+            if sale_price is not None and sale_price <= 0:
+                invalid_prices.append((index, getattr(product, "title", ""), sale_price))
+
+        assert not missing
+        assert not invalid_urls
+        assert not invalid_prices
+        assert not {key: rows for key, rows in duplicates.items() if rows}
+
+    def test_all_products_are_findable_by_title_tokens(self, products):
+        token_index = defaultdict(set)
+        title_tokens = []
+        field_tokens = []
+        for index, product in enumerate(products):
+            product_title_tokens = tokenize(product.title)
+            product_field_tokens = set(product_title_tokens) | tokenize(product.brand) | tokenize(product.product_type)
+            title_tokens.append(product_title_tokens)
+            field_tokens.append(product_field_tokens)
+            for token in product_field_tokens:
+                token_index[token].add(index)
+
+        weak = []
+        for index, product in enumerate(products):
+            query = compact_product_title(product.title)
+            query_tokens = tokenize(query)
+            important_tokens = {token for token in query_tokens if len(token) >= 4} or query_tokens
+            candidates = set()
+            for token in important_tokens:
+                candidates |= token_index.get(token, set())
+            if index not in candidates:
+                weak.append((index, product.title, query))
+                continue
+
+            ranked = []
+            normalized_query = normalize(query)
+            for candidate in candidates:
+                score = 10 * len(query_tokens & title_tokens[candidate]) + 3 * len(query_tokens & field_tokens[candidate])
+                if normalized_query in normalize(products[candidate].title):
+                    score += 20
+                if products[candidate].availability == "in_stock":
+                    score += 2
+                ranked.append((score, candidate))
+            ranked.sort(reverse=True)
+            top = {candidate for _, candidate in ranked[:8]}
+            if index not in top:
+                weak.append((index, product.title, query, [products[candidate].title for candidate in top]))
+
+        assert not weak
 
     def test_autocomplete_suggestions(self, products):
         suggestions = autocomplete_suggestions(products, "sush", 6)
