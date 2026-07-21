@@ -409,6 +409,19 @@ class TestSearchProducts:
 
         assert first["type"] == "cook_intent"
 
+    def test_search_autocomplete_memory_intent_beats_product_boosts(self, products, knowledge):
+        profile = {
+            "intent_counts": {"cook": 3},
+            "last_intent": "recipe",
+            "subjects": {"kimchi": 3},
+            "product_titles": {"KIMCHI Ramen OTTOGI - 120g": 4},
+            "product_brands": {"NONGSHIM": 3},
+            "cuisines": {"korean": 3},
+        }
+        suggestions = main.search_autocomplete(products, knowledge, "kimchi", 4, profile)
+
+        assert suggestions[0]["type"] == "cook_intent"
+
     def test_search_autocomplete_handles_padthai_typo(self, products, knowledge):
         suggestions = main.search_autocomplete(products, knowledge, "padthai", 8)
         labels = nrm(" | ".join(item["label"] for item in suggestions))
