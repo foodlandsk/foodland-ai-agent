@@ -910,8 +910,45 @@
     return !isSmallScreen && !isTouch;
   }
 
+  function currentPageProductTitle() {
+    const selectors = [
+      "h1.product-title",
+      ".product-title h1",
+      ".vm-product-details-container h1",
+      ".productdetails h1",
+      "h1",
+    ];
+    for (const selector of selectors) {
+      const element = document.querySelector(selector);
+      const text = element ? element.textContent.trim() : "";
+      if (text && text.length >= 3 && text.length <= 120) return text;
+    }
+    return "";
+  }
+
+  function compactPromptProductName(title) {
+    return String(title || "")
+      .replace(/\s+/g, " ")
+      .replace(/\b\d+[,.]?\d*\s*(g|kg|ml|l|ks|cm|mm)\b/gi, "")
+      .trim()
+      .slice(0, 70);
+  }
+
+  function initialSuggestionItems() {
+    const productTitle = compactPromptProductName(currentPageProductTitle());
+    if (productTitle) {
+      return [
+        `Čo sa hodí k ${productTitle}?`,
+        `Recept s ${productTitle}`,
+        `Čím nahradiť ${productTitle}?`,
+        `Je ${productTitle} vhodné do ázijskej kuchyne?`,
+      ];
+    }
+    return ["Čo dnes variť?", "Recept na ramen", "Čím nahradiť mirin?", "Najlepšia sushi ryža", "Kokosové mlieko"];
+  }
+
   function addSuggestions() {
-    const items = ["Čo dnes variť?", "Recept na ramen", "Čím nahradiť mirin?", "Najlepšia sushi ryža", "Kokosové mlieko"];
+    const items = initialSuggestionItems();
     const wrap = document.createElement("div");
     wrap.className = "fl-ai-suggestions";
     items.forEach(function (label) {

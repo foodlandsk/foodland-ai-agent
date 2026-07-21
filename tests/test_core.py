@@ -645,6 +645,40 @@ class TestKnowledgeSearch:
         assert "krek" not in nrm(shoyu_titles)
 
 
+class TestAdminAnalytics:
+    def test_analytics_report_summarizes_questions_and_weak_spots(self):
+        events = [
+            {"ts": 10, "client_hash": "a", "session_id": "s1", "message": "co je kimchi", "matches_count": 4, "intent": "article_products"},
+            {"ts": 11, "client_hash": "a", "session_id": "s1", "message": "co je kimchi?", "matches_count": 4, "intent": "article_products"},
+            {"ts": 12, "client_hash": "b", "session_id": "s2", "message": "mate wasabi xxl", "matches_count": 0, "intent": "product_search"},
+            {"ts": 13, "client_hash": "c", "session_id": "s3", "message": "predate bicykle", "matches_count": 0, "intent": "unknown"},
+            {"ts": 14, "client_hash": "d", "session_id": "s4", "message": "recept na pho", "matches_count": 0, "intent": "recipe"},
+        ]
+        report = main.analytics_report(events, [{"ts": 15, "event": "openai_transient_error"}], 5)
+
+        assert report["summary"]["questions"] == 5
+        assert report["summary"]["unique_clients"] == 4
+        assert report["summary"]["no_result_questions"] == 1
+        assert report["summary"]["unknown_questions"] == 1
+        assert report["summary"]["backend_errors"] == 1
+        assert report["top_questions"][0]["count"] == 2
+        assert any(row["intent"] == "article_products" for row in report["intents"])
+        assert any(row["area"] == "no_results" for row in report["weak_spots"])
+
+    def test_no_result_rows_group_normalized_questions(self):
+        events = [
+            {"ts": 10, "message": "Nemáte saké 500 ml?", "matches_count": 0, "intent": "product_search"},
+            {"ts": 12, "message": "nemate sake?", "matches_count": 0, "intent": "product_search"},
+            {"ts": 13, "message": "sake", "matches_count": 2, "intent": "product_search"},
+            {"ts": 14, "message": "recept na sushi", "matches_count": 0, "intent": "recipe"},
+        ]
+        rows = main.no_result_rows(events, 5)
+
+        assert rows
+        assert rows[0]["count"] == 2
+        assert rows[0]["intent"] == "product_search"
+
+
 class TestGrounding:
     ALLOWED = {"https://www.foodland.sk/product/kimchi/"}
 

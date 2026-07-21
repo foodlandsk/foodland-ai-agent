@@ -8,9 +8,10 @@ import logging
 import os
 import random
 import re
+import secrets
 import tempfile
 import time
-from collections import defaultdict, deque
+from collections import Counter, defaultdict, deque
 from pathlib import Path
 from urllib.parse import quote_plus
 
@@ -1999,6 +2000,50 @@ def knowledge_search(request: KnowledgeSearchRequest) -> dict:
     }
 
 
+@app.get("/admin/analytics/summary")
+def admin_analytics_summary(
+    days: int = 7,
+    limit: int = 10,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    require_admin_token(x_admin_token)
+    events = read_analytics_events(days)
+    errors = read_error_events(days)
+    return analytics_report(events, errors, limit)
+
+
+@app.get("/admin/analytics/top-questions")
+def admin_analytics_top_questions(
+    days: int = 7,
+    limit: int = 20,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    require_admin_token(x_admin_token)
+    events = read_analytics_events(days)
+    return {"top_questions": top_question_rows(events, limit)}
+
+
+@app.get("/admin/analytics/no-results")
+def admin_analytics_no_results(
+    days: int = 7,
+    limit: int = 20,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    require_admin_token(x_admin_token)
+    events = read_analytics_events(days)
+    return {"no_results": no_result_rows(events, limit)}
+
+
+@app.get("/admin/analytics/intents")
+def admin_analytics_intents(
+    days: int = 7,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    require_admin_token(x_admin_token)
+    events = read_analytics_events(days)
+    return {"intents": intent_rows(events)}
+
+
 def session_memory_key(session_id: str, client_key: str) -> str:
     raw_session = re.sub(r"[^a-zA-Z0-9_-]", "", str(session_id or ""))[:64]
     if raw_session:
@@ -2597,6 +2642,151 @@ def log_backend_error(event: str, detail: str) -> None:
             file.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception as exc:
         logger.error("Failed to log backend error: %s", exc, exc_info=True)
+
+
+def require_admin_token(x_admin_token: str | None) -> None:
+    expected = os.getenv("ADMIN_ANALYTICS_TOKEN") or os.getenv("ADMIN_RELOAD_TOKEN")
+    if not expected:
+        raise HTTPException(status_code=404, detail="Admin analytika nie je zapnutá.")
+    if not x_admin_token or not hmac_compare(str(x_admin_token), str(expected)):
+        raise HTTPException(status_code=401, detail="Neplatný admin token.")
+
+
+def hmac_compare(left: str, right: str) -> bool:
+    return secrets.compare_digest(left, right)
+
+
+def read_analytics_events(days: int = 7) -> list[dict]:
+    path = Path(os.getenv("ANALYTICS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "question_analytics.jsonl")))
+    return read_jsonl_events(path, days)
+
+
+def read_error_events(days: int = 7) -> list[dict]:
+    path = Path(os.getenv("ERROR_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "backend_errors.jsonl")))
+    return read_jsonl_events(path, days)
+
+
+def read_jsonl_events(path: Path, days: int = 7) -> list[dict]:
+    if not path.exists():
+        return []
+    now = int(time.time())
+    safe_days = max(1, min(int(days or 7), 90))
+    since = now - safe_days * 86400
+    events: list[dict] = []
+    try:
+        with path.open("r", encoding="utf-8") as file:
+            for line in file:
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                ts = int(record.get("ts", 0) or 0)
+                if ts >= since:
+                    events.append(record)
+    except Exception as exc:
+        logger.error("Failed to read analytics log %s: %s", path, exc, exc_info=True)
+    return events
+
+
+def analytics_report(events: list[dict], errors: list[dict] | None = None, limit: int = 10) -> dict:
+    errors = errors or []
+    safe_limit = max(1, min(int(limit or 10), 100))
+    no_results = [event for event in events if is_no_result_event(event)]
+    unknowns = [event for event in events if event.get("intent") == "unknown"]
+    return {
+        "summary": {
+            "questions": len(events),
+            "unique_clients": len({event.get("client_hash") for event in events if event.get("client_hash")}),
+            "sessions": len({event.get("session_id") for event in events if event.get("session_id")}),
+            "no_result_questions": len(no_results),
+            "unknown_questions": len(unknowns),
+            "backend_errors": len(errors),
+        },
+        "top_questions": top_question_rows(events, safe_limit),
+        "no_results": no_result_rows(events, safe_limit),
+        "intents": intent_rows(events),
+        "weak_spots": weak_spot_rows(events, errors, safe_limit),
+    }
+
+
+def normalized_question_key(message: str) -> str:
+    cleaned = normalize(message)
+    cleaned = re.sub(r"\b\d+[,.]?\d*\s*(g|kg|ml|l|ks)\b", " ", cleaned)
+    cleaned = re.sub(r"[^a-z0-9 ]+", " ", cleaned)
+    return " ".join(cleaned.split())[:160]
+
+
+def top_question_rows(events: list[dict], limit: int = 20) -> list[dict]:
+    counter: Counter[str] = Counter()
+    examples: dict[str, str] = {}
+    for event in events:
+        message = str(event.get("message", "")).strip()
+        key = normalized_question_key(message)
+        if not key:
+            continue
+        counter[key] += 1
+        examples.setdefault(key, message[:240])
+    return [
+        {"question": examples[key], "normalized": key, "count": count}
+        for key, count in counter.most_common(max(1, min(limit, 100)))
+    ]
+
+
+def no_result_rows(events: list[dict], limit: int = 20) -> list[dict]:
+    no_result_events = [event for event in events if is_no_result_event(event)]
+    counter: Counter[str] = Counter()
+    examples: dict[str, dict] = {}
+    for event in no_result_events:
+        message = str(event.get("message", "")).strip()
+        key = normalized_question_key(message)
+        if not key:
+            continue
+        counter[key] += 1
+        examples.setdefault(
+            key,
+            {
+                "question": message[:240],
+                "intent": event.get("intent", ""),
+                "last_seen": event.get("ts", 0),
+            },
+        )
+        examples[key]["last_seen"] = max(int(examples[key].get("last_seen", 0) or 0), int(event.get("ts", 0) or 0))
+    return [
+        {"normalized": key, "count": count, **examples[key]}
+        for key, count in counter.most_common(max(1, min(limit, 100)))
+    ]
+
+
+def intent_rows(events: list[dict]) -> list[dict]:
+    counts = Counter(str(event.get("intent") or "unknown") for event in events)
+    total = sum(counts.values()) or 1
+    return [
+        {"intent": intent, "count": count, "share": round(count / total, 4)}
+        for intent, count in counts.most_common()
+    ]
+
+
+def weak_spot_rows(events: list[dict], errors: list[dict] | None = None, limit: int = 10) -> list[dict]:
+    errors = errors or []
+    rows: list[dict] = []
+    no_result_count = sum(1 for event in events if is_no_result_event(event))
+    unknown_count = sum(1 for event in events if event.get("intent") == "unknown")
+    if no_result_count:
+        rows.append({"area": "no_results", "count": no_result_count, "note": "Otázky bez nájdených produktov alebo obsahu."})
+    if unknown_count:
+        rows.append({"area": "unknown_intent", "count": unknown_count, "note": "Otázky mimo rozpoznaných Foodland tém."})
+    for intent, count in Counter(str(event.get("intent") or "unknown") for event in events if is_no_result_event(event)).most_common():
+        rows.append({"area": f"no_results:{intent}", "count": count, "note": "Intent často končí bez produktovej zhody."})
+    for event_name, count in Counter(str(error.get("event") or "backend_error") for error in errors).most_common():
+        rows.append({"area": f"backend:{event_name}", "count": count, "note": "Backend chyba v sledovanom období."})
+    rows.sort(key=lambda row: row["count"], reverse=True)
+    return rows[: max(1, min(limit, 100))]
+
+
+def is_no_result_event(event: dict) -> bool:
+    intent = str(event.get("intent") or "")
+    product_intents = {"product_search", "related_products", "article_products", "recipe_to_products", "allergen_safety"}
+    return intent in product_intents and int(event.get("matches_count", 0) or 0) == 0
 
 
 def is_faq_intent(message: str) -> bool:

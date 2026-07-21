@@ -101,11 +101,31 @@ ANALYTICS_LOG_PATH=/tmp/foodland-ai-agent/question_analytics.jsonl
 ERROR_LOG_PATH=/tmp/foodland-ai-agent/backend_errors.jsonl
 ANALYTICS_INCLUDE_IP=false
 ANALYTICS_SALT=<nahodny tajny retazec>
+ADMIN_ANALYTICS_TOKEN=<volitelne>
 ADMIN_RELOAD_TOKEN=<volitelne>
 LOG_LEVEL=INFO
 ```
 
 Ak `OPENAI_API_KEY` nie je nastaveny, `/chat` vrati fallback odpoved z lokalneho vyhladavania.
+
+## Admin analytika otazok
+
+Endpointy citaju `ANALYTICS_LOG_PATH` a `ERROR_LOG_PATH` a vyzaduju header:
+
+```text
+x-admin-token: <ADMIN_ANALYTICS_TOKEN>
+```
+
+Ak `ADMIN_ANALYTICS_TOKEN` nie je nastaveny, pouzije sa fallback `ADMIN_RELOAD_TOKEN`.
+
+```text
+GET /admin/analytics/summary?days=7&limit=10
+GET /admin/analytics/top-questions?days=7&limit=20
+GET /admin/analytics/no-results?days=7&limit=20
+GET /admin/analytics/intents?days=7
+```
+
+Prehlad vracia najcastejsie otazky, otazky bez vysledku, rozdelenie intentov a slabe miesta poradcu.
 
 ## Widget embed
 
