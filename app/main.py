@@ -3996,7 +3996,7 @@ def tom_yum_shopping_core_products(products: list[Product], existing_matches: li
         ("galangal", ("galangal",), ()),
         ("kaffirove listy", ("kaffir", "kaffirov"), ("bambus", "kari list", "caj")),
         ("rybacia omacka", ("rybacia omacka",), ()),
-        ("sriracha", ("sriracha",), ()),
+        ("kokosove mlieko", ("kokosove mlieko",), ()),
         ("tom yum pasta", ("tom yum", "pasta"), ("arasid", "riasy", "instant", "polievka v kelimku")),
     ]
     seen: set[str] = set()
@@ -4023,7 +4023,7 @@ def tom_yum_shopping_core_products(products: list[Product], existing_matches: li
 
     for product in existing_matches or []:
         title = normalize(product.get("title", ""))
-        if any(term in title for term in ("sojova omacka", "kokosove mlieko")):
+        if any(term in title for term in ("sojova omacka", "sriracha")):
             continue
         add_product(product)
         if len(recommendations) >= limit:

@@ -736,13 +736,13 @@ class TestIntentDetection:
         assert "galangal" in all_titles
         assert "kaffir" in all_titles or "kaffirov" in all_titles
         assert "rybacia omacka" in all_titles
-        assert "sriracha" in all_titles or "cili omacka" in all_titles or "chili omacka" in all_titles
+        assert "kokosove mlieko" in all_titles
+        assert "sriracha" not in all_titles
         assert "tom yum" in all_titles and "pasta" in all_titles
-        assert "kokosove mlieko" not in " | ".join(titles[:4])
         assert "sojova omacka" not in " | ".join(titles[:4])
         paste_index = next(index for index, title in enumerate(titles) if "tom yum" in title and "pasta" in title)
-        sriracha_index = next(index for index, title in enumerate(titles) if "sriracha" in title)
-        assert paste_index > sriracha_index
+        coconut_index = next(index for index, title in enumerate(titles) if "kokosove mlieko" in title)
+        assert paste_index > coconut_index
 
     def test_all_known_recipes_have_missing_ingredient_mapping(self, knowledge):
         recipes = knowledge.get("sections", {}).get("Recipes", [])
