@@ -187,6 +187,17 @@ class TestSearchProducts:
         results = search_products(products, "sushi ryza", 6)
         assert titles_contain(results, "susi ryza", "sushi ryza", "susi ryz")
 
+    def test_best_sushi_rice_chat_prioritizes_rice(self):
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="Najlepsia sushi ryza", limit=5), request)
+        titles = [nrm(product.get("title", "")) for product in result.get("products", [])]
+
+        assert result.get("intent") == "product_search"
+        assert titles
+        assert "ryza" in titles[0] and ("sushi" in titles[0] or "susi" in titles[0])
+        assert "nori" not in titles[0]
+        assert "ocot" not in titles[0]
+
     def test_gochujang_found(self, products):
         results = search_products(products, "gochujang", 4)
         assert titles_contain(results, "gochujang", "Gochujang")

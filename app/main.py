@@ -1404,6 +1404,14 @@ RECIPE_URL_OVERRIDES: dict[str, str] = {
 }
 
 SPECIAL_PRODUCT_QUERIES = {
+    "sushi_rice": [
+        "sushi ryza",
+        "ryza na sushi",
+        "susi ryza",
+        "nori",
+        "ryzovy ocot",
+        "wasabi",
+    ],
     "gluten_free_sushi": [
         "bezlepkova sojova omacka",
         "tamari",
@@ -2800,6 +2808,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     special_subject = detect_special_product_subject(contextual_message)
     replacement_subject = detect_replacement_subject(contextual_message)
     related_subject = detect_related_subject(contextual_message)
+    if special_subject:
+        related_subject = None
     cross_sell_matches = cross_sell_products_for_message(products, knowledge, contextual_message, chat_request.limit)
     article_product_subject = (
         detect_article_product_subject(contextual_message, articles)
@@ -2824,10 +2834,25 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     else:
         matches = cached_search_products(products, contextual_message, chat_request.limit)
     matches = personalize_products(matches, user_profile)
+    if special_subject == "sushi_rice":
+        matches = sorted(
+            matches,
+            key=lambda product: (
+                not (
+                    "ryza" in normalize(product.get("title", ""))
+                    and bool({"sushi", "susi"} & set(normalize(product.get("title", "")).split()))
+                ),
+                int(product.get("recommendation_priority") or 999),
+            ),
+        )
     intent = (
         "article_products"
         if article_product_subject
-        else ("replacement_products" if replacement_subject else ("related_products" if related_subject or cross_sell_matches else "product_search"))
+        else (
+            "replacement_products"
+            if replacement_subject
+            else ("related_products" if not special_subject and (related_subject or cross_sell_matches) else "product_search")
+        )
     )
     annotate_recommendations(
         matches,
@@ -5335,6 +5360,10 @@ def normalize_url_for_match(url: str) -> str:
 
 def detect_special_product_subject(message: str) -> str | None:
     normalized_message = normalize(message)
+    if ("sushi ryz" in normalized_message or "susi ryz" in normalized_message) and not any(
+        marker in normalized_message for marker in ("bez lepku", "bezlepk", "celiak", "dopln")
+    ):
+        return "sushi_rice"
     if (is_gluten_free_search(normalized_message) or "celiak" in normalized_message) and bool(
         {"sushi", "susi"} & set(normalized_message.split())
     ):
