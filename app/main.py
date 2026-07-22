@@ -444,6 +444,17 @@ RELATED_PRODUCT_QUERIES = {
         "sojova omacka", "sezamovy olej",
         "sriracha", "gochujang",
     ],
+    "kimchi_ramen": [
+        "ramen rezance",
+        "kimchi",
+        "gochujang",
+        "miso pasta",
+        "sojova omacka",
+        "dashi",
+        "wakame",
+        "nori",
+        "sezamovy olej",
+    ],
     "kari": [
         "kokosove mlieko",
         "jazminova ryza",
@@ -1363,7 +1374,7 @@ RECIPE_TITLE_PRODUCT_SUBJECTS = (
     ("jazminova ryza", "ryza"),
     ("banh ran", "sesame_balls"),
     ("sezamove gulocky", "sesame_balls"),
-    ("kimchi ramen", "ramen"),
+    ("kimchi ramen", "kimchi_ramen"),
     ("jjigae", "jjigae"),
     ("japchae", "japchae"),
     ("kimchi recept", "kimchi_recipe"),
@@ -1628,6 +1639,7 @@ MISSING_INGREDIENTS_BY_SUBJECT = {
     "bibimbap": ["vajce", "čerstvá zelenina", "mäso alebo tofu"],
     "gyoza": ["mleté mäso alebo tofu", "kapusta", "jarná cibuľka", "cesnak"],
     "ramen": ["vajce", "čerstvá jarná cibuľka", "mäso alebo tofu"],
+    "kimchi_ramen": ["vajce", "čerstvá jarná cibuľka", "mäso alebo tofu"],
     "kari": ["mäso alebo tofu", "čerstvá zelenina", "cibuľa"],
     "thajske_kari": ["mäso alebo tofu", "čerstvá zelenina", "cibuľa"],
     "tom_yum": ["krevety alebo kuracie mäso", "čerstvé huby", "limetka", "čerstvý koriander"],
@@ -2846,11 +2858,15 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         matches = sushi_shopping_core_products(products, matches, chat_request.limit)
     if is_shopping_list_request and related_subject == "tom_yum":
         matches = tom_yum_shopping_core_products(products, matches, chat_request.limit)
+    if is_shopping_list_request and related_subject == "kimchi_ramen":
+        matches = kimchi_ramen_shopping_core_products(products, matches, chat_request.limit)
     matches = personalize_products(matches, user_profile)
     if is_shopping_list_request and related_subject == "sushi":
         matches = sushi_shopping_core_products(products, matches, chat_request.limit)
     if is_shopping_list_request and related_subject == "tom_yum":
         matches = tom_yum_shopping_core_products(products, matches, chat_request.limit)
+    if is_shopping_list_request and related_subject == "kimchi_ramen":
+        matches = kimchi_ramen_shopping_core_products(products, matches, chat_request.limit)
     if special_subject == "sushi_rice":
         matches = sorted(
             matches,
@@ -4024,6 +4040,50 @@ def tom_yum_shopping_core_products(products: list[Product], existing_matches: li
     for product in existing_matches or []:
         title = normalize(product.get("title", ""))
         if any(term in title for term in ("sojova omacka", "sriracha")):
+            continue
+        add_product(product)
+        if len(recommendations) >= limit:
+            break
+
+    return recommendations[:limit]
+
+
+def kimchi_ramen_shopping_core_products(products: list[Product], existing_matches: list[dict], limit: int) -> list[dict]:
+    queries = [
+        ("ramen rezance", ("ramen",), ()),
+        ("kimchi", ("kimchi",), ("instant", "ramen", "ramyun", "rezance", "polievk", "omack")),
+        ("gochujang", ("gochujang",), ()),
+        ("miso pasta", ("miso",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("dashi", ("dashi",), ()),
+        ("wakame", ("wakame",), ()),
+        ("nori", ("nori",), ()),
+    ]
+    seen: set[str] = set()
+    recommendations: list[dict] = []
+
+    def add_product(product: dict) -> None:
+        key = product.get("id") or product.get("link") or product.get("title")
+        if not key or key in seen:
+            return
+        seen.add(key)
+        recommendations.append(product)
+
+    for query, required_terms, excluded_terms in queries:
+        for product in cached_search_products(products, query, 8):
+            title = normalize(product.get("title", ""))
+            if any(term in title for term in excluded_terms):
+                continue
+            if not all(term in title for term in required_terms):
+                continue
+            add_product(product)
+            break
+        if len(recommendations) >= limit:
+            return recommendations[:limit]
+
+    for product in existing_matches or []:
+        title = normalize(product.get("title", ""))
+        if "kimchi" in title and any(term in title for term in ("instant", "ramen", "ramyun", "rezance", "polievk")):
             continue
         add_product(product)
         if len(recommendations) >= limit:
@@ -5562,6 +5622,10 @@ def detect_related_subject(message: str) -> str | None:
     if not any(marker in normalized_message for marker in RELATED_INTENT_MARKERS):
         return None
 
+    title_subject = recipe_product_subject_from_title(normalized_message)
+    if title_subject and title_subject in RELATED_PRODUCT_QUERIES:
+        return title_subject
+
     if ("kimchi" in normalized_message or "kimci" in normalized_message) and any(
         marker in normalized_message
         for marker in (
@@ -5581,10 +5645,6 @@ def detect_related_subject(message: str) -> str | None:
 
     if "pho" in normalized_message:
         return "pho"
-
-    title_subject = recipe_product_subject_from_title(normalized_message)
-    if title_subject and title_subject in RELATED_PRODUCT_QUERIES:
-        return title_subject
 
     for subject, aliases in RELATED_SUBJECT_ALIASES.items():
         if any(alias in normalized_message for alias in aliases):
