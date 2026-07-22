@@ -1578,6 +1578,56 @@ FAQ_INTENT_MARKERS = (
     "vraten",
 )
 
+SHOPPING_LIST_MARKERS = (
+    "nakupny zoznam",
+    "nákupný zoznam",
+    "co potrebujem",
+    "čo potrebujem",
+    "co treba",
+    "čo treba",
+    "co kupit",
+    "čo kúpiť",
+    "co mi chyba",
+    "čo mi chýba",
+    "co chyba",
+    "čo chýba",
+    "do kosika",
+    "do košíka",
+    "suroviny",
+    "ingrediencie",
+)
+
+MISSING_INGREDIENTS_BY_SUBJECT = {
+    "sushi": ["čerstvá ryba alebo zelenina podľa rolky", "avokádo alebo uhorka", "voda na oplachovanie ryže"],
+    "kimchi_recipe": ["čínska kapusta", "daikon alebo biela reďkovka", "jarná cibuľka", "cesnak"],
+    "kimchi": ["čínska kapusta", "daikon alebo biela reďkovka", "jarná cibuľka", "cesnak"],
+    "pho": ["hovädzie alebo kuracie mäso", "čerstvé bylinky", "cibuľa", "limetka", "fazuľové klíčky"],
+    "pad_thai": ["vajce alebo tofu", "čerstvé klíčky", "limetka", "jarná cibuľka"],
+    "bibimbap": ["vajce", "čerstvá zelenina", "mäso alebo tofu"],
+    "gyoza": ["mleté mäso alebo tofu", "kapusta", "jarná cibuľka", "cesnak"],
+    "ramen": ["vajce", "čerstvá jarná cibuľka", "mäso alebo tofu"],
+    "kari": ["mäso alebo tofu", "čerstvá zelenina", "cibuľa"],
+    "thajske_kari": ["mäso alebo tofu", "čerstvá zelenina", "cibuľa"],
+    "tom_yum": ["krevety alebo kuracie mäso", "čerstvé huby", "limetka", "čerstvý koriander"],
+    "tom_kha": ["kuracie mäso alebo tofu", "čerstvé huby", "limetka", "čerstvý koriander"],
+    "satay": ["kuracie mäso alebo tofu", "limetka", "čerstvá uhorka"],
+    "bun_cha": ["bravčové alebo tofu", "čerstvé bylinky", "šalát", "limetka"],
+    "bun_bo_nam_bo": ["hovädzie mäso", "čerstvé bylinky", "šalát", "uhorka"],
+    "banh_mi": ["bageta", "mäso alebo tofu", "čerstvá zelenina", "koriander"],
+    "spring_roll": ["čerstvá zelenina", "bylinky", "mäso alebo tofu"],
+    "nam_van": ["čerstvá zelenina", "bylinky", "mäso alebo tofu"],
+    "teriyaki": ["kuracie mäso, losos alebo tofu", "čerstvá zelenina"],
+    "miso_polievka": ["tofu", "jarná cibuľka"],
+    "mapo_tofu": ["tofu", "mleté mäso alebo huby", "jarná cibuľka"],
+    "kung_pao": ["kuracie mäso alebo tofu", "čerstvá paprika", "jarná cibuľka"],
+    "tikka_masala": ["kuracie mäso alebo tofu", "jogurt alebo smotana", "cibuľa"],
+    "biryani": ["mäso alebo zelenina", "cibuľa", "čerstvý koriander"],
+    "nasi_goreng": ["vajce", "čerstvá zelenina", "mäso alebo tofu"],
+    "nasi_lemak": ["vajce", "uhorka", "arašidy alebo ančovičky podľa verzie"],
+    "hainanese_chicken": ["kuracie mäso", "uhorka", "čerstvá jarná cibuľka"],
+    "sinigang": ["mäso alebo ryba", "čerstvá zelenina"],
+}
+
 RELATED_INTENT_MARKERS = (
     "co k",
     "suvisiace",
@@ -2685,6 +2735,9 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                 related_subject=recipe_product_subject,
                 query=contextual_message,
             )
+        recipe_cart_candidates = cart_candidates_for_response(recipe_products, intent, recipe_product_subject)
+        missing_ingredients = missing_ingredients_for_subject(recipe_product_subject, recipes)
+        shopping_list = shopping_list_for_response(recipe_cart_candidates, missing_ingredients) if recipe_products else {}
         update_session_memory(memory_key, chat_request.message, intent, recipe_products, recipes, knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, intent, recipe_products, recipes)
         log_question(chat_request.message, client_key, 0, intent=intent, session_id=session_id)
@@ -2693,7 +2746,9 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "recipes": recipes,
             "products": recipe_products,
             "articles": recipe_articles,
-            "cart_candidates": cart_candidates_for_response(recipe_products, intent, recipe_product_subject),
+            "cart_candidates": recipe_cart_candidates,
+            "missing_ingredients": missing_ingredients if recipe_products else [],
+            "shopping_list": shopping_list,
             "knowledge": knowledge_summary(knowledge_matches),
             "memory": public_user_memory_summary(updated_profile),
             "intent": intent,
@@ -2754,6 +2809,22 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         intent,
         article_product_subject or replacement_subject or related_subject or already_have_subject or special_subject or contextual_message,
     )
+    is_shopping_list_request = wants_shopping_list(contextual_message)
+    missing_ingredients = (
+        missing_ingredients_for_subject(related_subject or article_product_subject or special_subject, [])
+        if is_shopping_list_request and intent in {"related_products", "article_products", "product_search"}
+        else []
+    )
+    shopping_list = (
+        shopping_list_for_response(cart_candidates, missing_ingredients)
+        if is_shopping_list_request and (cart_candidates or missing_ingredients)
+        else {}
+    )
+    shopping_list_answer_text = (
+        shopping_list_answer(related_subject or article_product_subject or special_subject or contextual_message, matches, missing_ingredients)
+        if shopping_list
+        else ""
+    )
     fallback_related_subject = None if replacement_subject else related_subject
     update_session_memory(memory_key, chat_request.message, intent, matches, [], knowledge_matches)
     updated_profile = update_user_memory(profile_key, chat_request.message, intent, matches, [])
@@ -2780,24 +2851,42 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
 
     if should_use_fast_chat_answer(intent, matches, knowledge_matches, needs_composition_caution):
         return {
-            "answer": fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
+            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
+            "missing_ingredients": missing_ingredients,
+            "shopping_list": shopping_list,
             "knowledge": knowledge_summary(knowledge_matches),
             "memory": public_user_memory_summary(updated_profile),
             "intent": intent,
             "response_mode": "fast",
         }
 
+    if shopping_list_answer_text:
+        return {
+            "answer": shopping_list_answer_text,
+            "products": matches,
+            "articles": articles,
+            "cart_candidates": cart_candidates,
+            "missing_ingredients": missing_ingredients,
+            "shopping_list": shopping_list,
+            "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": intent,
+            "response_mode": "shopping_list",
+        }
+
     client = _get_openai_client()
     if not client:
         logger.debug("No OPENAI_API_KEY set, using fallback answer.")
         return {
-            "answer": fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
+            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
+            "missing_ingredients": missing_ingredients,
+            "shopping_list": shopping_list,
             "knowledge": knowledge_summary(knowledge_matches),
             "memory": public_user_memory_summary(updated_profile),
             "intent": intent,
@@ -2850,7 +2939,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         # RETRY-01: _call_openai_with_retry pokusi sa max 3x pri RateLimit/Timeout/Connection
         answer_text = _call_openai_with_retry(client, messages, model)
         if not answer_text:
-            answer_text = fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution)
+            answer_text = shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution)
         answer_text = sanitize_answer_links(answer_text, allowed_answer_urls(matches, knowledge_matches))
         logger.info("OpenAI response generated.")
         return {
@@ -2858,6 +2947,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
+            "missing_ingredients": missing_ingredients,
+            "shopping_list": shopping_list,
             "knowledge": knowledge_summary(knowledge_matches),
             "memory": public_user_memory_summary(updated_profile),
             "intent": intent,
@@ -2866,10 +2957,12 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         logger.warning("OpenAI transient error after retries: %s", exc)
         log_backend_error("openai_transient_error", str(exc))
         return {
-            "answer": fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
+            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
+            "missing_ingredients": missing_ingredients,
+            "shopping_list": shopping_list,
             "knowledge": knowledge_summary(knowledge_matches),
             "warning": "Služba je momentálne preťažená, zobrazujem nájdené produkty.",
         }
@@ -2877,10 +2970,12 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         logger.error("OpenAI API failed: %s", exc, exc_info=True)
         log_backend_error("openai_response_failed", str(exc))
         return {
-            "answer": fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
+            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
+            "missing_ingredients": missing_ingredients,
+            "shopping_list": shopping_list,
             "knowledge": knowledge_summary(knowledge_matches),
             "warning": "Odpoveď sa nepodarilo vygenerovať, zobrazujem nájdené produkty.",
         }
@@ -3764,6 +3859,52 @@ def cart_candidates_for_response(matches: list[dict], intent: str, context: str 
         candidate["recommendation_reason"] = product.get("recommendation_reason", reason)
         candidate["priority"] = product.get("recommendation_priority", 0)
     return candidates
+
+
+def wants_shopping_list(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(marker in normalized_message for marker in SHOPPING_LIST_MARKERS)
+
+
+def missing_ingredients_for_subject(subject: str | None, recipes: list[dict] | None = None) -> list[str]:
+    subjects: list[str] = []
+    if subject:
+        subjects.append(str(subject))
+    for recipe in recipes or []:
+        recipe_subject = recipe_product_subject_from_title(str(recipe.get("title") or ""))
+        if recipe_subject:
+            subjects.append(recipe_subject)
+
+    seen: set[str] = set()
+    missing: list[str] = []
+    for item_subject in subjects:
+        for ingredient in MISSING_INGREDIENTS_BY_SUBJECT.get(item_subject, []):
+            key = normalize(ingredient)
+            if key and key not in seen:
+                seen.add(key)
+                missing.append(ingredient)
+    return missing[:8]
+
+
+def shopping_list_for_response(cart_candidates: list[dict], missing_ingredients: list[str]) -> dict:
+    return {
+        "available_on_foodland": cart_candidates or [],
+        "missing_ingredients": missing_ingredients or [],
+    }
+
+
+def shopping_list_answer(subject: str | None, matches: list[dict], missing_ingredients: list[str]) -> str:
+    subject_text = str(subject or "recept").replace("_", " ").strip()
+    product_count = min(len(matches or []), 8)
+    missing_count = len(missing_ingredients or [])
+    if product_count and missing_count:
+        return (
+            f"Pripravil som nákupný zoznam pre {subject_text}: {product_count} položiek nájdete na Foodland.sk "
+            f"a {missing_count} čerstvých alebo doplnkových surovín si doplňte mimo e-shopu."
+        )
+    if product_count:
+        return f"Pripravil som nákupný zoznam pre {subject_text}; položky z Foodland.sk sú nižšie pripravené aj ako kandidáti do košíka."
+    return f"Pri {subject_text} som nenašiel vhodné produkty z Foodland.sk, ale nižšie uvádzam suroviny, ktoré treba doplniť."
 
 
 def sanitize_answer_links(answer: str, allowed_urls: set[str]) -> str:
@@ -4902,12 +5043,12 @@ def recipe_products_answer(subject: str | None, recipes: list[dict] | None = Non
     subject_text = str(subject or "recept").replace("_", " ")
     if recipes:
         return (
-            f"Našiel som recept a k nemu relevantné produkty pre {subject_text}. "
-            "Najprv dávam kľúčové korenie alebo vývar, potom základ ako rezance či ryžu a nakoniec dochutenie."
+            f"Pripravil som nákupný zoznam pre {subject_text}: najprv produkty z Foodland.sk, potom zvlášť veci, ktoré si treba doplniť mimo e-shopu. "
+            "Produkty sú zoradené od kľúčových surovín po doplnky."
         )
     return (
-        f"K receptu pre {subject_text} som našiel relevantné produkty. "
-        "Sú zoradené od kľúčových surovín po doplnky."
+        f"K receptu pre {subject_text} som našiel relevantné produkty z Foodland.sk. "
+        "Sú zoradené od kľúčových surovín po doplnky; čerstvé veci si doplňte podľa receptu."
     )
 
 

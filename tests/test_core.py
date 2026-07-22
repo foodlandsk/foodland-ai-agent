@@ -633,6 +633,22 @@ class TestIntentDetection:
         assert all(group == "Korenie a vývar" for group in groups[:first_noodle_index])
         assert "rezance" in nrm(titles) or "banh pho" in nrm(titles)
 
+    def test_recipe_shopping_list_has_foodland_and_missing_items(self, products):
+        matches = main.related_products_for_subject(products, "pho", 8)
+        main.annotate_recommendations(matches, "recipe_to_products", related_subject="pho")
+        cart_candidates = main.cart_candidates_for_response(matches, "recipe_to_products", "pho")
+        missing = main.missing_ingredients_for_subject("pho", [])
+        shopping_list = main.shopping_list_for_response(cart_candidates, missing)
+
+        assert cart_candidates
+        assert shopping_list["available_on_foodland"]
+        assert "limetka" in nrm(" | ".join(missing))
+        assert "cerstve" in nrm(" | ".join(missing))
+
+    def test_related_shopping_list_intent_detected(self):
+        assert main.wants_shopping_list("nákupný zoznam na sushi")
+        assert main.missing_ingredients_for_subject("sushi", [])
+
     def test_all_known_recipes_have_product_subject(self, knowledge):
         recipes = knowledge.get("sections", {}).get("Recipes", [])
         assert recipes

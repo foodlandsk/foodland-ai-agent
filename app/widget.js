@@ -670,6 +670,27 @@
     .fl-ai-cart-btn:hover:not(:disabled) { background: #238750; }
     .fl-ai-cart-btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .fl-ai-cart-btn.is-added { background: #238750; }
+    .fl-ai-missing {
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      border: 1px solid #dfe8e2;
+      border-radius: 8px;
+      background: #fff;
+      color: #3d4b43;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .fl-ai-missing-title {
+      margin: 0 0 6px;
+      color: #221F20;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .fl-ai-missing-list {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .fl-ai-missing-list li { margin: 3px 0; }
     .fl-ai-recipes, .fl-ai-articles { display: grid; gap: 10px; margin: 0 0 12px; }
     .fl-ai-recipe, .fl-ai-article {
       display: grid;
@@ -1531,6 +1552,26 @@
       });
   }
 
+  function addMissingIngredients(items) {
+    if (!Array.isArray(items) || items.length === 0) return;
+    const unique = items
+      .map(function (item) { return String(item || "").replace(/\s+/g, " ").trim(); })
+      .filter(function (item, index, all) { return item && all.indexOf(item) === index; })
+      .slice(0, 8);
+    if (!unique.length) return;
+
+    const wrap = document.createElement("div");
+    wrap.className = "fl-ai-missing";
+    wrap.innerHTML = `
+      <p class="fl-ai-missing-title">Treba doplniť mimo Foodland.sk</p>
+      <ul class="fl-ai-missing-list">
+        ${unique.map(function (item) { return `<li>${escapeHtml(item)}</li>`; }).join("")}
+      </ul>
+    `;
+    messages.appendChild(wrap);
+    scrollToBottom();
+  }
+
     function scrollToBottom() {
     messages.scrollTop = messages.scrollHeight;
   }
@@ -1720,6 +1761,7 @@
         if (!Array.isArray(data.products) || data.products.length === 0) {
           addProducts(cartCandidatesToProducts(data.cart_candidates));
         }
+        addMissingIngredients(data.missing_ingredients || data.shopping_list?.missing_ingredients);
       }
     } catch (error) {
       notice.hidden = true;
