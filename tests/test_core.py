@@ -380,8 +380,8 @@ class TestSearchProducts:
 
     def test_search_autocomplete_detects_explicit_intents(self, products, knowledge):
         cases = {
-            "chcem kupit kimchi": ("buy_intent", "kupit kimchi", "kimchi"),
-            "recept kimchi": ("cook_intent", "varit s kimchi", "recept na kimchi"),
+            "chcem kupit kimchi": ("buy_intent", "kimchi skladom", "kimchi"),
+            "recept kimchi": ("cook_intent", "recept na kimchi", "recept na kimchi"),
             "co je kimchi": ("explain_intent", "co je kimchi", "co je kimchi"),
             "cim nahradit mirin": ("replace_intent", "cim nahradit mirin", "cim nahradit mirin"),
         }
@@ -393,10 +393,25 @@ class TestSearchProducts:
             assert expected_label in nrm(first["label"])
             assert expected_query in nrm(first["query"])
 
+    def test_search_autocomplete_uses_human_subject_labels(self, products, knowledge):
+        suggestions = main.search_autocomplete(products, knowledge, "co je sojov", 8)
+        first = suggestions[0]
+
+        assert first["type"] == "explain_intent"
+        assert "Sójová omáčka" in first["label"]
+        assert "sojova omacka" not in first["label"]
+
+    def test_search_autocomplete_replacement_query_avoids_weak_product_noise(self, products, knowledge):
+        suggestions = main.search_autocomplete(products, knowledge, "cim nahradit gochu", 8)
+
+        assert suggestions[0]["type"] == "replace_intent"
+        assert "Gochujang" in suggestions[0]["label"]
+        assert not any(item["type"] == "product" for item in suggestions[:4])
+
     def test_search_autocomplete_completes_partial_intent_subjects(self, products, knowledge):
         cases = {
-            "ako varit kim": "varit s kimchi",
-            "recept na pad": "varit s pad thai",
+            "ako varit kim": "recept na kimchi",
+            "recept na pad": "recept na pad thai",
             "cim nahradit gochu": "cim nahradit gochujang",
             "co je sojov": "co je sojova omacka",
         }

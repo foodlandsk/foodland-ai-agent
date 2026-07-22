@@ -3023,31 +3023,34 @@ def search_autocomplete(
             add_suggestion({"type": "synonym", "label": replacement, "query": replacement, "score": 92})
 
     if should_use_fast_autocomplete():
-        product_hits = personalize_products(cached_search_products(products_list, query, max(limit * 2, 12)), profile)
-        for index, product in enumerate(product_hits[: max(limit, 8)]):
-            label = str(product.get("title", "")).strip()
-            if not label or should_skip_autocomplete_product(raw_query_tokens, product):
-                continue
-            availability = str(product.get("availability", ""))
-            available = availability in {"in_stock", "in stock", "Skladom", "skladom"}
-            add_suggestion(
-                {
-                    "type": "product",
-                    "label": label,
-                    "query": label,
-                    "score": 145 - index + int(product.get("personalization_score", 0)) * 8,
-                    "url": product.get("link") or product.get("url") or "",
-                    "image": product.get("image_link") or "",
-                    "badge": "Skladom" if available else "",
-                    "brand": product.get("brand") or "",
-                }
-            )
-        for index, item in enumerate(cached_autocomplete_suggestions(products_list, query, max(limit * 2, 8))):
-            if item.get("type") == "product":
-                continue
-            score_by_type = {"synonym": 112, "brand": 104, "category": 98}
-            item["score"] = score_by_type.get(str(item.get("type", "")), 90) - index
-            add_suggestion(item)
+        explicit_replace_query = is_explicit_replace_autocomplete_query(normalized_query)
+        if not explicit_replace_query:
+            product_hits = personalize_products(cached_search_products(products_list, query, max(limit * 2, 12)), profile)
+            for index, product in enumerate(product_hits[: max(limit, 8)]):
+                label = str(product.get("title", "")).strip()
+                if not label or should_skip_autocomplete_product(raw_query_tokens, product):
+                    continue
+                availability = str(product.get("availability", ""))
+                available = availability in {"in_stock", "in stock", "Skladom", "skladom"}
+                add_suggestion(
+                    {
+                        "type": "product",
+                        "label": label,
+                        "query": label,
+                        "score": 145 - index + int(product.get("personalization_score", 0)) * 8,
+                        "url": product.get("link") or product.get("url") or "",
+                        "image": product.get("image_link") or "",
+                        "badge": "Skladom" if available else "",
+                        "brand": product.get("brand") or "",
+                    }
+                )
+        if not explicit_replace_query:
+            for index, item in enumerate(cached_autocomplete_suggestions(products_list, query, max(limit * 2, 8))):
+                if item.get("type") == "product":
+                    continue
+                score_by_type = {"synonym": 112, "brand": 104, "category": 98}
+                item["score"] = score_by_type.get(str(item.get("type", "")), 90) - index
+                add_suggestion(item)
         for index, recipe in enumerate(lightweight_recipe_autocomplete(all_knowledge, query, limit)):
             add_suggestion(
                 {
@@ -3226,9 +3229,9 @@ def lightweight_recipe_autocomplete(all_knowledge: dict, query: str, limit: int 
 AUTOCOMPLETE_INTENTS = {
     "buy": {
         "type": "buy_intent",
-        "label": "Kúpiť {subject}",
+        "label": "{subject} skladom",
         "query": "{subject}",
-        "badge": "Kúpiť",
+        "badge": "Produkty",
         "markers": (
             "kupit",
             "chcem kupit",
@@ -3246,9 +3249,9 @@ AUTOCOMPLETE_INTENTS = {
     },
     "cook": {
         "type": "cook_intent",
-        "label": "Variť s {subject}",
+        "label": "Recept na {subject}",
         "query": "recept na {subject}",
-        "badge": "Variť",
+        "badge": "Recept",
         "markers": (
             "recept",
             "varit",
@@ -3265,7 +3268,7 @@ AUTOCOMPLETE_INTENTS = {
         "type": "explain_intent",
         "label": "Čo je {subject}?",
         "query": "čo je {subject}",
-        "badge": "Vysvetliť",
+        "badge": "Poradca",
         "markers": (
             "co je",
             "čo je",
@@ -3354,6 +3357,7 @@ def autocomplete_intent_suggestions(query: str, profile: dict | None = None) -> 
     subject = autocomplete_subject(query)
     if len(normalize(subject)) < 2:
         return []
+    display_subject = autocomplete_display_subject(subject)
 
     normalized_query = normalize(query)
     matched_intents = [
@@ -3374,8 +3378,8 @@ def autocomplete_intent_suggestions(query: str, profile: dict | None = None) -> 
         suggestions.append(
             {
                 "type": config["type"],
-                "label": config["label"].format(subject=subject),
-                "query": config["query"].format(subject=subject),
+                "label": config["label"].format(subject=display_subject),
+                "query": config["query"].format(subject=display_subject),
                 "score": score,
                 "badge": config["badge"],
             }
@@ -3399,6 +3403,10 @@ def autocomplete_intent_memory_score(intent: str, profile: dict) -> int:
     return score
 
 
+def is_explicit_replace_autocomplete_query(normalized_query: str) -> bool:
+    return any(marker in normalized_query for marker in AUTOCOMPLETE_INTENTS["replace"]["markers"])
+
+
 def autocomplete_subject(query: str) -> str:
     normalized_query = normalize(query)
     tokens = [
@@ -3408,6 +3416,39 @@ def autocomplete_subject(query: str) -> str:
     ]
     subject = " ".join(tokens).strip()
     return complete_autocomplete_subject(subject)[:60]
+
+
+AUTOCOMPLETE_DISPLAY_SUBJECTS = {
+    "sojova omacka": "Sójová omáčka",
+    "kokosove mlieko": "Kokosové mlieko",
+    "ryzovy ocot": "Ryžový ocot",
+    "ryzove rezance": "Ryžové rezance",
+    "hoisin omacka": "Hoisin omáčka",
+    "rybacia omacka": "Rybacia omáčka",
+    "ustricova omacka": "Ustricová omáčka",
+    "pad thai": "Pad Thai",
+    "gochujang": "Gochujang",
+    "sriracha": "Sriracha",
+    "kimchi": "Kimchi",
+    "ramen": "Ramen",
+    "sushi": "Sushi",
+    "mirin": "Mirin",
+    "wasabi": "Wasabi",
+    "nori": "Nori",
+    "tamari": "Tamari",
+    "tofu": "Tofu",
+}
+
+
+def autocomplete_display_subject(subject: str) -> str:
+    normalized_subject = normalize(subject).strip()
+    if not normalized_subject:
+        return subject
+    display = AUTOCOMPLETE_DISPLAY_SUBJECTS.get(normalized_subject)
+    if display:
+        return display
+    clean = " ".join(str(subject).split())
+    return clean[:1].upper() + clean[1:]
 
 
 AUTOCOMPLETE_SUBJECT_COMPLETIONS = {
