@@ -1610,7 +1610,7 @@ SHOPPING_LIST_MARKERS = (
 )
 
 MISSING_INGREDIENTS_BY_SUBJECT = {
-    "sushi": ["čerstvá ryba alebo zelenina podľa rolky", "avokádo alebo uhorka", "voda na oplachovanie ryže"],
+    "sushi": ["čerstvá ryba alebo zelenina podľa rolky", "avokádo alebo uhorka"],
     "kimchi_recipe": ["čínska kapusta", "daikon alebo biela reďkovka", "jarná cibuľka", "cesnak"],
     "kimchi": ["čínska kapusta", "daikon alebo biela reďkovka", "jarná cibuľka", "cesnak"],
     "pho": ["hovädzie alebo kuracie mäso", "čerstvé bylinky", "cibuľa", "limetka", "fazuľové klíčky"],
@@ -2833,7 +2833,12 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         matches = related_products_for_subject(products, related_subject, chat_request.limit)
     else:
         matches = cached_search_products(products, contextual_message, chat_request.limit)
+    is_shopping_list_request = wants_shopping_list(contextual_message)
+    if is_shopping_list_request and related_subject == "sushi":
+        matches = sushi_shopping_core_products(products, matches, chat_request.limit)
     matches = personalize_products(matches, user_profile)
+    if is_shopping_list_request and related_subject == "sushi":
+        matches = sushi_shopping_core_products(products, matches, chat_request.limit)
     if special_subject == "sushi_rice":
         matches = sorted(
             matches,
@@ -2867,7 +2872,6 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         intent,
         article_product_subject or replacement_subject or related_subject or already_have_subject or special_subject or contextual_message,
     )
-    is_shopping_list_request = wants_shopping_list(contextual_message)
     missing_ingredients = (
         missing_ingredients_for_subject(related_subject or article_product_subject or special_subject, [])
         if is_shopping_list_request and intent in {"related_products", "article_products", "product_search"}
@@ -3942,6 +3946,36 @@ def missing_ingredients_for_subject(subject: str | None, recipes: list[dict] | N
                 seen.add(key)
                 missing.append(ingredient)
     return missing[:8]
+
+
+def sushi_shopping_core_products(products: list[Product], existing_matches: list[dict], limit: int) -> list[dict]:
+    queries = ["sushi ryza", "ryzovy ocot", "wasabi", "nori", "nakladany zazvor", "sojova omacka"]
+    seen: set[str] = set()
+    recommendations: list[dict] = []
+
+    def add_product(product: dict) -> None:
+        key = product.get("id") or product.get("link") or product.get("title")
+        if not key or key in seen:
+            return
+        seen.add(key)
+        recommendations.append(product)
+
+    for query in queries:
+        for product in cached_search_products(products, query, 5):
+            title = normalize(product.get("title", ""))
+            if query == "sushi ryza" and not ("ryza" in title and {"sushi", "susi"} & set(title.split())):
+                continue
+            add_product(product)
+            break
+        if len(recommendations) >= limit:
+            return recommendations[:limit]
+
+    for product in existing_matches or []:
+        add_product(product)
+        if len(recommendations) >= limit:
+            break
+
+    return recommendations[:limit]
 
 
 def shopping_list_for_response(cart_candidates: list[dict], missing_ingredients: list[str]) -> dict:

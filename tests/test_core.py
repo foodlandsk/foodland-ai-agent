@@ -699,6 +699,20 @@ class TestIntentDetection:
         assert main.wants_shopping_list("nákupný zoznam na sushi")
         assert main.missing_ingredients_for_subject("sushi", [])
 
+    def test_sushi_shopping_list_uses_buyable_core_items_not_water(self, products):
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="nakupny zoznam na sushi", limit=8), request)
+        shopping_list = result["shopping_list"]
+
+        available_titles = nrm(" | ".join(item.get("title", "") for item in shopping_list["available_on_foodland"]))
+        missing_text = nrm(" | ".join(shopping_list["missing_ingredients"]))
+
+        assert "voda" not in missing_text
+        assert "ryza" in available_titles
+        assert "ocot" in available_titles
+        assert "wasabi" in available_titles
+        assert "nori" in available_titles
+
     def test_all_known_recipes_have_missing_ingredient_mapping(self, knowledge):
         recipes = knowledge.get("sections", {}).get("Recipes", [])
         assert recipes
