@@ -454,13 +454,15 @@
       backdrop-filter: blur(4px);
       pointer-events: none;
     }
-    
-        .fl-ai-avatar {
-          width: 100%;
-          height: 100%;
-          display: block;
-          object-fit: cover;
-        }
+    .fl-ai-avatar {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      object-position: center 34%;
+      transform: scale(1.18);
+      transform-origin: center center;
+    }
     .fl-ai-panel {
       position: fixed;
       right: max(20px, env(safe-area-inset-right));
@@ -502,12 +504,13 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
     }
     .fl-ai-mark img {
-      width: 118%;
-      height: 118%;
+      width: 100%;
+      height: 100%;
       display: block;
-      margin: -7% 0 0 -9%;
       object-fit: cover;
       object-position: center 34%;
+      transform: scale(1.18);
+      transform-origin: center center;
     }
     .fl-ai-title { margin: 0; color: #fff; font-size: 15px; line-height: 1.2; font-weight: 800; }
     .fl-ai-status { margin-top: 2px; color: #E8F6EE; font-size: 12px; line-height: 1.2; }
