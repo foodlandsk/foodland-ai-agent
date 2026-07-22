@@ -928,6 +928,28 @@ class TestFastResponses:
         assert not main.should_use_fast_chat_answer("product_search", [{"title": "Kimchi"}], {})
 
 
+class TestProductSearchCache:
+    def test_cached_search_products_reuses_scan_and_returns_copies(self, monkeypatch):
+        calls = {"count": 0}
+        sample_products = [{"title": "Kimchi"}]
+
+        def fake_search_products(products, query, limit):
+            calls["count"] += 1
+            return [{"title": "Kimchi", "query": query, "limit": limit}]
+
+        monkeypatch.setattr(main, "search_products", fake_search_products)
+        main.clear_product_search_cache()
+
+        first = main.cached_search_products(sample_products, "kimchi", 4)
+        first[0]["title"] = "Changed"
+        second = main.cached_search_products(sample_products, "kimchi", 4)
+
+        assert calls["count"] == 1
+        assert second[0]["title"] == "Kimchi"
+
+        main.clear_product_search_cache()
+
+
 class TestGrounding:
     ALLOWED = {"https://www.foodland.sk/product/kimchi/"}
 

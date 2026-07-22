@@ -166,6 +166,47 @@ USER_MEMORY_ENABLED = os.getenv("USER_MEMORY_ENABLED", "true").strip().lower() n
 USER_MEMORY_MAX_PROFILES = int(os.getenv("USER_MEMORY_MAX_PROFILES", "50000"))
 session_memories: dict[str, dict] = {}
 user_memories: dict[str, dict] | None = None
+PRODUCT_SEARCH_CACHE_MAX_SIZE = int(os.getenv("PRODUCT_SEARCH_CACHE_MAX_SIZE", "512"))
+product_search_cache: dict[tuple[int, str, int], list[dict]] = {}
+autocomplete_cache: dict[tuple[int, str, int], list[dict]] = {}
+
+
+def cached_search_products(products_list: list[Product] | list[dict], query: str, limit: int = 8) -> list[dict]:
+    """Cache repeated catalog scans for hot chat/autocomplete queries."""
+    if PRODUCT_SEARCH_CACHE_MAX_SIZE <= 0:
+        return search_products(products_list, query, limit)
+
+    cache_key = (id(products_list), normalize(query), int(limit))
+    cached = product_search_cache.get(cache_key)
+    if cached is not None:
+        return [dict(product) for product in cached]
+
+    results = search_products(products_list, query, limit)
+    if len(product_search_cache) >= PRODUCT_SEARCH_CACHE_MAX_SIZE:
+        product_search_cache.pop(next(iter(product_search_cache)))
+    product_search_cache[cache_key] = [dict(product) for product in results]
+    return [dict(product) for product in results]
+
+
+def clear_product_search_cache() -> None:
+    product_search_cache.clear()
+    autocomplete_cache.clear()
+
+
+def cached_autocomplete_suggestions(products_list: list[Product] | list[dict], query: str, limit: int = 8) -> list[dict]:
+    if PRODUCT_SEARCH_CACHE_MAX_SIZE <= 0:
+        return autocomplete_suggestions(products_list, query, limit)
+
+    cache_key = (id(products_list), normalize(query), int(limit))
+    cached = autocomplete_cache.get(cache_key)
+    if cached is not None:
+        return [dict(item) for item in cached]
+
+    results = autocomplete_suggestions(products_list, query, limit)
+    if len(autocomplete_cache) >= PRODUCT_SEARCH_CACHE_MAX_SIZE:
+        autocomplete_cache.pop(next(iter(autocomplete_cache)))
+    autocomplete_cache[cache_key] = [dict(item) for item in results]
+    return [dict(item) for item in results]
 
 RELATED_PRODUCT_QUERIES = {
     "cesnak": [
@@ -2014,12 +2055,12 @@ def health() -> dict:
 
 @app.post("/products/search")
 def product_search(request: ProductSearchRequest) -> dict:
-    return {"products": search_products(products, request.query, request.limit)}
+    return {"products": cached_search_products(products, request.query, request.limit)}
 
 
 @app.post("/products/suggest")
 def product_suggest(request: ProductSuggestRequest) -> dict:
-    return {"suggestions": autocomplete_suggestions(products, request.query, request.limit)}
+    return {"suggestions": cached_autocomplete_suggestions(products, request.query, request.limit)}
 
 
 @app.post("/search/autocomplete")
@@ -2626,7 +2667,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     elif related_subject:
         matches = related_products_for_subject(products, related_subject, chat_request.limit)
     else:
-        matches = search_products(products, contextual_message, chat_request.limit)
+        matches = cached_search_products(products, contextual_message, chat_request.limit)
     matches = personalize_products(matches, user_profile)
     intent = "article_products" if article_product_subject else ("related_products" if related_subject else "product_search")
     annotate_recommendations(
@@ -2926,7 +2967,7 @@ def search_autocomplete(
             add_suggestion({"type": "synonym", "label": replacement, "query": replacement, "score": 92})
 
     if should_use_fast_autocomplete():
-        product_hits = personalize_products(search_products(products_list, query, max(limit * 2, 12)), profile)
+        product_hits = personalize_products(cached_search_products(products_list, query, max(limit * 2, 12)), profile)
         for index, product in enumerate(product_hits[: max(limit, 8)]):
             label = str(product.get("title", "")).strip()
             if not label or should_skip_autocomplete_product(raw_query_tokens, product):
@@ -2945,7 +2986,7 @@ def search_autocomplete(
                     "brand": product.get("brand") or "",
                 }
             )
-        for index, item in enumerate(autocomplete_suggestions(products_list, query, max(limit * 2, 8))):
+        for index, item in enumerate(cached_autocomplete_suggestions(products_list, query, max(limit * 2, 8))):
             if item.get("type") == "product":
                 continue
             score_by_type = {"synonym": 112, "brand": 104, "category": 98}
@@ -2968,7 +3009,7 @@ def search_autocomplete(
             for item in ordered
         ]
 
-    product_hits = search_products(products_list, query, max(limit * 4, 30))
+    product_hits = cached_search_products(products_list, query, max(limit * 4, 30))
     product_hits = personalize_products(product_hits, profile)
     for index, product in enumerate(product_hits[: max(limit, 8)]):
         label = str(product.get("title", "")).strip()
@@ -4706,7 +4747,7 @@ def article_products_for_subject(products_list: list[Product], subject: str, lim
     recommendations: list[dict] = []
 
     for query in ARTICLE_PRODUCT_QUERIES.get(subject, []):
-        for product in search_products(products_list, query, max(6, limit)):
+        for product in cached_search_products(products_list, query, max(6, limit)):
             if not is_article_relevant_product(product, subject):
                 continue
             key = product.get("id") or product.get("link") or product.get("title")
@@ -4785,7 +4826,7 @@ def complement_products_for_subject(products_list: list, subject_key: str, limit
     seen: set[str] = set()
     recommendations: list[dict] = []
     for query in ALREADY_HAVE_COMPLEMENT_QUERIES.get(subject_key, []):
-        for product in search_products(products_list, query, 3):
+        for product in cached_search_products(products_list, query, 3):
             key = product.get("id") or product.get("link") or product.get("title")
             if not key or key in seen:
                 continue
@@ -4864,7 +4905,7 @@ def allergen_product_matches(message: str, limit: int) -> list[dict]:
     query = allergen_product_query(message)
     if not query:
         return []
-    return search_products(products, query, limit)
+    return cached_search_products(products, query, limit)
 
 
 def allergen_product_query(message: str) -> str:
@@ -4971,7 +5012,7 @@ def allergen_product_matches(message: str, limit: int) -> list[dict]:
     query = allergen_product_query(message)
     if not query:
         return []
-    return search_products(products, query, limit)
+    return cached_search_products(products, query, limit)
 
 
 def allergen_product_query(message: str) -> str:
@@ -5161,7 +5202,7 @@ def related_products_for_subject(products: list[Product], subject: str, limit: i
     recommendations: list[dict] = []
 
     for query in RELATED_PRODUCT_QUERIES.get(subject, []):
-        for product in search_products(products, query, 3):
+        for product in cached_search_products(products, query, 3):
             title = normalize(product.get("title", ""))
             title_tokens = set(title.split())
             if not is_recipe_relevant_product(product, subject):
@@ -5218,7 +5259,7 @@ def special_products_for_subject(products: list[Product], subject: str, limit: i
     excluded_terms = SPECIAL_PRODUCT_EXCLUDE_TERMS.get(subject, ())
 
     for query in SPECIAL_PRODUCT_QUERIES.get(subject, []):
-        for product in search_products(products, query, 5):
+        for product in cached_search_products(products, query, 5):
             title = normalize(product.get("title", ""))
             if excluded_terms and any(term in title for term in excluded_terms):
                 continue
@@ -5311,6 +5352,7 @@ def refresh_feed() -> None:
     products = new_products
     product_snapshot = build_product_snapshot(new_products)
     translation_index = new_translation_index
+    clear_product_search_cache()
     last_feed_refresh_at = int(time.time())
     last_feed_refresh_error = None
     logger.info(
