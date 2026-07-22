@@ -463,6 +463,19 @@ class TestSearchProducts:
             assert not nrm(first["label"]).endswith(" kim")
             assert not nrm(first["label"]).endswith(" gochu")
 
+    def test_search_autocomplete_completes_multiword_recipe_subjects(self, products, knowledge):
+        cases = {
+            "ako varit ramen kim": "recept na kimchi ramen",
+            "recept kimchi ram": "recept na kimchi ramen",
+            "recept pho b": "recept na pho bo",
+            "recept pho g": "recept na pho ga",
+        }
+        for query, expected_label in cases.items():
+            suggestions = main.search_autocomplete(products, knowledge, query, 8)
+            first = suggestions[0]
+
+            assert expected_label in nrm(first["label"]), (query, first)
+
     def test_search_autocomplete_personalizes_intent_order(self, products, knowledge):
         cook_profile = {"intent_counts": {"cook": 5}, "last_intent": "recipe"}
         buy_profile = {"intent_counts": {"buy": 5}, "last_intent": "product_search"}
@@ -586,6 +599,12 @@ class TestIntentDetection:
         subj = main.detect_recipe_subject("recept na kimchi")
         assert subj == "kimchi"
 
+    def test_recipe_subject_prefers_multiword_recipe_names(self):
+        assert main.detect_recipe_subject("recept na kimchi ramen") == "kimchi_ramen"
+        assert main.detect_recipe_subject("recept na ramen kimchi") == "kimchi_ramen"
+        assert main.recipe_related_product_subject("co potrebujem k receptu kimchi ramen", "kimchi_ramen", []) == "kimchi_ramen"
+        assert main.recipe_related_product_subject("co potrebujem k receptu pho bo", "pho", []) == "pho"
+
     def test_dinner_prompt_returns_three_random_cuisines(self, knowledge):
         assert main.is_random_recipe_intent("Čo variť na večeru?")
 
@@ -618,8 +637,17 @@ class TestIntentDetection:
         matches = search_knowledge(knowledge, query)
         recipes = main.recipe_results(matches, 4, query, knowledge)
         titles = " | ".join(recipe["title"] for recipe in recipes)
+        assert "pho bo" in nrm(recipes[0]["title"]) or "hovadzia" in nrm(recipes[0]["title"])
         assert "pho" in nrm(titles)
         assert "pad thai" not in nrm(titles)
+
+    def test_recipe_results_prefer_kimchi_ramen_phrase(self, knowledge):
+        for query in ("recept na kimchi ramen", "recept na ramen kimchi"):
+            matches = search_knowledge(knowledge, query)
+            recipes = main.recipe_results(matches, 4, query, knowledge)
+
+            assert recipes
+            assert "kimchi ramen" in nrm(recipes[0]["title"])
 
     def test_pad_thai_recipe_typos(self, knowledge):
         for query in ("recept na padthai", "recept na pad tai", "recept na pat thai"):
@@ -706,6 +734,24 @@ class TestIntentDetection:
         assert shopping_list["available_on_foodland"]
         assert "limetka" in nrm(" | ".join(missing))
         assert "cerstve" in nrm(" | ".join(missing))
+
+    def test_recipe_to_products_uses_phrase_subject_for_pho_bo_and_kimchi_ramen(self):
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+
+        pho_result = main.chat(main.ChatRequest(message="co potrebujem k receptu pho bo", limit=8), request)
+        pho_titles = [nrm(product.get("title", "")) for product in pho_result.get("products", [])]
+
+        assert pho_result.get("intent") == "recipe_to_products"
+        assert "korenie" in pho_titles[0] and "pho" in pho_titles[0]
+        assert any("rezance" in title or "banh pho" in title for title in pho_titles[1:])
+
+        ramen_result = main.chat(main.ChatRequest(message="co potrebujem k receptu ramen kimchi", limit=8), request)
+        ramen_titles = nrm(" | ".join(product.get("title", "") for product in ramen_result.get("products", [])))
+
+        assert ramen_result.get("intent") == "recipe_to_products"
+        assert "ramen" in ramen_titles or "ramyun" in ramen_titles
+        assert "kimchi" in ramen_titles
+        assert "ryzova muka" not in ramen_titles
 
     def test_related_shopping_list_intent_detected(self):
         assert main.wants_shopping_list("nákupný zoznam na sushi")

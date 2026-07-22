@@ -1171,6 +1171,7 @@ RELATED_PRODUCT_QUERIES = {
 }
 
 RELATED_SUBJECT_ALIASES = {
+    "kimchi_ramen": ("kimchi ramen", "ramen kimchi"),
     "kimchi_recipe": ("vyrobu kimchi", "kimchi ingrediencie", "kimchi recept", "kimchi navod", "spravit kimchi", "pripravit kimchi", "urobim kimchi", "kimchi suroviny", "ako vyrob kimchi"),
     "kimchi": ("kimchi", "kimci"),
     "sushi": ("sushi", "susi", "sushi ryza", "susi ryza", "maki", "maki rolky", "california roll", "futomaki", "hosomaki", "uramaki", "nigiri", "temaki", "sashimi"),
@@ -1408,6 +1409,7 @@ RECIPE_TITLE_PRODUCT_SUBJECTS = (
     ("banh ran", "sesame_balls"),
     ("sezamove gulocky", "sesame_balls"),
     ("kimchi ramen", "kimchi_ramen"),
+    ("ramen kimchi", "kimchi_ramen"),
     ("jjigae", "jjigae"),
     ("japchae", "japchae"),
     ("kimchi recept", "kimchi_recipe"),
@@ -1763,9 +1765,9 @@ RECIPE_SHOPPING_CORE_QUERIES = {
         ("sezamove semienka", ("sezam",), ()),
     ],
     "pho": [
-        ("banh pho", ("pho",), ()),
         ("korenie pho", ("pho",), ()),
         ("rybacia omacka", ("rybacia omacka",), ()),
+        ("banh pho", ("pho",), ()),
         ("hoisin", ("hoisin",), ()),
         ("sriracha", ("sriracha",), ()),
     ],
@@ -3111,6 +3113,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if recipe_subject:
         recipes = recipe_results(knowledge_matches, chat_request.limit, contextual_message, knowledge)
         recipes = personalize_recipes(recipes, user_profile)
+        recipes = prioritize_recipes_for_phrase(recipes, contextual_message)
         recipe_articles = (
             recipe_article_results(articles, contextual_message, knowledge, chat_request.limit)
             if "Magazine" in knowledge_sections
@@ -3123,6 +3126,14 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             else []
         )
         recipe_products = personalize_products(recipe_products, user_profile)
+        if recipe_products and recipe_product_subject == "sushi":
+            recipe_products = sushi_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
+        if recipe_products and recipe_product_subject == "tom_yum":
+            recipe_products = tom_yum_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
+        if recipe_products and recipe_product_subject == "kimchi_ramen":
+            recipe_products = kimchi_ramen_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
+        if recipe_products and recipe_product_subject not in {"sushi", "tom_yum", "kimchi_ramen"}:
+            recipe_products = recipe_shopping_core_products(products, recipe_product_subject, recipe_products, max(chat_request.limit, 8))
         intent = "recipe_to_products" if recipe_products else "recipe"
         if recipe_products:
             annotate_recommendations(
@@ -3493,6 +3504,17 @@ def personalize_recipes(recipes: list[dict], profile: dict | None) -> list[dict]
     return [recipe for _, _, recipe in ranked]
 
 
+def prioritize_recipes_for_phrase(recipes: list[dict], message: str) -> list[dict]:
+    if not recipes:
+        return recipes
+    ranked = [
+        (recipe_phrase_score(message, recipe), -index, recipe)
+        for index, recipe in enumerate(recipes)
+    ]
+    ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [recipe for _, _, recipe in ranked]
+
+
 def product_profile_text(product: dict) -> str:
     return normalize(
         " ".join(
@@ -3705,6 +3727,7 @@ def search_autocomplete(
 
     recipes = recipe_results(search_knowledge(all_knowledge, query), limit, query, all_knowledge)
     recipes = personalize_recipes(recipes, profile)
+    recipes = prioritize_recipes_for_phrase(recipes, query)
     for index, recipe in enumerate(recipes):
         label = str(recipe.get("title", "")).strip()
         score = text_score(label, " ".join(str(recipe.get(key, "")) for key in ("cuisine", "note", "link")))
@@ -3869,7 +3892,9 @@ def lightweight_recipe_autocomplete(all_knowledge: dict, query: str, limit: int 
         if "recept" in normalize(query):
             score += 18
         if score > 0 and recipe.get("title"):
-            ranked.append((score + recipe_subject_score(detect_recipe_subject(query), recipe), recipe))
+            score += recipe_subject_score(detect_recipe_subject(query), recipe)
+            score += recipe_phrase_score(query, recipe)
+            ranked.append((score, recipe))
 
     ranked.sort(key=lambda item: item[0], reverse=True)
     return [recipe for _, recipe in ranked[: max(1, min(limit, 4))]]
@@ -4065,6 +4090,10 @@ def is_explicit_replace_autocomplete_query(normalized_query: str) -> bool:
 
 def autocomplete_subject(query: str) -> str:
     normalized_query = normalize(query)
+    if normalized_query.endswith("pho b"):
+        return "pho bo"
+    if normalized_query.endswith("pho g"):
+        return "pho ga"
     tokens = [
         token
         for token in normalized_query.split()
@@ -4093,6 +4122,9 @@ AUTOCOMPLETE_DISPLAY_SUBJECTS = {
     "nori": "Nori",
     "tamari": "Tamari",
     "tofu": "Tofu",
+    "kimchi ramen": "Kimchi Ramen",
+    "pho bo": "Pho Bo",
+    "pho ga": "Pho Ga",
 }
 
 
@@ -4112,6 +4144,12 @@ AUTOCOMPLETE_SUBJECT_COMPLETIONS = {
     "kimc": "kimchi",
     "kimci": "kimchi",
     "kimch": "kimchi",
+    "kimchi ram": "kimchi ramen",
+    "kimchi rame": "kimchi ramen",
+    "kimchi ramen": "kimchi ramen",
+    "ramen kim": "kimchi ramen",
+    "ramen kimc": "kimchi ramen",
+    "ramen kimchi": "kimchi ramen",
     "gochu": "gochujang",
     "goch": "gochujang",
     "gochuang": "gochujang",
@@ -4134,6 +4172,8 @@ AUTOCOMPLETE_SUBJECT_COMPLETIONS = {
     "rame": "ramen",
     "ramy": "ramen",
     "ramyu": "ramen",
+    "pho b": "pho bo",
+    "pho bo": "pho bo",
     "sus": "sushi",
     "sush": "sushi",
     "susi": "sushi",
@@ -5007,6 +5047,10 @@ def detect_recipe_subject(message: str) -> str | None:
     if not is_recipe_intent(normalized_message):
         return None
 
+    title_subject = recipe_product_subject_from_title(normalized_message)
+    if title_subject:
+        return title_subject
+
     for subject, aliases in RELATED_SUBJECT_ALIASES.items():
         if any(alias in normalized_message for alias in aliases):
             return subject
@@ -5189,6 +5233,7 @@ def recipe_results(
             title_tokens = tokenize(recipe.get("title", ""))
             score = int(item.get("score", 0)) + (10 * len(wanted_tokens & title_tokens)) + (3 * token_hits)
             score += recipe_subject_score(recipe_subject, recipe)
+            score += recipe_phrase_score(message, recipe)
             results.append((score, recipe))
         if len(results) >= max(1, min(limit, 4)) and not wanted_tokens:
             break
@@ -5197,10 +5242,46 @@ def recipe_results(
     return [recipe for _, recipe in results[: max(1, min(limit, 4))]]
 
 
+def recipe_phrase_score(message: str, recipe: dict) -> int:
+    text = normalize(message)
+    title = normalize(recipe.get("title", ""))
+    score = 0
+
+    if "pho bo" in text or text.endswith("pho b"):
+        if "pho bo" in title or ("pho" in title and ("hovadz" in title or "hova" in title)):
+            score += 140
+        if "pho ga" in title or ("pho" in title and "kurac" in title):
+            score -= 40
+    if "pho ga" in text or text.endswith("pho g"):
+        if "pho ga" in title or ("pho" in title and "kurac" in title):
+            score += 140
+        if "pho bo" in title or ("pho" in title and ("hovadz" in title or "hova" in title)):
+            score -= 40
+    if "kimchi ramen" in text or "ramen kimchi" in text:
+        if "kimchi ramen" in title:
+            score += 140
+        elif "kimchi" in title and "ramen" not in title:
+            score -= 40
+
+    return score
+
+
 def recipe_subject_score(subject: str | None, recipe: dict) -> int:
     if not subject:
         return 0
     title = normalize(recipe.get("title", ""))
+    if subject == "kimchi_ramen":
+        if "kimchi ramen" in title:
+            return 120
+        if "kimchi" in title and ("ramen" in title or "ramyun" in title):
+            return 80
+        if "kimchi" in title:
+            return -20
+    if subject == "ramen":
+        if "ramen" in title:
+            return 60
+        if "kimchi" in title and "ramen" not in title:
+            return -20
     if subject == "kimchi":
         if "kimchi recept" in title or ("tradicny" in title and "kimchi" in title):
             return 80
