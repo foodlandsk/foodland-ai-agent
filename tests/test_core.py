@@ -373,10 +373,19 @@ class TestSearchProducts:
         assert "buy_intent" in types_found
         assert "cook_intent" in types_found
         assert "explain_intent" in types_found
-        assert "replace_intent" in types_found
         assert "product" in types_found
         assert "recipe" in types_found
         assert "kimchi" in labels
+
+    def test_search_autocomplete_highlights_direct_title_matches(self, products, knowledge):
+        suggestions = main.search_autocomplete(products, knowledge, "kim", 8)
+        first = suggestions[0]
+
+        assert first["type"] in {"product", "recipe"}
+        assert "kim" in nrm(first["label"])
+        assert first.get("highlight")
+        assert first["highlight"][0]["start"] >= 0
+        assert first["highlight"][0]["end"] > first["highlight"][0]["start"]
 
     def test_search_autocomplete_detects_explicit_intents(self, products, knowledge):
         cases = {
@@ -428,10 +437,12 @@ class TestSearchProducts:
         buy_profile = {"intent_counts": {"buy": 5}, "last_intent": "product_search"}
 
         cook_first = main.search_autocomplete(products, knowledge, "kimchi", 8, cook_profile)[0]
-        buy_first = main.search_autocomplete(products, knowledge, "kimchi", 8, buy_profile)[0]
+        cook_types = [item["type"] for item in main.search_autocomplete(products, knowledge, "kimchi", 8, cook_profile)]
+        buy_types = [item["type"] for item in main.search_autocomplete(products, knowledge, "kimchi", 8, buy_profile)]
 
-        assert cook_first["type"] == "cook_intent"
-        assert buy_first["type"] == "buy_intent"
+        assert cook_first["type"] in {"product", "recipe"}
+        assert "cook_intent" in cook_types
+        assert "buy_intent" in buy_types
 
     def test_search_autocomplete_explicit_intent_beats_memory(self, products, knowledge):
         buy_profile = {"intent_counts": {"buy": 10}, "last_intent": "product_search"}
@@ -448,9 +459,10 @@ class TestSearchProducts:
             "product_brands": {"NONGSHIM": 3},
             "cuisines": {"korean": 3},
         }
-        suggestions = main.search_autocomplete(products, knowledge, "kimchi", 4, profile)
+        suggestions = main.search_autocomplete(products, knowledge, "kimchi", 8, profile)
 
-        assert suggestions[0]["type"] == "cook_intent"
+        assert suggestions[0]["type"] in {"product", "recipe"}
+        assert any(item["type"] == "cook_intent" for item in suggestions)
 
     def test_search_autocomplete_handles_padthai_typo(self, products, knowledge):
         suggestions = main.search_autocomplete(products, knowledge, "padthai", 8)

@@ -784,6 +784,19 @@
       font-weight: 800;
       text-transform: uppercase;
     }
+    .fl-ai-suggest-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .fl-ai-suggest-label mark {
+      background: #DFF4E9;
+      color: #116B3B;
+      border-radius: 3px;
+      padding: 0 1px;
+      font-weight: 800;
+    }
     @keyframes fl-ai-pulse {
       0%, 100% { opacity: 0.35; transform: translateY(0); }
       50% { opacity: 1; transform: translateY(-2px); }
@@ -1074,6 +1087,32 @@
     }[type] || "Tip";
   }
 
+  function renderSuggestionLabel(item) {
+    const label = String((item && (item.label || item.query)) || "");
+    const ranges = Array.isArray(item && item.highlight) ? item.highlight : [];
+    if (!label || !ranges.length) return escapeHtml(label);
+
+    let html = "";
+    let cursor = 0;
+    ranges
+      .map(function (range) {
+        return {
+          start: Math.max(0, Math.min(label.length, Number(range.start) || 0)),
+          end: Math.max(0, Math.min(label.length, Number(range.end) || 0)),
+        };
+      })
+      .filter(function (range) { return range.end > range.start; })
+      .sort(function (a, b) { return a.start - b.start; })
+      .forEach(function (range) {
+        if (range.start < cursor) return;
+        html += escapeHtml(label.slice(cursor, range.start));
+        html += "<mark>" + escapeHtml(label.slice(range.start, range.end)) + "</mark>";
+        cursor = range.end;
+      });
+    html += escapeHtml(label.slice(cursor));
+    return html;
+  }
+
   function renderAutocomplete(items) {
     currentSuggestions = Array.isArray(items) ? items : [];
     activeSuggestionIndex = -1;
@@ -1087,7 +1126,7 @@
       btn.type = "button";
       btn.id = `fl-ai-suggest-${index}`;
       btn.setAttribute("role", "option");
-      btn.innerHTML = `<span>${escapeHtml(item.label || item.query || "")}</span><span class="fl-ai-suggest-type">${escapeHtml(suggestionTypeLabel(item.type))}</span>`;
+      btn.innerHTML = `<span class="fl-ai-suggest-label">${renderSuggestionLabel(item)}</span><span class="fl-ai-suggest-type">${escapeHtml(suggestionTypeLabel(item.type))}</span>`;
       btn.addEventListener("mousedown", function (event) {
         event.preventDefault();
         applySuggestion(index);

@@ -2982,6 +2982,11 @@ def search_autocomplete(
     query_tokens = tokenize(query)
     raw_query_tokens = raw_tokens(query)
     suggestions: dict[str, dict] = {}
+    has_explicit_autocomplete_intent = any(
+        marker in normalized_query
+        for config in AUTOCOMPLETE_INTENTS.values()
+        for marker in config["markers"]
+    )
 
     def add_suggestion(item: dict) -> None:
         label = " ".join(str(item.get("label") or "").split())
@@ -2990,6 +2995,7 @@ def search_autocomplete(
         item["label"] = label[:120]
         item.setdefault("query", label)
         item.setdefault("score", 0)
+        item.setdefault("highlight", autocomplete_highlight_ranges(label, query))
         key = f"{item.get('type', 'tip')}:{normalize(label)}"
         existing = suggestions.get(key)
         if not existing or int(item["score"]) > int(existing.get("score", 0)):
@@ -3037,7 +3043,13 @@ def search_autocomplete(
                         "type": "product",
                         "label": label,
                         "query": label,
-                        "score": 145 - index + int(product.get("personalization_score", 0)) * 8,
+                        "score": autocomplete_content_score(
+                            label,
+                            query,
+                            145 - index,
+                            boost_direct_match=not has_explicit_autocomplete_intent,
+                        )
+                        + int(product.get("personalization_score", 0)) * 8,
                         "url": product.get("link") or product.get("url") or "",
                         "image": product.get("image_link") or "",
                         "badge": "Skladom" if available else "",
@@ -3057,7 +3069,12 @@ def search_autocomplete(
                     "type": "recipe",
                     "label": recipe["title"],
                     "query": f"recept na {recipe['title']}",
-                    "score": 118 - index,
+                    "score": autocomplete_content_score(
+                        recipe["title"],
+                        query,
+                        118 - index,
+                        boost_direct_match=not has_explicit_autocomplete_intent,
+                    ),
                     "url": recipe.get("link") or "",
                     "badge": recipe.get("cuisine") or "Recept",
                 }
@@ -3190,6 +3207,57 @@ def diverse_autocomplete_items(items, limit: int) -> list[dict]:
         if len(selected) >= target:
             break
     return selected
+
+
+def autocomplete_content_score(label: str, query: str, base_score: int, boost_direct_match: bool = True) -> int:
+    normalized_label = normalize(label)
+    normalized_query = normalize(query).strip()
+    query_tokens = {token for token in tokenize(query) if len(token) >= 2}
+    score = base_score
+    if boost_direct_match and normalized_query and normalized_query in normalized_label:
+        score += 520
+    if query_tokens:
+        label_tokens = tokenize(label)
+        prefix_hits = sum(1 for token in query_tokens if any(label_token.startswith(token) for label_token in label_tokens))
+        if boost_direct_match:
+            score += prefix_hits * 180
+            score += len(query_tokens & label_tokens) * 120
+        else:
+            score += prefix_hits * 16
+            score += len(query_tokens & label_tokens) * 10
+    return score
+
+
+def autocomplete_highlight_ranges(label: str, query: str) -> list[dict]:
+    normalized_query_tokens = [token for token in tokenize(query) if len(token) >= 2]
+    if not normalized_query_tokens:
+        return []
+
+    normalized_label = normalize(label)
+    ranges: list[tuple[int, int]] = []
+    for token in normalized_query_tokens:
+        start = normalized_label.find(token)
+        if start < 0:
+            for label_token in normalized_label.split():
+                if label_token.startswith(token):
+                    start = normalized_label.find(label_token)
+                    break
+        if start < 0:
+            continue
+        ranges.append((start, min(len(label), start + len(token))))
+
+    if not ranges:
+        return []
+
+    ranges.sort()
+    merged: list[tuple[int, int]] = []
+    for start, end in ranges:
+        if not merged or start > merged[-1][1]:
+            merged.append((start, end))
+        else:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+
+    return [{"start": start, "end": end} for start, end in merged[:4]]
 
 
 def should_use_fast_autocomplete() -> bool:
