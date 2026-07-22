@@ -802,7 +802,7 @@ class TestIntentDetection:
 
     def test_related_subject_kimchi(self):
         subj = main.detect_related_subject("ingrediencie na kimchi")
-        assert subj == "kimchi"
+        assert subj == "kimchi_recipe"
 
     def test_special_gluten_free_sushi(self):
         subj = main.detect_special_product_subject("bezlepkove sushi")
@@ -847,6 +847,18 @@ class TestRelatedProducts:
         results = main.related_products_for_subject(products, "kimchi", 8)
         for p in results:
             assert "kimchi" not in nrm(p.get("title", ""))
+
+    def test_kimchi_recipe_shopping_does_not_include_rice_or_ready_kimchi(self):
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="co potrebujem na kimchi", limit=8), request)
+        titles = nrm(" | ".join(product.get("title", "") for product in result.get("products", [])))
+
+        assert result.get("intent") == "related_products"
+        assert "gochujang" in titles or "cili" in titles
+        assert "rybacia omacka" in titles
+        assert "jazminova ryza" not in titles
+        assert "kimchi nakladana" not in titles
+        assert "kimchi krajane" not in titles
 
     def test_replacement_products_are_similar_not_cross_sell(self, products, knowledge):
         results = main.alternative_products_for_subject(products, knowledge, "gochujang", 6)

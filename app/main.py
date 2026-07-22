@@ -400,7 +400,6 @@ RELATED_PRODUCT_QUERIES = {
         "cervena cili paprika",
         "sezamovy olej",
         "sojova omacka",
-        "nakladana kapusta",
     ],
     "ryzovy_ocot": [
         "sushi ryza",
@@ -5516,6 +5515,23 @@ def detect_related_subject(message: str) -> str | None:
     if not any(marker in normalized_message for marker in RELATED_INTENT_MARKERS):
         return None
 
+    if ("kimchi" in normalized_message or "kimci" in normalized_message) and any(
+        marker in normalized_message
+        for marker in (
+            "co potrebujem",
+            "co treba",
+            "ingredien",
+            "surovin",
+            "vyrob",
+            "priprav",
+            "urobit",
+            "spravit",
+            "nakupny zoznam",
+            "do kosika",
+        )
+    ):
+        return "kimchi_recipe"
+
     if "pho" in normalized_message:
         return "pho"
 
@@ -5536,7 +5552,7 @@ def detect_related_subject(message: str) -> str | None:
         "co treba na vyrobu",
         "co potrebujem na vyrobu",
     }:
-        return "kimchi"
+        return "kimchi_recipe"
 
     return None
 
