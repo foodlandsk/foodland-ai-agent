@@ -2532,6 +2532,42 @@ def session_memory_context(memory: dict | None) -> str:
     return " | ".join(parts) if parts else "bez ulozeneho kontextu"
 
 
+def is_explicit_article_request(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(
+        marker in normalized_message
+        for marker in (
+            "clanok",
+            "clanky",
+            "blog",
+            "magazin",
+            "magazinovy",
+            "mate clanok",
+            "mas clanok",
+            "ukaz clanok",
+        )
+    )
+
+
+def knowledge_sections_for_intent(
+    *,
+    is_faq_query: bool,
+    is_random_recipe_query: bool,
+    recipe_subject: str | None,
+    needs_article_context: bool,
+    explicit_article_request: bool,
+) -> tuple[str, ...]:
+    if is_faq_query:
+        return ("FAQ",)
+    if is_random_recipe_query or recipe_subject:
+        return ("Recipes",)
+    if needs_article_context:
+        if explicit_article_request:
+            return ("Magazine", "Products_AI")
+        return ("Products_AI",)
+    return ()
+
+
 @app.post("/chat")
 def chat(chat_request: ChatRequest, request: Request) -> dict:
     client_key = get_client_key(request)
@@ -2550,9 +2586,21 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     is_random_recipe_query = is_random_recipe_intent(chat_request.message)
     recipe_subject = detect_recipe_subject(contextual_message)
     needs_article_context = is_article_info_intent(chat_request.message)
-    needs_knowledge = is_faq_query or is_random_recipe_query or bool(recipe_subject) or needs_article_context
-    knowledge_matches = search_knowledge(knowledge, contextual_message) if needs_knowledge else {}
-    articles = article_results(knowledge_matches, chat_request.limit) if knowledge_matches else []
+    explicit_article_request = is_explicit_article_request(chat_request.message)
+    knowledge_sections = knowledge_sections_for_intent(
+        is_faq_query=is_faq_query,
+        is_random_recipe_query=is_random_recipe_query,
+        recipe_subject=recipe_subject,
+        needs_article_context=needs_article_context,
+        explicit_article_request=explicit_article_request,
+    )
+    needs_knowledge = bool(knowledge_sections)
+    knowledge_matches = (
+        search_knowledge(knowledge, contextual_message, allowed_sections=knowledge_sections)
+        if needs_knowledge
+        else {}
+    )
+    articles = article_results(knowledge_matches, chat_request.limit) if "Magazine" in knowledge_sections else []
 
     if allergen_term and not detect_related_subject(chat_request.message):
         allergen_matches = allergen_product_matches(chat_request.message, chat_request.limit)
@@ -2605,7 +2653,11 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if recipe_subject:
         recipes = recipe_results(knowledge_matches, chat_request.limit, contextual_message, knowledge)
         recipes = personalize_recipes(recipes, user_profile)
-        recipe_articles = recipe_article_results(articles, contextual_message, knowledge, chat_request.limit)
+        recipe_articles = (
+            recipe_article_results(articles, contextual_message, knowledge, chat_request.limit)
+            if "Magazine" in knowledge_sections
+            else []
+        )
         recipe_product_subject = recipe_related_product_subject(contextual_message, recipe_subject, recipes)
         recipe_products = (
             related_products_for_subject(products, recipe_product_subject, max(chat_request.limit, 8))
@@ -2652,7 +2704,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     related_subject = detect_related_subject(contextual_message)
     article_product_subject = (
         detect_article_product_subject(contextual_message, articles)
-        if articles and is_article_info_intent(chat_request.message)
+        if is_article_info_intent(chat_request.message)
         else None
     )
     if not related_subject and is_context_followup(chat_request.message):
@@ -2688,8 +2740,12 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id)
 
     if not matches and not knowledge_matches and not needs_knowledge:
-        knowledge_matches = search_knowledge(knowledge, contextual_message)
-        articles = article_results(knowledge_matches, chat_request.limit) if knowledge_matches else []
+        knowledge_matches = search_knowledge(
+            knowledge,
+            contextual_message,
+            allowed_sections=("Products_AI", "CrossSell", "Alternatives", "IntentMapping"),
+        )
+        articles = []
 
     if not matches and not knowledge_matches:
         return {

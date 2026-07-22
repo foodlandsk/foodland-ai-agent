@@ -98,14 +98,21 @@ def load_knowledge_json(path: str | Path) -> dict[str, Any]:
     return data
 
 
-def search_knowledge(knowledge: dict[str, Any], query: str) -> dict[str, list[dict[str, Any]]]:
+def search_knowledge(
+    knowledge: dict[str, Any],
+    query: str,
+    allowed_sections: set[str] | list[str] | tuple[str, ...] | None = None,
+) -> dict[str, list[dict[str, Any]]]:
     query_tokens = tokenize(query)
     if not query_tokens:
         return {}
 
     sections = knowledge.get("sections", {})
+    allowed = set(allowed_sections) if allowed_sections else None
     results: dict[str, list[dict[str, Any]]] = {}
     for section, records in sections.items():
+        if allowed is not None and section not in allowed:
+            continue
         ranked: list[tuple[int, dict[str, Any]]] = []
         for record in records:
             score = score_record(section, record, query, query_tokens)

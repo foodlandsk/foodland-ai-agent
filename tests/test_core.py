@@ -756,6 +756,43 @@ class TestKnowledgeSearch:
         results = search_knowledge(knowledge, "")
         assert results == {}
 
+    def test_search_knowledge_can_limit_sections(self, knowledge):
+        results = search_knowledge(knowledge, "co je kimchi", allowed_sections=("Products_AI",))
+
+        assert set(results).issubset({"Products_AI"})
+        assert "Magazine" not in results
+        assert "Recipes" not in results
+
+    def test_knowledge_sections_for_chat_intent(self):
+        assert main.knowledge_sections_for_intent(
+            is_faq_query=True,
+            is_random_recipe_query=False,
+            recipe_subject=None,
+            needs_article_context=True,
+            explicit_article_request=True,
+        ) == ("FAQ",)
+        assert main.knowledge_sections_for_intent(
+            is_faq_query=False,
+            is_random_recipe_query=False,
+            recipe_subject="kimchi",
+            needs_article_context=False,
+            explicit_article_request=False,
+        ) == ("Recipes",)
+        assert main.knowledge_sections_for_intent(
+            is_faq_query=False,
+            is_random_recipe_query=False,
+            recipe_subject=None,
+            needs_article_context=True,
+            explicit_article_request=False,
+        ) == ("Products_AI",)
+        assert main.knowledge_sections_for_intent(
+            is_faq_query=False,
+            is_random_recipe_query=False,
+            recipe_subject=None,
+            needs_article_context=True,
+            explicit_article_request=True,
+        ) == ("Magazine", "Products_AI")
+
     def test_magazine_results_return_article_cards(self, knowledge):
         results = search_knowledge(knowledge, "čo je kimchi")
         articles = main.article_results(results, 3)
