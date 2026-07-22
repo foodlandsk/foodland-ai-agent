@@ -2987,6 +2987,7 @@ def search_autocomplete(
         for config in AUTOCOMPLETE_INTENTS.values()
         for marker in config["markers"]
     )
+    suppress_highlight = is_predictive_autocomplete_query(normalized_query)
 
     def add_suggestion(item: dict) -> None:
         label = " ".join(str(item.get("label") or "").split())
@@ -2995,7 +2996,14 @@ def search_autocomplete(
         item["label"] = label[:120]
         item.setdefault("query", label)
         item.setdefault("score", 0)
-        item.setdefault("highlight", autocomplete_highlight_ranges(label, query))
+        if suppress_highlight:
+            item.pop("highlight", None)
+        else:
+            highlight = autocomplete_highlight_ranges(label, query)
+            if highlight:
+                item.setdefault("highlight", highlight)
+            else:
+                item.pop("highlight", None)
         key = f"{item.get('type', 'tip')}:{normalize(label)}"
         existing = suggestions.get(key)
         if not existing or int(item["score"]) > int(existing.get("score", 0)):
@@ -3209,6 +3217,32 @@ def diverse_autocomplete_items(items, limit: int) -> list[dict]:
     return selected
 
 
+def is_predictive_autocomplete_query(normalized_query: str) -> bool:
+    tokens = normalized_query.split()
+    if len(tokens) >= 3 and any(
+        marker in normalized_query
+        for marker in (
+            "ako ",
+            "co ",
+            "cim ",
+            "recept",
+            "varit",
+            "vari",
+            "uvarit",
+            "pripravit",
+            "nahrad",
+            "vysvetli",
+            "rozdiel",
+        )
+    ):
+        return True
+    return any(
+        marker in normalized_query
+        for config in AUTOCOMPLETE_INTENTS.values()
+        for marker in config["markers"]
+    )
+
+
 def autocomplete_content_score(label: str, query: str, base_score: int, boost_direct_match: bool = True) -> int:
     normalized_label = normalize(label)
     normalized_query = normalize(query).strip()
@@ -3323,6 +3357,10 @@ AUTOCOMPLETE_INTENTS = {
         "markers": (
             "recept",
             "varit",
+            "vari",
+            "ako sa vari",
+            "ako sa variť",
+            "ako varit",
             "uvarit",
             "pripravit",
             "postup",
@@ -3388,6 +3426,9 @@ AUTOCOMPLETE_INTENT_FILLER = (
     "recept",
     "varit",
     "variť",
+    "vari",
+    "varí",
+    "sa",
     "uvarit",
     "uvariť",
     "pripravit",

@@ -387,6 +387,14 @@ class TestSearchProducts:
         assert first["highlight"][0]["start"] >= 0
         assert first["highlight"][0]["end"] > first["highlight"][0]["start"]
 
+    def test_search_autocomplete_predictive_sentence_has_no_highlight(self, products, knowledge):
+        suggestions = main.search_autocomplete(products, knowledge, "ako sa vari ramen", 8)
+        first = suggestions[0]
+
+        assert first["type"] == "cook_intent"
+        assert "recept na ramen" in nrm(first["label"])
+        assert all("highlight" not in item for item in suggestions[:4])
+
     def test_search_autocomplete_detects_explicit_intents(self, products, knowledge):
         cases = {
             "chcem kupit kimchi": ("buy_intent", "kimchi skladom", "kimchi"),
