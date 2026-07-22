@@ -744,6 +744,35 @@ class TestIntentDetection:
         coconut_index = next(index for index, title in enumerate(titles) if "kokosove mlieko" in title)
         assert paste_index > coconut_index
 
+    @pytest.mark.parametrize(
+        ("subject", "expected_terms", "forbidden_terms"),
+        [
+            ("black_rice_salad", ("cierna ryza", "ryzovy ocot"), ("kimchi", "nori")),
+            ("mango_sticky_rice", ("lepkava ryza", "kokosove mlieko", "mango"), ("cierna lepkava",)),
+            ("jasmine_rice", ("jazminova ryza",), ("nori", "ocot", "kimchi")),
+            ("kuromame_gohan", ("susi ryza", "mirin"), ("kimchi",)),
+            ("gimbap", ("susi ryza", "nori"), ("ryzovy ocot",)),
+            ("tempura", ("tempura",), ("wasabi", "nakladany zazvor")),
+            ("ramen", ("ramen", "dashi"), ("nakladany zazvor",)),
+            ("japanese_curry", ("golden curry", "japonske kari"), ("cervena kari pasta",)),
+            ("kimchi_recipe", ("kimchi zaklad", "cili paprika", "rybacia omacka"), ("arasid", "jazminova ryza")),
+            ("bibimbap", ("gochujang", "ryza"), ("kimchi instantna",)),
+            ("bulgogi", ("bulgogi", "sojova omacka"), ("kimchi instantna",)),
+            ("mapo_tofu", ("ma po", "fazulova omacka"), ("miso polievka",)),
+            ("suan_la_tang", ("ostro kysla polievka", "bambus"), ("hoisin",)),
+            ("sinigang", ("sinigang", "tamarind"), ("ramen", "rezance")),
+        ],
+    )
+    def test_recipe_shopping_core_uses_recipe_specific_products(self, products, subject, expected_terms, forbidden_terms):
+        matches = main.recipe_shopping_core_products(products, subject, [], 8)
+        titles = nrm(" | ".join(product.get("title", "") for product in matches))
+
+        assert matches
+        for term in expected_terms:
+            assert nrm(term) in titles
+        for term in forbidden_terms:
+            assert nrm(term) not in titles
+
     def test_all_known_recipes_have_missing_ingredient_mapping(self, knowledge):
         recipes = knowledge.get("sections", {}).get("Recipes", [])
         assert recipes

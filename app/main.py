@@ -455,6 +455,23 @@ RELATED_PRODUCT_QUERIES = {
         "nori",
         "sezamovy olej",
     ],
+    "black_rice_salad": [
+        "cierna ryza",
+        "ryzovy ocot",
+        "sezamovy olej",
+        "sojova omacka",
+        "cili omacka",
+    ],
+    "jasmine_rice": [
+        "jazminova ryza",
+    ],
+    "kuromame_gohan": [
+        "japonska ryza",
+        "cierna soja",
+        "sojova omacka",
+        "mirin",
+        "nori",
+    ],
     "kari": [
         "kokosove mlieko",
         "jazminova ryza",
@@ -638,6 +655,19 @@ RELATED_PRODUCT_QUERIES = {
         "ustricova omacka",
         "sezamovy olej",
         "ramen rezance",
+    ],
+    "suan_la_tang": [
+        "ostro kysla polievka",
+        "cierna fazula cesnak omacka",
+        "ryzovy ocot",
+        "sojova omacka",
+        "bambusove vyhonky",
+    ],
+    "japanese_curry": [
+        "japonske kari",
+        "golden curry",
+        "japonska ryza",
+        "sushi ryza",
     ],
     "pad_thai": [
         "ryzove rezance",
@@ -1223,12 +1253,14 @@ RELATED_SUBJECT_ALIASES = {
     "banh_gio": ("banh gio", "bánh giò", "parene pyramídove knedliky", "parene pyramidove knedliky"),
     "banh_xeo": ("banh xeo",),
     "mapo_tofu": ("mapo tofu", "mapo"),
+    "suan_la_tang": ("suan la tang", "ostro kysla polievka", "hot sour soup"),
     "kung_pao": ("kung pao", "kung pao chicken"),
     "dim_sum": ("dim sum", "dimsum", "dumpling", "dumplingy", "dumplingom", "plnene testo"),
     "dakgalbi": ("dakgalbi",),
     "char_siu": ("char siu", "char-siu", "cinsky bbq"),
     "som_tam": ("som tam", "som tum", "papajovy salat"),
     "nasi_goreng": ("nasi goreng",),
+    "japanese_curry": ("japonske kari", "golden curry"),
     "mee_goreng": ("mee goreng", "mi goreng"),
     "rendang": ("rendang",),
     "larb": ("larb",),
@@ -1353,8 +1385,8 @@ RECIPE_TITLE_PRODUCT_SUBJECTS = (
     ("tom yum", "tom_yum"),
     ("kokosove kari", "thajske_kari"),
     ("tekvicou", "thajske_kari"),
-    ("ciernej ryze", "ryza"),
-    ("cierna ryza", "ryza"),
+    ("ciernej ryze", "black_rice_salad"),
+    ("cierna ryza", "black_rice_salad"),
     ("lepkava ryza", "mango_sticky_rice"),
     ("mangom", "mango_sticky_rice"),
     ("pho bo", "pho"),
@@ -1371,7 +1403,8 @@ RECIPE_TITLE_PRODUCT_SUBJECTS = (
     ("thit dong", "thit_dong"),
     ("thit ong", "thit_dong"),
     ("huspenina", "thit_dong"),
-    ("jazminova ryza", "ryza"),
+    ("varena jazminova ryza", "jasmine_rice"),
+    ("jazminova ryza", "jasmine_rice"),
     ("banh ran", "sesame_balls"),
     ("sezamove gulocky", "sesame_balls"),
     ("kimchi ramen", "kimchi_ramen"),
@@ -1382,10 +1415,11 @@ RECIPE_TITLE_PRODUCT_SUBJECTS = (
     ("kimchi prazena ryza", "fried_rice"),
     ("bibimbap", "bibimbap"),
     ("gimbap", "gimbap"),
+    ("japonske kuracie kari", "japanese_curry"),
     ("kuracie kari", "kari"),
     ("udon", "udon"),
     ("teriyaki tofu", "teriyaki"),
-    ("kuromame gohan", "ryza"),
+    ("kuromame gohan", "kuromame_gohan"),
     ("yakiudon", "yakisoba"),
     ("miso polievka", "miso_polievka"),
     ("tempura", "tempura"),
@@ -1394,7 +1428,7 @@ RECIPE_TITLE_PRODUCT_SUBJECTS = (
     ("pekingska kacica", "cinska_kuchyna"),
     ("ma po tofu", "mapo_tofu"),
     ("mapo tofu", "mapo_tofu"),
-    ("suan la tang", "cinska_kuchyna"),
+    ("suan la tang", "suan_la_tang"),
     ("murgh makhani", "tikka_masala"),
     ("tikka masala", "tikka_masala"),
     ("tandoori", "tandoori"),
@@ -1641,6 +1675,7 @@ MISSING_INGREDIENTS_BY_SUBJECT = {
     "ramen": ["vajce", "čerstvá jarná cibuľka", "mäso alebo tofu"],
     "kimchi_ramen": ["vajce", "čerstvá jarná cibuľka", "mäso alebo tofu"],
     "kari": ["mäso alebo tofu", "čerstvá zelenina", "cibuľa"],
+    "japanese_curry": ["kuracie mäso alebo tofu", "zemiaky", "mrkva", "cibuľa"],
     "thajske_kari": ["mäso alebo tofu", "čerstvá zelenina", "cibuľa"],
     "tom_yum": ["krevety alebo kuracie mäso", "čerstvé huby", "limetka", "čerstvý koriander"],
     "tom_kha": ["kuracie mäso alebo tofu", "čerstvé huby", "limetka", "čerstvý koriander"],
@@ -1666,6 +1701,7 @@ MISSING_INGREDIENTS_BY_SUBJECT = {
     "udon": ["mäso, krevety alebo tofu", "čerstvá zelenina", "jarná cibuľka"],
     "tempura": ["čerstvá zelenina alebo krevety", "ľadová voda", "olej na vyprážanie"],
     "mapo_tofu": ["tofu", "mleté mäso alebo huby", "jarná cibuľka"],
+    "suan_la_tang": ["tofu", "vajce", "huby", "jarná cibuľka"],
     "kung_pao": ["kuracie mäso alebo tofu", "čerstvá paprika", "jarná cibuľka"],
     "cinska_kuchyna": ["mäso alebo tofu", "čerstvá zelenina", "jarná cibuľka"],
     "tikka_masala": ["kuracie mäso alebo tofu", "jogurt alebo smotana", "cibuľa"],
@@ -1678,6 +1714,307 @@ MISSING_INGREDIENTS_BY_SUBJECT = {
     "hainanese_chicken": ["kuracie mäso", "uhorka", "čerstvá jarná cibuľka"],
     "singapore_noodles": ["vajce", "čerstvá zelenina", "mäso alebo tofu", "jarná cibuľka"],
     "sinigang": ["mäso alebo ryba", "čerstvá zelenina"],
+    "black_rice_salad": ["cerstva zelenina", "bylinky", "limetka"],
+    "jasmine_rice": ["voda", "sol podla chuti"],
+    "kuromame_gohan": ["voda", "sol podla chuti"],
+}
+
+RECIPE_SHOPPING_CORE_QUERIES = {
+    "pad_thai": [
+        ("ryzove rezance", ("rezance",), ()),
+        ("tamarind pasta", ("tamarind",), ()),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("palmovy cukor", ("cukor",), ()),
+        ("arasidy", ("arasid",), ()),
+    ],
+    "satay": [
+        ("arasidova omacka", ("arasid",), ()),
+        ("kokosove mlieko", ("kokosove mlieko",), ()),
+        ("cervena kari pasta", ("kari", "pasta"), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+    ],
+    "tom_kha": [
+        ("kokosove mlieko", ("kokosove mlieko",), ()),
+        ("galangal", ("galangal",), ()),
+        ("citronova trava", ("citronova trava",), ()),
+        ("kaffirove listy", ("kaffir",), ("bambus", "caj")),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+    ],
+    "black_rice_salad": [
+        ("cierna ryza", ("cierna", "ryza"), ()),
+        ("ryzovy ocot", ("ryzovy", "ocot"), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+    ],
+    "jasmine_rice": [
+        ("jazminova ryza", ("jazminova", "ryza"), ()),
+    ],
+    "kuromame_gohan": [
+        ("japonska ryza", ("ryza",), ("ocot",)),
+        ("cierna soja", ("cierna", "soja"), ()),
+        ("mirin", ("mirin",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+    ],
+    "mango_sticky_rice": [
+        ("lepkava ryza", ("lepkava", "ryza"), ("cierna",)),
+        ("kokosove mlieko", ("kokosove mlieko",), ()),
+        ("mango pyre", ("mango",), ()),
+        ("sezamove semienka", ("sezam",), ()),
+    ],
+    "pho": [
+        ("banh pho", ("pho",), ()),
+        ("korenie pho", ("pho",), ()),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("hoisin", ("hoisin",), ()),
+        ("sriracha", ("sriracha",), ()),
+    ],
+    "banh_mi": [
+        ("ryzovy ocot", ("ryzovy", "ocot"), ()),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("sriracha", ("sriracha",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+    ],
+    "nam_van": [
+        ("ryzovy papier", ("ryzovy", "papier"), ()),
+        ("ryzove rezance", ("rezance",), ()),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("sweet chili omacka", ("chili", "omacka"), ()),
+    ],
+    "bun_cha": [
+        ("ryzove rezance", ("rezance",), ()),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("ryzovy ocot", ("ryzovy", "ocot"), ()),
+        ("cili cesnak omacka", ("cesnak", "omacka"), ()),
+    ],
+    "bun_bo_nam_bo": [
+        ("ryzove rezance", ("rezance",), ()),
+        ("citronova trava", ("citronova trava",), ()),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("hoisin", ("hoisin",), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+    ],
+    "nuoc_cham": [
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("ryzovy ocot", ("ryzovy", "ocot"), ()),
+        ("cili cesnak omacka", ("cesnak", "omacka"), ()),
+        ("sweet chili omacka", ("chili", "omacka"), ()),
+    ],
+    "banh_gio": [
+        ("ryzova muka", ("ryzova", "muka"), ()),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("shiitake", ("shiitake",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+    ],
+    "vietnamska_kuchyna": [
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("ryzovy ocot", ("ryzovy", "ocot"), ()),
+        ("sriracha", ("sriracha",), ()),
+        ("ryzove rezance", ("rezance",), ()),
+    ],
+    "rybacia_omacka": [
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("cili cesnak omacka", ("cesnak", "omacka"), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+    ],
+    "thit_dong": [
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("shiitake", ("shiitake",), ()),
+        ("cierne hriby", ("hrib",), ()),
+    ],
+    "sesame_balls": [
+        ("lepkava ryzova muka", ("ryzova", "muka"), ()),
+        ("sezamove semienka", ("sezam",), ()),
+        ("adzuki pasta", ("adzuki",), ()),
+        ("kokosove mlieko", ("kokosove mlieko",), ()),
+    ],
+    "jjigae": [
+        ("kimchi", ("kimchi",), ("instant", "ramen", "polievk", "omack")),
+        ("gochujang", ("gochujang",), ()),
+        ("doenjang", ("doenjang",), ()),
+        ("dashi", ("dashi",), ()),
+        ("tofu", ("tofu",), ()),
+    ],
+    "kimchi_recipe": [
+        ("kimchi zaklad", ("kimchi", "zaklad"), ()),
+        ("cervena cili paprika", ("cervena", "cili"), ("omacka", "polievka", "arasid")),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("ryzova muka", ("ryzova", "muka"), ("lepkava",)),
+        ("zazvor cesnak", ("zazvor",), ("nakladany", "susi", "sushi")),
+    ],
+    "japchae": [
+        ("sklenene rezance", ("sklenene", "rezance"), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+        ("sezamove semienka", ("sezam",), ()),
+    ],
+    "bulgogi": [
+        ("bulgogi omacka", ("bulgogi",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+        ("gochujang", ("gochujang",), ()),
+        ("jazminova ryza", ("jazminova", "ryza"), ()),
+    ],
+    "fried_rice": [
+        ("jazminova ryza", ("jazminova", "ryza"), ()),
+        ("kimchi", ("kimchi",), ("instant", "ramen", "polievk", "omack")),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+    ],
+    "bibimbap": [
+        ("gochujang", ("gochujang",), ()),
+        ("jazminova ryza", ("jazminova", "ryza"), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+        ("kimchi", ("kimchi",), ("instant", "ramen", "polievk", "omack")),
+        ("doenjang", ("doenjang",), ()),
+    ],
+    "gimbap": [
+        ("sushi ryza", ("susi", "ryza"), ("ocot",)),
+        ("nori", ("nori",), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+        ("nakladany zazvor", ("zazvor",), ()),
+    ],
+    "kari": [
+        ("kari pasta", ("kari", "pasta"), ()),
+        ("kokosove mlieko", ("kokosove mlieko",), ()),
+        ("jazminova ryza", ("jazminova", "ryza"), ()),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+    ],
+    "thajske_kari": [
+        ("kokosove mlieko", ("kokosove mlieko",), ()),
+        ("cervena kari pasta", ("kari", "pasta"), ()),
+        ("jazminova ryza", ("jazminova", "ryza"), ()),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+    ],
+    "japanese_curry": [
+        ("japonske kari", ("japonske", "kari"), ()),
+        ("golden curry", ("golden", "curry"), ()),
+        ("sushi ryza", ("susi", "ryza"), ("ocot",)),
+        ("jazminova ryza", ("jazminova", "ryza"), ()),
+    ],
+    "udon": [
+        ("udon rezance", ("udon",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("mirin", ("mirin",), ()),
+        ("dashi", ("dashi",), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+    ],
+    "teriyaki": [
+        ("teriyaki omacka", ("teriyaki",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("mirin", ("mirin",), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+        ("jazminova ryza", ("jazminova", "ryza"), ()),
+    ],
+    "miso_polievka": [
+        ("miso pasta", ("miso",), ()),
+        ("dashi", ("dashi",), ()),
+        ("wakame", ("wakame",), ()),
+        ("tofu", ("tofu",), ()),
+    ],
+    "ramen": [
+        ("ramen rezance", ("ramen",), ()),
+        ("dashi", ("dashi",), ()),
+        ("miso pasta", ("miso",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("wakame", ("wakame",), ()),
+    ],
+    "tempura": [
+        ("tempura muka", ("tempura",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("ryzovy ocot", ("ryzovy", "ocot"), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+    ],
+    "kung_pao": [
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("cili cesnak omacka", ("cesnak", "omacka"), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+        ("ryzovy ocot", ("ryzovy", "ocot"), ()),
+        ("arasidy", ("arasid",), ()),
+    ],
+    "mapo_tofu": [
+        ("fazulova omacka", ("fazulova", "omacka"), ()),
+        ("ma po omacka", ("ma po", "omacka"), ()),
+        ("cierna fazula cesnak omacka", ("cierna", "fazula", "omacka"), ()),
+        ("cili cesnak omacka", ("cesnak", "omacka"), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+    ],
+    "suan_la_tang": [
+        ("ostro kysla polievka", ("ostro", "kysla", "polievka"), ()),
+        ("cierna fazula cesnak omacka", ("cierna", "fazula", "omacka"), ()),
+        ("ryzovy ocot", ("ryzovy", "ocot"), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("bambusove vyhonky", ("bambus",), ()),
+    ],
+    "cinska_kuchyna": [
+        ("hoisin omacka", ("hoisin",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("ustricova omacka", ("ustricova", "omacka"), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+    ],
+    "tikka_masala": [
+        ("tikka masala pasta", ("masala",), ()),
+        ("garam masala", ("garam", "masala"), ()),
+        ("kokosove mlieko", ("kokosove mlieko",), ()),
+        ("basmati ryza", ("basmati", "ryza"), ()),
+    ],
+    "tandoori": [
+        ("tandoori masala", ("tandoori",), ()),
+        ("garam masala", ("garam", "masala"), ()),
+        ("basmati ryza", ("basmati", "ryza"), ()),
+    ],
+    "biryani": [
+        ("basmati ryza", ("basmati", "ryza"), ()),
+        ("biryani pasta", ("biryani",), ()),
+        ("garam masala", ("garam", "masala"), ()),
+        ("kardamom", ("kardam",), ()),
+        ("skorica", ("skorica",), ()),
+    ],
+    "nasi_goreng": [
+        ("sambal oelek", ("sambal",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("jazminova ryza", ("jazminova", "ryza"), ()),
+    ],
+    "mee_goreng": [
+        ("mie rezance", ("rezance",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("sambal oelek", ("sambal",), ()),
+    ],
+    "rendang": [
+        ("rendang pasta", ("rendang",), ()),
+        ("kokosove mlieko", ("kokosove mlieko",), ()),
+        ("citronova trava", ("citronova trava",), ()),
+        ("galangal", ("galangal",), ()),
+        ("kaffirove listy", ("kaffir",), ("bambus", "caj")),
+    ],
+    "nasi_lemak": [
+        ("jazminova ryza", ("jazminova", "ryza"), ()),
+        ("kokosove mlieko", ("kokosove mlieko",), ()),
+        ("sambal oelek", ("sambal",), ()),
+        ("arasidy", ("arasid",), ()),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+    ],
+    "hainanese_chicken": [
+        ("jazminova ryza", ("jazminova", "ryza"), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("cili cesnak omacka", ("cesnak", "omacka"), ()),
+        ("zazvor", ("zazvor",), ()),
+    ],
+    "singapore_noodles": [
+        ("ryzove rezance", ("rezance",), ()),
+        ("kari korenie", ("kari",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("sezamovy olej", ("sezamovy olej",), ()),
+    ],
+    "sinigang": [
+        ("sinigang", ("sinigang",), ()),
+        ("tamarind", ("tamarind",), ()),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+    ],
 }
 
 RELATED_INTENT_MARKERS = (
@@ -1695,6 +2032,7 @@ RELATED_INTENT_MARKERS = (
     "surovin",
     "potrebujem",
     "kupit",
+    "produkty na",
     "varit",
     "odporuc",
     "doplnky",
@@ -2854,12 +3192,6 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     else:
         matches = cached_search_products(products, contextual_message, chat_request.limit)
     is_shopping_list_request = wants_shopping_list(contextual_message)
-    if is_shopping_list_request and related_subject == "sushi":
-        matches = sushi_shopping_core_products(products, matches, chat_request.limit)
-    if is_shopping_list_request and related_subject == "tom_yum":
-        matches = tom_yum_shopping_core_products(products, matches, chat_request.limit)
-    if is_shopping_list_request and related_subject == "kimchi_ramen":
-        matches = kimchi_ramen_shopping_core_products(products, matches, chat_request.limit)
     matches = personalize_products(matches, user_profile)
     if is_shopping_list_request and related_subject == "sushi":
         matches = sushi_shopping_core_products(products, matches, chat_request.limit)
@@ -2867,6 +3199,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         matches = tom_yum_shopping_core_products(products, matches, chat_request.limit)
     if is_shopping_list_request and related_subject == "kimchi_ramen":
         matches = kimchi_ramen_shopping_core_products(products, matches, chat_request.limit)
+    if is_shopping_list_request and related_subject not in {"sushi", "tom_yum", "kimchi_ramen"}:
+        matches = recipe_shopping_core_products(products, related_subject, matches, chat_request.limit)
     if special_subject == "sushi_rice":
         matches = sorted(
             matches,
@@ -4085,6 +4419,89 @@ def kimchi_ramen_shopping_core_products(products: list[Product], existing_matche
         title = normalize(product.get("title", ""))
         if "kimchi" in title and any(term in title for term in ("instant", "ramen", "ramyun", "rezance", "polievk")):
             continue
+        add_product(product)
+        if len(recommendations) >= limit:
+            break
+
+    return recommendations[:limit]
+
+
+def product_field(product: Product | dict, key: str, default: str = "") -> str:
+    if isinstance(product, dict):
+        return str(product.get(key, default) or "")
+    return str(getattr(product, key, default) or "")
+
+
+def recipe_core_product_candidates(
+    products: list[Product] | list[dict],
+    query: str,
+    required_terms: tuple[str, ...],
+    excluded_terms: tuple[str, ...],
+    limit: int = 5,
+) -> list[dict]:
+    normalized_query = normalize(query)
+    query_tokens = raw_tokens(query)
+    ranked: list[tuple[int, Product | dict]] = []
+
+    for product in products:
+        title = normalize(product_field(product, "title"))
+        if any(term in title for term in excluded_terms):
+            continue
+        if required_terms and not all(term in title for term in required_terms):
+            continue
+
+        category = normalize(product_field(product, "product_type", product_field(product, "category")))
+        brand = normalize(product_field(product, "brand"))
+        haystack = f"{title} {category} {brand}"
+        title_tokens = raw_tokens(title)
+
+        score = 0
+        if normalized_query and normalized_query in title:
+            score += 80
+        if required_terms:
+            score += 35 * sum(1 for term in required_terms if term in title)
+        token_hits = len(query_tokens & title_tokens)
+        score += 12 * token_hits
+        score += 4 * len(query_tokens & raw_tokens(category))
+        score += 3 * len(query_tokens & raw_tokens(brand))
+        if not score and query_tokens and query_tokens <= raw_tokens(haystack):
+            score += 10
+        if not score:
+            continue
+
+        availability = product_field(product, "availability")
+        if availability in {"in_stock", "in stock", "Skladom", "skladom"}:
+            score += 6
+        elif availability:
+            score -= 2
+        ranked.append((score, product))
+
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    return [format_product(product) for _, product in ranked[:limit]]
+
+
+def recipe_shopping_core_products(products: list[Product], subject: str | None, existing_matches: list[dict], limit: int) -> list[dict]:
+    if not subject or subject not in RECIPE_SHOPPING_CORE_QUERIES:
+        return existing_matches
+
+    seen: set[str] = set()
+    recommendations: list[dict] = []
+
+    def add_product(product: dict) -> None:
+        key = product.get("id") or product.get("link") or product.get("title")
+        if not key or key in seen:
+            return
+        seen.add(key)
+        recommendations.append(product)
+
+    for query, required_terms, excluded_terms in RECIPE_SHOPPING_CORE_QUERIES.get(subject, []):
+        for product in recipe_core_product_candidates(products, query, required_terms, excluded_terms, 5):
+            add_product(product)
+            break
+        if len(recommendations) >= limit:
+            return recommendations[:limit]
+
+    for product in existing_matches or []:
         add_product(product)
         if len(recommendations) >= limit:
             break
