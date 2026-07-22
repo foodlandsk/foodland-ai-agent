@@ -649,6 +649,17 @@ class TestIntentDetection:
         assert main.wants_shopping_list("nákupný zoznam na sushi")
         assert main.missing_ingredients_for_subject("sushi", [])
 
+    def test_all_known_recipes_have_missing_ingredient_mapping(self, knowledge):
+        recipes = knowledge.get("sections", {}).get("Recipes", [])
+        assert recipes
+        missing = []
+        for record in recipes:
+            recipe = main.recipe_card(record)
+            subject = main.recipe_product_subject_from_title(recipe.get("title", ""))
+            if not main.missing_ingredients_for_subject(subject, [recipe]):
+                missing.append(recipe.get("title", ""))
+        assert not missing
+
     def test_all_known_recipes_have_product_subject(self, knowledge):
         recipes = knowledge.get("sections", {}).get("Recipes", [])
         assert recipes
