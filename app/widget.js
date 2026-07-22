@@ -1008,9 +1008,36 @@
     for (const selector of selectors) {
       const element = document.querySelector(selector);
       const text = element ? element.textContent.trim() : "";
-      if (text && text.length >= 3 && text.length <= 120) return text;
+      if (isUsableProductTitle(text, selector)) return text;
     }
     return "";
+  }
+
+  function isUsableProductTitle(text, selector) {
+    const title = String(text || "").replace(/\s+/g, " ").trim();
+    if (!title || title.length < 3 || title.length > 120) return false;
+    const normalized = title
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const genericTitles = new Set([
+      "uvod",
+      "domov",
+      "homepage",
+      "akcia",
+      "akcie",
+      "novinky",
+      "kontakt",
+      "blog",
+      "recepty",
+      "kosik",
+      "vyhladavanie",
+      "prihlasenie",
+      "registracia",
+    ]);
+    if (genericTitles.has(normalized)) return false;
+    if (selector !== "h1") return true;
+    return Boolean(document.querySelector(".productdetails, .vm-product-details-container, [itemtype*='Product'], [data-product-id]"));
   }
 
   function compactPromptProductName(title) {
@@ -1025,10 +1052,10 @@
     const productTitle = compactPromptProductName(currentPageProductTitle());
     if (productTitle) {
       return [
-        `Čo sa hodí k ${productTitle}?`,
+        `Doplnky k ${productTitle}`,
         `Recept s ${productTitle}`,
         `Čím nahradiť ${productTitle}?`,
-        `Je ${productTitle} vhodné do ázijskej kuchyne?`,
+        `Ako použiť ${productTitle}?`,
       ];
     }
     if (popularQuestions.length) return popularQuestions.slice(0, 5);
