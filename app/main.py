@@ -2800,6 +2800,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                     "Si Foodland poradca – odborný nákupný asistent pre Foodland.sk, špeciálne azijské a svetové potraviny. "
                     "Odpovedaj po slovensky, priateľsky a s predajným tónom. Neprezentuj sa ako AI. "
                     "Vždy rozlišuj náhrady a doplnky: pri otázke 'čím nahradiť X' odporúčaj podobné alternatívy, nie cross-sell doplnky. "
+                    "Ak je zámer replacement_products, textovo iba vysvetli, že nižšie sú podobné alternatívy; nepridávaj domáce kombinácie ani produkty mimo kariet. "
                     "Pri otázke 'čo sa hodí k X' navrhuj doplnkové produkty (cross-sell) – napr. k sójovej omáčke mirin alebo ryžový ocot. "
                     "k ramen navrhni dashi alebo kimchi. Používaj formulácie: 'Odporúčam tiež...', "
                     "'Skvelo sa hodí k...', 'Zákazníci si k tomu zvyčajne berú aj...'. "
@@ -2827,6 +2828,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                 "role": "user",
                 "content": (
                     f"Otázka zákazníka: {chat_request.message}\n\n"
+                    f"Zistený zámer: {intent}\n\n"
                     f"Relevantné produkty:\n{products_context(matches)}\n\n"
                     f"Foodland Knowledge:\n{knowledge_context(knowledge_matches)}\n\n"
                     f"Bezpečnostná poznámka: {composition_caution_context(needs_composition_caution)}"
