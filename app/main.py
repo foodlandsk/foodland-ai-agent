@@ -2635,7 +2635,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "intent": intent,
         }
 
-    if detect_out_of_domain(chat_request.message) and not detect_related_subject(chat_request.message):
+    if detect_out_of_domain(chat_request.message):
         update_session_memory(memory_key, chat_request.message, "unknown", [], [], knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, "unknown", [], [])
         log_question(chat_request.message, client_key, 0, intent="unknown", session_id=session_id)
@@ -2811,12 +2811,12 @@ def should_use_fast_chat_answer(
     if os.getenv("FOODLAND_FAST_RESPONSES", "true").strip().lower() in {"0", "false", "no"}:
         return False
     if needs_composition_caution:
-        return True
-    if intent in {"product_search", "related_products", "article_products", "recipe_to_products"} and matches:
+        return False
+    if intent == "product_search" and matches and not knowledge_matches:
         return True
     if intent in {"faq", "recipe", "unknown", "allergen_safety"}:
         return True
-    return bool(matches and not knowledge_matches)
+    return False
 
 
 def get_client_key(request: Request) -> str:
@@ -5277,6 +5277,34 @@ def special_products_for_subject(products: list[Product], subject: str, limit: i
     return recommendations
 
 
+def readable_subject_label(subject: str | None) -> str:
+    if not subject:
+        return "tejto teme"
+    labels = {
+        "sojova_omacka": "sójovej omáčke",
+        "kimchi": "kimchi",
+        "gochujang": "gochujangu",
+        "sushi": "sushi",
+        "ramen": "ramenu",
+        "pho": "pho",
+        "pad_thai": "pad thai",
+        "miso": "miso paste",
+        "tofu": "tofu",
+        "kokosove_mlieko": "kokosovému mlieku",
+        "ryzove_rezance": "ryžovým rezancom",
+    }
+    return labels.get(subject, subject.replace("_", " "))
+
+
+def compact_product_titles(matches: list[dict], limit: int = 3) -> str:
+    titles = []
+    for product in matches[:limit]:
+        title = " ".join(str(product.get("title") or "").split())
+        if title:
+            titles.append(title)
+    return "; ".join(titles)
+
+
 def fallback_answer(
     matches: list[dict],
     knowledge_matches: dict | None = None,
@@ -5287,6 +5315,35 @@ def fallback_answer(
     faq_answer = best_faq_answer(knowledge_matches)
     if faq_answer and not matches:
         return faq_answer
+
+    if matches:
+        count = min(len(matches), 5)
+        caution = (
+            " Pri bezlepkových produktoch alebo otázkach na zloženie si prosím overte zloženie v detaile produktu."
+            if needs_composition_caution
+            else ""
+        )
+        titles = compact_product_titles(matches)
+        if related_subject:
+            subject_label = readable_subject_label(related_subject)
+            if titles:
+                return (
+                    f"K {subject_label} odporúčam hlavne tieto súvisiace produkty: {titles}. "
+                    f"Pozrite si odporúčania nižšie, zoradil som ich podľa relevantnosti.{caution}"
+                )
+            return f"Našiel som {count} súvisiacich produktov a surovín, ktoré sa hodia k {subject_label}.{caution}"
+        if knowledge_matches:
+            if titles:
+                return f"Našiel som vhodné produkty k tejto otázke: {titles}. Detail a dostupnosť si pozrite nižšie.{caution}"
+            return f"Našiel som {count} vhodných produktov a doplnil som odporúčania z Foodland poradcu.{caution}"
+        if titles:
+            return f"Našiel som tieto najrelevantnejšie produkty: {titles}. Ďalšie odporúčania sú nižšie.{caution}"
+        return f"Našiel som {count} vhodných produktov. Pozrite si odporúčania nižšie.{caution}"
+
+    if knowledge_matches:
+        return "Našiel som súvisiace informácie vo Foodland poradcovi."
+
+    return "Nenašiel som presnú odpoveď. Skúste otázku napísať trochu inak."
 
     if matches:
         count = min(len(matches), 5)

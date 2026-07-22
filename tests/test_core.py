@@ -923,9 +923,33 @@ class TestFastResponses:
         monkeypatch.setenv("FOODLAND_FAST_RESPONSES", "true")
         assert main.should_use_fast_chat_answer("product_search", [{"title": "Kimchi"}], {})
 
+    def test_fast_response_disabled_for_advisory_product_intents(self, monkeypatch):
+        monkeypatch.setenv("FOODLAND_FAST_RESPONSES", "true")
+        matches = [{"title": "Mirin"}]
+
+        assert not main.should_use_fast_chat_answer("related_products", matches, {})
+        assert not main.should_use_fast_chat_answer("article_products", matches, {})
+        assert not main.should_use_fast_chat_answer("recipe_to_products", matches, {})
+
+    def test_fast_response_disabled_for_composition_caution(self, monkeypatch):
+        monkeypatch.setenv("FOODLAND_FAST_RESPONSES", "true")
+        assert not main.should_use_fast_chat_answer("product_search", [{"title": "Tamari"}], {}, True)
+
     def test_fast_response_can_be_disabled(self, monkeypatch):
         monkeypatch.setenv("FOODLAND_FAST_RESPONSES", "false")
         assert not main.should_use_fast_chat_answer("product_search", [{"title": "Kimchi"}], {})
+
+
+class TestFallbackAnswerQuality:
+    def test_related_fallback_uses_readable_subject_and_product_names(self):
+        answer = main.fallback_answer(
+            [{"title": "Mirin sladke ryzove vino"}, {"title": "Ryžový ocot"}],
+            related_subject="sojova_omacka",
+        )
+
+        assert "sojova_omacka" not in answer
+        assert "sójovej omáčke" in answer
+        assert "Mirin" in answer
 
 
 class TestProductSearchCache:

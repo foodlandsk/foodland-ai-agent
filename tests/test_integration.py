@@ -302,13 +302,17 @@ class TestChatWithMockOpenAI:
                  mock.patch.object(main, "_call_openai_with_retry", side_effect=lambda *a, **kw: openai_called.append(1) or ""):
                 original_products = getattr(main, "products", [])
                 main.products = SAMPLE_PRODUCTS
+                main.clear_product_search_cache()
+                main.session_memories.clear()
                 try:
                     result = main.chat(
-                        _make_chat_request("bezlepkova sojova omacka"),
+                        _make_chat_request("Aroy-D"),
                         _mock_http_request(),
                     )
                 finally:
                     main.products = original_products
+                    main.clear_product_search_cache()
+                    main.session_memories.clear()
                     main._openai_client = None
 
         assert openai_called == []
