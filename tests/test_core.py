@@ -524,6 +524,15 @@ class TestIntentDetection:
         subj = main.detect_recipe_subject("recept na kimchi")
         assert subj == "kimchi"
 
+    def test_dinner_prompt_returns_three_random_cuisines(self, knowledge):
+        assert main.is_random_recipe_intent("Čo variť na večeru?")
+
+        recipes = main.get_random_recipes_by_cuisine(knowledge, 3)
+        cuisine_keys = {main.recipe_cuisine_key({}, recipe) for recipe in recipes}
+
+        assert len(recipes) == 3
+        assert len(cuisine_keys) == 3
+
     def test_kimchi_recipe_prioritizes_making_kimchi_and_keeps_related_recipes(self, knowledge):
         query = "recept na kimchi"
         matches = search_knowledge(knowledge, query)

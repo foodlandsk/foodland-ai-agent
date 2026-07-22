@@ -1745,8 +1745,14 @@ RECIPE_INTENT_MARKERS = (
 
 RANDOM_RECIPE_INTENT_MARKERS = (
     "co dnes varit",
+    "co varit na veceru",
+    "co sa vari na veceru",
+    "co uvarit na veceru",
     "co dnes uvarimc",
     "co uvarimc dnes",
+    "tip na veceru",
+    "recept na veceru",
+    "vecera dnes",
     "nahodny recept",
     "nahodne recept",
     "co by som dnes",
@@ -2641,14 +2647,13 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         }
 
     if is_random_recipe_query:
-        random_rec = get_random_recipe(knowledge)
-        random_recipes = [random_rec] if random_rec else []
+        random_recipes = get_random_recipes_by_cuisine(knowledge, 3)
         random_recipes = personalize_recipes(random_recipes, user_profile)
         update_session_memory(memory_key, chat_request.message, "recipe", [], random_recipes, knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, "recipe", [], random_recipes)
         log_question(chat_request.message, client_key, 0, intent="recipe", session_id=session_id)
         return {
-            "answer": recipe_answer("general", random_recipes),
+            "answer": random_recipes_answer(random_recipes),
             "recipes": random_recipes,
             "products": [],
             "articles": articles,
@@ -4313,6 +4318,61 @@ def get_random_recipe(all_knowledge: dict) -> dict | None:
     return recipe_card(random.choice(all_recipes))
 
 
+def get_random_recipes_by_cuisine(all_knowledge: dict, limit: int = 3) -> list[dict]:
+    all_recipes = list(all_knowledge.get("sections", {}).get("Recipes", []))
+    if not all_recipes:
+        return []
+
+    random.shuffle(all_recipes)
+    safe_limit = max(1, min(int(limit or 3), 6))
+    selected: list[dict] = []
+    seen_titles: set[str] = set()
+    seen_cuisines: set[str] = set()
+    fallback: list[dict] = []
+
+    for record in all_recipes:
+        recipe = recipe_card(record)
+        title_key = normalize(recipe.get("title", ""))
+        if not title_key or title_key in seen_titles:
+            continue
+        cuisine_key = recipe_cuisine_key(record, recipe)
+        if cuisine_key and cuisine_key not in seen_cuisines and len(selected) < safe_limit:
+            selected.append(recipe)
+            seen_titles.add(title_key)
+            seen_cuisines.add(cuisine_key)
+        else:
+            fallback.append(recipe)
+
+    for recipe in fallback:
+        if len(selected) >= safe_limit:
+            break
+        title_key = normalize(recipe.get("title", ""))
+        if title_key and title_key not in seen_titles:
+            selected.append(recipe)
+            seen_titles.add(title_key)
+
+    return selected[:safe_limit]
+
+
+def recipe_cuisine_key(record: dict, recipe: dict | None = None) -> str:
+    recipe = recipe or recipe_card(record)
+    text = " ".join(
+        str(value or "")
+        for value in (
+            recipe.get("cuisine"),
+            recipe.get("title"),
+            recipe.get("note"),
+            recipe.get("link"),
+            recipe_search_text(record, recipe),
+        )
+    )
+    cuisines = detect_cuisines_from_text(text)
+    if cuisines:
+        return cuisines[0]
+    cuisine = normalize(str(recipe.get("cuisine") or ""))
+    return cuisine or "unknown"
+
+
 def recipe_results(
     knowledge_matches: dict | None,
     limit: int = 4,
@@ -4830,6 +4890,12 @@ def recipe_answer(subject: str, recipes: list[dict] | None = None) -> str:
         return "Našiel som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie."
 
     return "Receptovú otázku som zachytil, ale nemám dosť detailov na presný recept. Skúste napísať napríklad: recept na kimchi alebo recept na pad thai."
+
+
+def random_recipes_answer(recipes: list[dict] | None = None) -> str:
+    if recipes:
+        return "Na večeru som vybral tri recepty z rôznych kuchýň. Vyberte si podľa chuti nižšie."
+    return recipe_answer("general", recipes)
 
 
 def recipe_products_answer(subject: str | None, recipes: list[dict] | None = None) -> str:

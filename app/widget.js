@@ -1059,7 +1059,7 @@
       ];
     }
     if (popularQuestions.length) return popularQuestions.slice(0, 5);
-    return ["Čo dnes variť?", "Recept na ramen", "Čím nahradiť mirin?", "Najlepšia sushi ryža", "Kokosové mlieko"];
+    return ["Čo variť na večeru?", "Recept na ramen", "Čím nahradiť mirin?", "Najlepšia sushi ryža", "Kokosové mlieko"];
   }
 
   function normalizeQuickQuestion(value) {
