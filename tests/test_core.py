@@ -725,6 +725,25 @@ class TestIntentDetection:
         assert "wasabi" in available_titles
         assert "nori" in available_titles
 
+    def test_tom_yum_shopping_list_prioritizes_herbs_and_paste_alternative(self):
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="nakupny zoznam na tom yum", limit=8), request)
+        titles = [nrm(product.get("title", "")) for product in result.get("products", [])]
+        all_titles = " | ".join(titles)
+
+        assert result.get("intent") == "related_products"
+        assert "citronova trava" in all_titles
+        assert "galangal" in all_titles
+        assert "kaffir" in all_titles or "kaffirov" in all_titles
+        assert "rybacia omacka" in all_titles
+        assert "sriracha" in all_titles or "cili omacka" in all_titles or "chili omacka" in all_titles
+        assert "tom yum" in all_titles and "pasta" in all_titles
+        assert "kokosove mlieko" not in " | ".join(titles[:4])
+        assert "sojova omacka" not in " | ".join(titles[:4])
+        paste_index = next(index for index, title in enumerate(titles) if "tom yum" in title and "pasta" in title)
+        sriracha_index = next(index for index, title in enumerate(titles) if "sriracha" in title)
+        assert paste_index > sriracha_index
+
     def test_all_known_recipes_have_missing_ingredient_mapping(self, knowledge):
         recipes = knowledge.get("sections", {}).get("Recipes", [])
         assert recipes

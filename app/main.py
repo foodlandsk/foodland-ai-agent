@@ -804,11 +804,12 @@ RELATED_PRODUCT_QUERIES = {
         "nori snack",
     ],
     "tom_yum": [
-        "kokosove mlieko",
-        "rybacia omacka",
         "citronova trava",
+        "galangal",
+        "kaffirove listy",
+        "rybacia omacka",
         "sriracha",
-        "sojova omacka",
+        "tom yum pasta",
     ],
     "tom_kha": [
         "kokosove mlieko",
@@ -2843,9 +2844,13 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     is_shopping_list_request = wants_shopping_list(contextual_message)
     if is_shopping_list_request and related_subject == "sushi":
         matches = sushi_shopping_core_products(products, matches, chat_request.limit)
+    if is_shopping_list_request and related_subject == "tom_yum":
+        matches = tom_yum_shopping_core_products(products, matches, chat_request.limit)
     matches = personalize_products(matches, user_profile)
     if is_shopping_list_request and related_subject == "sushi":
         matches = sushi_shopping_core_products(products, matches, chat_request.limit)
+    if is_shopping_list_request and related_subject == "tom_yum":
+        matches = tom_yum_shopping_core_products(products, matches, chat_request.limit)
     if special_subject == "sushi_rice":
         matches = sorted(
             matches,
@@ -3978,6 +3983,48 @@ def sushi_shopping_core_products(products: list[Product], existing_matches: list
             return recommendations[:limit]
 
     for product in existing_matches or []:
+        add_product(product)
+        if len(recommendations) >= limit:
+            break
+
+    return recommendations[:limit]
+
+
+def tom_yum_shopping_core_products(products: list[Product], existing_matches: list[dict], limit: int) -> list[dict]:
+    queries = [
+        ("citronova trava", ("citronova trava",), ()),
+        ("galangal", ("galangal",), ()),
+        ("kaffirove listy", ("kaffir", "kaffirov"), ("bambus", "kari list", "caj")),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("sriracha", ("sriracha",), ()),
+        ("tom yum pasta", ("tom yum", "pasta"), ("arasid", "riasy", "instant", "polievka v kelimku")),
+    ]
+    seen: set[str] = set()
+    recommendations: list[dict] = []
+
+    def add_product(product: dict) -> None:
+        key = product.get("id") or product.get("link") or product.get("title")
+        if not key or key in seen:
+            return
+        seen.add(key)
+        recommendations.append(product)
+
+    for query, required_terms, excluded_terms in queries:
+        for product in cached_search_products(products, query, 8):
+            title = normalize(product.get("title", ""))
+            if any(term in title for term in excluded_terms):
+                continue
+            if not all(term in title for term in required_terms):
+                continue
+            add_product(product)
+            break
+        if len(recommendations) >= limit:
+            return recommendations[:limit]
+
+    for product in existing_matches or []:
+        title = normalize(product.get("title", ""))
+        if any(term in title for term in ("sojova omacka", "kokosove mlieko")):
+            continue
         add_product(product)
         if len(recommendations) >= limit:
             break
