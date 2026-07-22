@@ -1653,7 +1653,11 @@ MISSING_INGREDIENTS_BY_SUBJECT = {
 }
 
 RELATED_INTENT_MARKERS = (
+    "co na",
     "co k",
+    "co ku",
+    "ukaz viac",
+    "ukazte viac",
     "suvisiace",
     "hodi",
     "hodia",
@@ -1987,6 +1991,10 @@ OUT_OF_DOMAIN_MARKERS = (
     " predpis",
     "akcie",
     "burz",
+    "krypto",
+    "kryptomen",
+    "bitcoin",
+    "ethereum",
     "hypotek",
     "nahradne diely",
     "diely do auta",

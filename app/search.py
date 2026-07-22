@@ -58,6 +58,39 @@ POPULARITY_BOOSTS = {
     "miso": 3,
 }
 
+CONVERSATIONAL_NOISE_PHRASES = (
+    "bez omacky okolo",
+    "bez omacky",
+    "bez zbytocnych reci",
+    "nechcem nahodne produkty",
+    "nie nahodne",
+    "len strucne",
+    "po slovensky",
+    "zobrazit viac",
+    "zobraz viac",
+    "ukaz viac",
+    "do kosika",
+    "klikol som na tlacidlo",
+    "rychle tlacidlo",
+    "tlacidlo nereagovalo",
+    "po znovuotvoreni widgetu",
+    "po zatvoreni a otvoreni",
+    "po otvoreni widgetu",
+    "po zavreti widgetu",
+    "opakujem otazku",
+    "omylom som zavrel",
+    "pisem v mobile",
+    "som v mobile",
+    "mobil",
+    "rychlo",
+    "este raz",
+    "znova",
+    "opat",
+    "dakujem",
+    "prosim",
+    "pls",
+)
+
 STOPWORDS = {
     "a",
     "aj",
@@ -114,13 +147,20 @@ def normalize(value: str) -> str:
     return ascii_text.lower()
 
 
-def expand_query(value: str) -> str:
+def strip_conversational_noise(value: str) -> str:
     normalized = normalize(value)
+    for phrase in CONVERSATIONAL_NOISE_PHRASES:
+        normalized = normalized.replace(phrase, " ")
+    return " ".join(normalized.split())
+
+
+def expand_query(value: str) -> str:
+    normalized = strip_conversational_noise(value)
     additions: list[str] = []
     for phrase, replacement in PHRASE_SYNONYMS.items():
         if phrase in normalized:
             additions.append(replacement)
-    return " ".join([value, *additions]).strip()
+    return " ".join([normalized, *additions]).strip()
 
 
 def tokenize(value: str) -> set[str]:
@@ -228,7 +268,7 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
     if not query_tokens:
         return []
 
-    normalized_query = normalize(query)
+    normalized_query = strip_conversational_noise(query)
     raw_query_tokens = raw_tokens(query)
     wants_sushi_rice = {"ryza"} <= query_tokens and bool({"sushi", "susi"} & query_tokens)
 
@@ -300,7 +340,7 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
 
 
 def autocomplete_suggestions(products: list[Product] | list[dict], query: str, limit: int = 8) -> list[dict]:
-    normalized_query = normalize(query).strip()
+    normalized_query = strip_conversational_noise(query)
     if len(normalized_query) < 2:
         return []
 
