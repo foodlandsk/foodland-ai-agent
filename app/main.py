@@ -1412,6 +1412,13 @@ SPECIAL_PRODUCT_QUERIES = {
         "ryzovy ocot",
         "wasabi",
     ],
+    "kimchi_product": [
+        "kimchi",
+        "mat kimchi",
+        "kimchi jongga",
+        "veganske kimchi",
+        "nakladana kapusta kimchi",
+    ],
     "gluten_free_sushi": [
         "bezlepkova sojova omacka",
         "tamari",
@@ -1530,6 +1537,7 @@ SPECIAL_PRODUCT_QUERIES = {
 }
 
 SPECIAL_PRODUCT_EXCLUDE_TERMS = {
+    "kimchi_product": ("instant", "ramen", "ramyun", "rezance", "polievk", "omack"),
     "gluten_free_sushi": (
         "flastick",
         "flast",
@@ -5394,6 +5402,30 @@ def normalize_url_for_match(url: str) -> str:
 
 def detect_special_product_subject(message: str) -> str | None:
     normalized_message = normalize(message)
+    if ("kimchi" in normalized_message or "kimci" in normalized_message) and not any(
+        marker in normalized_message
+        for marker in (
+            "co je",
+            "co znamena",
+            "ako chuti",
+            "recept",
+            "ingredien",
+            "surovin",
+            "potrebujem",
+            "co treba",
+            "co kupit",
+            "vyrob",
+            "priprav",
+            "varit",
+            "urobit",
+            "spravit",
+            "nakupny zoznam",
+            "do kosika",
+            "nahrad",
+            "vynahrad",
+        )
+    ):
+        return "kimchi_product"
     if ("sushi ryz" in normalized_message or "susi ryz" in normalized_message) and not any(
         marker in normalized_message for marker in ("bez lepku", "bezlepk", "celiak", "dopln")
     ):

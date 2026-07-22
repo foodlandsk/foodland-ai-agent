@@ -210,6 +210,18 @@ class TestSearchProducts:
         results = search_products(products, "kimchi", 4)
         assert titles_contain(results, "kimchi", "kimci")
 
+    def test_direct_kimchi_chat_prioritizes_packaged_kimchi(self):
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="najlepsie kimchi", limit=5), request)
+        titles = [nrm(product.get("title", "")) for product in result.get("products", [])]
+
+        assert result.get("intent") == "product_search"
+        assert titles
+        assert "kimchi" in titles[0]
+        assert "instant" not in titles[0]
+        assert "ramen" not in titles[0]
+        assert "polievk" not in titles[0]
+
     def test_bezlepkova_sojova_omacka(self, products):
         results = search_products(products, "bezlepkova sojova omacka", 4)
         found = titles_contain(results, "bezlepkova", "tamari", "Tamari")
