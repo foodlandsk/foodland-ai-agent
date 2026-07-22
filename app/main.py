@@ -1567,6 +1567,10 @@ FAQ_INTENT_MARKERS = (
     "doruc",
     "postovn",
     "kurier",
+    "posiel",
+    "preprav",
+    "privez",
+    "rozvaz",
     "packeta",
     "zasielk",
     "objednav",
@@ -4346,7 +4350,7 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         )
         if shipping_answer:
             return shipping_answer
-    if any(marker in normalized_message for marker in ("kurier", "doruc", "zasielk")):
+    if any(marker in normalized_message for marker in ("kurier", "doruc", "zasielk", "posiel", "preprav", "privez", "rozvaz")):
         delivery_answer = direct_faq_answer_by_question_markers(
             loaded_knowledge,
             required_markers=("sposoby", "dorucenia"),

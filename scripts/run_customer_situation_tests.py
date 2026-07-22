@@ -174,6 +174,10 @@ def evaluate_case(case: dict[str, Any], products: list[dict[str, Any]], top_n: i
     if expected_terms and not products:
         issues.append("no_products")
 
+    expected_count = case.get("expected_products_count")
+    if expected_count == 0 and products:
+        issues.append("unexpected_products")
+
     return not issues, issues
 
 

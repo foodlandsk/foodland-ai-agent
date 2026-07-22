@@ -543,6 +543,16 @@ class TestIntentDetection:
     def test_faq_platba(self):
         assert main.is_faq_intent("da sa platit kartou?")
 
+    def test_faq_shipping_carrier_synonyms(self):
+        assert main.is_faq_intent("cez koho posielate baliky?")
+        assert main.is_faq_intent("ktory prepravca mi privezie objednavku?")
+        assert main.is_faq_intent("kto rozvaza foodland objednavky?")
+
+    def test_direct_faq_shipping_carrier_answer(self, knowledge):
+        answer = main.best_direct_faq_answer("cez koho posielate baliky?", knowledge)
+        assert answer
+        assert "Packeta" in answer or "DPD" in answer or "GLS" in answer
+
     def test_faq_NOT_triggered_for_product(self):
         assert not main.is_faq_intent("gochujang pasta")
 
