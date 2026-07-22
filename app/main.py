@@ -2079,6 +2079,13 @@ def search_autocomplete_endpoint(request: SearchAutocompleteRequest, fastapi_req
     }
 
 
+@app.get("/suggested-questions")
+def public_suggested_questions(days: int = 14, limit: int = 5) -> dict:
+    events = read_analytics_events(max(1, min(int(days or 14), 60)))
+    min_count = int(os.getenv("PUBLIC_SUGGESTED_QUESTION_MIN_COUNT", "2") or 2)
+    return {"questions": public_suggested_question_rows(events, limit, min_count)}
+
+
 @app.post("/knowledge/search")
 def knowledge_search(request: KnowledgeSearchRequest) -> dict:
     results = search_knowledge(knowledge, request.query)
@@ -3921,6 +3928,39 @@ def top_question_rows(events: list[dict], limit: int = 20) -> list[dict]:
         {"question": examples[key], "normalized": key, "count": count}
         for key, count in counter.most_common(max(1, min(limit, 100)))
     ]
+
+
+def public_suggested_question_rows(events: list[dict], limit: int = 5, min_count: int = 2) -> list[dict]:
+    safe_limit = max(1, min(int(limit or 5), 8))
+    safe_min_count = max(1, min(int(min_count or 2), 20))
+    rows = []
+    for row in top_question_rows(events, 50):
+        question = clean_public_suggested_question(str(row.get("question") or ""))
+        if not question or int(row.get("count", 0) or 0) < safe_min_count:
+            continue
+        rows.append(
+            {
+                "question": question,
+                "count": int(row.get("count", 0) or 0),
+            }
+        )
+        if len(rows) >= safe_limit:
+            break
+    return rows
+
+
+def clean_public_suggested_question(question: str) -> str:
+    text = " ".join(str(question or "").split())
+    if not text:
+        return ""
+    text = text[:90].strip()
+    if len(text) < 4:
+        return ""
+    if re.search(r"[@<>]|https?://|www\.|\b\d{6,}\b", text, re.IGNORECASE):
+        return ""
+    if not text.endswith("?") and any(text.lower().startswith(prefix) for prefix in ("co ", "čo ", "ako ", "cim ", "čim ", "čím ", "recept", "mate ", "máte ", "naj")):
+        text = f"{text}?"
+    return text
 
 
 def no_result_rows(events: list[dict], limit: int = 20) -> list[dict]:

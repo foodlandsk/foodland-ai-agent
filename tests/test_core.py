@@ -1012,6 +1012,25 @@ class TestAdminAnalytics:
         assert "frequent_question" in item_types
         assert any("synonym" in nrm(item.get("suggested_action", "")) for item in items)
 
+    def test_public_suggested_questions_use_repeated_safe_questions(self):
+        events = [
+            {"ts": 10, "message": "co je kimchi", "matches_count": 4, "intent": "article_products"},
+            {"ts": 11, "message": "co je kimchi?", "matches_count": 4, "intent": "article_products"},
+            {"ts": 12, "message": "moj email test@example.com", "matches_count": 0, "intent": "unknown"},
+            {"ts": 13, "message": "moj email test@example.com", "matches_count": 0, "intent": "unknown"},
+            {"ts": 14, "message": "recept na ramen", "matches_count": 0, "intent": "recipe"},
+        ]
+        rows = main.public_suggested_question_rows(events, limit=5, min_count=2)
+
+        questions = [row["question"] for row in rows]
+        assert questions == ["co je kimchi?"]
+
+    def test_clean_public_suggested_question_filters_sensitive_text(self):
+        assert main.clean_public_suggested_question("napiste mi na test@example.com") == ""
+        assert main.clean_public_suggested_question("pozri https://example.com") == ""
+        assert main.clean_public_suggested_question("objednavka 123456789") == ""
+        assert main.clean_public_suggested_question("recept na pho") == "recept na pho?"
+
 
 class TestFastResponses:
     def test_fast_response_enabled_for_product_matches(self, monkeypatch):

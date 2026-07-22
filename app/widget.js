@@ -10,6 +10,9 @@
   let lastProductSubject = "";
   let lastRecipeSubject = "";
   const clientId = getOrCreateClientId();
+  let popularQuestions = [];
+  let popularQuestionsLoaded = false;
+  let quickSuggestionsWrap = null;
 
   const demoProducts = [
     {
@@ -1025,13 +1028,42 @@
         `Je ${productTitle} vhodné do ázijskej kuchyne?`,
       ];
     }
+    if (popularQuestions.length) return popularQuestions.slice(0, 5);
     return ["Čo dnes variť?", "Recept na ramen", "Čím nahradiť mirin?", "Najlepšia sushi ryža", "Kokosové mlieko"];
   }
 
+  function normalizeQuickQuestion(value) {
+    return String(value || "").replace(/\s+/g, " ").trim().slice(0, 90);
+  }
+
+  async function fetchPopularQuestions() {
+    if (popularQuestionsLoaded || demoMode) return;
+    popularQuestionsLoaded = true;
+    try {
+      const response = await fetch(`${apiBaseUrl}/suggested-questions?days=14&limit=5`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const questions = (data.questions || [])
+        .map(function (item) { return normalizeQuickQuestion(item.question || item.label || item); })
+        .filter(function (label, index, all) { return label && all.indexOf(label) === index; })
+        .slice(0, 5);
+      if (!questions.length) return;
+      popularQuestions = questions;
+      refreshQuickSuggestions();
+    } catch (error) {
+      // Suggested questions are optional; keep static fallback chips if analytics is unavailable.
+    }
+  }
+
   function addSuggestions() {
+    fetchPopularQuestions();
     const items = initialSuggestionItems();
     const wrap = document.createElement("div");
     wrap.className = "fl-ai-suggestions";
+    quickSuggestionsWrap = wrap;
     items.forEach(function (label) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -1303,6 +1335,26 @@
       wrap.appendChild(card);
     });
     messages.appendChild(wrap);
+    scrollToBottom();
+  }
+
+  function refreshQuickSuggestions() {
+    if (!quickSuggestionsWrap || !quickSuggestionsWrap.isConnected) return;
+    if (currentPageProductTitle()) return;
+    const items = initialSuggestionItems();
+    quickSuggestionsWrap.innerHTML = "";
+    items.forEach(function (label) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "fl-ai-suggestion";
+      btn.textContent = label;
+      btn.addEventListener("click", function () {
+        quickSuggestionsWrap.remove();
+        input.value = label;
+        form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      quickSuggestionsWrap.appendChild(btn);
+    });
     scrollToBottom();
   }
 
