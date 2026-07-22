@@ -704,6 +704,10 @@ class TestIntentDetection:
         subj = main.detect_special_product_subject("nahrada za rybaciu omacku vegan")
         assert subj == "vegan_fish_sauce_replacement"
 
+    def test_replacement_subject_detected_before_related_cross_sell(self):
+        assert main.detect_replacement_subject("cim vynahradim gochujang") == "gochujang"
+        assert main.detect_related_subject("cim vynahradim gochujang") == "gochujang"
+
 
 class TestRelatedProducts:
     def test_sushi_related_no_sushi_rice(self, products):
@@ -718,6 +722,25 @@ class TestRelatedProducts:
         results = main.related_products_for_subject(products, "kimchi", 8)
         for p in results:
             assert "kimchi" not in nrm(p.get("title", ""))
+
+    def test_replacement_products_are_similar_not_cross_sell(self, products, knowledge):
+        results = main.alternative_products_for_subject(products, knowledge, "gochujang", 6)
+        titles = nrm(" | ".join(product.get("title", "") for product in results))
+
+        assert results
+        assert "gochujang" in titles
+        assert "mirin" not in titles
+        assert "ryzovy ocot" not in titles
+        assert "sezamovy olej" not in titles
+
+    def test_replacement_mirin_prefers_mirin_like_products(self, products, knowledge):
+        results = main.alternative_products_for_subject(products, knowledge, "mirin", 6)
+        titles = nrm(" | ".join(product.get("title", "") for product in results))
+
+        assert results
+        assert "mirin" in titles
+        assert "podlozka" not in titles
+        assert "palicky" not in titles
 
     def test_special_kids_snack_no_alcohol(self, products):
         results = main.special_products_for_subject(products, "kids_snack", 6)

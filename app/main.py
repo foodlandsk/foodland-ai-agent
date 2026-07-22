@@ -2305,7 +2305,7 @@ def update_user_memory(
 
 
 def memory_intent_bucket(intent: str) -> str:
-    if intent in {"product_search", "related_products", "article_products", "allergen_safety"}:
+    if intent in {"product_search", "related_products", "replacement_products", "article_products", "allergen_safety"}:
         return "buy"
     if intent in {"recipe", "recipe_to_products"}:
         return "cook"
@@ -2701,6 +2701,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
 
     already_have_subject = detect_already_have_subject(contextual_message)
     special_subject = detect_special_product_subject(contextual_message)
+    replacement_subject = detect_replacement_subject(contextual_message)
     related_subject = detect_related_subject(contextual_message)
     article_product_subject = (
         detect_article_product_subject(contextual_message, articles)
@@ -2714,6 +2715,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         matches = complement_products_for_subject(products, already_have_subject, chat_request.limit)
     elif special_subject:
         matches = special_products_for_subject(products, special_subject, chat_request.limit)
+    elif replacement_subject:
+        matches = alternative_products_for_subject(products, knowledge, replacement_subject, chat_request.limit)
     elif article_product_subject:
         matches = article_products_for_subject(products, article_product_subject, chat_request.limit)
     elif related_subject:
@@ -2721,29 +2724,39 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     else:
         matches = cached_search_products(products, contextual_message, chat_request.limit)
     matches = personalize_products(matches, user_profile)
-    intent = "article_products" if article_product_subject else ("related_products" if related_subject else "product_search")
+    intent = (
+        "article_products"
+        if article_product_subject
+        else ("replacement_products" if replacement_subject else ("related_products" if related_subject else "product_search"))
+    )
     annotate_recommendations(
         matches,
         intent,
         related_subject or article_product_subject,
         already_have_subject,
-        special_subject,
+        replacement_subject or special_subject,
         contextual_message,
     )
     cart_candidates = cart_candidates_for_response(
         matches,
         intent,
-        article_product_subject or related_subject or already_have_subject or special_subject or contextual_message,
+        article_product_subject or replacement_subject or related_subject or already_have_subject or special_subject or contextual_message,
     )
+    fallback_related_subject = None if replacement_subject else related_subject
     update_session_memory(memory_key, chat_request.message, intent, matches, [], knowledge_matches)
     updated_profile = update_user_memory(profile_key, chat_request.message, intent, matches, [])
     log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id)
 
     if not matches and not knowledge_matches and not needs_knowledge:
+        fallback_sections = (
+            ("Products_AI", "Alternatives", "IntentMapping")
+            if replacement_subject
+            else ("Products_AI", "CrossSell", "Alternatives", "IntentMapping")
+        )
         knowledge_matches = search_knowledge(
             knowledge,
             contextual_message,
-            allowed_sections=("Products_AI", "CrossSell", "Alternatives", "IntentMapping"),
+            allowed_sections=fallback_sections,
         )
         articles = []
 
@@ -2755,7 +2768,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
 
     if should_use_fast_chat_answer(intent, matches, knowledge_matches, needs_composition_caution):
         return {
-            "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
+            "answer": fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
@@ -2769,7 +2782,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if not client:
         logger.debug("No OPENAI_API_KEY set, using fallback answer.")
         return {
-            "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
+            "answer": fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
@@ -2786,7 +2799,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                 "content": (
                     "Si Foodland poradca – odborný nákupný asistent pre Foodland.sk, špeciálne azijské a svetové potraviny. "
                     "Odpovedaj po slovensky, priateľsky a s predajným tónom. Neprezentuj sa ako AI. "
-                    "Vždy navrhuj doplnkové produkty (cross-sell) – napr. k sójovej omáčke navrhni mirin alebo ryžový ocot, "
+                    "Vždy rozlišuj náhrady a doplnky: pri otázke 'čím nahradiť X' odporúčaj podobné alternatívy, nie cross-sell doplnky. "
+                    "Pri otázke 'čo sa hodí k X' navrhuj doplnkové produkty (cross-sell) – napr. k sójovej omáčke mirin alebo ryžový ocot. "
                     "k ramen navrhni dashi alebo kimchi. Používaj formulácie: 'Odporúčam tiež...', "
                     "'Skvelo sa hodí k...', 'Zákazníci si k tomu zvyčajne berú aj...'. "
                     "Používaj iba poskytnutý kontext: produkty, FAQ, recepty, cross-sell, alternatívy a Products_AI. "
@@ -2822,7 +2836,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         # RETRY-01: _call_openai_with_retry pokusi sa max 3x pri RateLimit/Timeout/Connection
         answer_text = _call_openai_with_retry(client, messages, model)
         if not answer_text:
-            answer_text = fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution)
+            answer_text = fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution)
         answer_text = sanitize_answer_links(answer_text, allowed_answer_urls(matches, knowledge_matches))
         logger.info("OpenAI response generated.")
         return {
@@ -2838,7 +2852,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         logger.warning("OpenAI transient error after retries: %s", exc)
         log_backend_error("openai_transient_error", str(exc))
         return {
-            "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
+            "answer": fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
@@ -2849,7 +2863,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         logger.error("OpenAI API failed: %s", exc, exc_info=True)
         log_backend_error("openai_response_failed", str(exc))
         return {
-            "answer": fallback_answer(matches, knowledge_matches, related_subject, needs_composition_caution),
+            "answer": fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
@@ -3688,6 +3702,8 @@ def recommendation_reason(product: dict, group: str, intent: str, context: str |
     context_text = recommendation_context_label(context)
     if intent == "article_products" and context_text:
         return f"Ak vás zaujal článok o {context_text}, toto je priamo súvisiaci produkt."
+    if intent == "replacement_products" and context_text:
+        return f"Podobná alternatíva k {context_text}; vyberám produkt s podobným použitím, nie doplnok ku kombinácii."
     if intent == "related_products" and context_text:
         return f"K {context_text} sa hodí, keď chcete nákup doplniť o ďalšiu surovinu alebo dochutenie."
     if "bezlepk" in title or "tamari" in title:
@@ -3725,7 +3741,7 @@ def recommendation_context_label(context: str | None) -> str:
 
 
 def cart_candidates_for_response(matches: list[dict], intent: str, context: str | None = None) -> list[dict]:
-    if intent not in {"related_products", "product_search", "recipe_to_products", "article_products"}:
+    if intent not in {"related_products", "replacement_products", "product_search", "recipe_to_products", "article_products"}:
         return []
     reason = f"Odporúčanie Foodland Mei: {str(context or intent).replace('_', ' ')[:80]}"
     candidates = products_to_cart_candidates(matches or [], reason)
@@ -4036,7 +4052,7 @@ def analytics_action_items(events: list[dict], errors: list[dict] | None = None,
 
 
 def low_relevance_rows(events: list[dict], limit: int = 20) -> list[dict]:
-    product_intents = {"product_search", "related_products", "article_products", "recipe_to_products", "allergen_safety"}
+    product_intents = {"product_search", "related_products", "replacement_products", "article_products", "recipe_to_products", "allergen_safety"}
     grouped: dict[str, dict] = {}
     for event in events:
         intent = str(event.get("intent") or "")
@@ -4088,7 +4104,7 @@ def suggested_analytics_action(intent: str, normalized_question: str, issue_type
 
 def is_no_result_event(event: dict) -> bool:
     intent = str(event.get("intent") or "")
-    product_intents = {"product_search", "related_products", "article_products", "recipe_to_products", "allergen_safety"}
+    product_intents = {"product_search", "related_products", "replacement_products", "article_products", "recipe_to_products", "allergen_safety"}
     return intent in product_intents and int(event.get("matches_count", 0) or 0) == 0
 
 
@@ -4785,6 +4801,192 @@ def recipe_products_answer(subject: str | None, recipes: list[dict] | None = Non
         f"K receptu pre {subject_text} som našiel relevantné produkty. "
         "Sú zoradené od kľúčových surovín po doplnky."
     )
+
+
+REPLACEMENT_QUERY_FILLER = (
+    "cim",
+    "čím",
+    "vynahradim",
+    "vynahradím",
+    "nahradim",
+    "nahradím",
+    "nahradit",
+    "nahradiť",
+    "nahrad",
+    "nahrada",
+    "náhrada",
+    "namiesto",
+    "alternativa",
+    "alternatíva",
+    "alternativu",
+    "alternatívu",
+    "co pouzit",
+    "čo použiť",
+    "pouzit",
+    "použiť",
+    "za",
+    "ak",
+    "nemam",
+    "nemám",
+    "nemame",
+    "nemáme",
+    "x",
+)
+
+
+REPLACEMENT_SUBJECT_ALIASES = {
+    "rybacia omacka": ("rybacia omacka", "rybaciu omacku", "rybiu omacku", "fish sauce"),
+    "sojova omacka": ("sojova omacka", "sojovu omacku", "shoyu", "soy sauce"),
+    "gochujang": ("gochujang", "gochu jang", "gochudzang", "gochu"),
+    "mirin": ("mirin",),
+    "ryzovy ocot": ("ryzovy ocot", "rice vinegar"),
+    "kokosove mlieko": ("kokosove mlieko", "kokosoveho mlieka", "coconut milk"),
+    "miso pasta": ("miso pasta", "miso"),
+    "sriracha": ("sriracha", "sriraca"),
+    "hoisin omacka": ("hoisin", "hoisin omacka"),
+    "tamari": ("tamari",),
+    "tamarind": ("tamarind",),
+    "ryzove rezance": ("ryzove rezance", "rice noodles"),
+    "sushi ryza": ("sushi ryza", "sushi ryzu"),
+}
+
+
+REPLACEMENT_PRODUCT_QUERIES = {
+    "mirin": ["mirin", "sladke ryzove vino"],
+    "sojova omacka": ["tamari", "bezlepkova sojova omacka", "japonska sojova omacka"],
+    "rybacia omacka": ["tamari", "sojova omacka", "hubova vegetarianska omacka"],
+    "gochujang": ["gochujang", "korejska cili pasta"],
+    "ryzovy ocot": ["ryzovy ocot", "rice vinegar"],
+    "kokosove mlieko": ["kokosove mlieko", "kokosovy krem"],
+    "miso pasta": ["miso pasta", "miso"],
+    "sriracha": ["sriracha", "chili omacka", "sambal"],
+    "hoisin omacka": ["hoisin omacka", "sladka sojova omacka"],
+    "tamari": ["tamari", "bezlepkova sojova omacka"],
+}
+
+
+def detect_replacement_subject(message: str) -> str | None:
+    normalized_message = normalize(message)
+    if not any(marker in normalized_message for marker in ("nahrad", "vynahrad", "namiesto", "alternativ", "cim ", "čim ", "čím ")):
+        return None
+
+    for subject, aliases in REPLACEMENT_SUBJECT_ALIASES.items():
+        if any(alias in normalized_message for alias in aliases):
+            return subject
+
+    cleaned = normalized_message
+    for filler in REPLACEMENT_QUERY_FILLER:
+        cleaned = cleaned.replace(normalize(filler), " ")
+    cleaned = re.sub(r"[^a-z0-9 ]+", " ", cleaned)
+    cleaned = " ".join(token for token in cleaned.split() if len(token) > 2)
+    return complete_autocomplete_subject(cleaned) if cleaned else None
+
+
+def alternative_products_for_subject(
+    products_list: list[Product] | list[dict],
+    all_knowledge: dict,
+    subject: str,
+    limit: int,
+) -> list[dict]:
+    seen: set[str] = set()
+    recommendations: list[dict] = []
+
+    alternative_hits = search_knowledge(all_knowledge, subject, allowed_sections=("Alternatives",))
+    for hit in alternative_hits.get("Alternatives", []):
+        record = hit.get("record", {})
+        product_name = first_record_value(record, ("Produkt", "product"))
+        if subject and not replacement_subject_matches_product(subject, product_name):
+            continue
+        for index in range(1, 6):
+            alt_title = clean_alternative_title(str(record.get(f"Alternativa {index}") or ""))
+            alt_url = str(record.get(f"Alternativa {index}_url") or "").strip()
+            for product in products_from_alternative(products_list, alt_title, alt_url, subject):
+                key = product.get("id") or product.get("link") or product.get("title")
+                if not key or key in seen:
+                    continue
+                seen.add(key)
+                recommendations.append(product)
+                if len(recommendations) >= limit:
+                    return recommendations
+                break
+
+    if recommendations:
+        return recommendations
+
+    for query in REPLACEMENT_PRODUCT_QUERIES.get(subject, []):
+        for product in prioritize_replacement_title_matches(cached_search_products(products_list, query, max(limit, 6)), query):
+            key = product.get("id") or product.get("link") or product.get("title")
+            if key and key not in seen:
+                seen.add(key)
+                recommendations.append(product)
+            if len(recommendations) >= limit:
+                return recommendations
+
+    if recommendations:
+        return recommendations
+
+    # Fallback: same-name/category products are still alternatives, unlike cross-sell complements.
+    fallback_products = prioritize_replacement_title_matches(cached_search_products(products_list, subject, max(limit * 2, 8)), subject)
+    for product in fallback_products:
+        key = product.get("id") or product.get("link") or product.get("title")
+        if key and key not in seen:
+            seen.add(key)
+            recommendations.append(product)
+        if len(recommendations) >= limit:
+            break
+    return recommendations
+
+
+def replacement_subject_matches_product(subject: str, product_name: str) -> bool:
+    normalized_subject = normalize(subject)
+    normalized_title = normalize(product_name)
+    if normalized_subject and normalized_subject in normalized_title:
+        return True
+    subject_tokens = {token for token in tokenize(normalized_subject) if len(token) > 2}
+    title_tokens = set(tokenize(normalized_title))
+    return bool(subject_tokens) and subject_tokens <= title_tokens
+
+
+def prioritize_replacement_title_matches(products_list: list[dict], subject: str) -> list[dict]:
+    strong: list[dict] = []
+    weak: list[dict] = []
+    for product in products_list:
+        title = str(product.get("title") or "")
+        if replacement_subject_matches_product(subject, title):
+            strong.append(product)
+        else:
+            weak.append(product)
+    return strong if strong else weak
+
+
+def clean_alternative_title(value: str) -> str:
+    text = " ".join(str(value or "").split())
+    if not text:
+        return ""
+    for separator in (" – alternativa", " - alternativa", " – alternatíva", " - alternatíva"):
+        if separator in text:
+            text = text.split(separator, 1)[0]
+    return text.strip()
+
+
+def products_from_alternative(products_list: list[Product] | list[dict], title: str, url: str, subject: str) -> list[dict]:
+    if title and not replacement_subject_matches_product(subject, title):
+        # Product alternative rows sometimes contain broad category neighbors; avoid treating accessories as substitutes.
+        return []
+    if url:
+        normalized_url = normalize_url_for_match(url)
+        for product in products_list:
+            product_data = format_product(product)
+            product_url = normalize_url_for_match(str(product_data.get("link") or product_data.get("url") or ""))
+            if product_url and product_url == normalized_url:
+                return [product_data]
+    if title:
+        return cached_search_products(products_list, title, 3)
+    return []
+
+
+def normalize_url_for_match(url: str) -> str:
+    return str(url or "").strip().rstrip("/")
 
 
 def detect_special_product_subject(message: str) -> str | None:
