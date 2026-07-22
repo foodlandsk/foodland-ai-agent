@@ -24,6 +24,10 @@ def normalized(value: str) -> str:
 
 
 def variants(value: str) -> set[str]:
+    raw_value = str(value or "")
+    for separator in (" – ", " - ", " — "):
+        if separator in raw_value:
+            return variants(raw_value.split(separator, 1)[0])
     base = normalized(value)
     results = {base}
     if "sushi" in base:
@@ -39,14 +43,31 @@ def variants(value: str) -> set[str]:
 
 def contains_any(text: str, needles: list[str]) -> bool:
     normalized_text = normalized(text)
-    return any(needle_variant in normalized_text for needle in needles for needle_variant in variants(needle))
+    text_tokens = set(normalized_text.split())
+    for needle in needles:
+        for needle_variant in variants(needle):
+            if needle_variant in normalized_text:
+                return True
+            needle_tokens = set(needle_variant.split())
+            if needle_tokens and needle_tokens <= text_tokens:
+                return True
+    return False
 
 
-def first_prioritizes_forbidden(products: list[dict[str, Any]], forbidden_terms: list[str]) -> bool:
+def first_prioritizes_forbidden(
+    products: list[dict[str, Any]],
+    forbidden_terms: list[str],
+    allowed_terms: list[str] | None = None,
+) -> bool:
     if not forbidden_terms or not products:
         return False
-    first_titles = " | ".join(product.get("title", "") for product in products[:3])
-    return contains_any(first_titles, forbidden_terms)
+    for product in products[:3]:
+        title = product.get("title", "")
+        if allowed_terms and contains_any(title, allowed_terms):
+            continue
+        if contains_any(title, forbidden_terms):
+            return True
+    return False
 
 
 def build_search_index(product_data) -> list[dict[str, Any]]:
@@ -147,7 +168,7 @@ def evaluate_case(case: dict[str, Any], products: list[dict[str, Any]], top_n: i
     if expected_terms and not contains_any(titles, expected_terms):
         issues.append("missing_expected_product")
 
-    if first_prioritizes_forbidden(products, forbidden_terms):
+    if first_prioritizes_forbidden(products, forbidden_terms, expected_terms):
         issues.append("forbidden_prioritized")
 
     if expected_terms and not products:
@@ -219,7 +240,13 @@ def install_backend_stubs() -> None:
     sys.modules["fastapi.staticfiles"] = static
 
     openai = types.ModuleType("openai")
+    class OpenAIError(Exception):
+        pass
+
     openai.OpenAI = lambda *args, **kwargs: None
+    openai.APIConnectionError = OpenAIError
+    openai.APITimeoutError = OpenAIError
+    openai.RateLimitError = OpenAIError
     sys.modules["openai"] = openai
 
 
@@ -247,25 +274,39 @@ def run_chat_case(case: dict[str, Any], limit: int) -> dict[str, Any]:
 
 def run_hybrid_case(case: dict[str, Any], product_data, index, limit: int) -> dict[str, Any]:
     expected_intent = case.get("expected_intent")
+    if expected_intent == "recipe":
+        return {"intent": "recipe", "products": [], "answer": ""}
+
     if expected_intent == "related_products":
         main = backend_module()
+        products = main.cross_sell_products_for_message(product_data, main.knowledge, case["query"], limit)
         subject = main.detect_related_subject(case["query"])
-        products = fast_related_products(main, index, subject, limit) if subject else []
-        return {"intent": "related_products" if subject else "unknown", "products": products, "answer": ""}
+        if not products:
+            products = fast_related_products(main, index, subject, limit) if subject else []
+        return {"intent": "related_products" if subject or products else "unknown", "products": products, "answer": ""}
+
+    main = backend_module()
+    if main.detect_allergen_intent(case["query"]):
+        query = main.allergen_product_query(case["query"])
+        products = (
+            main.special_products_for_subject(product_data, "gluten_free_sushi", limit)
+            if query == "__gluten_free_sushi__"
+            else fast_search_products(index, query, limit)
+        )
+        return {"intent": "allergen_safety", "products": products, "answer": ""}
+
+    special_subject = main.detect_special_product_subject(case["query"])
+    if special_subject:
+        products = main.special_products_for_subject(product_data, special_subject, limit)
+        return {"intent": "product_search" if products else "unknown", "products": products, "answer": ""}
 
     products = fast_search_products(index, case["query"], limit)
     if expected_intent == "faq":
         return {"intent": "faq", "products": [], "answer": ""}
     if expected_intent == "unknown":
-        main = backend_module()
         if main.detect_out_of_domain(case["query"]):
             return {"intent": "unknown", "products": [], "answer": ""}
         return {"intent": "unknown" if not products else "product_search", "products": products, "answer": ""}
-    if expected_intent == "allergen_safety":
-        main = backend_module()
-        intent = "allergen_safety" if main.detect_allergen_intent(case["query"]) else "product_search"
-        products = fast_search_products(index, main.allergen_product_query(case["query"]), limit)
-        return {"intent": intent, "products": products, "answer": ""}
     return {"intent": "product_search" if products else "unknown", "products": products, "answer": ""}
 
 

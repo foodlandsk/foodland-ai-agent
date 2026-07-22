@@ -1941,7 +1941,6 @@ ALLERGEN_INTENT_MARKERS = (
     "neobsahuje",
     "neznasam",
     "intoler",
-    "vegan",
     "celiak",
     "celiaki",
     "lakto",
@@ -1964,7 +1963,6 @@ ALLERGEN_TERMS = {
     "ryb": "ryby",
     "makky": "mäkkýše",
     "krev": "krevety",
-    "vegan": "vhodnosť pre veganov",
 }
 
 OUT_OF_DOMAIN_MARKERS = (
@@ -2685,7 +2683,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     )
     articles = article_results(knowledge_matches, chat_request.limit) if "Magazine" in knowledge_sections else []
 
-    if allergen_term and not detect_related_subject(chat_request.message):
+    if allergen_term and (allergen_product_query(chat_request.message) or not detect_related_subject(chat_request.message)):
         allergen_matches = allergen_product_matches(chat_request.message, chat_request.limit)
         allergen_matches = personalize_products(allergen_matches, user_profile)
         update_session_memory(memory_key, chat_request.message, "allergen_safety", allergen_matches, [], knowledge_matches)
@@ -2790,6 +2788,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     special_subject = detect_special_product_subject(contextual_message)
     replacement_subject = detect_replacement_subject(contextual_message)
     related_subject = detect_related_subject(contextual_message)
+    cross_sell_matches = cross_sell_products_for_message(products, knowledge, contextual_message, chat_request.limit)
     article_product_subject = (
         detect_article_product_subject(contextual_message, articles)
         if is_article_info_intent(chat_request.message)
@@ -2806,6 +2805,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         matches = alternative_products_for_subject(products, knowledge, replacement_subject, chat_request.limit)
     elif article_product_subject:
         matches = article_products_for_subject(products, article_product_subject, chat_request.limit)
+    elif cross_sell_matches:
+        matches = cross_sell_matches
     elif related_subject:
         matches = related_products_for_subject(products, related_subject, chat_request.limit)
     else:
@@ -2814,7 +2815,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     intent = (
         "article_products"
         if article_product_subject
-        else ("replacement_products" if replacement_subject else ("related_products" if related_subject else "product_search"))
+        else ("replacement_products" if replacement_subject else ("related_products" if related_subject or cross_sell_matches else "product_search"))
     )
     annotate_recommendations(
         matches,
@@ -5254,6 +5255,68 @@ def products_from_alternative(products_list: list[Product] | list[dict], title: 
     return []
 
 
+def clean_cross_sell_title(value: str) -> str:
+    text = " ".join(str(value or "").split())
+    for separator in (" – ", " — ", " - "):
+        if separator in text:
+            return text.split(separator, 1)[0].strip()
+    return text.strip()
+
+
+def is_product_cross_sell_request(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(
+        marker in normalized_message
+        for marker in (
+            "co sa hodi k",
+            "čo sa hodí k",
+            "co kupit k",
+            "čo kúpiť k",
+            "suvisiace produkty k",
+            "súvisiace produkty k",
+            "doplnky k",
+            "co odporucate k",
+            "čo odporúčate k",
+            "ak kupujem",
+        )
+    )
+
+
+def cross_sell_products_for_message(
+    products_list: list[Product] | list[dict],
+    all_knowledge: dict,
+    message: str,
+    limit: int,
+) -> list[dict]:
+    if not is_product_cross_sell_request(message):
+        return []
+
+    normalized_message = normalize(message)
+    seen: set[str] = set()
+    recommendations: list[dict] = []
+
+    for record in all_knowledge.get("sections", {}).get("CrossSell", []):
+        product_name = first_record_value(record, ("Produkt", "product"))
+        if not product_name or normalize(product_name) not in normalized_message:
+            continue
+        for index in range(1, 6):
+            cross_sell_title = clean_cross_sell_title(record.get(f"Cross-sell {index}") or "")
+            if not cross_sell_title:
+                continue
+            for product in cached_search_products(products_list, cross_sell_title, 3):
+                key = product.get("id") or product.get("link") or product.get("title")
+                if not key or key in seen:
+                    continue
+                seen.add(key)
+                recommendations.append(product)
+                if len(recommendations) >= limit:
+                    return recommendations
+                break
+        break
+
+    return recommendations
+
+
 def normalize_url_for_match(url: str) -> str:
     return str(url or "").strip().rstrip("/")
 
@@ -5517,20 +5580,40 @@ def complement_products_for_subject(products_list: list, subject_key: str, limit
 
 def detect_allergen_intent(message: str) -> str | None:
     normalized_message = normalize(message)
+    is_product_safety_question = re.search(r"\b(je|su|obsahuje|neobsahuje|vhodn|bezpec)\b", normalized_message) is not None
+    if "pozor na alerg" in normalized_message and not is_product_safety_question and not any(
+        marker in normalized_message for marker in ("mam alerg", "alergiu na", "alergia na")
+    ):
+        return None
+    direct_product_request = re.search(r"\b(chcem|dajte|ukazte|hladam|potrebujem|najdi)\b", normalized_message) is not None
+    direct_product_terms = (
+        "kokosove mlieko",
+        "ryzove rezance",
+        "tofu",
+        "nori",
+        "sushi ryza",
+        "gochujang",
+        "kimchi",
+    )
+    if direct_product_request and any(term in normalized_message for term in direct_product_terms) and any(
+        marker in normalized_message for marker in ("pozor na alerg", "neznasam", "nesedia")
+    ):
+        return None
     # Recept query bez explicitnej alergenicke otazky -> nie je allergen intent
     _allergen_explicit = ("alerg", "intoler", "bezlepk", "bez soj", "bez lakt", "celiak")
     if "recept" in normalized_message and not any(e in normalized_message for e in _allergen_explicit):
         return None
     if any(term in normalized_message for term in ("rybi", "rybac")) and "omack" in normalized_message and any(
-        marker in normalized_message for marker in ("vegan", "vegans", "nahrad", "alternativ")
+        marker in normalized_message for marker in ("nahrad", "alternativ")
     ):
         return None
     if ("celiak" in normalized_message or "vhodn" in normalized_message) and any(
         term in normalized_message for term in ("bez lepku", "bezlepk", "celiak")
     ):
         return "lepok"
-    if "vegan" in normalized_message and any(
-        marker in normalized_message for marker in ("je ", " su ", "vhodn", "vlastnost", "zlozen")
+    if "vegan" in normalized_message and (
+        re.search(r"\b(je|su)\b.*\bvegan", normalized_message) is not None
+        or any(marker in normalized_message for marker in ("vhodn", "zlozen"))
     ):
         return "vhodnost pre veganov"
     if "lepk" in normalized_message and any(marker in normalized_message for marker in ("tamari", "bezpec", "pri lepk")):
@@ -5582,6 +5665,8 @@ def allergen_product_matches(message: str, limit: int) -> list[dict]:
     query = allergen_product_query(message)
     if not query:
         return []
+    if query == "__gluten_free_sushi__":
+        return special_products_for_subject(products, "gluten_free_sushi", limit)
     return cached_search_products(products, query, limit)
 
 
@@ -5589,6 +5674,10 @@ def allergen_product_query(message: str) -> str:
     normalized_message = normalize(message)
     if "bez soj" in normalized_message or "bez soja" in normalized_message:
         return ""
+    if ("celiak" in normalized_message or "bez lepku" in normalized_message or "bezlepk" in normalized_message) and (
+        "sushi" in normalized_message or "susi" in normalized_message
+    ):
+        return "__gluten_free_sushi__"
     if "gochu jang" in normalized_message or "gochudzang" in normalized_message or "gochudang" in normalized_message:
         return "gochujang"
 
@@ -5689,13 +5778,19 @@ def allergen_product_matches(message: str, limit: int) -> list[dict]:
     query = allergen_product_query(message)
     if not query:
         return []
+    if query == "__gluten_free_sushi__":
+        return special_products_for_subject(products, "gluten_free_sushi", limit)
     return cached_search_products(products, query, limit)
 
 
 def allergen_product_query(message: str) -> str:
     normalized_message = normalize(message)
-    if "bez" in normalized_message:
+    if "bez soj" in normalized_message or "bez soja" in normalized_message:
         return ""
+    if ("celiak" in normalized_message or "bez lepku" in normalized_message or "bezlepk" in normalized_message) and (
+        "sushi" in normalized_message or "susi" in normalized_message
+    ):
+        return "__gluten_free_sushi__"
     if "gochu jang" in normalized_message or "gochudzang" in normalized_message or "gochudang" in normalized_message:
         return "gochujang"
 

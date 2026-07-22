@@ -508,6 +508,35 @@ class TestIntentDetection:
         term = main.detect_allergen_intent("mate bezlepkovu sojovu omacku?")
         assert term is None, f"False allergen trigger: {term}"
 
+    def test_allergen_product_query_keeps_requested_product(self):
+        assert main.allergen_product_query("je gochujang bez lepku?") == "gochujang"
+        assert main.allergen_product_query("je sushi ryza bez lepku?") == "__gluten_free_sushi__"
+        assert main.allergen_product_query("je rybacia omacka vegan?") == "rybacia omacka"
+
+    def test_allergen_product_query_avoids_generic_soy_free_guess(self):
+        assert main.allergen_product_query("co mate bez soje?") == ""
+
+    def test_allergen_product_matches_include_requested_product(self):
+        titles = " | ".join(product["title"] for product in main.allergen_product_matches("je gochujang bez lepku?", 6))
+        assert "gochujang" in nrm(titles)
+
+    def test_allergen_product_matches_gluten_free_sushi_bundle(self):
+        titles = " | ".join(product["title"] for product in main.allergen_product_matches("som celiak, co k sushi kupit opatrne?", 6))
+        normalized_titles = nrm(titles)
+        assert "tamari" in normalized_titles or "bezlepkova sojova omacka" in normalized_titles
+        assert "nori" in normalized_titles
+
+    def test_allergen_intent_for_product_safety_questions(self):
+        assert main.detect_allergen_intent("je sushi ryza bez lepku?") == "lepok"
+        assert main.detect_allergen_intent("je rybacia omacka vegan?") == "vhodnost pre veganov"
+
+    def test_vegan_profile_recommendation_is_not_allergen_safety(self):
+        assert main.detect_allergen_intent("som vegan a chcem azijske jedla") is None
+        assert main.detect_allergen_intent("som vegan. bez vymyslania vlastnosti") is None
+
+    def test_allergen_warning_suffix_does_not_override_product_search(self):
+        assert main.detect_allergen_intent("chcem ryzove rezance. pozor na alergeny") is None
+
     def test_faq_doprava(self):
         assert main.is_faq_intent("kolko stoji doprava?")
 
@@ -746,6 +775,19 @@ class TestIntentDetection:
 
 
 class TestRelatedProducts:
+    def test_product_specific_cross_sell_from_knowledge(self, products, knowledge):
+        results = main.cross_sell_products_for_message(products, knowledge, "co sa hodi k Biela fazula COCK BRAND 400g?", 6)
+        titles = nrm(" | ".join(product.get("title", "") for product in results))
+
+        assert results
+        assert "rezance" in titles or "ryza" in titles
+
+    def test_product_specific_cross_sell_beats_general_mung_subject(self, products, knowledge):
+        results = main.cross_sell_products_for_message(products, knowledge, "co sa hodi k Mung fazula lupana polena COCK BRAND 400 g?", 6)
+        titles = nrm(" | ".join(product.get("title", "") for product in results))
+
+        assert "sklenene rezance" in titles or "basmati" in titles
+
     def test_sushi_related_no_sushi_rice(self, products):
         """related_products_for_subject('sushi') nesmie vratit sushi ryzu."""
         results = main.related_products_for_subject(products, "sushi", 8)

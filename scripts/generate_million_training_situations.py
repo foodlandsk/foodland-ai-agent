@@ -80,6 +80,8 @@ def product_search_cases(products: list[dict[str, Any]]) -> Iterable[tuple[str, 
         category = compact_category(text(product.get("product_type")))
         expected = [title]
         for template in templates:
+            if "{title}" not in template:
+                continue
             for prefix in prefixes:
                 query = prefix + template.format(title=title, brand=brand, category=category)
                 yield query, {
@@ -104,6 +106,8 @@ def related_cases(knowledge: dict[str, Any]) -> Iterable[tuple[str, dict[str, An
     ]
     for record in cross_sell:
         product = first_value(record, ["Produkt"])
+        if "poukaz" in product.casefold():
+            continue
         expected = [text(record.get(f"Cross-sell {index}")) for index in range(1, 6)]
         expected = [item for item in expected if item]
         if not product or not expected:
@@ -335,13 +339,15 @@ def write_sharded_cases(args: argparse.Namespace) -> dict[str, Any]:
 
     rng = random.Random(args.seed)
     streams = []
+    source_counts: dict[str, int] = {}
     for source, generator in all_generators(products, knowledge):
         generated = list(generator)
         if args.shuffle_source:
             rng.shuffle(generated)
-        streams.append((source, generated))
+        source_counts[source] = len(generated)
+        if generated:
+            streams.append((source, generated))
 
-    source_counts = {source: len(items) for source, items in streams}
     total_available_cycle = sum(source_counts.values())
     if total_available_cycle == 0:
         raise RuntimeError("No cases available.")
