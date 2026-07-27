@@ -1,4 +1,4 @@
-x# Foodland AI Agent – Feature Roadmap & Aktuálny stav
+ # Foodland AI Agent – Feature Roadmap & Aktuálny stav
 **Dátum:** 2026-07-27  
 **Autor:** Claude (Cowork session)  
 **Kontext:** Hodnotenie 9 navrhovaných features voči aktuálnemu stavu codebase pred implementáciou Luigi's Box-štýlu.
