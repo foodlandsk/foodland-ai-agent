@@ -219,7 +219,7 @@ RELATED_PRODUCT_QUERIES = {
         "hoisin omacka",
     ],
     "nakladany_zazvor": [
-        "sushi ryza",
+        "nakladany zazvor", "sushi ryza",
         "nori",
         "wasabi",
         "sojova omacka",
@@ -233,35 +233,35 @@ RELATED_PRODUCT_QUERIES = {
         "lime",
     ],
     "arasidovy_olej": [
-        "sezamovy olej",
+        "arasidovy olej", "sezamovy olej",
         "sojova omacka",
         "sriracha",
         "hoisin omacka",
         "chili omacka",
     ],
     "koriander": [
-        "citronova trava",
+        "koriander", "citronova trava",
         "rybacia omacka",
         "kokosove mlieko",
         "sweet chili omacka",
         "gochujang",
     ],
     "ssamjang": [
-        "gochujang",
+        "ssamjang", "gochujang",
         "doenjang",
         "sezamove semienka",
         "sezamovy olej",
         "hovadzie maso",
     ],
     "mung_fazula": [
-        "sojova omacka",
+        "mung fazula", "sojova omacka",
         "sezamovy olej",
         "rybacia omacka",
         "tofu",
         "koriander",
     ],
     "agar_agar": [
-        "kokosove mlieko",
+        "agar agar", "kokosove mlieko",
         "matcha",
         "tapiokove perly",
         "ryzova muka",
@@ -282,21 +282,21 @@ RELATED_PRODUCT_QUERIES = {
         "bambusove vyhanky",
     ],
     "ryzove_rezance": [
-        "rybacia omacka",
+        "ryzove rezance", "rybacia omacka",
         "sojova omacka",
         "sriracha",
         "kokosove mlieko",
         "sweet chili omacka",
     ],
     "sklenene_rezance": [
-        "sojova omacka",
+        "sklenene rezance", "sojova omacka",
         "sezamovy olej",
         "rybacia omacka",
         "gochujang",
         "shiitake",
     ],
     "shichimi_togarashi": [
-        "sushi ryza",
+        "shichimi togarashi", "sushi ryza",
         "ramen",
         "udon",
         "sezamovy olej",
@@ -310,7 +310,7 @@ RELATED_PRODUCT_QUERIES = {
         "sojova omacka",
     ],
     "kewpie": [
-        "sojova omacka",
+        "kewpie", "sojova omacka",
         "sriracha",
         "gochujang",
         "sezamovy olej",
@@ -324,7 +324,7 @@ RELATED_PRODUCT_QUERIES = {
         "udon",
     ],
     "natto": [
-        "jazminova ryza",
+        "natto", "jazminova ryza",
         "sojova omacka",
         "nori",
         "sezamove semienka",
@@ -338,7 +338,7 @@ RELATED_PRODUCT_QUERIES = {
         "sojova omacka",
     ],
     "pandan": [
-        "kokosove mlieko",
+        "pandan", "kokosove mlieko",
         "ryzova muka",
         "kondenzovane mlieko",
         "matcha",
@@ -352,7 +352,7 @@ RELATED_PRODUCT_QUERIES = {
         "jasminovy caj",
     ],
     "taro": [
-        "kokosove mlieko",
+        "taro", "kokosove mlieko",
         "ryzova muka",
         "matcha",
         "tapiokove perly",
@@ -366,7 +366,7 @@ RELATED_PRODUCT_QUERIES = {
         "miso pasta",
     ],
     "kombu": [
-        "dashi",
+        "kombu", "dashi",
         "miso pasta",
         "sojova omacka",
         "mirin",
@@ -403,7 +403,7 @@ RELATED_PRODUCT_QUERIES = {
         "sojova omacka",
     ],
     "ryzovy_ocot": [
-        "sushi ryza",
+        "ryzovy ocot", "sushi ryza",
         "nori",
         "wasabi",
         "sojova omacka",
@@ -446,7 +446,7 @@ RELATED_PRODUCT_QUERIES = {
         "sriracha", "gochujang",
     ],
     "kimchi_ramen": [
-        "ramen rezance",
+        "kimchi ramen", "ramen rezance",
         "kimchi",
         "gochujang",
         "miso pasta",
@@ -493,7 +493,7 @@ RELATED_PRODUCT_QUERIES = {
         "jazminovy caj", "zeleny caj",
     ],
     "pad_thai": [
-        "ryzove rezance",
+        "pad thai", "ryzove rezance",
         "tamarind",
         "rybacia omacka",
         "arasidy",
@@ -509,7 +509,7 @@ RELATED_PRODUCT_QUERIES = {
         "jazminova ryza",
     ],
     "gyoza": [
-        "sojova omacka",
+        "gyoza", "sojova omacka",
         "ryzovy ocot",
         "chilli olej",
     ],
@@ -543,7 +543,7 @@ RELATED_PRODUCT_QUERIES = {
         "dashi",
     ],
     "wok": [
-        "ustricova omacka",
+        "wok", "ustricova omacka",
         "sojova omacka",
         "sezamovy olej",
         "sriracha",
@@ -565,14 +565,14 @@ RELATED_PRODUCT_QUERIES = {
         "kokosove cukriky",
     ],
     "jarne_zavitky": [
-        "ryzovy papier",
+        "jarne zavitky", "ryzovy papier",
         "ryzove rezance",
         "sweet chili omacka",
         "rybacia omacka",
         "sriracha",
     ],
     "teriyaki": [
-        "sojova omacka",
+        "teriyaki", "sojova omacka",
         "mirin",
         "ryzovy ocot",
         "sezamovy olej",
@@ -593,14 +593,14 @@ RELATED_PRODUCT_QUERIES = {
         "sriracha",
     ],
     "bulgogi": [
-        "sojova omacka",
+        "bulgogi", "sojova omacka",
         "sezamovy olej",
         "gochugaru",
         "kimchi",
         "jazminova ryza",
     ],
     "tteokbokki": [
-        "gochujang",
+        "tteokbokki", "gochujang",
         "gochugaru",
         "sezamovy olej",
         "sojova omacka",
@@ -616,7 +616,7 @@ RELATED_PRODUCT_QUERIES = {
         "sriracha",
     ],
     "japchae": [
-        "sklenene rezance",
+        "japchae", "sklenene rezance",
         "dangmyeon",
         "sojova omacka",
         "sezamovy olej",
@@ -645,7 +645,7 @@ RELATED_PRODUCT_QUERIES = {
         "jazminova ryza",
     ],
     "thajska_kuchyna": [
-        "kokosove mlieko",
+        "thajska kuchyna", "kokosove mlieko",
         "rybacia omacka",
         "sriracha",
         "kari pasta cervena",
@@ -671,7 +671,7 @@ RELATED_PRODUCT_QUERIES = {
         "sushi ryza",
     ],
     "pad_thai": [
-        "ryzove rezance",
+        "pad thai", "ryzove rezance",
         "rybacia omacka",
         "tamarind",
         "arasidy",
@@ -704,7 +704,7 @@ RELATED_PRODUCT_QUERIES = {
         "gochujang",
     ],
     "onigiri": [
-        "sushi ryza",
+        "onigiri", "sushi ryza",
         "nori",
         "sojova omacka",
         "sezamove semienka",
@@ -729,14 +729,14 @@ RELATED_PRODUCT_QUERIES = {
         "rybacia omacka",
     ],
     "udon": [
-        "dashi",
+        "udon", "dashi",
         "sojova omacka",
         "mirin",
         "nori",
         "tofu",
     ],
     "soba": [
-        "sojova omacka",
+        "soba", "sojova omacka",
         "mirin",
         "dashi",
         "nori",
@@ -750,13 +750,13 @@ RELATED_PRODUCT_QUERIES = {
         "gochujang",
     ],
     "wonton": [
-        "sojova omacka",
+        "wonton", "sojova omacka",
         "sezamovy olej",
         "ustricova omacka",
         "zazvor",
     ],
     "laksa": [
-        "kokosove mlieko",
+        "laksa", "kokosove mlieko",
         "rybacia omacka",
         "ryzove rezance",
         "sojova omacka",
@@ -790,14 +790,14 @@ RELATED_PRODUCT_QUERIES = {
         "sezamove semienka",
     ],
     "bubble_tea": [
-        "tapiokove perly",
+        "bubble tea", "tapiokove perly",
         "caj",
         "kokosove mlieko",
         "kondenzovane mlieko",
         "cierny caj",
     ],
     "edamame": [
-        "sojova omacka",
+        "edamame", "sojova omacka",
         "morska sol",
         "sezamovy olej",
         "wasabi",
@@ -832,7 +832,7 @@ RELATED_PRODUCT_QUERIES = {
         "mirin",
     ],
     "grilovanie": [
-        "sojova omacka",
+        "grilovanie", "sojova omacka",
         "gochujang",
         "teriyaki omacka",
         "sezamovy olej",
@@ -854,7 +854,7 @@ RELATED_PRODUCT_QUERIES = {
         "tom yum pasta",
     ],
     "tom_kha": [
-        "kokosove mlieko",
+        "tom kha", "kokosove mlieko",
         "citronova trava",
         "galangal",
         "kaffirove listy",
@@ -870,14 +870,14 @@ RELATED_PRODUCT_QUERIES = {
         "dashi",
     ],
     "nam_van": [
-        "ryzovy papier",
+        "nam vang", "ryzovy papier",
         "rybacia omacka",
         "ryzove rezance",
         "sojova omacka",
         "sezamovy olej",
     ],
     "sukiyaki": [
-        "sojova omacka",
+        "sukiyaki", "sojova omacka",
         "mirin",
         "sake",
         "sezamovy olej",
@@ -885,7 +885,7 @@ RELATED_PRODUCT_QUERIES = {
         "dashi",
     ],
     "bao_bun": [
-        "sojova omacka",
+        "bao buns", "sojova omacka",
         "sezamovy olej",
         "ustricova omacka",
         "hoisin omacka",
@@ -910,10 +910,10 @@ RELATED_PRODUCT_QUERIES = {
         "sojova omacka", "tonkatsu omacka", "panko", "sezamovy olej", "cesnak",
     ],
     "gyoza": [
-        "sojova omacka", "ryzovy ocot", "sezamovy olej", "zazvor", "cesnak",
+        "gyoza", "sojova omacka", "ryzovy ocot", "sezamovy olej", "zazvor", "cesnak",
     ],
     "yakitori": [
-        "sojova omacka", "mirin", "sake", "sezamovy olej", "cesnak",
+        "yakitori", "sojova omacka", "mirin", "sake", "sezamovy olej", "cesnak",
     ],
     "adobo": [
         "sojova omacka", "ryzovy ocot", "sezamovy olej", "cesnak", "kokosove mlieko",
@@ -925,7 +925,7 @@ RELATED_PRODUCT_QUERIES = {
         "sojova omacka", "sezamovy olej", "ryzove rezance", "ustricova omacka",
     ],
     "bento": [
-        "sojova omacka", "mirin", "nori", "sezamovy olej", "ryzovy ocot",
+        "bento", "sojova omacka", "mirin", "nori", "sezamovy olej", "ryzovy ocot",
     ],
     "yangnyeom_chicken": [
         "gochujang", "sojova omacka", "ryzovy ocot", "cesnak", "zazvor", "sezamovy olej",
@@ -943,10 +943,10 @@ RELATED_PRODUCT_QUERIES = {
         "rybacia omacka", "shiitake huby", "susene huby", "sojova omacka", "chili omacka",
     ],
     "bun_bo_hue": [
-        "rybacia omacka", "ryzove rezance", "citronova trava", "sojova omacka", "sriracha",
+        "bun bo hue", "rybacia omacka", "ryzove rezance", "citronova trava", "sojova omacka", "sriracha",
     ],
     "banh_gio": [
-        "ryzova muka", "rybacia omacka", "sojova omacka", "shiitake", "chili omacka",
+        "banh gio", "ryzova muka", "rybacia omacka", "sojova omacka", "shiitake", "chili omacka",
     ],
     "banh_xeo": [
         "ryzova muka", "kokosove mlieko", "rybacia omacka", "sriracha",
@@ -955,7 +955,7 @@ RELATED_PRODUCT_QUERIES = {
         "tofu", "gochujang", "sojova omacka", "sezamovy olej", "cesnak", "zazvor",
     ],
     "kung_pao": [
-        "sojova omacka", "ryzovy ocot", "sezamovy olej", "zazvor", "cesnak", "sriracha",
+        "kung pao", "sojova omacka", "ryzovy ocot", "sezamovy olej", "zazvor", "cesnak", "sriracha",
     ],
     "dim_sum": [
         "siu mai",
@@ -970,13 +970,13 @@ RELATED_PRODUCT_QUERIES = {
         "gochujang", "sojova omacka", "sezamovy olej", "ryzovy ocot",
     ],
     "char_siu": [
-        "sojova omacka", "hoisin omacka", "sezamovy olej", "ryzovy ocot", "cesnak",
+        "char siu", "sojova omacka", "hoisin omacka", "sezamovy olej", "ryzovy ocot", "cesnak",
     ],
     "som_tam": [
         "rybacia omacka", "ryzovy ocot", "sriracha", "sojova omacka",
     ],
     "nasi_goreng": [
-        "sojova omacka", "sezamovy olej", "rybacia omacka", "sriracha",
+        "nasi goreng", "sojova omacka", "sezamovy olej", "rybacia omacka", "sriracha",
     ],
     "mee_goreng": [
         "sojova omacka", "sezamovy olej", "rybacia omacka", "sriracha", "ustricova omacka",
@@ -985,13 +985,13 @@ RELATED_PRODUCT_QUERIES = {
         "kokosove mlieko", "citronova trava", "sojova omacka", "kari pasta",
     ],
     "larb": [
-        "rybacia omacka", "ryzovy ocot", "sriracha", "sezamovy olej",
+        "larb", "rybacia omacka", "ryzovy ocot", "sriracha", "sezamovy olej",
     ],
     "chow_mein": [
-        "sojova omacka", "sezamovy olej", "ustricova omacka", "ryzove rezance",
+        "chow mein", "sojova omacka", "sezamovy olej", "ustricova omacka", "ryzove rezance",
     ],
     "satay": [
-        "sojova omacka", "kari pasta", "kokosove mlieko", "sriracha", "sezamovy olej",
+        "satay", "sojova omacka", "kari pasta", "kokosove mlieko", "sriracha", "sezamovy olej",
     ],
     "khao_pad": [
         "sojova omacka", "rybacia omacka", "sezamovy olej", "sriracha",
@@ -1024,7 +1024,7 @@ RELATED_PRODUCT_QUERIES = {
         "ryzova muka", "sezamove semienka", "kokosove mlieko", "matcha",
     ],
     "tikka_masala": [
-        "garam masala", "kari pasta", "kokosove mlieko", "jazminova ryza",
+        "tikka masala", "garam masala", "kari pasta", "kokosove mlieko", "jazminova ryza",
     ],
     "tandoori": [
         "tandoori masala", "garam masala", "kari pasta", "jazminova ryza",
@@ -1048,7 +1048,7 @@ RELATED_PRODUCT_QUERIES = {
         "gochujang", "sojova omacka", "sezamovy olej", "kimchi",
     ],
     "wakame": [
-        "miso pasta", "tofu", "sojova omacka", "nori", "ryzovy ocot", "sezamovy olej",
+        "wakame", "miso pasta", "tofu", "sojova omacka", "nori", "ryzovy ocot", "sezamovy olej",
     ],
     "dashi": [
         "kombu", "katsuobushi", "bonito vlocky", "shiitake houby",
@@ -1059,27 +1059,27 @@ RELATED_PRODUCT_QUERIES = {
         "sojova omacka", "sezamovy olej", "chili omacka", "koriander",
     ],
     "ryza": [
-        "ryzovy ocot", "sojova omacka", "miso pasta", "sezamovy olej",
+        "ryza", "ryzovy ocot", "sojova omacka", "miso pasta", "sezamovy olej",
         "nori", "furikake", "kimchi", "tofu",
     ],
     "kokos": [
-        "kari pasta cervena", "kari pasta zelena", "rybacia omacka",
+        "kokos", "kari pasta cervena", "kari pasta zelena", "rybacia omacka",
         "jazminova ryza", "sriracha", "lemongrass", "tamarind",
     ],
     "mirin": [
-        "sojova omacka", "sake", "ryzovy ocot", "dashi",
+        "mirin", "sojova omacka", "sake", "ryzovy ocot", "dashi",
         "ginger", "cesnak", "sezamovy olej",
     ],
     "chili": [
-        "sriracha", "gochujang", "sambal oelek", "chili olej",
+        "chili", "sriracha", "gochujang", "sambal oelek", "chili olej",
         "thajske chili", "chili pasta",
     ],
     "nori": [
-        "sushi ryza", "ryzovy ocot", "wasabi", "sojova omacka",
+        "nori", "sushi ryza", "ryzovy ocot", "wasabi", "sojova omacka",
         "sezamovy olej", "furikake",
     ],
     "rybacia_omacka": [
-        "sojova omacka", "tamari", "miso pasta",
+        "rybacia omacka", "sojova omacka", "tamari", "miso pasta",
         "bezlepkova sojova omacka", "kokosove aminokyseliny",
     ],
     "special_occasion": [
@@ -1090,7 +1090,7 @@ RELATED_PRODUCT_QUERIES = {
         "wasabi", "sojova omacka", "ryzovy ocot", "nori", "sushi ryza",
     ],
     "sezamovy_olej": [
-        "sojova omacka", "ryzovy ocot", "mirin", "gochujang", "hoisin",
+        "sezamovy olej", "sojova omacka", "ryzovy ocot", "mirin", "gochujang", "hoisin",
         "sezamove semienka", "toasted sesame seeds",
     ],
     "ponzu": [
@@ -1119,28 +1119,28 @@ RELATED_PRODUCT_QUERIES = {
         "tofu", "sojova omacka", "sezamovy olej", "miso pasta", "gochujang",
     ],
     "losos": [
-        "teriyaki omacka", "wasabi", "sojova omacka", "sezamovy olej", "zazvor",
+        "losos", "teriyaki omacka", "wasabi", "sojova omacka", "sezamovy olej", "zazvor",
     ],
     "kuraci": [
-        "teriyaki omacka", "sojova omacka", "sezamovy olej", "gochujang", "karaage",
+        "kuraci", "teriyaki omacka", "sojova omacka", "sezamovy olej", "gochujang", "karaage",
     ],
     "ryba": [
         "rybacia omacka", "sweet chili omacka", "wasabi", "sojova omacka", "citronova trava",
     ],
     "hovadzie": [
-        "teriyaki omacka", "sojova omacka", "sezamovy olej", "gochujang", "hoisin omacka",
+        "hovadzie", "teriyaki omacka", "sojova omacka", "sezamovy olej", "gochujang", "hoisin omacka",
     ],
     "kreveta": [
-        "sweet chili omacka", "sojova omacka", "sriracha", "citronova trava", "wasabi",
+        "kreveta", "sweet chili omacka", "sojova omacka", "sriracha", "citronova trava", "wasabi",
     ],
     "panko": [
         "panko strobanka", "teriyaki omacka", "tonkatsu omacka", "sojova omacka", "karaage",
     ],
     "sake": [
-        "mirin", "ryzovy ocot", "sojova omacka", "dashi", "sake na varen",
+        "sake", "mirin", "ryzovy ocot", "sojova omacka", "dashi", "sake na varen",
     ],
     "shiitake": [
-        "sojova omacka", "sezamovy olej", "miso pasta", "dashi", "oyster sauce",
+        "shiitake", "sojova omacka", "sezamovy olej", "miso pasta", "dashi", "oyster sauce",
     ],
     "lotus_root": [
         "sojova omacka", "ryzovy ocot", "sezamovy olej", "dashi", "mirin", "sezamove semienka",
@@ -1149,13 +1149,13 @@ RELATED_PRODUCT_QUERIES = {
         "sojova omacka", "sezamovy olej", "ustricova omacka", "cesnak", "zazvor", "wok omacka",
     ],
     "ryzova_muka": [
-        "kokosove mlieko", "pandan", "tapiokove perly", "mango", "cukrovy sirup", "sezamove semienka",
+        "ryzova muka", "kokosove mlieko", "pandan", "tapiokove perly", "mango", "cukrovy sirup", "sezamove semienka",
     ],
     "tapiokove_perly": [
         "zeleny caj", "matcha", "kokosove mlieko", "med", "ovocny sirup", "bubble tea",
     ],
     "sezamova_pasta": [
-        "sezamovy olej", "sojova omacka", "ryzovy ocot", "cesnak", "gochujang", "miso pasta",
+        "sezamova pasta", "sezamovy olej", "sojova omacka", "ryzovy ocot", "cesnak", "gochujang", "miso pasta",
     ],
     "zeleny_caj": [
         "matcha", "med", "citron", "sencha", "japonsky caj", "zeleny caj", "sojove mlieko",
@@ -1164,10 +1164,10 @@ RELATED_PRODUCT_QUERIES = {
         "med", "citron", "chai", "caj", "mliecne mlieko", "cierny caj",
     ],
     "oolong": [
-        "med", "matcha", "zeleny caj", "sencha", "caj",
+        "oolong", "med", "matcha", "zeleny caj", "sencha", "caj",
     ],
     "kondenzovane_mlieko": [
-        "bubble tea", "tapiokove perly", "kokosove mlieko", "mango", "ovocny sirup", "matcha",
+        "kondenzovane mlieko", "bubble tea", "tapiokove perly", "kokosove mlieko", "mango", "ovocny sirup", "matcha",
     ],
 }
 
