@@ -6678,18 +6678,17 @@ def related_products_for_subject(products: list[Product], all_knowledge: dict, s
     recommendations: list[dict] = []
 
     queries = RELATED_PRODUCT_QUERIES.get(subject, [])
-    # If the first query is the subject's own name, let it fill the widget's
-    # initial 3-card view (see INITIAL in widget.js) before any companion/
-    # cross-sell items - a customer asking about sake should see sake bottles,
-    # not just mirin/rice vinegar, until they click "Zobrazit viac".
+    # If the first query is the subject's own name, gather as much real
+    # stock as exists (capped generously) so the widget can page through
+    # "Zobrazit viac" in batches - a customer asking about sake should keep
+    # seeing more sake bottles, not cross-sell, until the category runs out.
     is_self_query = bool(queries) and normalize(queries[0]) == subject_query
+    self_category_max = 20
 
     for index, query in enumerate(queries):
-        take_multiple = index == 0 and is_self_query
-        # Exhaust the category itself (up to the overall limit) before ever
-        # falling back to cross-sell/companion queries below.
-        search_limit = max(limit + 2, 8) if take_multiple else 3
-        max_from_this_query = limit if take_multiple else 1
+        is_self = index == 0 and is_self_query
+        search_limit = self_category_max + 2 if is_self else 3
+        max_from_this_query = self_category_max if is_self else 1
         taken_from_query = 0
         for product in cached_search_products(products, query, search_limit):
             title = normalize(product.get("title", ""))
@@ -6708,10 +6707,14 @@ def related_products_for_subject(products: list[Product], all_knowledge: dict, s
             seen.add(key)
             recommendations.append(product)
             taken_from_query += 1
-            if len(recommendations) >= limit:
+            if not is_self and len(recommendations) >= limit:
                 return recommendations
             if taken_from_query >= max_from_this_query:
                 break
+        if is_self and len(recommendations) >= limit:
+            # category has enough of its own stock - never fall through to
+            # cross-sell/companion queries below.
+            return recommendations
 
     if recommendations:
         return recommendations

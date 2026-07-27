@@ -1513,14 +1513,23 @@
     });
 
     if (products.length > INITIAL) {
-      const remaining = products.slice(INITIAL);
+      let shown = INITIAL;
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "fl-ai-show-more";
-      btn.textContent = `Zobraziť viac (${remaining.length})`;
+      function updateShowMoreLabel() {
+        btn.textContent = `Zobraziť viac (${products.length - shown})`;
+      }
+      updateShowMoreLabel();
       btn.addEventListener("click", function () {
-        remaining.forEach(function (p) { wrap.insertBefore(renderCard(p), btn); });
-        btn.remove();
+        const nextBatch = products.slice(shown, shown + INITIAL);
+        nextBatch.forEach(function (p) { wrap.insertBefore(renderCard(p), btn); });
+        shown += nextBatch.length;
+        if (shown >= products.length) {
+          btn.remove();
+        } else {
+          updateShowMoreLabel();
+        }
         scrollToBottom();
       });
       wrap.appendChild(btn);
