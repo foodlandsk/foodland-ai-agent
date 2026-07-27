@@ -6882,24 +6882,32 @@ async def feed_refresh_loop(refresh_minutes: int) -> None:
     global last_feed_refresh_error
     while True:
         await asyncio.sleep(refresh_minutes * 60)
+        # asyncio.to_thread() cannot be cancelled - a wait_for() timeout only
+        # abandons the Task, the underlying thread keeps mutating global state
+        # and finishes on its own. Shield it so a slow-but-eventually-successful
+        # refresh still triggers the knowledge rebuild instead of being skipped.
+        refresh_task = asyncio.ensure_future(asyncio.to_thread(refresh_feed))
         try:
-            await asyncio.wait_for(
-                asyncio.to_thread(refresh_feed),
-                timeout=90.0,
-            )
+            await asyncio.wait_for(asyncio.shield(refresh_task), timeout=90.0)
         except asyncio.TimeoutError:
-            last_feed_refresh_error = "feed_refresh_timeout"
-            logger.error("Feed refresh timed out after 90s.")
+            logger.warning("Feed refresh still running after 90s, waiting for it to finish in the background.")
+            try:
+                await refresh_task
+            except Exception as exc:
+                last_feed_refresh_error = str(exc)
+                logger.error("Feed refresh failed: %s", exc, exc_info=True)
+                continue
         except Exception as exc:
             last_feed_refresh_error = str(exc)
             logger.error("Feed refresh failed: %s", exc, exc_info=True)
-        else:
-            try:
-                await asyncio.wait_for(rebuild_knowledge_from_feed(), timeout=300.0)
-            except asyncio.TimeoutError:
-                logger.error("Knowledge rebuild timed out after 300s.")
-            except Exception as exc:
-                logger.error("Knowledge rebuild failed: %s", exc, exc_info=True)
+            continue
+
+        try:
+            await asyncio.wait_for(rebuild_knowledge_from_feed(), timeout=300.0)
+        except asyncio.TimeoutError:
+            logger.error("Knowledge rebuild timed out after 300s.")
+        except Exception as exc:
+            logger.error("Knowledge rebuild failed: %s", exc, exc_info=True)
 
 
 def refresh_feed() -> None:
