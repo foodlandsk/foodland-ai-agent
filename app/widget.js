@@ -584,7 +584,9 @@
       border-radius: 8px;
       background: #fff;
       box-shadow: 0 8px 20px rgba(29, 48, 38, 0.06);
+      cursor: pointer;
     }
+    .fl-ai-product:hover { border-color: #b9d6c2; box-shadow: 0 8px 20px rgba(29, 48, 38, 0.12); }
     .fl-ai-product img {
       width: 72px;
       height: 72px;
@@ -1497,6 +1499,10 @@
           cartBtn.disabled = false;
           window.open(product.link || "https://www.foodland.sk/", "_blank", "noopener");
         }
+      });
+      card.addEventListener("click", function (e) {
+        if (e.target.closest(".fl-ai-product-link") || e.target.closest(".fl-ai-cart-btn")) return;
+        cartBtn.click();
       });
       actionsDiv.appendChild(cartBtn);
       const image = card.querySelector("img");
