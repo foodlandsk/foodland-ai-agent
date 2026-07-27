@@ -1,0 +1,340 @@
+x# Foodland AI Agent – Feature Roadmap & Aktuálny stav
+**Dátum:** 2026-07-27  
+**Autor:** Claude (Cowork session)  
+**Kontext:** Hodnotenie 9 navrhovaných features voči aktuálnemu stavu codebase pred implementáciou Luigi's Box-štýlu.
+
+---
+
+## Súhrn aktuálneho stavu
+
+| Vrstva | Stav | Poznámka |
+|---|---|---|
+| Chat endpoint `/chat` | ✅ produkčný | intent router, guardrails, rate limit, konverzačná pamäť, session_id, intent analytika |
+| Vyhľadávanie | ⚠️ tokenové | weighted keyword scoring, SK morfológia, ~20 ručných synonymov – bez BM25/embeddings |
+| Grounding | ⚠️ existuje, nevyužitý | `grounding.py` je kompletnyý (175 riadkov), ale nie je zadrôtovaný do `/chat` |
+| Analytika | ⚠️ čiastočná | logovanie otázok (ts, hash, message, intent, session_id) – bez event-level trackingu |
+| CrossSell | 🔴 bug | 2 140 CrossSell záznamov v knowledge.json je ignorovaných (BUG-04 z(architect analysis) |
+| Autocomplete | 🔴 chíba | žiadny endpoint |
+| Facety/filtre | 🔴 chíba | `/products/search` existuje bez filter params |
+| Recommenders | 🔴 chýba | žiadne standalone widgety |
+| Merchandising | 🔴 chýba | žiadny rules engine |
+| Multilingual | ⚠️ SK-only | základná podpora, bez CZ/EN/HU/PL/VI |
+| Widget UX | ⚠️ základný | chat funguje, bez feedback/quick prompts/click trackingu |
+
+---
+
+## Feature 1 – Autocomplete endpoint
+
+**Popis:** `GET /autocomplete?q=...` → produkty, kategórie, značky, recepty, top otázky
+
+### Aktuálny stav
+Neexistuje. `/chat` robí full search len pri kompletnom dotazi. žiadne prefix/incremental matching.
+
+### Čo treba
+```
+app/autocomplete.py  (nový súbor ~150 riadkov)
+  autocomplete_products(q, products, limit=4) – prefix + token match
+  autocomplete_categories(q, products, limit=3) - distinct product_type
+  autocomplete_brands(q, products, limit=3) - distinct brand
+  autocomplete_questions(q, top_questions_cache, limit=3) - z analytics
+
+main.py
+  GET /autocomplete?q=&limit= endpoint (~30 riadkov)
+  cache top questions z question_analytics.jsonl (refresh kΌždých 60s)
+```
+
+### Výstup
+```json
+{
+  "products": [{"title": "...", "url": "...", "price": 2.99, "image": "..."}],
+  "categories": ["Ramen", "Ryža", "Omáčky"],
+  "brands": ["Ottogi", "Nongshim"],
+  "top_questions": ["Ďo je to gochujang?", "Bezlepkové cestoviny"]
+}
+```
+
+### Odhad práce
+**2–3 dni** | Priorita: 🔴 Vysoká (viditeľnosť, quick win)
+
+### Poznámky
+- Recepty a articles vyžadujú prístup ku knowledge sekciám
+- Trending otázky: použiť top-N z"question_analytics.jsonl" ako interim
+
+---
+
+## Feature 2 – Hybridné vyheľadávanie
+
+**Popis:** BM25 + synonymá + embeddings + business boosts (dostupnosť, cena, popularita)
+
+### Aktuálny stav
+`app/search.py` (201 riadkov) – pure tokenové skórovanie:
+- title × 8, brand × 5, category × 4, description × 1
+- exact match v title: +12
+- availability: +1 (iba tie-break)
+- ~20 ručnùch synonymov pre konkrétne slová
+- **Žiadne IDF váhy, žiadne embeddings, žiadne behavioral signals**
+
+### Čo treba (postupne)
+
+**Fáza 2a – BM25 (2–3 dni, bez infraštruktúry)**
+```python
+def build_bm25_index(products: list[Product]) -> BM25Index:
+    # IDF = log((N - df + 0.5) / (df + 0.5))
+    # BM25 score = sum(IDF × (tf × (k1+1)) / (tf + k1 × (1 - b + b × dl/avgdl)))
+```
+
+### Odhad práce
+- Fáza 2a (BM25): **2–3 dni** | Priorita: 🟡 Stredná
+- Fáza 2b (synonymá JSON): **1–2 dni** | Priorita: 🔴 Vysoká (SK/CZ/EN typy)
+- Fáza 2c (embeddings): **1–2 týždne** | Priorita: 🟢 Nízka (infraštruktúra)
+- Fáza 2d (behavioral): **závisí od event dát** | Priorita: 🟢 Nízka
+
+---
+
+## Feature 3 – Event analytika
+
+**Popis:** Trackovanie impression, click, add_to_cart, search_submit, autocomplete_select, no_result, conversion
+
+### Aktuálny stav
+`log_question()` logguje len otázek + počet výsledkov + intent + session_id.  
+Widget JS: žiadne event firing. Žiadny `POST /events` endpoint.
+
+### Čo treba
+
+Backend (1 deň):
+```python
+class EventRequest(BaseModel):
+    session_id: str
+    event_type: Literal["impression","click","add_to_cart","no_result",
+                         "autocomplete_select","search_submit","conversion"]
+    product_sku: str | None = None
+    query: str | None = None
+    position: int | None = None
+```
+
+Widget JS (1 deň):
+```javascript
+fireEvent({event_type: "impression", query: text, products: result.products.map(p=>p.sku)})
+fireEvent({event_type: "click", product_sku: sku, query: currentQuery, position: idx})
+```
+
+### Odhad práce
+**2–3 dni** | Priorita: 🔴 Vysoká (blokuje behavioral ranking, merchandising, recommenders)
+
+---
+
+## Feature 4 – Facet/filter API
+
+**Popis:** `price_min/max`, `brand`, `availability`, `category`, `dietary`
+
+### Aktuálny stav
+`/chat` endpoint existuje, ale bez filter parametrov. `Product` dataclass má: `price`, `availability`, `brand`, `product_type`.
+
+### Čo treba
+```python
+class ProductFilter(BaseModel):
+    price_min: float | None = None
+    price_max: float | None = None
+    brand: list[str] | None = None
+    availability: Literal["in_stock","out_of_stock","all"] = "all"
+    category: list[str] | None = None
+    dietary: list[str] | None = None
+```
+
+### Odhad práce
+**2–3 dni** | Priorita: 🟡 Stredná
+
+---
+
+## Feature 5 – Recommender modely
+
+**Popis:** `similar_products`, `frequently_bought_together`, `recipe_ingredients`, `basket_upsell`, `trending_products`
+
+### Aktuálny stav
+**BUG-04:** 2 140 CrossSell záznamov v `knowledge.json` je KOMPLETNE IGNOROVANÝCH.  
+`related_products_for_subject()` používa iba 9 hardcoded kuchyňa-query párov.
+
+### Čo treba
+
+Quick win – CrossSell fix (0.5 dňa):
+```python
+def crosssell_from_knowledge(knowledge, subject, products_list, limit) -> list[dict]:
+    nm_subject = normalize(subject)
+    for record in knowledge.get("sections", {}).get("CrossSell", []):
+        if nm_subject in normalize(record.get("Produkt", "")):
+            queries = [record.get(f"Cross-sell {i}", "") for i in range(1, 6) if record.get(f"Cross-sell {i}")]
+            results = []
+            for q in queries:
+                hits = search_products(products_list, q, 2)
+                results.extend(hits)
+            return results[:limit]
+    return []
+```
+
+Nové endpointy (2–3 dni):
+```
+GET /recommend/similar?sku=&limit=
+GET /recommend/recipe?name=&limit=
+GET /recommend/trending?limit=
+POST /recommend/basket
+```
+
+### Odhad práce
+- CrossSell fix: **0.5 dňa** | Priorita: 🔴 Okamžitá (bug!, 2140 záznamov ignorovaných)
+- Basic recommenders: **2–3 dni** | Priorita: 🟡 Stredná
+- ML-based FBT/trending: **závisí od event dát** | Priorita: 🟢 Neskór
+
+---
+
+## Feature 6 – Merchandising pravidlá
+
+**Popis:** Pin/hide/boost produkty, sez�2înné kampane, vypredané dole
+
+### Aktuálny stav
+�}iadny rules engine. Edinrý "merchandising": `availability == "in_stock"` → +1 bod.
+
+### Čo treba
+```json
+// data/merchandising.json
+{"pins":[{"sku":"FL-001","query":"ramen","position":1}],"hidden":["FL-999"],"boosts":[{"brand":"Ottogi","multiplier":1.5}],"campaigns":[{"name":"Letná grillovačka","active_from":"2026-07-01","active_to":"2026-08-31","category":"Grilovacie omáčky","boost":2.0}]}
+```
+
+### Odhad práce
+**2–3 dni** | Priorita: 🟢 Nízka (závisí od biznis pravidiel)
+
+---
+
+## Feature 7 – Lepšia práca s jazykmi
+
+**Popis:** SK/CZ/EN/HU/PL/VI dotazy, typo tolerancia, systematický synonymický slovník
+
+### Aktuálny stav
+- `normalize()` odstráni diakritiku (SK → ASCII)
+- ~20 hardcoded synonymov v `tokenize()`
+- Stopwords: 44 SK slov
+- **Žiadna EN/HU/PL/VI podpora, žiadna typo tolerancia**
+
+### Čo treba
+
+**Fáza 7a – Synonymický slovník JSON (1–2 dni):**
+```json
+{"ramen":["ramyon","ramien","instantné rezance"],"kimchi":["kimci","kimchee"],"bezlepkový":["gluten-free","gluten free","bez lepku","GF"],"gochujang":["gochudžang","gocujang"],"miso":["miso pasta"],"tofu":["sójový syr","bean curd"]}
+```
+
+**Fáza 7b – CZ/EN podpora (2–3 dni):**  
+*Fáza 7c – Fuzzy matching / typo tolerancia (3–5 dní):**
+
+### Odhad práce
+- Fáza 7a (synonymá JSON): **1 –2 dni** | Priorita: 🔴 Vysoká (okamžitý dopad)
+- Fáza 7b (CZ/EN): **2–3 dni** | Priorita: 🟡 Stredná
+- Fáza 7c (fuzzy): **3–5 dní** | Priorita: 🟡 Stredná
+
+---
+
+## Feature 8 – Grounding zapojiť priamo do odpovedí
+
+**Popis:** `grounding.py` existuje, treba ho zadrôtovať po každej AI odpovedi
+
+### Aktuálny stav
+`grounding.py` (175 riadkov) je kompletný a otestovaný, ale nie je volaný z `main.py`.  
+v `/chat` je len `sanitize_answer_links()` – stripped-down verzia bez cenovej kontroly.
+
+### Čo treba (QUICK WIN – ~20 riadkov v main.py)
+```python
+from app.grounding import validate_answer, collect_allowed_urls, collect_allowed_prices
+
+allowed_urls = collect_allowed_urls(matches, knowledge_matches)
+allowed_prices = collect_allowed_prices(matches)
+grounding_result = validate_answer(answer_text, allowed_urls, allowed_prices=allowed_prices, strict_prices=True)
+if grounding_result.has_violations:
+    logger.warning("Grounding violations: %s", grounding_result.violations)
+answer_text = grounding_result.sanitized_answer
+```
+
+### Odhad práce
+**2–4 hodiny** | Priorita: 🔴 OKAMŽITÁ (kód je hotový, len treba zadrôtovať)
+
+---
+
+## Feature 9 – Widget rozšírenie
+
+**Popis:** Quick prompts, feedback (👍/👎), "zobraziť viac", prefill z product detail, klik tracking
+
+### Aktuálny stav
+Widget (`widget.js`, 42K po refaktore) má:
+- Chat s konverzačnou pamäťou ✅
+- session_id ✅
+- 3D Mei avatar (novo) & ✅
+- Žiadny feedback mechanizmus
+- Žiadne quick prompts
+- Žiadny klik tracking
+
+### Čo treba
+
+Quick prompts (0.5 dňa) – len widget.js:
+```javascript
+const QUICK_PROMPTS = ["🍜 Odporüčtdt
+‛ramen", 🌶️ Ďo je gochujang?", "🍱 Bezlepkové produkty"];
+```
+
+Feedback (0.5 dňa)– widget.js + `/events`:
+```javascript
+fireEvent({event_type: "feedback", rating: +1/-1, session_id})
+```
+
+### Odhad práce
+- Quick prompts: **0.5 dňa** | Priorita: 🟡 Stredná
+- Feedback: **0.5 dňa** | Priorita: 🔴 Vysoká (tréining dáta)
+- Klik tracking: **1 deň** | Priorita: 🔴 Vysoká (závisí od `/events`)
+
+---
+
+## Prioritizovaný akčný plán
+
+### Sprint A – Okamžité quick wins (1–2 dni)
+
+| # | Feature | Čas | Súbory |
+|---|---|---|---|
+| A1 | Grounding zadrôtovať (F8) | 4h | `main.py` ~20 riadkov |
+| A2 | CrossSell BUG-04 fix (F5) | 4h | `main.py` ~30 riadkov |
+| A3 | Synonymický slovník JSON (F7a) | 1d | `data/synonyms.json` + `search.py` |
+| A4 | Widget feedback (F9) | 4h | `widget.js` (potrebuje A5) |
+
+### Sprint B – Core API rozšírenia (3–5 dní)
+
+| # | Feature | Čas | Súbory |
+|---|---|---|---|
+| B1 | Event analytika `/events` (F3) | 2d | `main.py` + `widget.js` |
+| B2 | Autocomplete endpoint (F1) | 2d | `app/autocomplete.py` + `main.py` |
+| B3 | Recommend endpointy (F5) | 2d | `main.py` + nové route |
+| B4 | Widget klik tracking (F9) | 1d | `widget.js` |
+
+### Sprint C – Search quality (1 týzĔn)
+
+| # | Feature | Čas | Súbory |
+|---|---|---|---|
+| C1 | BM25 index (F2a) | 2d | `app/search.py` refaktor |
+| C2 | Facet/filter API (F4) | 2d | `app/search.py` + `main.py` |
+| C3 | CZ/EN synonymá (F7b) | 2d | `data/synonyms.json` rozšírenie |
+| C4 | Merchandising rules (F6) | 2d | `app/merchandising.py` (nový) |
+
+### Sprint D – ML & infraštruktúra (2Ϊ�N týždeň)
+
+| # | Feature | Závislosti |
+|---|---|---|
+| D1 | Embeddings + vector store | Cloud vector DB |
+| D2 | Behavioral ranking (CTR boosts) | 4+ týždne event dát |
+| D3 | FBT z add_to_cart dát | 4+ týždne event dát |
+
+---
+
+## Záver
+
+Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
+
+1. **Grounding** – kód hotový, 4 hodiny práce, zastaví halucinácie cien/URL
+2. **CrossSell bug** – 2140 záznamov sa stráca, fix je 30 riadkov kódu
+3. **Event analytika** – blokuje všetky behavioral features
+(. **Synonymický slovníj** – nahradí 20 hardcoded if-blokov
+
+Luigi's Box paritu je realistické dosiahnuť v **3 mesiacoch** pri sústredenom vývoji.
