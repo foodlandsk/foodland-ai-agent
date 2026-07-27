@@ -27,6 +27,7 @@ from tenacity import (
 )
 from pydantic import BaseModel, Field
 
+from app.grounding import validate_answer, collect_allowed_urls, collect_allowed_prices
 from app.feed import (
     Product,
     load_multilang_feeds,
@@ -3375,7 +3376,17 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         answer_text = _call_openai_with_retry(client, messages, model)
         if not answer_text:
             answer_text = shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution)
-        answer_text = sanitize_answer_links(answer_text, allowed_answer_urls(matches, knowledge_matches))
+        allowed_urls = collect_allowed_urls(matches, knowledge_matches)
+        allowed_prices = collect_allowed_prices(matches)
+        grounding_result = validate_answer(
+            answer_text,
+            allowed_urls,
+            allowed_prices=allowed_prices,
+            strict_prices=True,
+        )
+        if grounding_result.has_violations:
+            logger.warning("Grounding violations: %s", grounding_result.violations)
+        answer_text = grounding_result.sanitized_answer
         logger.info("OpenAI response generated.")
         return {
             "answer": answer_text,
@@ -3438,25 +3449,6 @@ def get_client_key(request: Request) -> str:
     if forwarded_for:
         return forwarded_for.split(",", 1)[0].strip()
     return request.client.host if request.client else "unknown"
-
-
-def allowed_answer_urls(matches: list[dict], knowledge_matches: dict | None) -> set[str]:
-    urls: set[str] = set()
-    for product in matches or []:
-        for key in ("link", "url"):
-            value = str(product.get(key) or "").strip()
-            if value.startswith(("http://", "https://")):
-                urls.add(value)
-
-    for hits in (knowledge_matches or {}).values():
-        for hit in hits:
-            record = hit.get("record", {})
-            for value in record.values():
-                text = str(value or "").strip()
-                if text.startswith(("http://", "https://")):
-                    urls.add(text)
-
-    return urls
 
 
 def annotate_recommendations(
@@ -4568,22 +4560,6 @@ def shopping_list_answer(subject: str | None, matches: list[dict], missing_ingre
     if product_count:
         return f"Pripravil som nákupný zoznam pre {subject_text}; položky z Foodland.sk sú nižšie pripravené aj ako kandidáti do košíka."
     return f"Pri {subject_text} som nenašiel vhodné produkty z Foodland.sk, ale nižšie uvádzam suroviny, ktoré treba doplniť."
-
-
-def sanitize_answer_links(answer: str, allowed_urls: set[str]) -> str:
-    def markdown_replacement(match: re.Match) -> str:
-        label = match.group(1)
-        url = match.group(2).rstrip(".,);")
-        return match.group(0) if url in allowed_urls else label
-
-    sanitized = re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", markdown_replacement, answer)
-
-    def bare_replacement(match: re.Match) -> str:
-        url = match.group(0).rstrip(".,);")
-        suffix = match.group(0)[len(url):]
-        return match.group(0) if url in allowed_urls else suffix
-
-    return re.sub(r"https?://[^\s)]+", bare_replacement, sanitized)
 
 
 def enforce_rate_limit(client_key: str) -> None:
