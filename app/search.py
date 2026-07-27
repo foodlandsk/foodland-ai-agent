@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import os
 import re
 import unicodedata
 from dataclasses import asdict, is_dataclass
@@ -7,42 +9,22 @@ from dataclasses import asdict, is_dataclass
 from app.feed import Product
 
 
-PHRASE_SYNONYMS = {
-    "soja sos": "sojova omacka",
-    "soy sauce": "sojova omacka",
-    "fish sauce": "rybacia omacka",
-    "rice vinegar": "ryzovy ocot",
-    "rice paper": "ryzovy papier",
-    "coconut milk": "kokosove mlieko",
-    "kokosove mliko": "kokosove mlieko",
-    "sushi rice": "sushi ryza",
-    "glass noodles": "sklenene rezance",
-    "spring rolls": "jarne zavitky",
-    "hot sauce": "chili omacka",
-    "sojovka": "sojova omacka",
-    "chin su": "chin-su",
-    "padthai": "pad thai",
-    "pad tai": "pad thai",
-    "pat thai": "pad thai",
-}
+def _load_synonyms() -> dict:
+    path = os.getenv("SYNONYMS_JSON_PATH", "data/synonyms.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
 
-TOKEN_SYNONYMS = {
-    "sos": {"omacka"},
-    "omaca": {"omacka"},
-    "omaka": {"omacka"},
-    "susi": {"sushi"},
-    "soy": {"sojova"},
-    "soya": {"sojova"},
-    "sojovka": {"sojova", "omacka"},
-    "coconut": {"kokosove"},
-    "kokos": {"kokosove"},
-    "milk": {"mlieko"},
-    "mliko": {"mlieko"},
-    "chilli": {"chili"},
-    "cili": {"chili"},
-    "nudle": {"rezance"},
-    "noodles": {"rezance", "nudle"},
-    "vinegar": {"ocot"},
+
+_SYNONYMS = _load_synonyms()
+PHRASE_SYNONYMS: dict[str, str] = _SYNONYMS.get("phrases", {})
+TOKEN_SYNONYMS: dict[str, set[str]] = {
+    token: set(variants) for token, variants in _SYNONYMS.get("tokens", {}).items()
+}
+PREFIX_SYNONYMS: dict[str, set[str]] = {
+    prefix: set(variants) for prefix, variants in _SYNONYMS.get("prefixes", {}).items()
 }
 
 POPULARITY_BOOSTS = {
@@ -172,48 +154,9 @@ def tokenize(value: str) -> set[str]:
     expanded = set(tokens)
     for token in tokens:
         expanded.update(TOKEN_SYNONYMS.get(token, set()))
-        if token.startswith("bezlepk"):
-            expanded.update({"bezlepkovy", "bezlepkova", "bezlepkovu", "bezlepkove"})
-        if token.startswith("sojov"):
-            expanded.update({"sojova", "sojovu", "sojove", "sojovy"})
-        if token.startswith("omack"):
-            expanded.update({"omacka", "omacku", "omacky"})
-        if token.startswith("rybac") or token.startswith("rybi"):
-            expanded.update({"rybacia", "rybiu", "rybia"})
-        if token == "fish":
-            expanded.update({"rybacia", "rybiu", "rybia"})
-        if token == "sauce":
-            expanded.update({"omacka", "omacku", "omacky"})
-        if token == "sesame":
-            expanded.update({"sezamovy", "sezamova", "sezamove"})
-        if token == "oil":
-            expanded.update({"olej"})
-        if token == "rice":
-            expanded.update({"ryza", "ryzovy"})
-        if token == "paper":
-            expanded.update({"papier"})
-        if token.startswith("kokos"):
-            expanded.update({"kokos", "kokosove", "kokosova", "kokosovy"})
-        if token.startswith("mliek") or token.startswith("mliec") or token == "mliko":
-            expanded.update({"mlieko", "mlieka", "mliecny"})
-        if token.startswith("kredit"):
-            expanded.add("kredit")
-        if token.startswith("srirach") or token.startswith("srirac") or token.startswith("sirach"):
-            expanded.add("sriracha")
-        if token in {"sushi", "susi", "sushy"}:
-            expanded.update({"sushi", "susi"})
-        if token.startswith("ryz"):
-            expanded.add("ryza")
-        if token.startswith("kimchi") or token.startswith("kimci") or token.startswith("kimchee"):
-            expanded.add("kimchi")
-        if (
-            token.startswith("gochuj")
-            or token.startswith("gochuang")
-            or token.startswith("gochud")
-            or token.startswith("gocud")
-            or token.startswith("gocuj")
-        ):
-            expanded.add("gochujang")
+        for prefix, variants in PREFIX_SYNONYMS.items():
+            if token.startswith(prefix):
+                expanded.update(variants)
     return expanded
 
 
