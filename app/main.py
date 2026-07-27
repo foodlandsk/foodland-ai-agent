@@ -6677,8 +6677,19 @@ def related_products_for_subject(products: list[Product], all_knowledge: dict, s
     seen: set[str] = set()
     recommendations: list[dict] = []
 
-    for query in RELATED_PRODUCT_QUERIES.get(subject, []):
-        for product in cached_search_products(products, query, 3):
+    queries = RELATED_PRODUCT_QUERIES.get(subject, [])
+    # If the first query is the subject's own name, let it fill the widget's
+    # initial 3-card view (see INITIAL in widget.js) before any companion/
+    # cross-sell items - a customer asking about sake should see sake bottles,
+    # not just mirin/rice vinegar, until they click "Zobrazit viac".
+    is_self_query = bool(queries) and normalize(queries[0]) == subject_query
+
+    for index, query in enumerate(queries):
+        take_multiple = index == 0 and is_self_query
+        search_limit = 8 if take_multiple else 3
+        max_from_this_query = 3 if take_multiple else 1
+        taken_from_query = 0
+        for product in cached_search_products(products, query, search_limit):
             title = normalize(product.get("title", ""))
             title_tokens = set(title.split())
             if not is_recipe_relevant_product(product, subject):
@@ -6694,9 +6705,11 @@ def related_products_for_subject(products: list[Product], all_knowledge: dict, s
 
             seen.add(key)
             recommendations.append(product)
+            taken_from_query += 1
             if len(recommendations) >= limit:
                 return recommendations
-            break
+            if taken_from_query >= max_from_this_query:
+                break
 
     if recommendations:
         return recommendations
