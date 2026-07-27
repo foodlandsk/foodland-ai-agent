@@ -3122,7 +3122,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         )
         recipe_product_subject = recipe_related_product_subject(contextual_message, recipe_subject, recipes)
         recipe_products = (
-            related_products_for_subject(products, recipe_product_subject, max(chat_request.limit, 8))
+            related_products_for_subject(products, knowledge, recipe_product_subject, max(chat_request.limit, 8))
             if wants_recipe_products(contextual_message) and recipe_product_subject
             else []
         )
@@ -3200,7 +3200,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     elif cross_sell_matches:
         matches = cross_sell_matches
     elif related_subject:
-        matches = related_products_for_subject(products, related_subject, chat_request.limit)
+        matches = related_products_for_subject(products, knowledge, related_subject, chat_request.limit)
     else:
         matches = cached_search_products(products, contextual_message, chat_request.limit)
     is_shopping_list_request = wants_shopping_list(contextual_message)
@@ -6672,7 +6672,7 @@ def allergen_safety_answer(allergen_term: str) -> str:
     )
 
 
-def related_products_for_subject(products: list[Product], subject: str, limit: int) -> list[dict]:
+def related_products_for_subject(products: list[Product], all_knowledge: dict, subject: str, limit: int) -> list[dict]:
     subject_query = normalize(subject)
     seen: set[str] = set()
     recommendations: list[dict] = []
@@ -6697,6 +6697,34 @@ def related_products_for_subject(products: list[Product], subject: str, limit: i
             if len(recommendations) >= limit:
                 return recommendations
             break
+
+    if recommendations:
+        return recommendations
+
+    # BUG-04 fallback: RELATED_PRODUCT_QUERIES has no entry (or no hits) for this
+    # subject - use the CrossSell knowledge records (2 140 products) instead of
+    # giving up.
+    cross_sell_hits = search_knowledge(all_knowledge, subject, allowed_sections=("CrossSell",))
+    for hit in cross_sell_hits.get("CrossSell", []):
+        record = hit.get("record", {})
+        product_name = first_record_value(record, ("Produkt", "product"))
+        if subject and not replacement_subject_matches_product(subject, product_name):
+            continue
+        for index in range(1, 6):
+            cross_sell_title = clean_cross_sell_title(record.get(f"Cross-sell {index}") or "")
+            if not cross_sell_title:
+                continue
+            for product in cached_search_products(products, cross_sell_title, 2):
+                if not is_recipe_relevant_product(product, subject):
+                    continue
+                key = product.get("id") or product.get("link") or product.get("title")
+                if not key or key in seen:
+                    continue
+                seen.add(key)
+                recommendations.append(product)
+                if len(recommendations) >= limit:
+                    return recommendations
+                break
 
     return recommendations
 
