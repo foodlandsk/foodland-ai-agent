@@ -6686,8 +6686,10 @@ def related_products_for_subject(products: list[Product], all_knowledge: dict, s
 
     for index, query in enumerate(queries):
         take_multiple = index == 0 and is_self_query
-        search_limit = 8 if take_multiple else 3
-        max_from_this_query = 3 if take_multiple else 1
+        # Exhaust the category itself (up to the overall limit) before ever
+        # falling back to cross-sell/companion queries below.
+        search_limit = max(limit + 2, 8) if take_multiple else 3
+        max_from_this_query = limit if take_multiple else 1
         taken_from_query = 0
         for product in cached_search_products(products, query, search_limit):
             title = normalize(product.get("title", ""))
