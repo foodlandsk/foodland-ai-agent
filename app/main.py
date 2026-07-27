@@ -3167,7 +3167,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         updated_profile = update_user_memory(profile_key, chat_request.message, "unknown", [], [])
         log_question(chat_request.message, client_key, 0, intent="unknown", session_id=session_id)
         return {
-            "answer": "Na toto neviem spoľahlivo odpovedať ako Foodland poradca. Skúste sa opýtať na produkty, objednávku, dopravu alebo platbu na Foodland.sk.",
+            "answer": "Na toto neviem spoľahlivo odpovedať ako Foodland poradkyňa. Skúste sa opýtať na produkty, objednávku, dopravu alebo platbu na Foodland.sk.",
             "products": [],
             "knowledge": knowledge_summary(knowledge_matches),
             "memory": public_user_memory_summary(updated_profile),
@@ -3281,7 +3281,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
 
     if not matches and not knowledge_matches:
         return {
-            "answer": "Nenašiel som presný produkt. Skúste napísať názov, značku alebo kategóriu trochu inak.",
+            "answer": "Nenašla som presný produkt. Skúste napísať názov, značku alebo kategóriu trochu inak.",
             "products": [],
         }
 
@@ -3334,7 +3334,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             {
                 "role": "system",
                 "content": (
-                    "Si Foodland poradca – odborný nákupný asistent pre Foodland.sk, špeciálne azijské a svetové potraviny. "
+                    "Si Foodland poradkyňa – odborná nákupná asistentka pre Foodland.sk, špeciálne azijské a svetové potraviny. "
                     "Odpovedaj po slovensky, priateľsky a s predajným tónom. Neprezentuj sa ako AI. "
                     "Vždy rozlišuj náhrady a doplnky: pri otázke 'čím nahradiť X' odporúčaj podobné alternatívy, nie cross-sell doplnky. "
                     "Ak je zámer replacement_products, textovo iba vysvetli, že nižšie sú podobné alternatívy; nepridávaj domáce kombinácie ani produkty mimo kariet. "
@@ -4554,12 +4554,12 @@ def shopping_list_answer(subject: str | None, matches: list[dict], missing_ingre
     missing_count = len(missing_ingredients or [])
     if product_count and missing_count:
         return (
-            f"Pripravil som nákupný zoznam pre {subject_text}: {product_count} položiek nájdete na Foodland.sk "
+            f"Pripravila som nákupný zoznam pre {subject_text}: {product_count} položiek nájdete na Foodland.sk "
             f"a {missing_count} čerstvých alebo doplnkových surovín si doplňte mimo e-shopu."
         )
     if product_count:
-        return f"Pripravil som nákupný zoznam pre {subject_text}; položky z Foodland.sk sú nižšie pripravené aj ako kandidáti do košíka."
-    return f"Pri {subject_text} som nenašiel vhodné produkty z Foodland.sk, ale nižšie uvádzam suroviny, ktoré treba doplniť."
+        return f"Pripravila som nákupný zoznam pre {subject_text}; položky z Foodland.sk sú nižšie pripravené aj ako kandidáti do košíka."
+    return f"Pri {subject_text} som nenašla vhodné produkty z Foodland.sk, ale nižšie uvádzam suroviny, ktoré treba doplniť."
 
 
 def enforce_rate_limit(client_key: str) -> None:
@@ -4860,7 +4860,7 @@ def analytics_action_items(events: list[dict], errors: list[dict] | None = None,
                 "title": f"Slabé miesto: {row.get('area', '')}",
                 "area": row.get("area", ""),
                 "count": row.get("count", 0),
-                "suggested_action": row.get("note", "Skontrolovať pravidlá poradcu a doplniť test."),
+                "suggested_action": row.get("note", "Skontrolovať pravidlá poradkyne a doplniť test."),
             }
         )
 
@@ -5707,15 +5707,15 @@ def first_article_link(record: dict, title: str) -> str:
 def recipe_answer(subject: str, recipes: list[dict] | None = None) -> str:
     if recipes:
         if len(recipes) == 1:
-            return "Našiel som recept z Foodland.sk. Otvorte si ho nižšie."
-        return "Našiel som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie."
+            return "Našla som recept z Foodland.sk. Otvorte si ho nižšie."
+        return "Našla som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie."
 
-    return "Receptovú otázku som zachytil, ale nemám dosť detailov na presný recept. Skúste napísať napríklad: recept na kimchi alebo recept na pad thai."
+    return "Receptovú otázku som zachytila, ale nemám dosť detailov na presný recept. Skúste napísať napríklad: recept na kimchi alebo recept na pad thai."
 
 
 def random_recipes_answer(recipes: list[dict] | None = None) -> str:
     if recipes:
-        return "Na večeru som vybral tri recepty z rôznych kuchýň. Vyberte si podľa chuti nižšie."
+        return "Na večeru som vybrala tri recepty z rôznych kuchýň. Vyberte si podľa chuti nižšie."
     return recipe_answer("general", recipes)
 
 
@@ -5723,11 +5723,11 @@ def recipe_products_answer(subject: str | None, recipes: list[dict] | None = Non
     subject_text = str(subject or "recept").replace("_", " ")
     if recipes:
         return (
-            f"Pripravil som nákupný zoznam pre {subject_text}: najprv produkty z Foodland.sk, potom zvlášť veci, ktoré si treba doplniť mimo e-shopu. "
+            f"Pripravila som nákupný zoznam pre {subject_text}: najprv produkty z Foodland.sk, potom zvlášť veci, ktoré si treba doplniť mimo e-shopu. "
             "Produkty sú zoradené od kľúčových surovín po doplnky."
         )
     return (
-        f"K receptu pre {subject_text} som našiel relevantné produkty z Foodland.sk. "
+        f"K receptu pre {subject_text} som našla relevantné produkty z Foodland.sk. "
         "Sú zoradené od kľúčových surovín po doplnky; čerstvé veci si doplňte podľa receptu."
     )
 
@@ -6833,21 +6833,21 @@ def fallback_answer(
             if titles:
                 return (
                     f"K {subject_label} odporúčam hlavne tieto súvisiace produkty: {titles}. "
-                    f"Pozrite si odporúčania nižšie, zoradil som ich podľa relevantnosti.{caution}"
+                    f"Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.{caution}"
                 )
-            return f"Našiel som {count} súvisiacich produktov a surovín, ktoré sa hodia k {subject_label}.{caution}"
+            return f"Našla som {count} súvisiacich produktov a surovín, ktoré sa hodia k {subject_label}.{caution}"
         if knowledge_matches:
             if titles:
-                return f"Našiel som vhodné produkty k tejto otázke: {titles}. Detail a dostupnosť si pozrite nižšie.{caution}"
-            return f"Našiel som {count} vhodných produktov a doplnil som odporúčania z Foodland poradcu.{caution}"
+                return f"Našla som vhodné produkty k tejto otázke: {titles}. Detail a dostupnosť si pozrite nižšie.{caution}"
+            return f"Našla som {count} vhodných produktov a doplnila som odporúčania z Foodland poradkyne.{caution}"
         if titles:
-            return f"Našiel som tieto najrelevantnejšie produkty: {titles}. Ďalšie odporúčania sú nižšie.{caution}"
-        return f"Našiel som {count} vhodných produktov. Pozrite si odporúčania nižšie.{caution}"
+            return f"Našla som tieto najrelevantnejšie produkty: {titles}. Ďalšie odporúčania sú nižšie.{caution}"
+        return f"Našla som {count} vhodných produktov. Pozrite si odporúčania nižšie.{caution}"
 
     if knowledge_matches:
-        return "Našiel som súvisiace informácie vo Foodland poradcovi."
+        return "Našla som súvisiace informácie vo Foodland poradkyni."
 
-    return "Nenašiel som presnú odpoveď. Skúste otázku napísať trochu inak."
+    return "Nenašla som presnú odpoveď. Skúste otázku napísať trochu inak."
 
     if matches:
         count = min(len(matches), 5)
@@ -6857,15 +6857,15 @@ def fallback_answer(
             else ""
         )
         if related_subject:
-            return f"Našiel som {count} súvisiacich produktov a surovín, ktoré sa hodia k téme {related_subject}.{caution}"
+            return f"Našla som {count} súvisiacich produktov a surovín, ktoré sa hodia k téme {related_subject}.{caution}"
         if knowledge_matches:
-            return f"Našiel som {count} vhodných produktov a doplnil som odporúčania z Foodland poradcu.{caution}"
-        return f"Našiel som {count} vhodných produktov. Pozrite si odporúčania nižšie.{caution}"
+            return f"Našla som {count} vhodných produktov a doplnila som odporúčania z Foodland poradkyne.{caution}"
+        return f"Našla som {count} vhodných produktov. Pozrite si odporúčania nižšie.{caution}"
 
     if knowledge_matches:
-        return "Našiel som súvisiace informácie vo Foodland poradcovi."
+        return "Našla som súvisiace informácie vo Foodland poradkyni."
 
-    return "Nenašiel som presnú odpoveď. Skúste otázku napísať trochu inak."
+    return "Nenašla som presnú odpoveď. Skúste otázku napísať trochu inak."
 
 
 @app.on_event("startup")

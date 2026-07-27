@@ -945,7 +945,7 @@
       <div class="fl-ai-label-block">
         <span class="fl-ai-label-title">💬 Poraďte sa s Mei</span>
     </div>
-    <button class="fl-ai-launcher" type="button" aria-label="Otvoriť Foodland poradcu">
+    <button class="fl-ai-launcher" type="button" aria-label="Otvoriť Foodland poradkyňu">
       <img class="fl-ai-avatar" src="${meiAvatarDataUri}" alt="Foodland Mei" loading="lazy" />
     </button>
     </div>
@@ -1601,7 +1601,7 @@
       const normalizedText = normalizedInput(backendText);
       let products = [];
       let recipes = [];
-      let answer = "Nenašiel som presnú demo odpoveď. Skúste napísať názov produktu alebo kategóriu presnejšie.";
+      let answer = "Nenašla som presnú demo odpoveď. Skúste napísať názov produktu alebo kategóriu presnejšie.";
       const requestedRecipes = demoRecipesForText(normalizedText);
       const ingredientProducts = demoIngredientProductsForText(normalizedText);
 
@@ -1612,20 +1612,20 @@
         products = [];
         recipes = requestedRecipes;
         answer = recipes.length === 1
-          ? "Našiel som recept z Foodland.sk. Otvorte si ho nižšie."
-          : "Našiel som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie.";
+          ? "Našla som recept z Foodland.sk. Otvorte si ho nižšie."
+          : "Našla som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie.";
       } else if (isKimchiIngredientRequest(normalizedText)) {
         products = kimchiIngredientDemoProducts;
         answer = "Na výrobu kimchi odporúčam najmä gochujang, čili papriku, rybaciu omáčku, ryžovú múku a sezamový olej.";
       } else if (normalizedText.includes("kimchi") || normalizedText.includes("kimci")) {
         products = demoProducts;
-        answer = "Našiel som niekoľko vhodných produktov. Pozrite si odporúčania nižšie.";
+        answer = "Našla som niekoľko vhodných produktov. Pozrite si odporúčania nižšie.";
       } else if (isSoySauceRequest(normalizedText)) {
         products = soySauceDemoProducts;
-        answer = "Našiel som sójové omáčky. Pozrite si odporúčania nižšie.";
+        answer = "Našla som sójové omáčky. Pozrite si odporúčania nižšie.";
       } else if (normalizedText.includes("srirach") || normalizedText.includes("srirac")) {
         products = srirachaDemoProducts;
-        answer = "Našiel som niekoľko vhodných produktov. Pozrite si odporúčania nižšie.";
+        answer = "Našla som niekoľko vhodných produktov. Pozrite si odporúčania nižšie.";
       }
 
       return {
@@ -1747,7 +1747,7 @@
       const hasProducts = Array.isArray(data.products) && data.products.length > 0;
       loading.innerHTML = renderText(
         cleanAnswerText(
-          data.answer || "Nenašiel som presnú odpoveď. Skúste napísať názov produktu alebo kategóriu inak.",
+          data.answer || "Nenašla som presnú odpoveď. Skúste napísať názov produktu alebo kategóriu inak.",
           hasProducts
         )
       );
