@@ -711,7 +711,7 @@ class TestIntentDetection:
         assert main.wants_recipe_products("co potrebujem k receptu pho bo")
 
     def test_pho_recipe_products_prioritize_spices_then_noodles(self, products):
-        matches = main.related_products_for_subject(products, "pho", 8)
+        matches = main.related_products_for_subject(products, main.knowledge, "pho", 8)
         main.annotate_recommendations(matches, "recipe_to_products", related_subject="pho")
 
         groups = [product["recommendation_group"] for product in matches]
@@ -724,7 +724,7 @@ class TestIntentDetection:
         assert "rezance" in nrm(titles) or "banh pho" in nrm(titles)
 
     def test_recipe_shopping_list_has_foodland_and_missing_items(self, products):
-        matches = main.related_products_for_subject(products, "pho", 8)
+        matches = main.related_products_for_subject(products, main.knowledge, "pho", 8)
         main.annotate_recommendations(matches, "recipe_to_products", related_subject="pho")
         cart_candidates = main.cart_candidates_for_response(matches, "recipe_to_products", "pho")
         missing = main.missing_ingredients_for_subject("pho", [])
@@ -864,13 +864,13 @@ class TestIntentDetection:
             "thit_dong",
         ]
         for subject in subjects:
-            matches = main.related_products_for_subject(products, subject, 6)
+            matches = main.related_products_for_subject(products, main.knowledge, subject, 6)
             assert matches, subject
 
     def test_recipe_product_recommendations_exclude_tools_and_false_spices(self, products):
-        sushi_titles = " | ".join(product["title"] for product in main.related_products_for_subject(products, "sushi", 8))
-        biryani_titles = " | ".join(product["title"] for product in main.related_products_for_subject(products, "biryani", 8))
-        sinigang_titles = " | ".join(product["title"] for product in main.related_products_for_subject(products, "sinigang", 8))
+        sushi_titles = " | ".join(product["title"] for product in main.related_products_for_subject(products, main.knowledge, "sushi", 8))
+        biryani_titles = " | ".join(product["title"] for product in main.related_products_for_subject(products, main.knowledge, "biryani", 8))
+        sinigang_titles = " | ".join(product["title"] for product in main.related_products_for_subject(products, main.knowledge, "sinigang", 8))
 
         assert "podlozka" not in nrm(sushi_titles)
         assert "cierne korenie" not in nrm(biryani_titles)
@@ -878,7 +878,7 @@ class TestIntentDetection:
         assert "tamarind" in nrm(sinigang_titles)
         assert "soba chili" not in nrm(sinigang_titles)
         for subject in ("banh_gio", "bun_cha", "nuoc_cham", "thit_dong"):
-            titles = " | ".join(product["title"] for product in main.related_products_for_subject(products, subject, 8))
+            titles = " | ".join(product["title"] for product in main.related_products_for_subject(products, main.knowledge, subject, 8))
             assert "ananasova cili" not in nrm(titles)
 
     def test_out_of_domain_bicykel(self):
@@ -931,14 +931,14 @@ class TestRelatedProducts:
 
     def test_sushi_related_no_sushi_rice(self, products):
         """related_products_for_subject('sushi') nesmie vratit sushi ryzu."""
-        results = main.related_products_for_subject(products, "sushi", 8)
+        results = main.related_products_for_subject(products, main.knowledge, "sushi", 8)
         for p in results:
             title_nrm = nrm(p.get("title", ""))
             is_sushi_rice = "susi" in title_nrm.split() and "ryza" in title_nrm
             assert not is_sushi_rice, f"sushi ryza in related sushi: {p.get('title')}"
 
     def test_kimchi_related_no_kimchi_itself(self, products):
-        results = main.related_products_for_subject(products, "kimchi", 8)
+        results = main.related_products_for_subject(products, main.knowledge, "kimchi", 8)
         for p in results:
             assert "kimchi" not in nrm(p.get("title", ""))
 
