@@ -1420,33 +1420,65 @@
       return;
     }
 
-    const pageResp = await fetch(productLink, { credentials: "include" });
-    const html = await pageResp.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
-    const productId = doc.querySelector('input[name="product_id"]')?.value;
-    const manufacturerId = doc.querySelector('input[name="manufacturer_id"]')?.value || "";
-    const categoryId = doc.querySelector('input[name="category_id"]')?.value || "";
+    // The site's add-to-cart AJAX call needs a "description" string (SKU/EAN/
+    // weight/pricing-tier codes) that its own JS computes at click time and
+    // that is not reliably present in the page's static HTML for an arbitrary
+    // product. Rather than reverse-engineer that, load the real product page in
+    // a hidden iframe and click its own "DO KOSIKA" button, so the site's own
+    // script does the work exactly as it would for a normal visitor.
+    await new Promise(function (resolve, reject) {
+      const iframe = document.createElement("iframe");
+      iframe.style.cssText = "position:fixed; left:-9999px; top:-9999px; width:1px; height:1px; border:0;";
+      iframe.setAttribute("aria-hidden", "true");
 
-    if (!productId) {
-      window.open(productLink, "_blank", "noopener");
-      return;
-    }
+      let settled = false;
+      function finish(err) {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(hardTimeout);
+        iframe.remove();
+        if (err) reject(err); else resolve();
+      }
 
-    const body = new URLSearchParams({
-      product_id: productId,
-      quantity: "1",
-      flypage: "shop.flypage",
-      manufacturer_id: manufacturerId,
-      category_id: categoryId,
-      func: "cartAdd",
-    });
+      const hardTimeout = window.setTimeout(function () {
+        finish(new Error("addToCart timed out"));
+      }, 12000);
 
-    await fetch("/modules/mod_shop_cart_ajax.php", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString(),
+      iframe.addEventListener("load", function () {
+        // The add-to-cart button is not always present immediately after
+        // "load" (some product pages finish initializing it slightly later),
+        // so poll for it briefly instead of trusting a single fixed delay.
+        const pollDeadline = Date.now() + 6000;
+        function tryClick() {
+          try {
+            const idoc = iframe.contentDocument;
+            const btn = idoc.querySelector('#addtocart button[type="submit"]');
+            if (btn) {
+              btn.click();
+              // The click triggers the site's own async AJAX add-to-cart flow;
+              // give it time to complete before tearing the iframe down.
+              window.setTimeout(function () { finish(); }, 2000);
+              return;
+            }
+          } catch (e) {
+            finish(e);
+            return;
+          }
+          if (Date.now() > pollDeadline) {
+            finish(new Error("addtocart button not found on product page"));
+            return;
+          }
+          window.setTimeout(tryClick, 200);
+        }
+        window.setTimeout(tryClick, 200);
+      });
+
+      iframe.addEventListener("error", function () {
+        finish(new Error("iframe failed to load product page"));
+      });
+
+      document.body.appendChild(iframe);
+      iframe.src = productLink;
     });
   }
 
