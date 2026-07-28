@@ -1599,14 +1599,14 @@
     updateSiteCartDisplay(after);
   }
 
-  function addProducts(products) {
+  function addProducts(products, query) {
     if (!Array.isArray(products) || products.length === 0) return;
 
     const INITIAL = 3;
     const wrap = document.createElement("div");
     wrap.className = "fl-ai-products";
 
-    function renderCard(product) {
+    function renderCard(product, position) {
       const price = typeof product.effective_price === "number"
         ? `${product.effective_price.toFixed(2)} ${product.currency || "EUR"}`
         : "Cena neuvedená";
@@ -1634,7 +1634,7 @@
       const actionsDiv = card.querySelector(".fl-ai-product-actions");
       const viewLink = card.querySelector(".fl-ai-product-link");
       viewLink.addEventListener("click", function () {
-        fireEvent({ event_type: "click", product_sku: product.id });
+        fireEvent({ event_type: "click", product_sku: product.id, query: query || null, position: position });
       });
       const cartBtn = document.createElement("button");
       cartBtn.type = "button";
@@ -1643,11 +1643,12 @@
       cartBtn.addEventListener("click", async function () {
         cartBtn.disabled = true;
         cartBtn.textContent = "Pridávam...";
+        fireEvent({ event_type: "click", product_sku: product.id, query: query || null, position: position });
         try {
           await addToCart(product);
           cartBtn.textContent = "✓ Pridané";
           cartBtn.classList.add("is-added");
-          fireEvent({ event_type: "add_to_cart", product_sku: product.id });
+          fireEvent({ event_type: "add_to_cart", product_sku: product.id, query: query || null, position: position });
         } catch (e) {
           cartBtn.textContent = "Do košíka";
           cartBtn.disabled = false;
@@ -1668,8 +1669,8 @@
       return card;
     }
 
-    products.slice(0, INITIAL).forEach(function (product) {
-      wrap.appendChild(renderCard(product));
+    products.slice(0, INITIAL).forEach(function (product, index) {
+      wrap.appendChild(renderCard(product, index));
     });
 
     if (products.length > INITIAL) {
@@ -1683,7 +1684,7 @@
       updateShowMoreLabel();
       btn.addEventListener("click", function () {
         const nextBatch = products.slice(shown, shown + INITIAL);
-        nextBatch.forEach(function (p) { wrap.insertBefore(renderCard(p), btn); });
+        nextBatch.forEach(function (p, i) { wrap.insertBefore(renderCard(p, shown + i), btn); });
         shown += nextBatch.length;
         if (shown >= products.length) {
           btn.remove();
@@ -1932,7 +1933,7 @@
       addRecipes(data.recipes);
       addArticles(data.articles);
       if (data.intent !== "recipe") {
-        addProducts(data.products);
+        addProducts(data.products, text);
         if (Array.isArray(data.products) && data.products.length > 0) {
           fireEvent({
             event_type: "impression",
@@ -1941,7 +1942,7 @@
           });
         }
         if (!Array.isArray(data.products) || data.products.length === 0) {
-          addProducts(cartCandidatesToProducts(data.cart_candidates));
+          addProducts(cartCandidatesToProducts(data.cart_candidates), text);
         }
         addMissingIngredients(data.missing_ingredients || data.shopping_list?.missing_ingredients);
       }
