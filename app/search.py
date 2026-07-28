@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import unicodedata
-from dataclasses import asdict, is_dataclass
+from collections import Counter
+from dataclasses import asdict, dataclass, is_dataclass
 
 from app.feed import Product
 
@@ -26,6 +28,11 @@ TOKEN_SYNONYMS: dict[str, set[str]] = {
 PREFIX_SYNONYMS: dict[str, set[str]] = {
     prefix: set(variants) for prefix, variants in _SYNONYMS.get("prefixes", {}).items()
 }
+
+BM25_ENABLED = os.getenv("BM25_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
+BM25_WEIGHT = float(os.getenv("BM25_WEIGHT", "3.0"))
+BM25_K1 = 1.5
+BM25_B = 0.75
 
 POPULARITY_BOOSTS = {
     "sushi": 7,
@@ -206,6 +213,86 @@ def product_value(product: Product | dict, key: str, default=""):
     return getattr(product, key, default)
 
 
+@dataclass(slots=True)
+class BM25Index:
+    doc_freq: dict[str, int]
+    doc_term_freq: dict[str, Counter]
+    doc_lengths: dict[str, int]
+    avgdl: float
+    n_docs: int
+
+
+def _bm25_document_tokens(product: Product | dict) -> list[str]:
+    """Bag of tokens per product, field-weighted by repetition so title matches
+    count for more than description matches - mirrors the title>brand>category>
+    description priority search_products already uses for its heuristic score."""
+    title_tokens = list(tokenize(str(product_value(product, "title", ""))))
+    brand_tokens = list(tokenize(str(product_value(product, "brand", ""))))
+    category_tokens = list(tokenize(str(product_value(product, "product_type", product_value(product, "category", "")))))
+    description_tokens = list(tokenize(str(product_value(product, "description", ""))))
+    return title_tokens * 3 + brand_tokens * 2 + category_tokens * 2 + description_tokens
+
+
+def build_bm25_index(products: list[Product] | list[dict]) -> BM25Index:
+    doc_freq: dict[str, int] = {}
+    doc_term_freq: dict[str, Counter] = {}
+    doc_lengths: dict[str, int] = {}
+    total_length = 0
+
+    for product in products:
+        product_id = str(product_value(product, "id", ""))
+        if not product_id or product_id in doc_term_freq:
+            continue
+        tokens = _bm25_document_tokens(product)
+        term_freq = Counter(tokens)
+        doc_term_freq[product_id] = term_freq
+        doc_lengths[product_id] = len(tokens)
+        total_length += len(tokens)
+        for token in term_freq:
+            doc_freq[token] = doc_freq.get(token, 0) + 1
+
+    n_docs = len(doc_term_freq)
+    avgdl = (total_length / n_docs) if n_docs else 0.0
+    return BM25Index(doc_freq, doc_term_freq, doc_lengths, avgdl, n_docs)
+
+
+_bm25_index_cache: dict[int, BM25Index] = {}
+
+
+def get_bm25_index(products: list[Product] | list[dict]) -> BM25Index:
+    """Cached by products-list identity, same pattern as main.py's product/
+    autocomplete search caches: a feed refresh creates a new list object, so a
+    stale entry is simply never looked up again rather than needing explicit
+    invalidation."""
+    key = id(products)
+    cached = _bm25_index_cache.get(key)
+    if cached is None:
+        cached = build_bm25_index(products)
+        if len(_bm25_index_cache) > 4:
+            _bm25_index_cache.clear()
+        _bm25_index_cache[key] = cached
+    return cached
+
+
+def bm25_score(index: BM25Index, product_id: str, query_tokens: set[str]) -> float:
+    if not index.n_docs or not index.avgdl:
+        return 0.0
+    term_freq = index.doc_term_freq.get(product_id)
+    if not term_freq:
+        return 0.0
+    doc_length = index.doc_lengths.get(product_id, 0)
+    score = 0.0
+    for token in query_tokens:
+        freq = term_freq.get(token, 0)
+        if not freq:
+            continue
+        doc_freq = index.doc_freq.get(token, 0)
+        idf = math.log((index.n_docs - doc_freq + 0.5) / (doc_freq + 0.5) + 1)
+        denom = freq + BM25_K1 * (1 - BM25_B + BM25_B * doc_length / index.avgdl)
+        score += idf * (freq * (BM25_K1 + 1)) / denom
+    return score
+
+
 def search_products(products: list[Product] | list[dict], query: str, limit: int = 8) -> list[dict]:
     query_tokens = tokenize(query)
     if not query_tokens:
@@ -214,8 +301,9 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
     normalized_query = strip_conversational_noise(query)
     raw_query_tokens = raw_tokens(query)
     wants_sushi_rice = {"ryza"} <= query_tokens and bool({"sushi", "susi"} & query_tokens)
+    bm25_index = get_bm25_index(products) if BM25_ENABLED else None
 
-    ranked: list[tuple[int, bool, Product]] = []
+    ranked: list[tuple[float, bool, Product]] = []
     for product in products:
         title_tokens = tokenize(str(product_value(product, "title", "")))
         category_tokens = tokenize(str(product_value(product, "product_type", product_value(product, "category", ""))))
@@ -240,6 +328,10 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
         score += 4 * fuzzy_title_hits
         score += 2 * fuzzy_category_hits
         score += sum(POPULARITY_BOOSTS.get(token, 0) for token in query_tokens & (title_tokens | category_tokens))
+
+        if bm25_index is not None:
+            product_id = str(product_value(product, "id", ""))
+            score += BM25_WEIGHT * bm25_score(bm25_index, product_id, query_tokens)
 
         if normalized_query in normalized_title:
             score += 12
