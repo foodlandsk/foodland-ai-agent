@@ -28,6 +28,12 @@ from tenacity import (
 )
 from pydantic import BaseModel, Field
 
+from app.autocomplete import (
+    autocomplete_brands,
+    autocomplete_categories,
+    autocomplete_products,
+    autocomplete_questions,
+)
 from app.grounding import validate_answer, collect_allowed_urls, collect_allowed_prices
 from app.feed import (
     Product,
@@ -181,6 +187,10 @@ product_snapshot: ProductSnapshot = build_product_snapshot(products)
 translation_index: dict[str, dict[str, "Product"]] = {}
 rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 event_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
+autocomplete_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
+_top_questions_cache: list[dict] = []
+_top_questions_cache_at: float = 0.0
+TOP_QUESTIONS_CACHE_SECONDS = int(os.getenv("TOP_QUESTIONS_CACHE_SECONDS", "60"))
 _RATE_LIMIT_MAX_CLIENTS = 50_000  # BUG-02: ochrana pamate – max pocet trackovanych klientov
 DEFAULT_RUNTIME_LOG_DIR = Path(tempfile.gettempdir()) / "foodland-ai-agent"
 SESSION_MEMORY_TTL_SECONDS = int(os.getenv("SESSION_MEMORY_TTL_SECONDS", "1800"))
@@ -2556,6 +2566,22 @@ def search_autocomplete_endpoint(request: SearchAutocompleteRequest, fastapi_req
     }
 
 
+@app.get("/autocomplete")
+def autocomplete(request: Request, q: str = "", limit: int = 4) -> dict:
+    client_key = get_client_key(request)
+    enforce_autocomplete_rate_limit(client_key)
+
+    safe_limit = max(1, min(int(limit or 4), 12))
+    top_questions = cached_top_questions()
+
+    return {
+        "products": autocomplete_products(products, q, safe_limit),
+        "categories": autocomplete_categories(products, q, 3),
+        "brands": autocomplete_brands(products, q, 3),
+        "top_questions": autocomplete_questions(top_questions, q, 3),
+    }
+
+
 @app.get("/suggested-questions")
 def public_suggested_questions(days: int = 14, limit: int = 5) -> dict:
     events = read_analytics_events(max(1, min(int(days or 14), 60)))
@@ -4644,6 +4670,30 @@ def enforce_event_rate_limit(client_key: str) -> None:
     events.append(now)
 
 
+def enforce_autocomplete_rate_limit(client_key: str) -> None:
+    limit = int(os.getenv("AUTOCOMPLETE_RATE_LIMIT_PER_MINUTE", "180"))
+    now = time.time()
+    window_start = now - 60
+
+    if len(autocomplete_rate_limit_events) > _RATE_LIMIT_MAX_CLIENTS:
+        expired = [k for k, v in autocomplete_rate_limit_events.items() if not v or v[-1] < window_start]
+        for k in expired[:1000]:
+            del autocomplete_rate_limit_events[k]
+
+    events = autocomplete_rate_limit_events[client_key]
+
+    while events and events[0] < window_start:
+        events.popleft()
+
+    if len(events) >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail="Priliš veľa autocomplete požiadaviek za krátky čas.",
+        )
+
+    events.append(now)
+
+
 def log_question(message: str, client_key: str, matches_count: int, intent: str = "", session_id: str = "") -> None:
     path = Path(os.getenv("ANALYTICS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "question_analytics.jsonl")))
     salt = os.getenv("ANALYTICS_SALT", "")
@@ -4789,6 +4839,19 @@ def top_question_rows(events: list[dict], limit: int = 20) -> list[dict]:
         {"question": examples[key], "normalized": key, "count": count}
         for key, count in counter.most_common(max(1, min(limit, 100)))
     ]
+
+
+def cached_top_questions(limit: int = 50) -> list[dict]:
+    """Top questions barely change minute to minute, so re-scan the analytics
+    log at most once per TOP_QUESTIONS_CACHE_SECONDS instead of on every
+    /autocomplete keystroke."""
+    global _top_questions_cache, _top_questions_cache_at
+    now = time.time()
+    if now - _top_questions_cache_at > TOP_QUESTIONS_CACHE_SECONDS:
+        events = read_analytics_events(7)
+        _top_questions_cache = top_question_rows(events, limit)
+        _top_questions_cache_at = now
+    return _top_questions_cache
 
 
 def public_suggested_question_rows(events: list[dict], limit: int = 5, min_count: int = 2) -> list[dict]:

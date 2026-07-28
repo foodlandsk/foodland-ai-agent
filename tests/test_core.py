@@ -81,6 +81,12 @@ def _install_stubs():
 
 _install_stubs()
 
+from app.autocomplete import (
+    autocomplete_brands,
+    autocomplete_categories,
+    autocomplete_products,
+    autocomplete_questions,
+)
 from app.feed import load_products_json
 from app.search import autocomplete_suggestions, normalize, tokenize, search_products
 from app.knowledge import load_knowledge_json, search_knowledge, best_faq_answer
@@ -1484,6 +1490,82 @@ class TestAllergenSafetyAnswer:
     def test_answer_generic_allergen(self):
         answer = main.allergen_safety_answer("alergeny")
         assert "alergen" in answer.lower() or "overte" in answer.lower()
+
+
+class TestAutocomplete:
+    def test_products_prefix_match(self, products):
+        results = autocomplete_products(products, "gochuj", 4)
+        assert results
+        assert any("gochujang" in nrm(r["title"]) for r in results)
+        assert all({"title", "url", "price", "image"} <= set(r.keys()) for r in results)
+
+    def test_products_word_prefix_match(self, products):
+        results = autocomplete_products(products, "ryza", 4)
+        assert results
+        assert any("ryza" in nrm(r["title"]) for r in results)
+
+    def test_products_empty_query_returns_nothing(self, products):
+        assert autocomplete_products(products, "", 4) == []
+        assert autocomplete_products(products, "   ", 4) == []
+
+    def test_products_respects_limit(self, products):
+        results = autocomplete_products(products, "sushi", 2)
+        assert len(results) <= 2
+
+    def test_categories_prefix_match(self, products):
+        results = autocomplete_categories(products, "sus", 5)
+        assert results
+        assert any("sus" in nrm(category) for category in results)
+
+    def test_brands_prefix_match(self, products):
+        results = autocomplete_brands(products, "otto", 5)
+        assert results
+        assert any(nrm(brand).startswith("otto") for brand in results)
+
+    def test_questions_prefix_match(self):
+        top_questions = [
+            {"question": "Co je gochujang?", "normalized": "co je gochujang", "count": 5},
+            {"question": "Recept na ramen", "normalized": "recept na ramen", "count": 3},
+        ]
+        results = autocomplete_questions(top_questions, "co je", 3)
+        assert results == ["Co je gochujang?"]
+
+    def test_questions_empty_query_returns_nothing(self):
+        top_questions = [{"question": "Co je gochujang?", "normalized": "co je gochujang", "count": 5}]
+        assert autocomplete_questions(top_questions, "", 3) == []
+
+    def test_endpoint_returns_all_four_sections(self, products, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "cached_top_questions", lambda: [
+            {"question": "Co je gochujang?", "normalized": "co je gochujang", "count": 5},
+        ])
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.autocomplete(request, q="gochuj", limit=4)
+
+        assert set(result.keys()) == {"products", "categories", "brands", "top_questions"}
+        assert result["products"]
+        assert result["top_questions"] == ["Co je gochujang?"]
+
+    def test_endpoint_clamps_limit(self, products, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "cached_top_questions", lambda: [])
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.autocomplete(request, q="sushi", limit=999)
+
+        assert len(result["products"]) <= 12
+
+    def test_cached_top_questions_reuses_result_within_ttl(self, monkeypatch, tmp_path):
+        log_path = tmp_path / "question_analytics.jsonl"
+        log_path.write_text('{"ts": 9999999999, "message": "co je kimchi", "matches_count": 1, "intent": "article_products"}\n', encoding="utf-8")
+        monkeypatch.setenv("ANALYTICS_LOG_PATH", str(log_path))
+        monkeypatch.setattr(main, "_top_questions_cache", [])
+        monkeypatch.setattr(main, "_top_questions_cache_at", 0.0)
+
+        first = main.cached_top_questions()
+        log_path.write_text("", encoding="utf-8")
+        second = main.cached_top_questions()
+
+        assert first == second
 
 
 REGRESSION_CASES = [
