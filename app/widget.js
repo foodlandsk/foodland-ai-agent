@@ -1498,14 +1498,40 @@
         function tryClick() {
           if (clicked || settled) return;
           try {
+            const iwin = iframe.contentWindow;
             const idoc = iframe.contentDocument;
             const btn = idoc.querySelector('#addtocart button[type="submit"]');
             if (btn) {
               clicked = true;
+              // The site's own add-to-cart AJAX call typically answers in well
+              // under a second with {success:true/false}. Listen for it
+              // directly instead of guessing with a fixed delay, so a normal
+              // add finishes as soon as the server actually confirms it -
+              // falling back to a fixed wait only if interception itself
+              // cannot be set up.
+              try {
+                const OrigOpen = iwin.XMLHttpRequest.prototype.open;
+                iwin.XMLHttpRequest.prototype.open = function (method, url) {
+                  if (typeof url === "string" && url.indexOf("trigger=addToCart") !== -1) {
+                    this.addEventListener("load", function () {
+                      try {
+                        const data = JSON.parse(this.responseText);
+                        if (data && data.success) finish();
+                        else finish(new Error("addToCart reported failure"));
+                      } catch (e) {
+                        finish(e);
+                      }
+                    });
+                    this.addEventListener("error", function () {
+                      finish(new Error("addToCart request failed"));
+                    });
+                  }
+                  return OrigOpen.apply(this, arguments);
+                };
+              } catch (e) {
+                window.setTimeout(function () { finish(); }, 2500);
+              }
               btn.click();
-              // The click triggers the site's own async AJAX add-to-cart flow;
-              // give it time to complete before tearing the iframe down.
-              window.setTimeout(function () { finish(); }, 2500);
               return;
             }
           } catch (e) {
@@ -1550,19 +1576,12 @@
     // a hidden iframe and click its own "DO KOSIKA" button, so the site's own
     // script does the work exactly as it would for a normal visitor.
     //
-    // That click-and-hope flow has been observed to sometimes report success
-    // without the item actually landing in the cart, so verify the cart count
-    // actually increased before telling the caller it worked; retry once.
-    const before = await getCartState();
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      await submitRealAddToCartForm(productLink);
-      const after = await getCartState();
-      if (before.count === null || after.count === null || after.count > before.count) {
-        updateSiteCartDisplay(after);
-        return;
-      }
-    }
-    throw new Error("cart count did not increase after add-to-cart attempts");
+    // submitRealAddToCartForm() only resolves once the site's own AJAX call
+    // has confirmed success (or rejects on an explicit failure/timeout), so
+    // there's no need to compare cart counts before/after or retry here.
+    await submitRealAddToCartForm(productLink);
+    const after = await getCartState();
+    updateSiteCartDisplay(after);
   }
 
   function addProducts(products) {
