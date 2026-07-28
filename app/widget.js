@@ -990,6 +990,20 @@
     }
     return result;
   }
+
+  function fireEvent(payload) {
+    if (demoMode) return;
+    try {
+      fetch(`${apiBaseUrl}/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.assign({ session_id: sessionId, client_id: clientId }, payload)),
+        keepalive: true,
+      }).catch(function () {});
+    } catch (e) {
+      // analytics must never break the widget
+    }
+  }
   const form = root.querySelector(".fl-ai-form");
   const input = root.querySelector(".fl-ai-input");
   const submit = root.querySelector(".fl-ai-submit");
@@ -1254,6 +1268,7 @@
   function applySuggestion(index) {
     const item = currentSuggestions[index];
     if (!item) return;
+    fireEvent({ event_type: "autocomplete_select", query: item.query || item.label || "", position: index });
     input.value = item.query || item.label || "";
     closeAutocomplete();
     form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
@@ -1413,7 +1428,15 @@
 
   async function getCartCount() {
     try {
-      const resp = await fetch("https://www.foodland.sk/nakupny-kosik/", { credentials: "include" });
+      // Cache-bust: the "before" and "after" checks hit the same URL a few
+      // seconds apart, and without this the browser (or an intermediate
+      // cache) can serve the stale "before" response for "after" too, making
+      // a successful add look like it did not happen - which then triggered
+      // a real second add-to-cart on retry.
+      const resp = await fetch("https://www.foodland.sk/nakupny-kosik/?_=" + Date.now(), {
+        credentials: "include",
+        cache: "no-store",
+      });
       const html = await resp.text();
       const m = html.match(/cart-count-amount"[^>]*>\s*(\d+)/);
       return m ? parseInt(m[1], 10) : null;
@@ -1542,6 +1565,10 @@
         </div>
       `;
       const actionsDiv = card.querySelector(".fl-ai-product-actions");
+      const viewLink = card.querySelector(".fl-ai-product-link");
+      viewLink.addEventListener("click", function () {
+        fireEvent({ event_type: "click", product_sku: product.id });
+      });
       const cartBtn = document.createElement("button");
       cartBtn.type = "button";
       cartBtn.className = "fl-ai-cart-btn";
@@ -1553,6 +1580,7 @@
           await addToCart(product);
           cartBtn.textContent = "✓ Pridané";
           cartBtn.classList.add("is-added");
+          fireEvent({ event_type: "add_to_cart", product_sku: product.id });
         } catch (e) {
           cartBtn.textContent = "Do košíka";
           cartBtn.disabled = false;
@@ -1812,6 +1840,7 @@
     input.value = "";
     submit.disabled = true;
     addMessage("user", text);
+    fireEvent({ event_type: "search_submit", query: text });
     rememberProductSubject(text);
     const loading = addLoadingMessage();
 
@@ -1819,6 +1848,11 @@
       const data = await askBackend(text);
       updateNotice(data);
       const hasProducts = Array.isArray(data.products) && data.products.length > 0;
+      const hasRecipes = Array.isArray(data.recipes) && data.recipes.length > 0;
+      const hasArticles = Array.isArray(data.articles) && data.articles.length > 0;
+      if (!hasProducts && !hasRecipes && !hasArticles) {
+        fireEvent({ event_type: "no_result", query: text });
+      }
       loading.innerHTML = renderText(
         cleanAnswerText(
           data.answer || "Nenašla som presnú odpoveď. Skúste napísať názov produktu alebo kategóriu inak.",
@@ -1832,6 +1866,13 @@
       addArticles(data.articles);
       if (data.intent !== "recipe") {
         addProducts(data.products);
+        if (Array.isArray(data.products) && data.products.length > 0) {
+          fireEvent({
+            event_type: "impression",
+            query: text,
+            product_skus: data.products.map(function (p) { return p.id; }).filter(Boolean),
+          });
+        }
         if (!Array.isArray(data.products) || data.products.length === 0) {
           addProducts(cartCandidatesToProducts(data.cart_candidates));
         }

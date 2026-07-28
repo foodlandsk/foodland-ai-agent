@@ -13,6 +13,7 @@ import tempfile
 import time
 from collections import Counter, defaultdict, deque
 from pathlib import Path
+from typing import Literal
 from urllib.parse import quote_plus
 
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -125,6 +126,26 @@ class MemoryClearRequest(BaseModel):
     client_id: str = Field(default="", max_length=96)
 
 
+class EventRequest(BaseModel):
+    session_id: str = Field(default="", max_length=64)
+    client_id: str = Field(default="", max_length=96)
+    event_type: Literal[
+        "impression",
+        "click",
+        "add_to_cart",
+        "no_result",
+        "autocomplete_select",
+        "search_submit",
+        "conversion",
+        "feedback",
+    ]
+    query: str | None = Field(default=None, max_length=300)
+    product_sku: str | None = Field(default=None, max_length=64)
+    product_skus: list[str] | None = Field(default=None, max_length=50)
+    position: int | None = Field(default=None, ge=0, le=1000)
+    rating: int | None = Field(default=None, ge=-1, le=1)
+
+
 def load_products() -> list[Product]:
     json_path = os.getenv("PRODUCTS_JSON_PATH", "data/products.json")
     feed_path = os.getenv("PRODUCT_FEED_PATH", "data/googleMerchant_sk_export.xml")
@@ -159,6 +180,7 @@ feed_refresh_task: asyncio.Task | None = None
 product_snapshot: ProductSnapshot = build_product_snapshot(products)
 translation_index: dict[str, dict[str, "Product"]] = {}
 rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
+event_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 _RATE_LIMIT_MAX_CLIENTS = 50_000  # BUG-02: ochrana pamate – max pocet trackovanych klientov
 DEFAULT_RUNTIME_LOG_DIR = Path(tempfile.gettempdir()) / "foodland-ai-agent"
 SESSION_MEMORY_TTL_SECONDS = int(os.getenv("SESSION_MEMORY_TTL_SECONDS", "1800"))
@@ -2561,6 +2583,14 @@ def clear_user_memory(clear_request: MemoryClearRequest, request: Request) -> di
     return {"cleared": removed}
 
 
+@app.post("/events")
+def track_event(event_request: EventRequest, request: Request) -> dict:
+    client_key = get_client_key(request)
+    enforce_event_rate_limit(client_key)
+    log_event(event_request, client_key)
+    return {"ok": True}
+
+
 @app.get("/admin/analytics/summary")
 def admin_analytics_summary(
     days: int = 7,
@@ -4590,6 +4620,30 @@ def enforce_rate_limit(client_key: str) -> None:
     events.append(now)
 
 
+def enforce_event_rate_limit(client_key: str) -> None:
+    limit = int(os.getenv("EVENTS_RATE_LIMIT_PER_MINUTE", "120"))
+    now = time.time()
+    window_start = now - 60
+
+    if len(event_rate_limit_events) > _RATE_LIMIT_MAX_CLIENTS:
+        expired = [k for k, v in event_rate_limit_events.items() if not v or v[-1] < window_start]
+        for k in expired[:1000]:
+            del event_rate_limit_events[k]
+
+    events = event_rate_limit_events[client_key]
+
+    while events and events[0] < window_start:
+        events.popleft()
+
+    if len(events) >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail="Priliš veľa eventov za krátky čas.",
+        )
+
+    events.append(now)
+
+
 def log_question(message: str, client_key: str, matches_count: int, intent: str = "", session_id: str = "") -> None:
     path = Path(os.getenv("ANALYTICS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "question_analytics.jsonl")))
     salt = os.getenv("ANALYTICS_SALT", "")
@@ -4624,6 +4678,28 @@ def log_backend_error(event: str, detail: str) -> None:
             file.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception as exc:
         logger.error("Failed to log backend error: %s", exc, exc_info=True)
+
+
+def log_event(event_request: EventRequest, client_key: str) -> None:
+    path = Path(os.getenv("EVENTS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "events.jsonl")))
+    salt = os.getenv("ANALYTICS_SALT", "")
+    record = {
+        "ts": int(time.time()),
+        "client_hash": hashlib.sha256(f"{salt}:{client_key}".encode("utf-8")).hexdigest()[:24],
+        "session_id": event_request.session_id[:64],
+        "event_type": event_request.event_type,
+        "query": (event_request.query or "")[:300] or None,
+        "product_sku": event_request.product_sku,
+        "product_skus": event_request.product_skus[:50] if event_request.product_skus else None,
+        "position": event_request.position,
+        "rating": event_request.rating,
+    }
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as file:
+            file.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as exc:
+        logger.error("Failed to log event: %s", exc, exc_info=True)
 
 
 def require_admin_token(x_admin_token: str | None) -> None:
