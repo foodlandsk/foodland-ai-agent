@@ -451,3 +451,107 @@ def products_context(products: list[dict]) -> str:
             )
         )
     return "\n".join(lines)
+
+
+def _product_effective_price(product: Product | dict) -> float | None:
+    price = product_value(product, "sale_price", None)
+    if price is None:
+        price = product_value(product, "price", None)
+    return price if isinstance(price, (int, float)) else None
+
+
+def _matches_price_range(product: Product | dict, price_min: float | None, price_max: float | None) -> bool:
+    if price_min is None and price_max is None:
+        return True
+    price = _product_effective_price(product)
+    if price is None:
+        return False
+    if price_min is not None and price < price_min:
+        return False
+    if price_max is not None and price > price_max:
+        return False
+    return True
+
+
+def _matches_brand(product: Product | dict, brands: list[str] | None) -> bool:
+    if not brands:
+        return True
+    normalized_brand = normalize(str(product_value(product, "brand", "")))
+    return normalized_brand in {normalize(brand) for brand in brands}
+
+
+def _matches_availability(product: Product | dict, availability: str) -> bool:
+    if availability == "all":
+        return True
+    in_stock = str(product_value(product, "availability", "")) in {"in_stock", "in stock"}
+    if availability == "in_stock":
+        return in_stock
+    if availability == "out_of_stock":
+        return not in_stock
+    return True
+
+
+def _matches_category_terms(product: Product | dict, terms: list[str] | None) -> bool:
+    """Category and dietary filters both work as substring matches against the
+    product_type breadcrumb - dietary attributes like "Bezlepkove potraviny"
+    (gluten-free) or "Veganske potraviny" already live in there as their own
+    breadcrumb segments, so no separate dietary taxonomy is needed."""
+    if not terms:
+        return True
+    normalized_category = normalize(
+        str(product_value(product, "product_type", product_value(product, "category", "")))
+    )
+    return any(normalize(term) in normalized_category for term in terms)
+
+
+def filter_products(
+    products: list[Product] | list[dict],
+    price_min: float | None = None,
+    price_max: float | None = None,
+    brand: list[str] | None = None,
+    availability: str = "all",
+    category: list[str] | None = None,
+    dietary: list[str] | None = None,
+) -> list[Product | dict]:
+    results = []
+    for product in products:
+        if not _matches_price_range(product, price_min, price_max):
+            continue
+        if not _matches_brand(product, brand):
+            continue
+        if not _matches_availability(product, availability):
+            continue
+        if not _matches_category_terms(product, category):
+            continue
+        if not _matches_category_terms(product, dietary):
+            continue
+        results.append(product)
+    return results
+
+
+def compute_product_facets(products: list[Product] | list[dict]) -> dict:
+    brands: set[str] = set()
+    categories: set[str] = set()
+    prices: list[float] = []
+
+    for product in products:
+        brand_value = str(product_value(product, "brand", "")).strip()
+        if brand_value:
+            brands.add(brand_value)
+
+        category_raw = str(product_value(product, "product_type", product_value(product, "category", "")))
+        for part in re.split(r"[>/|]", category_raw):
+            clean_part = part.strip()
+            if clean_part:
+                categories.add(clean_part)
+
+        price = _product_effective_price(product)
+        if price is not None:
+            prices.append(price)
+
+    return {
+        "brands": sorted(brands, key=normalize),
+        "categories": sorted(categories, key=normalize),
+        "price_min": min(prices) if prices else None,
+        "price_max": max(prices) if prices else None,
+    }

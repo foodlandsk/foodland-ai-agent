@@ -88,7 +88,14 @@ from app.autocomplete import (
     autocomplete_questions,
 )
 from app.feed import load_products_json
-from app.search import autocomplete_suggestions, normalize, tokenize, search_products
+from app.search import (
+    autocomplete_suggestions,
+    compute_product_facets,
+    filter_products,
+    normalize,
+    tokenize,
+    search_products,
+)
 from app.knowledge import load_knowledge_json, search_knowledge, best_faq_answer
 from app.grounding import validate_answer, collect_allowed_urls, collect_allowed_prices
 from app.workflows import detect_workflow, get_contract, products_to_cart_candidates
@@ -1695,6 +1702,117 @@ class TestRecommend:
 
         assert isinstance(result["recommendations"], list)
         assert all(r.get("id") != sample_sku for r in result["recommendations"])
+
+
+def make_filter_request(**overrides):
+    defaults = dict(
+        query="",
+        price_min=None,
+        price_max=None,
+        brand=None,
+        availability="all",
+        category=None,
+        dietary=None,
+        limit=20,
+    )
+    defaults.update(overrides)
+    return main.ProductFilterRequest(**defaults)
+
+
+class TestProductFilter:
+    def test_filter_by_price_range(self, products):
+        prices = sorted(p.effective_price for p in products if p.effective_price is not None)
+        assert prices
+        mid = prices[len(prices) // 2]
+
+        results = filter_products(products, price_min=mid, price_max=mid + 0.01)
+
+        assert results
+        for product in results:
+            price = product.sale_price if product.sale_price is not None else product.price
+            assert mid <= price <= mid + 0.01
+
+    def test_filter_by_price_excludes_out_of_range(self, products):
+        prices = sorted(p.effective_price for p in products if p.effective_price is not None)
+        low = prices[0]
+
+        results = filter_products(products, price_min=low + 1000)
+
+        assert results == []
+
+    def test_filter_by_brand(self, products):
+        sample_brand = next((p.brand for p in products if p.brand), None)
+        assert sample_brand
+
+        results = filter_products(products, brand=[sample_brand])
+
+        assert results
+        assert all(nrm(r.brand) == nrm(sample_brand) for r in results)
+
+    def test_filter_by_availability_in_stock(self, products):
+        results = filter_products(products, availability="in_stock")
+        assert results
+        assert all(r.availability in {"in_stock", "in stock"} for r in results)
+
+    def test_filter_by_category_substring(self, products):
+        results = filter_products(products, category=["susi"])
+        assert results
+        assert all("susi" in nrm(r.product_type) for r in results)
+
+    def test_filter_by_dietary_gluten_free(self, products):
+        results = filter_products(products, dietary=["bezlepkove"])
+        assert results
+        assert all("bezlepkove" in nrm(r.product_type) for r in results)
+
+    def test_filter_combines_all_criteria(self, products):
+        combined = filter_products(products, availability="in_stock", category=["susi"])
+        category_only = filter_products(products, category=["susi"])
+
+        assert combined
+        assert len(combined) <= len(category_only)
+
+    def test_filter_no_criteria_returns_everything(self, products):
+        assert len(filter_products(products)) == len(products)
+
+
+class TestProductFacets:
+    def test_compute_product_facets_returns_brands_categories_and_price_range(self, products):
+        facets = compute_product_facets(products)
+
+        assert facets["brands"]
+        assert facets["categories"]
+        assert facets["price_min"] is not None
+        assert facets["price_max"] is not None
+        assert facets["price_min"] <= facets["price_max"]
+
+    def test_product_facets_endpoint(self, products, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "_facets_cache", None)
+        monkeypatch.setattr(main, "_facets_cache_at", 0.0)
+
+        result = main.product_facets()
+
+        assert result["brands"]
+        assert result["categories"]
+
+    def test_product_filter_endpoint_with_query(self, products, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+
+        request = make_filter_request(query="gochujang", limit=5)
+        result = main.product_filter(request)
+
+        assert result["products"]
+        assert result["total_matches"] >= len(result["products"])
+
+    def test_product_filter_endpoint_without_query_uses_filters_only(self, products, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+        sample_brand = next((p.brand for p in products if p.brand), None)
+
+        request = make_filter_request(brand=[sample_brand], limit=100)
+        result = main.product_filter(request)
+
+        assert result["products"]
+        assert all(nrm(p["brand"]) == nrm(sample_brand) for p in result["products"])
 
 
 REGRESSION_CASES = [

@@ -58,6 +58,8 @@ from app.knowledge_builder import (
 from app.search import (
     PHRASE_SYNONYMS,
     autocomplete_suggestions,
+    compute_product_facets,
+    filter_products,
     format_product,
     fuzzy_hits,
     normalize,
@@ -116,6 +118,17 @@ class ProductSearchRequest(BaseModel):
 class ProductSuggestRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=120)
     limit: int = Field(default=8, ge=1, le=12)
+
+
+class ProductFilterRequest(BaseModel):
+    query: str = Field(default="", max_length=300)
+    price_min: float | None = Field(default=None, ge=0)
+    price_max: float | None = Field(default=None, ge=0)
+    brand: list[str] | None = Field(default=None, max_length=20)
+    availability: Literal["in_stock", "out_of_stock", "all"] = "all"
+    category: list[str] | None = Field(default=None, max_length=20)
+    dietary: list[str] | None = Field(default=None, max_length=10)
+    limit: int = Field(default=20, ge=1, le=60)
 
 
 class SearchAutocompleteRequest(BaseModel):
@@ -202,6 +215,9 @@ _trending_products_cache: list[dict] = []
 _trending_products_cache_at: float = 0.0
 TRENDING_CACHE_SECONDS = int(os.getenv("TRENDING_CACHE_SECONDS", "300"))
 TRENDING_EVENT_WEIGHTS = {"conversion": 8, "add_to_cart": 5, "click": 2, "impression": 1}
+_facets_cache: dict | None = None
+_facets_cache_at: float = 0.0
+FACETS_CACHE_SECONDS = int(os.getenv("FACETS_CACHE_SECONDS", "600"))
 _RATE_LIMIT_MAX_CLIENTS = 50_000  # BUG-02: ochrana pamate – max pocet trackovanych klientov
 DEFAULT_RUNTIME_LOG_DIR = Path(tempfile.gettempdir()) / "foodland-ai-agent"
 SESSION_MEMORY_TTL_SECONDS = int(os.getenv("SESSION_MEMORY_TTL_SECONDS", "1800"))
@@ -233,8 +249,20 @@ def cached_search_products(products_list: list[Product] | list[dict], query: str
 
 
 def clear_product_search_cache() -> None:
+    global _facets_cache, _facets_cache_at
     product_search_cache.clear()
     autocomplete_cache.clear()
+    _facets_cache = None
+    _facets_cache_at = 0.0
+
+
+def cached_product_facets(products_list: list[Product] | list[dict]) -> dict:
+    global _facets_cache, _facets_cache_at
+    now = time.time()
+    if _facets_cache is None or now - _facets_cache_at > FACETS_CACHE_SECONDS:
+        _facets_cache = compute_product_facets(products_list)
+        _facets_cache_at = now
+    return _facets_cache
 
 
 def cached_autocomplete_suggestions(products_list: list[Product] | list[dict], query: str, limit: int = 8) -> list[dict]:
@@ -2559,6 +2587,33 @@ def product_search(request: ProductSearchRequest) -> dict:
 @app.post("/products/suggest")
 def product_suggest(request: ProductSuggestRequest) -> dict:
     return {"suggestions": cached_autocomplete_suggestions(products, request.query, request.limit)}
+
+
+@app.get("/products/facets")
+def product_facets() -> dict:
+    return cached_product_facets(products)
+
+
+@app.post("/products/filter")
+def product_filter(filter_request: ProductFilterRequest) -> dict:
+    if filter_request.query.strip():
+        candidates = cached_search_products(products, filter_request.query, 200)
+    else:
+        candidates = [format_product(product) for product in products]
+
+    filtered = filter_products(
+        candidates,
+        price_min=filter_request.price_min,
+        price_max=filter_request.price_max,
+        brand=filter_request.brand,
+        availability=filter_request.availability,
+        category=filter_request.category,
+        dietary=filter_request.dietary,
+    )
+    return {
+        "products": filtered[: filter_request.limit],
+        "total_matches": len(filtered),
+    }
 
 
 @app.post("/search/autocomplete")
