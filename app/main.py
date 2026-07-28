@@ -152,6 +152,12 @@ class EventRequest(BaseModel):
     rating: int | None = Field(default=None, ge=-1, le=1)
 
 
+class BasketRecommendRequest(BaseModel):
+    skus: list[str] = Field(..., min_length=1, max_length=50)
+    limit: int = Field(default=6, ge=1, le=20)
+    client_id: str = Field(default="", max_length=96)
+
+
 def load_products() -> list[Product]:
     json_path = os.getenv("PRODUCTS_JSON_PATH", "data/products.json")
     feed_path = os.getenv("PRODUCT_FEED_PATH", "data/googleMerchant_sk_export.xml")
@@ -188,9 +194,14 @@ translation_index: dict[str, dict[str, "Product"]] = {}
 rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 event_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 autocomplete_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
+recommend_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 _top_questions_cache: list[dict] = []
 _top_questions_cache_at: float = 0.0
 TOP_QUESTIONS_CACHE_SECONDS = int(os.getenv("TOP_QUESTIONS_CACHE_SECONDS", "60"))
+_trending_products_cache: list[dict] = []
+_trending_products_cache_at: float = 0.0
+TRENDING_CACHE_SECONDS = int(os.getenv("TRENDING_CACHE_SECONDS", "300"))
+TRENDING_EVENT_WEIGHTS = {"conversion": 8, "add_to_cart": 5, "click": 2, "impression": 1}
 _RATE_LIMIT_MAX_CLIENTS = 50_000  # BUG-02: ochrana pamate – max pocet trackovanych klientov
 DEFAULT_RUNTIME_LOG_DIR = Path(tempfile.gettempdir()) / "foodland-ai-agent"
 SESSION_MEMORY_TTL_SECONDS = int(os.getenv("SESSION_MEMORY_TTL_SECONDS", "1800"))
@@ -2617,6 +2628,68 @@ def track_event(event_request: EventRequest, request: Request) -> dict:
     return {"ok": True}
 
 
+@app.get("/recommend/similar")
+def recommend_similar(sku: str = "", limit: int = 6) -> dict:
+    safe_limit = max(1, min(int(limit or 6), 20))
+    product = find_product_by_id(products, sku)
+    if not product:
+        return {"sku": sku, "product": None, "recommendations": []}
+
+    record = knowledge_record_by_id(knowledge, "Alternatives", sku)
+    prefix = "Alternativa"
+    if not record:
+        record = knowledge_record_by_id(knowledge, "CrossSell", sku)
+        prefix = "Cross-sell"
+
+    recommendations = linked_products_from_record(products, record, prefix, safe_limit) if record else []
+    if len(recommendations) < safe_limit:
+        seen = {sku} | {item.get("id") or item.get("link") for item in recommendations}
+        title = product_field(product, "title")
+        for candidate in cached_search_products(products, title, safe_limit + len(seen)):
+            key = candidate.get("id") or candidate.get("link")
+            if key and key not in seen:
+                seen.add(key)
+                recommendations.append(candidate)
+            if len(recommendations) >= safe_limit:
+                break
+
+    return {
+        "sku": sku,
+        "product": format_product(product),
+        "recommendations": recommendations[:safe_limit],
+    }
+
+
+@app.get("/recommend/recipe")
+def recommend_recipe(name: str = "", limit: int = 6) -> dict:
+    safe_limit = max(1, min(int(limit or 6), 20))
+    record = find_recipe_record(knowledge, name)
+    if not record:
+        return {"recipe": None, "recommendations": []}
+
+    card = recipe_card(record)
+    title = card.get("title", "")
+    subject = recipe_product_subject_from_title(title)
+    fallback_matches = cached_search_products(products, title, safe_limit) if title else []
+    recommendations = recipe_shopping_core_products(products, subject, fallback_matches, safe_limit)
+
+    return {"recipe": card, "recommendations": recommendations}
+
+
+@app.get("/recommend/trending")
+def recommend_trending(limit: int = 10) -> dict:
+    safe_limit = max(1, min(int(limit or 10), 30))
+    return {"recommendations": cached_trending_products(products, safe_limit)}
+
+
+@app.post("/recommend/basket")
+def recommend_basket(basket_request: BasketRecommendRequest, request: Request) -> dict:
+    client_key = get_client_key(request)
+    enforce_recommend_rate_limit(client_key)
+    recommendations = basket_recommendations(products, knowledge, basket_request.skus, basket_request.limit)
+    return {"recommendations": recommendations}
+
+
 @app.get("/admin/analytics/summary")
 def admin_analytics_summary(
     days: int = 7,
@@ -4694,6 +4767,30 @@ def enforce_autocomplete_rate_limit(client_key: str) -> None:
     events.append(now)
 
 
+def enforce_recommend_rate_limit(client_key: str) -> None:
+    limit = int(os.getenv("RECOMMEND_RATE_LIMIT_PER_MINUTE", "60"))
+    now = time.time()
+    window_start = now - 60
+
+    if len(recommend_rate_limit_events) > _RATE_LIMIT_MAX_CLIENTS:
+        expired = [k for k, v in recommend_rate_limit_events.items() if not v or v[-1] < window_start]
+        for k in expired[:1000]:
+            del recommend_rate_limit_events[k]
+
+    events = recommend_rate_limit_events[client_key]
+
+    while events and events[0] < window_start:
+        events.popleft()
+
+    if len(events) >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail="Priliš veľa odporúčaní za krátky čas.",
+        )
+
+    events.append(now)
+
+
 def log_question(message: str, client_key: str, matches_count: int, intent: str = "", session_id: str = "") -> None:
     path = Path(os.getenv("ANALYTICS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "question_analytics.jsonl")))
     salt = os.getenv("ANALYTICS_SALT", "")
@@ -4771,6 +4868,11 @@ def read_analytics_events(days: int = 7) -> list[dict]:
 
 def read_error_events(days: int = 7) -> list[dict]:
     path = Path(os.getenv("ERROR_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "backend_errors.jsonl")))
+    return read_jsonl_events(path, days)
+
+
+def read_engagement_events(days: int = 7) -> list[dict]:
+    path = Path(os.getenv("EVENTS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "events.jsonl")))
     return read_jsonl_events(path, days)
 
 
@@ -6117,6 +6219,179 @@ def cross_sell_products_for_message(
 
 def normalize_url_for_match(url: str) -> str:
     return str(url or "").strip().rstrip("/")
+
+
+def find_product_by_id(products_list: list[Product] | list[dict], product_id: str) -> Product | dict | None:
+    if not product_id:
+        return None
+    for product in products_list:
+        if product_field(product, "id") == product_id:
+            return product
+    return None
+
+
+def knowledge_record_by_id(all_knowledge: dict, section: str, product_id: str) -> dict | None:
+    if not product_id:
+        return None
+    for record in all_knowledge.get("sections", {}).get(section, []):
+        if str(record.get("ID", "")).strip() == product_id:
+            return record
+    return None
+
+
+def linked_products_from_record(
+    products_list: list[Product] | list[dict],
+    record: dict,
+    prefix: str,
+    limit: int,
+) -> list[dict]:
+    """Resolve a knowledge record's numbered "<prefix> N"/"<prefix> N_url" pairs
+    (Alternativa/Cross-sell) to catalog products, preferring an exact URL match
+    over a fuzzy title search fallback."""
+    entries: list[tuple[str, str]] = []
+    for index in range(1, 6):
+        title = clean_cross_sell_title(record.get(f"{prefix} {index}") or "")
+        url = normalize_url_for_match(record.get(f"{prefix} {index}_url") or "")
+        if title or url:
+            entries.append((title, url))
+    if not entries:
+        return []
+
+    url_to_product: dict[str, dict] = {}
+    if any(url for _, url in entries):
+        for product in products_list:
+            product_data = format_product(product)
+            product_url = normalize_url_for_match(str(product_data.get("link") or ""))
+            if product_url:
+                url_to_product.setdefault(product_url, product_data)
+
+    seen: set[str] = set()
+    results: list[dict] = []
+    for title, url in entries:
+        matched = url_to_product.get(url) if url else None
+        if not matched and title:
+            hits = cached_search_products(products_list, title, 1)
+            matched = hits[0] if hits else None
+        if not matched:
+            continue
+        key = matched.get("id") or matched.get("link") or matched.get("title")
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        results.append(matched)
+        if len(results) >= limit:
+            break
+    return results
+
+
+def find_recipe_record(all_knowledge: dict, name: str) -> dict | None:
+    normalized_query = normalize(name)
+    if not normalized_query:
+        return None
+    query_tokens = tokenize(name)
+
+    best_score = 0
+    best_record: dict | None = None
+    for record in all_knowledge.get("sections", {}).get("Recipes", []):
+        title = first_record_value(record, ("Recept", "recipe", "nazov", "n\u00e1zov"))
+        if not title:
+            continue
+        normalized_title = normalize(title)
+
+        score = 0
+        if normalized_query == normalized_title:
+            score += 100
+        elif normalized_query in normalized_title or normalized_title in normalized_query:
+            score += 40
+        score += 10 * len(query_tokens & tokenize(title))
+        if score > best_score:
+            best_score = score
+            best_record = record
+    return best_record
+
+
+def basket_recommendations(
+    products_list: list[Product] | list[dict],
+    all_knowledge: dict,
+    skus: list[str],
+    limit: int,
+) -> list[dict]:
+    seen: set[str] = {sku for sku in skus if sku}
+    results: list[dict] = []
+
+    def add_all(candidates: list[dict]) -> bool:
+        for product in candidates:
+            key = product.get("id") or product.get("link") or product.get("title")
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            results.append(product)
+            if len(results) >= limit:
+                return True
+        return False
+
+    for sku in skus:
+        record = knowledge_record_by_id(all_knowledge, "CrossSell", sku)
+        if record and add_all(linked_products_from_record(products_list, record, "Cross-sell", limit - len(results))):
+            return results[:limit]
+
+    for sku in skus:
+        record = knowledge_record_by_id(all_knowledge, "Alternatives", sku)
+        if record and add_all(linked_products_from_record(products_list, record, "Alternativa", limit - len(results))):
+            return results[:limit]
+
+    # Baskets with no matching knowledge record still get something: search
+    # using each basket product's own title instead of returning nothing.
+    for sku in skus:
+        product = find_product_by_id(products_list, sku)
+        title = product_field(product, "title") if product else ""
+        if title and add_all(cached_search_products(products_list, title, limit)):
+            return results[:limit]
+
+    return results[:limit]
+
+
+def trending_product_skus(limit: int = 50) -> list[str]:
+    events = read_engagement_events(14)
+    scores: dict[str, float] = defaultdict(float)
+    for event in events:
+        weight = TRENDING_EVENT_WEIGHTS.get(event.get("event_type"), 0)
+        if not weight:
+            continue
+        sku = event.get("product_sku")
+        if sku:
+            scores[sku] += weight
+        # Impressions land as a batch of skus shown together, so each one on
+        # its own is a weaker signal than a direct click/add-to-cart/conversion.
+        for batch_sku in event.get("product_skus") or []:
+            scores[batch_sku] += weight * 0.5
+    ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    return [sku for sku, _score in ranked[:limit]]
+
+
+def cached_trending_products(products_list: list[Product] | list[dict], limit: int) -> list[dict]:
+    global _trending_products_cache, _trending_products_cache_at
+    now = time.time()
+    if now - _trending_products_cache_at > TRENDING_CACHE_SECONDS or not _trending_products_cache:
+        results: list[dict] = []
+        for sku in trending_product_skus(50):
+            product = find_product_by_id(products_list, sku)
+            if product:
+                results.append(format_product(product))
+        if not results:
+            # Cold start: no engagement events logged yet. Fall back to a
+            # handful of popular ingredient categories instead of an empty
+            # response.
+            seen: set[str] = set()
+            for term in ("sushi", "kimchi", "ramen", "gochujang"):
+                for candidate in cached_search_products(products_list, term, 5):
+                    key = candidate.get("id") or candidate.get("link")
+                    if key and key not in seen:
+                        seen.add(key)
+                        results.append(candidate)
+        _trending_products_cache = results
+        _trending_products_cache_at = now
+    return _trending_products_cache[:limit]
 
 
 def detect_special_product_subject(message: str) -> str | None:

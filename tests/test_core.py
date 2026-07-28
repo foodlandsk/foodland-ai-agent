@@ -1568,6 +1568,135 @@ class TestAutocomplete:
         assert first == second
 
 
+class TestRecommend:
+    def test_find_product_by_id(self, products):
+        sample = products[0].id
+        found = main.find_product_by_id(products, sample)
+        assert found is not None
+
+    def test_find_product_by_id_missing_returns_none(self, products):
+        assert main.find_product_by_id(products, "NOT_A_REAL_SKU") is None
+
+    def test_knowledge_record_by_id_cross_sell(self, knowledge):
+        cross_sell_records = knowledge.get("sections", {}).get("CrossSell", [])
+        assert cross_sell_records
+        sample_id = cross_sell_records[0]["ID"]
+        record = main.knowledge_record_by_id(knowledge, "CrossSell", sample_id)
+        assert record is not None
+        assert record["ID"] == sample_id
+
+    def test_linked_products_from_record_resolves_cross_sell(self, products, knowledge):
+        cross_sell_records = knowledge.get("sections", {}).get("CrossSell", [])
+        record = next((r for r in cross_sell_records if r.get("Cross-sell 1")), None)
+        assert record is not None
+        results = main.linked_products_from_record(products, record, "Cross-sell", 5)
+        assert isinstance(results, list)
+        assert len(results) <= 5
+
+    def test_recommend_similar_returns_product_and_recommendations(self, products, knowledge, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "knowledge", knowledge)
+        sample_sku = products[0].id
+
+        result = main.recommend_similar(sku=sample_sku, limit=4)
+
+        assert result["sku"] == sample_sku
+        assert result["product"] is not None
+        assert isinstance(result["recommendations"], list)
+        assert len(result["recommendations"]) <= 4
+        assert all(r.get("id") != sample_sku for r in result["recommendations"])
+
+    def test_recommend_similar_unknown_sku(self, products, knowledge, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "knowledge", knowledge)
+
+        result = main.recommend_similar(sku="NOT_REAL", limit=4)
+
+        assert result["product"] is None
+        assert result["recommendations"] == []
+
+    def test_find_recipe_record_fuzzy_match(self, knowledge):
+        recipes = knowledge.get("sections", {}).get("Recipes", [])
+        assert recipes
+        first_title = main.first_record_value(recipes[0], ("Recept", "recipe", "nazov", "názov"))
+        assert first_title
+
+        record = main.find_recipe_record(knowledge, first_title)
+
+        assert record is not None
+
+    def test_recommend_recipe_unknown_name(self, products, knowledge, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "knowledge", knowledge)
+
+        result = main.recommend_recipe(name="totally made up recipe xyz123", limit=4)
+
+        assert result["recipe"] is None
+        assert result["recommendations"] == []
+
+    def test_recommend_recipe_known_name_returns_recipe_card(self, products, knowledge, monkeypatch):
+        recipes = knowledge.get("sections", {}).get("Recipes", [])
+        first_title = main.first_record_value(recipes[0], ("Recept", "recipe", "nazov", "názov"))
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "knowledge", knowledge)
+
+        result = main.recommend_recipe(name=first_title, limit=4)
+
+        assert result["recipe"] is not None
+        assert isinstance(result["recommendations"], list)
+
+    def test_basket_recommendations_excludes_basket_items(self, products, knowledge):
+        sample_sku = products[0].id
+
+        results = main.basket_recommendations(products, knowledge, [sample_sku], 5)
+
+        assert all(r.get("id") != sample_sku for r in results)
+
+    def test_trending_product_skus_weights_add_to_cart_over_impression(self, monkeypatch):
+        events = [
+            {"ts": 9999999999, "event_type": "impression", "product_skus": ["A", "B"]},
+            {"ts": 9999999999, "event_type": "add_to_cart", "product_sku": "B"},
+        ]
+        monkeypatch.setattr(main, "read_engagement_events", lambda days=14: events)
+
+        ranked = main.trending_product_skus(10)
+
+        assert ranked[0] == "B"
+
+    def test_cached_trending_products_falls_back_when_no_events(self, products, monkeypatch):
+        monkeypatch.setattr(main, "_trending_products_cache", [])
+        monkeypatch.setattr(main, "_trending_products_cache_at", 0.0)
+        monkeypatch.setattr(main, "read_engagement_events", lambda days=14: [])
+
+        results = main.cached_trending_products(products, 5)
+
+        assert isinstance(results, list)
+        assert results
+
+    def test_recommend_trending_endpoint(self, products, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "_trending_products_cache", [])
+        monkeypatch.setattr(main, "_trending_products_cache_at", 0.0)
+        monkeypatch.setattr(main, "read_engagement_events", lambda days=14: [])
+
+        result = main.recommend_trending(limit=5)
+
+        assert isinstance(result["recommendations"], list)
+        assert len(result["recommendations"]) <= 5
+
+    def test_recommend_basket_endpoint(self, products, knowledge, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "knowledge", knowledge)
+        sample_sku = products[0].id
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        basket_request = main.BasketRecommendRequest(skus=[sample_sku], limit=4)
+
+        result = main.recommend_basket(basket_request, request)
+
+        assert isinstance(result["recommendations"], list)
+        assert all(r.get("id") != sample_sku for r in result["recommendations"])
+
+
 REGRESSION_CASES = [
     ("mate bezlepkovu sojovu omacku?", "product_search"),
     ("alergia na arasidy, co mozem kupit?", "allergen_safety"),
