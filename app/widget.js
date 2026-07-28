@@ -1411,22 +1411,19 @@
     scrollToBottom();
   }
 
-  async function addToCart(product) {
-    const productLink = product.link || "";
-    const isOnFoodland = window.location.hostname.includes("foodland.sk");
-
-    if (!isOnFoodland || !productLink) {
-      window.open(productLink || "https://www.foodland.sk/", "_blank", "noopener");
-      return;
+  async function getCartCount() {
+    try {
+      const resp = await fetch("https://www.foodland.sk/nakupny-kosik/", { credentials: "include" });
+      const html = await resp.text();
+      const m = html.match(/cart-count-amount"[^>]*>\s*(\d+)/);
+      return m ? parseInt(m[1], 10) : null;
+    } catch (e) {
+      return null;
     }
+  }
 
-    // The site's add-to-cart AJAX call needs a "description" string (SKU/EAN/
-    // weight/pricing-tier codes) that its own JS computes at click time and
-    // that is not reliably present in the page's static HTML for an arbitrary
-    // product. Rather than reverse-engineer that, load the real product page in
-    // a hidden iframe and click its own "DO KOSIKA" button, so the site's own
-    // script does the work exactly as it would for a normal visitor.
-    await new Promise(function (resolve, reject) {
+  function submitRealAddToCartForm(productLink) {
+    return new Promise(function (resolve, reject) {
       const iframe = document.createElement("iframe");
       iframe.style.cssText = "position:fixed; left:-9999px; top:-9999px; width:1px; height:1px; border:0;";
       iframe.setAttribute("aria-hidden", "true");
@@ -1457,7 +1454,7 @@
               btn.click();
               // The click triggers the site's own async AJAX add-to-cart flow;
               // give it time to complete before tearing the iframe down.
-              window.setTimeout(function () { finish(); }, 2000);
+              window.setTimeout(function () { finish(); }, 2500);
               return;
             }
           } catch (e) {
@@ -1480,6 +1477,36 @@
       document.body.appendChild(iframe);
       iframe.src = productLink;
     });
+  }
+
+  async function addToCart(product) {
+    const productLink = product.link || "";
+    const isOnFoodland = window.location.hostname.includes("foodland.sk");
+
+    if (!isOnFoodland || !productLink) {
+      window.open(productLink || "https://www.foodland.sk/", "_blank", "noopener");
+      return;
+    }
+
+    // The site's add-to-cart AJAX call needs a "description" string (SKU/EAN/
+    // weight/pricing-tier codes) that its own JS computes at click time and
+    // that is not reliably present in the page's static HTML for an arbitrary
+    // product. Rather than reverse-engineer that, load the real product page in
+    // a hidden iframe and click its own "DO KOSIKA" button, so the site's own
+    // script does the work exactly as it would for a normal visitor.
+    //
+    // That click-and-hope flow has been observed to sometimes report success
+    // without the item actually landing in the cart, so verify the cart count
+    // actually increased before telling the caller it worked; retry once.
+    const before = await getCartCount();
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      await submitRealAddToCartForm(productLink);
+      const after = await getCartCount();
+      if (before === null || after === null || after > before) {
+        return;
+      }
+    }
+    throw new Error("cart count did not increase after add-to-cart attempts");
   }
 
   function addProducts(products) {
