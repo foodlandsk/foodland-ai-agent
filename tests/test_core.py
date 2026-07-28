@@ -190,6 +190,73 @@ class TestTokenize:
         assert "na" not in tokens
 
 
+class TestCzechEnglishSynonyms:
+    def test_english_oyster_sauce_phrase(self):
+        tokens = tokenize("oyster sauce")
+        assert "ustricova" in tokens
+        assert "omacka" in tokens
+
+    def test_english_sesame_oil_phrase(self):
+        tokens = tokenize("sesame oil")
+        assert "sezamovy" in tokens
+        assert "olej" in tokens
+
+    def test_english_curry_paste_phrase(self):
+        tokens = tokenize("curry paste")
+        assert "kari" in tokens
+        assert "pasta" in tokens
+
+    def test_english_bamboo_shoots_phrase(self):
+        tokens = tokenize("bamboo shoots")
+        assert "bambusove" in tokens
+        assert "vyhonky" in tokens
+
+    def test_english_ingredient_tokens(self):
+        assert "zazvor" in tokenize("ginger")
+        assert "cesnak" in tokenize("garlic")
+        assert "kari" in tokenize("curry powder")
+        assert "krevety" in tokenize("shrimp")
+        assert "arasidy" in tokenize("peanuts")
+        assert "huby" in tokenize("mushroom")
+
+    def test_czech_word_forms(self):
+        assert "ryza" in tokenize("ryze")
+        assert "cesnak" in tokenize("cesnek")
+        assert "huby" in tokenize("houby")
+        assert "cukor" in tokenize("cukr")
+        assert "sol" in tokenize("sul")
+        assert "polievka" in tokenize("polevka")
+        assert "korenie" in tokenize("koreni")
+        assert "muka" in tokenize("mouka")
+        assert "cestoviny" in tokenize("testoviny")
+        assert "cibula" in tokenize("cibule")
+        assert "kuracie" in tokenize("kureci")
+        assert "bravcove" in tokenize("veprove")
+        assert "hovadzie" in tokenize("hovezi")
+
+    def test_czech_coconut_milk_phrase(self):
+        tokens = tokenize("kokosove mleko")
+        assert "kokosove" in tokens
+        assert "mlieko" in tokens
+
+    def test_czech_fish_sauce_phrase(self):
+        tokens = tokenize("rybi omacka")
+        assert "rybacia" in tokens
+        assert "omacka" in tokens
+
+    def test_search_products_finds_sesame_oil_via_english(self, products):
+        results = search_products(products, "sesame oil", 5)
+        assert titles_contain(results, "sezamov")
+
+    def test_search_products_finds_ginger_via_english(self, products):
+        results = search_products(products, "ginger", 5)
+        assert results
+
+    def test_search_products_finds_rice_via_czech(self, products):
+        results = search_products(products, "ryze", 5)
+        assert results
+
+
 class TestSearchProducts:
     def test_sushi_rice_not_vinegar(self, products):
         results = search_products(products, "sushi ryza", 6)
