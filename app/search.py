@@ -4,11 +4,18 @@ import json
 import math
 import os
 import re
+import time
 import unicodedata
 from collections import Counter
 from dataclasses import asdict, dataclass, is_dataclass
 
 from app.feed import Product
+from app.merchandising import (
+    is_hidden,
+    load_merchandising_rules,
+    merchandising_multiplier,
+    pins_for_query,
+)
 
 
 def _load_synonyms() -> dict:
@@ -33,6 +40,27 @@ BM25_ENABLED = os.getenv("BM25_ENABLED", "true").strip().lower() not in {"0", "f
 BM25_WEIGHT = float(os.getenv("BM25_WEIGHT", "3.0"))
 BM25_K1 = 1.5
 BM25_B = 0.75
+
+MERCHANDISING_CACHE_SECONDS = int(os.getenv("MERCHANDISING_CACHE_SECONDS", "60"))
+_merchandising_rules_cache: dict | None = None
+_merchandising_rules_cache_at: float = 0.0
+
+
+def get_merchandising_rules() -> dict:
+    """Cached so a hand-edited data/merchandising.json takes effect within
+    MERCHANDISING_CACHE_SECONDS without needing a redeploy."""
+    global _merchandising_rules_cache, _merchandising_rules_cache_at
+    now = time.time()
+    if _merchandising_rules_cache is None or now - _merchandising_rules_cache_at > MERCHANDISING_CACHE_SECONDS:
+        _merchandising_rules_cache = load_merchandising_rules()
+        _merchandising_rules_cache_at = now
+    return _merchandising_rules_cache
+
+
+def clear_merchandising_cache() -> None:
+    global _merchandising_rules_cache, _merchandising_rules_cache_at
+    _merchandising_rules_cache = None
+    _merchandising_rules_cache_at = 0.0
 
 POPULARITY_BOOSTS = {
     "sushi": 7,
@@ -302,9 +330,14 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
     raw_query_tokens = raw_tokens(query)
     wants_sushi_rice = {"ryza"} <= query_tokens and bool({"sushi", "susi"} & query_tokens)
     bm25_index = get_bm25_index(products) if BM25_ENABLED else None
+    merchandising_rules = get_merchandising_rules()
 
     ranked: list[tuple[float, bool, Product]] = []
     for product in products:
+        product_id = str(product_value(product, "id", ""))
+        if is_hidden(product_id, merchandising_rules):
+            continue
+
         title_tokens = tokenize(str(product_value(product, "title", "")))
         category_tokens = tokenize(str(product_value(product, "product_type", product_value(product, "category", ""))))
         brand_tokens = tokenize(str(product_value(product, "brand", "")))
@@ -330,7 +363,6 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
         score += sum(POPULARITY_BOOSTS.get(token, 0) for token in query_tokens & (title_tokens | category_tokens))
 
         if bm25_index is not None:
-            product_id = str(product_value(product, "id", ""))
             score += BM25_WEIGHT * bm25_score(bm25_index, product_id, query_tokens)
 
         if normalized_query in normalized_title:
@@ -357,6 +389,11 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
             score -= 2
 
         if score > 0:
+            score *= merchandising_multiplier(
+                str(product_value(product, "brand", "")),
+                str(product_value(product, "product_type", product_value(product, "category", ""))),
+                merchandising_rules,
+            )
             ranked.append((score, strong_match, product))
 
     strong_ranked = [item for item in ranked if item[1]]
@@ -371,7 +408,45 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
     else:
         ranked = strong_ranked + weak_ranked
 
-    return [format_product(product) for _, _, product in ranked[:limit]]
+    results = [format_product(product) for _, _, product in ranked[:limit]]
+
+    pins = pins_for_query(query, merchandising_rules)
+    if pins:
+        results = _apply_pins(results, pins, products, limit)
+
+    return results
+
+
+def _apply_pins(
+    results: list[dict],
+    pins: list[dict],
+    products: list[Product] | list[dict],
+    limit: int,
+) -> list[dict]:
+    working = list(results)
+    present_ids = {item.get("id") for item in working}
+
+    for pin in pins:
+        sku = str(pin.get("sku", ""))
+        if not sku or sku in present_ids:
+            continue
+        for product in products:
+            if str(product_value(product, "id", "")) == sku:
+                working.append(format_product(product))
+                present_ids.add(sku)
+                break
+
+    for pin in pins:
+        sku = str(pin.get("sku", ""))
+        item = next((entry for entry in working if entry.get("id") == sku), None)
+        if not item:
+            continue
+        working.remove(item)
+        position = int(pin.get("position", 1) or 1)
+        insert_at = max(0, min(position - 1, len(working)))
+        working.insert(insert_at, item)
+
+    return working[:limit]
 
 
 def autocomplete_suggestions(products: list[Product] | list[dict], query: str, limit: int = 8) -> list[dict]:

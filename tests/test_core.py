@@ -19,9 +19,11 @@ import json
 import os
 import re
 import sys
+import time
 import types
 import unicodedata
 from collections import defaultdict
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -90,8 +92,10 @@ from app.autocomplete import (
 from app.feed import load_products_json
 from app.search import (
     autocomplete_suggestions,
+    clear_merchandising_cache,
     compute_product_facets,
     filter_products,
+    get_merchandising_rules,
     normalize,
     tokenize,
     search_products,
@@ -100,6 +104,8 @@ from app.knowledge import load_knowledge_json, search_knowledge, best_faq_answer
 from app.grounding import validate_answer, collect_allowed_urls, collect_allowed_prices
 from app.workflows import detect_workflow, get_contract, products_to_cart_candidates
 import app.main as main
+import app.merchandising as merchandising
+import app.search as search_module
 
 
 @pytest.fixture(scope="session")
@@ -255,6 +261,170 @@ class TestCzechEnglishSynonyms:
     def test_search_products_finds_rice_via_czech(self, products):
         results = search_products(products, "ryze", 5)
         assert results
+
+
+class TestMerchandising:
+    def test_load_merchandising_rules_missing_file_returns_defaults(self, tmp_path):
+        rules = merchandising.load_merchandising_rules(str(tmp_path / "does_not_exist.json"))
+
+        assert rules == {"pins": [], "hidden": set(), "boosts": [], "campaigns": []}
+
+    def test_load_merchandising_rules_from_file(self, tmp_path):
+        path = tmp_path / "merchandising.json"
+        path.write_text(
+            json.dumps({
+                "pins": [{"sku": "FL_1", "query": "ramen", "position": 1}],
+                "hidden": ["FL_999"],
+                "boosts": [{"brand": "Ottogi", "multiplier": 1.5}],
+                "campaigns": [{"name": "Summer", "active_from": "2020-01-01", "active_to": "2099-12-31", "category": "Omacky", "boost": 2.0}],
+            }),
+            encoding="utf-8",
+        )
+
+        rules = merchandising.load_merchandising_rules(str(path))
+
+        assert rules["pins"] == [{"sku": "FL_1", "query": "ramen", "position": 1}]
+        assert rules["hidden"] == {"FL_999"}
+        assert rules["boosts"][0]["brand"] == "Ottogi"
+
+    def test_load_merchandising_rules_malformed_json_returns_defaults(self, tmp_path):
+        path = tmp_path / "merchandising.json"
+        path.write_text("{not valid json", encoding="utf-8")
+
+        rules = merchandising.load_merchandising_rules(str(path))
+
+        assert rules == {"pins": [], "hidden": set(), "boosts": [], "campaigns": []}
+
+    def test_is_hidden(self):
+        rules = {"hidden": {"FL_999"}}
+        assert merchandising.is_hidden("FL_999", rules) is True
+        assert merchandising.is_hidden("FL_1", rules) is False
+
+    def test_campaign_is_active_within_range(self):
+        campaign = {"active_from": "2020-01-01", "active_to": "2099-12-31"}
+        assert merchandising.campaign_is_active(campaign, date(2026, 1, 1)) is True
+
+    def test_campaign_is_active_before_start(self):
+        campaign = {"active_from": "2099-01-01", "active_to": "2099-12-31"}
+        assert merchandising.campaign_is_active(campaign, date(2026, 1, 1)) is False
+
+    def test_campaign_is_active_after_end(self):
+        campaign = {"active_from": "2020-01-01", "active_to": "2020-12-31"}
+        assert merchandising.campaign_is_active(campaign, date(2026, 1, 1)) is False
+
+    def test_campaign_is_active_no_dates_means_always_active(self):
+        assert merchandising.campaign_is_active({}, date(2026, 1, 1)) is True
+
+    def test_merchandising_multiplier_brand_boost(self):
+        rules = {"boosts": [{"brand": "Ottogi", "multiplier": 1.5}], "campaigns": []}
+
+        assert merchandising.merchandising_multiplier("Ottogi", "Ramen", rules) == 1.5
+        assert merchandising.merchandising_multiplier("Nongshim", "Ramen", rules) == 1.0
+
+    def test_merchandising_multiplier_active_campaign(self):
+        rules = {"boosts": [], "campaigns": [{"category": "grilovacie omacky", "boost": 2.0, "active_from": "2020-01-01", "active_to": "2099-12-31"}]}
+
+        multiplier = merchandising.merchandising_multiplier("Any", "Grilovacie omacky > Omacky", rules, today=date(2026, 7, 1))
+
+        assert multiplier == 2.0
+
+    def test_merchandising_multiplier_inactive_campaign_has_no_effect(self):
+        rules = {"boosts": [], "campaigns": [{"category": "grilovacie omacky", "boost": 2.0, "active_from": "2020-01-01", "active_to": "2020-12-31"}]}
+
+        multiplier = merchandising.merchandising_multiplier("Any", "Grilovacie omacky > Omacky", rules, today=date(2026, 7, 1))
+
+        assert multiplier == 1.0
+
+    def test_merchandising_multiplier_campaign_matches_despite_diacritics(self):
+        # Rule authored in plain ASCII must still match the catalog's actual
+        # accented Slovak category text (e.g. "Sojove omacky" -> "Sójové omáčky").
+        rules = {"boosts": [], "campaigns": [{"category": "sojove omacky", "boost": 5.0, "active_from": "2020-01-01", "active_to": "2099-12-31"}]}
+
+        multiplier = merchandising.merchandising_multiplier("KIKKOMAN", "Sójové omáčky > Omáčky a marinády", rules, today=date(2026, 7, 1))
+
+        assert multiplier == 5.0
+
+    def test_merchandising_multiplier_brand_boost_matches_despite_diacritics(self):
+        rules = {"boosts": [{"brand": "znacka s diakritikou", "multiplier": 3.0}], "campaigns": []}
+
+        multiplier = merchandising.merchandising_multiplier("Značka s diakritikou", "Any", rules)
+
+        assert multiplier == 3.0
+
+    def test_merchandising_multiplier_stacks_boost_and_campaign(self):
+        rules = {
+            "boosts": [{"brand": "Ottogi", "multiplier": 1.5}],
+            "campaigns": [{"category": "ramen", "boost": 2.0, "active_from": "2020-01-01", "active_to": "2099-12-31"}],
+        }
+
+        multiplier = merchandising.merchandising_multiplier("Ottogi", "Ramen", rules, today=date(2026, 7, 1))
+
+        assert multiplier == 3.0
+
+    def test_pins_for_query_matches_substring(self):
+        rules = {"pins": [{"sku": "FL_1", "query": "ramen", "position": 1}]}
+
+        assert merchandising.pins_for_query("najlepsi ramen", rules) == rules["pins"]
+        assert merchandising.pins_for_query("sushi", rules) == []
+
+    def test_pins_for_query_unconditional_pin_matches_everything(self):
+        rules = {"pins": [{"sku": "FL_1", "position": 1}]}
+
+        assert merchandising.pins_for_query("anything", rules) == rules["pins"]
+
+
+class TestMerchandisingIntegration:
+    def _set_rules(self, monkeypatch, rules):
+        monkeypatch.setattr(search_module, "_merchandising_rules_cache", rules)
+        monkeypatch.setattr(search_module, "_merchandising_rules_cache_at", time.time())
+
+    def test_hidden_product_excluded_from_search(self, products, monkeypatch):
+        target = next(p for p in products if p.title)
+        self._set_rules(monkeypatch, {"pins": [], "hidden": {target.id}, "boosts": [], "campaigns": []})
+
+        results = search_products(products, target.title, 10)
+
+        assert all(r["id"] != target.id for r in results)
+
+    def test_boost_promotes_matching_brand_to_top(self, products, monkeypatch):
+        baseline = search_products(products, "omacka", 10)
+        assert len(baseline) >= 2
+        target_brand = next((r["brand"] for r in baseline[1:] if r.get("brand")), None)
+        assert target_brand
+
+        self._set_rules(monkeypatch, {
+            "pins": [], "hidden": set(), "boosts": [{"brand": target_brand, "multiplier": 1000.0}], "campaigns": [],
+        })
+
+        boosted = search_products(products, "omacka", 10)
+
+        assert boosted[0]["brand"] == target_brand
+
+    def test_pin_forces_product_to_requested_position(self, products, monkeypatch):
+        baseline = search_products(products, "omacka", 5)
+        assert baseline
+        baseline_ids = {r["id"] for r in baseline}
+        other = next(p for p in products if p.id not in baseline_ids and p.title)
+
+        self._set_rules(monkeypatch, {
+            "pins": [{"sku": other.id, "query": "omacka", "position": 1}],
+            "hidden": set(), "boosts": [], "campaigns": [],
+        })
+
+        results = search_products(products, "omacka", 5)
+
+        assert results[0]["id"] == other.id
+
+    def test_get_merchandising_rules_reads_from_env_path(self, tmp_path, monkeypatch):
+        path = tmp_path / "merchandising.json"
+        path.write_text(json.dumps({"pins": [], "hidden": ["FL_1"], "boosts": [], "campaigns": []}), encoding="utf-8")
+        monkeypatch.setenv("MERCHANDISING_JSON_PATH", str(path))
+        clear_merchandising_cache()
+
+        rules = get_merchandising_rules()
+
+        assert rules["hidden"] == {"FL_1"}
+        clear_merchandising_cache()
 
 
 class TestSearchProducts:
