@@ -1438,14 +1438,17 @@
         cache: "no-store",
       });
       const html = await resp.text();
-      const countMatch = html.match(/cart-count-amount"[^>]*>\s*(\d+)/);
-      const priceMatch = html.match(/module-cart-price"[^>]*>\s*([^<]*?)\s*</);
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const countEl = doc.querySelector(".cart-count-amount");
+      const priceEl = doc.querySelector(".module-cart-price");
+      const previewEl = doc.querySelector(".cart_ajax_container_inner .products_wrap");
       return {
-        count: countMatch ? parseInt(countMatch[1], 10) : null,
-        price: priceMatch ? priceMatch[1].trim() : null,
+        count: countEl ? parseInt(countEl.textContent, 10) : null,
+        price: priceEl ? priceEl.textContent.trim() : null,
+        previewHtml: previewEl ? previewEl.innerHTML : null,
       };
     } catch (e) {
-      return { count: null, price: null };
+      return { count: null, price: null, previewHtml: null };
     }
   }
 
@@ -1462,6 +1465,18 @@
     if (state.price !== null) {
       document.querySelectorAll(".module-cart-price").forEach(function (el) {
         el.textContent = state.price;
+      });
+    }
+    if (state.previewHtml !== null && state.previewHtml !== undefined) {
+      document.querySelectorAll(".cart_ajax_container_inner").forEach(function (container) {
+        // The malihu custom-scrollbar plugin wraps .products_wrap's content in
+        // its own extra divs once it initializes on this page; refresh inside
+        // that inner wrapper if present so the scrollbar UI survives, and fall
+        // back to .products_wrap itself when the plugin has not wrapped it yet.
+        const target = container.querySelector(".mCSB_container") || container.querySelector(".products_wrap");
+        if (target) {
+          target.innerHTML = state.previewHtml;
+        }
       });
     }
   }
