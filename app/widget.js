@@ -1426,7 +1426,7 @@
     scrollToBottom();
   }
 
-  async function getCartCount() {
+  async function getCartState() {
     try {
       // Cache-bust: the "before" and "after" checks hit the same URL a few
       // seconds apart, and without this the browser (or an intermediate
@@ -1438,10 +1438,31 @@
         cache: "no-store",
       });
       const html = await resp.text();
-      const m = html.match(/cart-count-amount"[^>]*>\s*(\d+)/);
-      return m ? parseInt(m[1], 10) : null;
+      const countMatch = html.match(/cart-count-amount"[^>]*>\s*(\d+)/);
+      const priceMatch = html.match(/module-cart-price"[^>]*>\s*([^<]*?)\s*</);
+      return {
+        count: countMatch ? parseInt(countMatch[1], 10) : null,
+        price: priceMatch ? priceMatch[1].trim() : null,
+      };
     } catch (e) {
-      return null;
+      return { count: null, price: null };
+    }
+  }
+
+  function updateSiteCartDisplay(state) {
+    // The actual cart mutation happens inside the hidden iframe's own
+    // document, so the site's own header cart widget on THIS page never
+    // hears about it. Patch its already-fetched fresh state in directly so
+    // the customer sees the update without needing to reload the page.
+    if (state.count !== null) {
+      document.querySelectorAll(".cart-count-amount").forEach(function (el) {
+        el.textContent = state.count;
+      });
+    }
+    if (state.price !== null) {
+      document.querySelectorAll(".module-cart-price").forEach(function (el) {
+        el.textContent = state.price;
+      });
     }
   }
 
@@ -1521,11 +1542,12 @@
     // That click-and-hope flow has been observed to sometimes report success
     // without the item actually landing in the cart, so verify the cart count
     // actually increased before telling the caller it worked; retry once.
-    const before = await getCartCount();
+    const before = await getCartState();
     for (let attempt = 1; attempt <= 2; attempt++) {
       await submitRealAddToCartForm(productLink);
-      const after = await getCartCount();
-      if (before === null || after === null || after > before) {
+      const after = await getCartState();
+      if (before.count === null || after.count === null || after.count > before.count) {
+        updateSiteCartDisplay(after);
         return;
       }
     }
