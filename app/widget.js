@@ -1473,6 +1473,7 @@
       iframe.setAttribute("aria-hidden", "true");
 
       let settled = false;
+      let clicked = false;
       function finish(err) {
         if (settled) return;
         settled = true;
@@ -1486,15 +1487,21 @@
       }, 12000);
 
       iframe.addEventListener("load", function () {
-        // The add-to-cart button is not always present immediately after
-        // "load" (some product pages finish initializing it slightly later),
-        // so poll for it briefly instead of trusting a single fixed delay.
+        // Appending an unset iframe fires a "load" for its initial blank
+        // document, then again for the real navigation - two independent
+        // "load" events for one submitRealAddToCartForm() call. Each used to
+        // start its own polling loop, and both could end up finding the
+        // loaded page's button and clicking it, adding the item twice. The
+        // "clicked" guard makes sure only the first successful find ever
+        // calls .click(), no matter how many "load" events fire.
         const pollDeadline = Date.now() + 6000;
         function tryClick() {
+          if (clicked || settled) return;
           try {
             const idoc = iframe.contentDocument;
             const btn = idoc.querySelector('#addtocart button[type="submit"]');
             if (btn) {
+              clicked = true;
               btn.click();
               // The click triggers the site's own async AJAX add-to-cart flow;
               // give it time to complete before tearing the iframe down.
@@ -1518,8 +1525,12 @@
         finish(new Error("iframe failed to load product page"));
       });
 
-      document.body.appendChild(iframe);
+      // Set src before inserting into the DOM: appending an iframe with no
+      // src first causes an extra "load" event for its blank document (see
+      // above), which is avoided when it already has a real URL to navigate
+      // to as soon as it's attached.
       iframe.src = productLink;
+      document.body.appendChild(iframe);
     });
   }
 
