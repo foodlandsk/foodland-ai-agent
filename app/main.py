@@ -2809,7 +2809,11 @@ def recommend_trending(limit: int = 10) -> dict:
 def recommend_basket(basket_request: BasketRecommendRequest, request: Request) -> dict:
     client_key = get_client_key(request)
     enforce_recommend_rate_limit(client_key)
-    recommendations = basket_recommendations(products, knowledge, basket_request.skus, basket_request.limit)
+    profile_key = user_memory_key(basket_request.client_id, client_key)
+    user_profile = get_user_memory(profile_key) if USER_MEMORY_ENABLED else {}
+    recommendations = basket_recommendations(
+        products, knowledge, basket_request.skus, basket_request.limit, user_profile
+    )
     return {"recommendations": recommendations}
 
 
@@ -6579,6 +6583,7 @@ def basket_recommendations(
     all_knowledge: dict,
     skus: list[str],
     limit: int,
+    profile: dict | None = None,
 ) -> list[dict]:
     seen: set[str] = {sku for sku in skus if sku}
     results: list[dict] = []
@@ -6594,6 +6599,9 @@ def basket_recommendations(
                 return True
         return False
 
+    def finalize() -> list[dict]:
+        return personalize_products(results[:limit], profile)
+
     if FBT_RECOMMENDATIONS_ENABLED:
         fbt_data = get_fbt_data()
         for sku in skus:
@@ -6603,17 +6611,17 @@ def basket_recommendations(
                 if product:
                     fbt_candidates.append(format_product(product))
             if fbt_candidates and add_all(fbt_candidates):
-                return results[:limit]
+                return finalize()
 
     for sku in skus:
         record = knowledge_record_by_id(all_knowledge, "CrossSell", sku)
         if record and add_all(linked_products_from_record(products_list, record, "Cross-sell", limit - len(results))):
-            return results[:limit]
+            return finalize()
 
     for sku in skus:
         record = knowledge_record_by_id(all_knowledge, "Alternatives", sku)
         if record and add_all(linked_products_from_record(products_list, record, "Alternativa", limit - len(results))):
-            return results[:limit]
+            return finalize()
 
     # Baskets with no matching knowledge record still get something: search
     # using each basket product's own title instead of returning nothing.
@@ -6621,9 +6629,9 @@ def basket_recommendations(
         product = find_product_by_id(products_list, sku)
         title = product_field(product, "title") if product else ""
         if title and add_all(cached_search_products(products_list, title, limit)):
-            return results[:limit]
+            return finalize()
 
-    return results[:limit]
+    return finalize()
 
 
 def trending_product_skus(limit: int = 50) -> list[str]:

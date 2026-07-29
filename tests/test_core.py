@@ -2519,6 +2519,57 @@ class TestRecommend:
         assert result["skus_with_pairs"] == 2
         assert len(result["sample"]) == 2
 
+    def test_basket_recommendations_reorders_by_profile_affinity(self, products, knowledge, monkeypatch):
+        # Force the plain title-search fallback tier with fixed candidates
+        # so the test does not depend on which CrossSell/Alternatives/FBT
+        # record happens to exist for this product in the real catalog.
+        monkeypatch.setattr(main, "FBT_RECOMMENDATIONS_ENABLED", False)
+        monkeypatch.setattr(main, "knowledge_record_by_id", lambda *a, **k: None)
+        fixed_candidates = [
+            {"id": "FL_A", "title": "Produkt A", "brand": "OTHER"},
+            {"id": "FL_B", "title": "Produkt B", "brand": "TARGET_BRAND"},
+        ]
+        monkeypatch.setattr(main, "cached_search_products", lambda *a, **k: [dict(p) for p in fixed_candidates])
+        sample_sku = products[0].id
+        profile = {
+            "cuisines": {},
+            "subjects": {},
+            "diet_terms": {},
+            "product_titles": {},
+            "product_brands": {"TARGET_BRAND": 6},
+        }
+
+        personalized = main.basket_recommendations(products, knowledge, [sample_sku], 5, profile)
+
+        assert personalized[0]["id"] == "FL_B"
+        assert personalized[0]["personalized"] is True
+
+    def test_basket_recommendations_unaffected_without_profile(self, products, knowledge, monkeypatch):
+        sample_sku = products[0].id
+
+        without_profile_arg = main.basket_recommendations(products, knowledge, [sample_sku], 5)
+        with_empty_profile = main.basket_recommendations(products, knowledge, [sample_sku], 5, {})
+
+        assert without_profile_arg == with_empty_profile
+
+    def test_recommend_basket_endpoint_applies_client_profile(self, products, knowledge, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "knowledge", knowledge)
+        sample_sku = products[0].id
+        captured = {}
+        def fake_basket_recommendations(products_list, all_knowledge, skus, limit, profile=None):
+            captured["profile"] = profile
+            return []
+        monkeypatch.setattr(main, "basket_recommendations", fake_basket_recommendations)
+        fake_profile = {"product_brands": {"ACME": 5}}
+        monkeypatch.setattr(main, "get_user_memory", lambda profile_key: fake_profile)
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        basket_request = main.BasketRecommendRequest(skus=[sample_sku], limit=4, client_id="client-xyz")
+
+        main.recommend_basket(basket_request, request)
+
+        assert captured["profile"] == fake_profile
+
     def test_trending_product_skus_weights_add_to_cart_over_impression(self, monkeypatch):
         events = [
             {"ts": 9999999999, "event_type": "impression", "product_skus": ["A", "B"]},
