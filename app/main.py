@@ -40,6 +40,7 @@ from app.embeddings import (
     save_embeddings,
     semantic_search,
 )
+from app.fbt import fbt_recommendations, load_fbt_data
 from app.grounding import validate_answer, collect_allowed_urls, collect_allowed_prices
 from app.feed import (
     Product,
@@ -222,6 +223,10 @@ _trending_products_cache: list[dict] = []
 _trending_products_cache_at: float = 0.0
 TRENDING_CACHE_SECONDS = int(os.getenv("TRENDING_CACHE_SECONDS", "300"))
 TRENDING_EVENT_WEIGHTS = {"conversion": 8, "add_to_cart": 5, "click": 2, "impression": 1}
+_fbt_data_cache: dict | None = None
+_fbt_data_cache_at: float = 0.0
+FBT_CACHE_SECONDS = int(os.getenv("FBT_CACHE_SECONDS", "300"))
+FBT_RECOMMENDATIONS_ENABLED = os.getenv("FBT_RECOMMENDATIONS_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
 semantic_search_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 _product_embeddings_cache: dict[str, list[float]] | None = None
 _facets_cache: dict | None = None
@@ -275,6 +280,21 @@ def clear_product_search_cache() -> None:
     autocomplete_cache.clear()
     _facets_cache = None
     _facets_cache_at = 0.0
+
+
+def get_fbt_data() -> dict:
+    global _fbt_data_cache, _fbt_data_cache_at
+    now = time.time()
+    if _fbt_data_cache is None or now - _fbt_data_cache_at > FBT_CACHE_SECONDS:
+        _fbt_data_cache = load_fbt_data()
+        _fbt_data_cache_at = now
+    return _fbt_data_cache
+
+
+def clear_fbt_cache() -> None:
+    global _fbt_data_cache, _fbt_data_cache_at
+    _fbt_data_cache = None
+    _fbt_data_cache_at = 0.0
 
 
 def cached_product_facets(products_list: list[Product] | list[dict]) -> dict:
@@ -2893,6 +2913,38 @@ def admin_behavioral_rankings(
         "products_with_scores": len(scores),
         "top_products": top,
         "bottom_products": bottom,
+    }
+
+
+@app.get("/admin/analytics/fbt-pairs")
+def admin_fbt_pairs(
+    sku: str = "",
+    limit: int = 20,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    require_admin_token(x_admin_token)
+    fbt_data = get_fbt_data()
+    safe_limit = max(1, min(int(limit or 20), 100))
+
+    if sku:
+        pairs = fbt_recommendations(sku, fbt_data, safe_limit)
+        return {
+            "active": fbt_data["active"],
+            "total_add_to_cart_events": fbt_data["total_add_to_cart_events"],
+            "sku": sku,
+            "co_purchased_skus": pairs,
+        }
+
+    skus_with_pairs = len(fbt_data["pairs"])
+    sample = [
+        {"sku": product_sku, "co_purchased": entries[:safe_limit]}
+        for product_sku, entries in list(fbt_data["pairs"].items())[:safe_limit]
+    ]
+    return {
+        "active": fbt_data["active"],
+        "total_add_to_cart_events": fbt_data["total_add_to_cart_events"],
+        "skus_with_pairs": skus_with_pairs,
+        "sample": sample,
     }
 
 
@@ -6541,6 +6593,17 @@ def basket_recommendations(
             if len(results) >= limit:
                 return True
         return False
+
+    if FBT_RECOMMENDATIONS_ENABLED:
+        fbt_data = get_fbt_data()
+        for sku in skus:
+            fbt_candidates = []
+            for candidate_sku in fbt_recommendations(sku, fbt_data, limit - len(results)):
+                product = find_product_by_id(products_list, candidate_sku)
+                if product:
+                    fbt_candidates.append(format_product(product))
+            if fbt_candidates and add_all(fbt_candidates):
+                return results[:limit]
 
     for sku in skus:
         record = knowledge_record_by_id(all_knowledge, "CrossSell", sku)

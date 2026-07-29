@@ -120,6 +120,13 @@ from app.behavioral import (
     compute_engagement_scores,
     load_behavioral_rankings,
 )
+from app.fbt import (
+    build_baskets,
+    compute_pair_counts,
+    fbt_recommendations,
+    load_fbt_data,
+    pairs_by_sku,
+)
 import app.main as main
 import app.merchandising as merchandising
 import app.search as search_module
@@ -774,6 +781,106 @@ class TestBehavioralRanking:
         assert result["products_with_scores"] == 2
         assert result["top_products"][0]["product_sku"] == "FL_1"
         assert result["bottom_products"][0]["product_sku"] == "FL_2"
+
+
+class TestFbt:
+    def test_build_baskets_groups_by_session_and_drops_singletons(self):
+        events = [
+            {"session_id": "s1", "event_type": "add_to_cart", "product_sku": "FL_1"},
+            {"session_id": "s1", "event_type": "add_to_cart", "product_sku": "FL_2"},
+            {"session_id": "s2", "event_type": "add_to_cart", "product_sku": "FL_3"},
+            {"session_id": "s3", "event_type": "click", "product_sku": "FL_4"},
+        ]
+        baskets = build_baskets(events)
+
+        assert {"FL_1", "FL_2"} in baskets
+        assert len(baskets) == 1
+
+    def test_build_baskets_drops_oversized_basket(self):
+        events = [
+            {"session_id": "bot", "event_type": "add_to_cart", "product_sku": f"FL_{i}"}
+            for i in range(30)
+        ]
+        baskets = build_baskets(events, max_basket_size=25)
+
+        assert baskets == []
+
+    def test_compute_pair_counts_counts_cooccurrence(self):
+        baskets = [{"FL_1", "FL_2"}, {"FL_1", "FL_2"}, {"FL_1", "FL_3"}]
+        pair_counts = compute_pair_counts(baskets)
+
+        assert pair_counts[("FL_1", "FL_2")] == 2
+        assert pair_counts[("FL_1", "FL_3")] == 1
+
+    def test_pairs_by_sku_filters_below_min_count(self):
+        pair_counts = {("FL_1", "FL_2"): 3, ("FL_1", "FL_3"): 1}
+        pairs = pairs_by_sku(pair_counts, min_pair_count=3)
+
+        assert pairs["FL_1"] == [("FL_2", 3)]
+        assert "FL_3" not in pairs.get("FL_1", [])
+
+    def test_pairs_by_sku_sorted_by_count_desc_and_symmetric(self):
+        pair_counts = {("FL_1", "FL_2"): 3, ("FL_1", "FL_3"): 5}
+        pairs = pairs_by_sku(pair_counts, min_pair_count=1)
+
+        assert pairs["FL_1"] == [("FL_3", 5), ("FL_2", 3)]
+        assert pairs["FL_2"] == [("FL_1", 3)]
+        assert pairs["FL_3"] == [("FL_1", 5)]
+
+    def test_load_fbt_data_missing_file_returns_inactive(self, tmp_path):
+        data = load_fbt_data(days=60, path=str(tmp_path / "does_not_exist.jsonl"))
+
+        assert data["active"] is False
+        assert data["pairs"] == {}
+        assert data["total_add_to_cart_events"] == 0
+
+    def test_load_fbt_data_inactive_below_min_add_to_cart_events(self, tmp_path):
+        # Regression guard mirroring the D2 incident: this developer's own
+        # manual testing (a handful of add_to_cart events) must not be
+        # enough to activate FBT pairs.
+        path = tmp_path / "events.jsonl"
+        now = int(time.time())
+        lines = [
+            json.dumps({"ts": now, "session_id": "s1", "event_type": "add_to_cart", "product_sku": "FL_1"}),
+            json.dumps({"ts": now, "session_id": "s1", "event_type": "add_to_cart", "product_sku": "FL_2"}),
+        ]
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        data = load_fbt_data(days=60, path=str(path), min_add_to_cart_events=200)
+
+        assert data["active"] is False
+        assert data["pairs"] == {}
+        assert data["total_add_to_cart_events"] == 2
+
+    def test_load_fbt_data_active_above_min_events_and_pair_count(self, tmp_path):
+        path = tmp_path / "events.jsonl"
+        now = int(time.time())
+        lines = []
+        for i in range(5):
+            session_id = f"s{i}"
+            lines.append(json.dumps({"ts": now, "session_id": session_id, "event_type": "add_to_cart", "product_sku": "FL_1"}))
+            lines.append(json.dumps({"ts": now, "session_id": session_id, "event_type": "add_to_cart", "product_sku": "FL_2"}))
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        data = load_fbt_data(days=60, path=str(path), min_add_to_cart_events=10, min_pair_count=3)
+
+        assert data["active"] is True
+        assert data["total_add_to_cart_events"] == 10
+        assert ("FL_2", 5) in data["pairs"]["FL_1"]
+
+    def test_fbt_recommendations_returns_empty_when_inactive(self):
+        data = {"active": False, "pairs": {"FL_1": [("FL_2", 5)]}}
+
+        assert fbt_recommendations("FL_1", data, 5) == []
+
+    def test_fbt_recommendations_returns_top_n_when_active(self):
+        data = {
+            "active": True,
+            "pairs": {"FL_1": [("FL_2", 5), ("FL_3", 3), ("FL_4", 1)]},
+        }
+
+        assert fbt_recommendations("FL_1", data, 2) == ["FL_2", "FL_3"]
+        assert fbt_recommendations("FL_missing", data, 2) == []
 
 
 class TestSemanticSearchEndpoint:
@@ -2348,6 +2455,69 @@ class TestRecommend:
         results = main.basket_recommendations(products, knowledge, [sample_sku], 5)
 
         assert all(r.get("id") != sample_sku for r in results)
+
+    def test_basket_recommendations_falls_back_to_knowledge_when_fbt_inactive(self, products, knowledge, monkeypatch):
+        # Regression guard: at the current tiny production add_to_cart
+        # volume the FBT gate stays inactive, so basket recommendations
+        # must be byte-for-byte identical to before FBT was wired in.
+        sample_sku = products[0].id
+        monkeypatch.setattr(main, "get_fbt_data", lambda: {"pairs": {}, "total_add_to_cart_events": 2, "active": False})
+
+        baseline = main.basket_recommendations(products, knowledge, [sample_sku], 5)
+        monkeypatch.setattr(main, "FBT_RECOMMENDATIONS_ENABLED", False)
+        without_fbt = main.basket_recommendations(products, knowledge, [sample_sku], 5)
+
+        assert baseline == without_fbt
+
+    def test_basket_recommendations_prefers_fbt_pair_when_active(self, products, knowledge, monkeypatch):
+        sample_sku = products[0].id
+        other_sku = products[1].id
+        fake_fbt = {
+            "pairs": {sample_sku: [(other_sku, 10)]},
+            "total_add_to_cart_events": 500,
+            "active": True,
+        }
+        monkeypatch.setattr(main, "get_fbt_data", lambda: fake_fbt)
+
+        results = main.basket_recommendations(products, knowledge, [sample_sku], 5)
+
+        assert results
+        assert results[0]["id"] == other_sku
+
+    def test_admin_fbt_pairs_requires_token(self, monkeypatch):
+        monkeypatch.delenv("ADMIN_ANALYTICS_TOKEN", raising=False)
+        monkeypatch.delenv("ADMIN_RELOAD_TOKEN", raising=False)
+
+        with pytest.raises(main.HTTPException):
+            main.admin_fbt_pairs(sku="FL_1", limit=20, x_admin_token=None)
+
+    def test_admin_fbt_pairs_returns_data_for_sku(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_ANALYTICS_TOKEN", "test-token")
+        fake_fbt = {
+            "pairs": {"FL_1": [("FL_2", 5)]},
+            "total_add_to_cart_events": 500,
+            "active": True,
+        }
+        monkeypatch.setattr(main, "get_fbt_data", lambda: fake_fbt)
+
+        result = main.admin_fbt_pairs(sku="FL_1", limit=20, x_admin_token="test-token")
+
+        assert result["active"] is True
+        assert result["co_purchased_skus"] == ["FL_2"]
+
+    def test_admin_fbt_pairs_returns_sample_without_sku(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_ANALYTICS_TOKEN", "test-token")
+        fake_fbt = {
+            "pairs": {"FL_1": [("FL_2", 5)], "FL_3": [("FL_4", 2)]},
+            "total_add_to_cart_events": 500,
+            "active": True,
+        }
+        monkeypatch.setattr(main, "get_fbt_data", lambda: fake_fbt)
+
+        result = main.admin_fbt_pairs(sku="", limit=20, x_admin_token="test-token")
+
+        assert result["skus_with_pairs"] == 2
+        assert len(result["sample"]) == 2
 
     def test_trending_product_skus_weights_add_to_cart_over_impression(self, monkeypatch):
         events = [
