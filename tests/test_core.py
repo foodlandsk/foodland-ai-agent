@@ -608,9 +608,22 @@ class TestBehavioralRanking:
         expected = 1.0 / 41.0
         assert scores["FL_1"]["ctr"] == pytest.approx(expected)
 
-    def test_baseline_ctr_averages_all_scores(self):
-        scores = {"FL_1": {"ctr": 0.1}, "FL_2": {"ctr": 0.3}}
-        assert baseline_ctr(scores) == pytest.approx(0.2)
+    def test_baseline_ctr_is_pooled_not_averaged(self):
+        # Regression test: a naive average-of-ratios baseline is dominated by
+        # low-sample outliers (e.g. 1 click out of 1 impression = 100%
+        # "CTR"), which is exactly what caused a real production incident.
+        # The pooled sum-of-clicks-over-sum-of-impressions baseline is not.
+        scores = {
+            "FL_lucky": {"clicks": 1, "impressions": 1},
+            "FL_normal_1": {"clicks": 5, "impressions": 500},
+            "FL_normal_2": {"clicks": 5, "impressions": 500},
+        }
+        # naive average of individual ratios would be dragged way up by
+        # FL_lucky's 1/1 ratio; pooled should stay close to the bulk rate.
+        pooled = baseline_ctr(scores, prior_clicks=1.0, prior_impressions=40.0)
+        expected = (1 + 5 + 5 + 1.0) / (1 + 500 + 500 + 40.0)
+        assert pooled == pytest.approx(expected)
+        assert pooled < 0.05
 
     def test_baseline_ctr_empty_scores_returns_prior_ratio(self):
         assert baseline_ctr({}, prior_clicks=1.0, prior_impressions=40.0) == pytest.approx(0.025)
@@ -652,8 +665,11 @@ class TestBehavioralRanking:
         ]
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-        rankings = load_behavioral_rankings(days=30, path=str(path))
+        # Override the volume gate to exercise the "active" code path with a
+        # small file; the gate itself is tested separately below.
+        rankings = load_behavioral_rankings(days=30, path=str(path), min_total_impressions=0)
 
+        assert rankings["active"] is True
         assert "FL_1" in rankings["scores"]
         assert rankings["baseline_ctr"] > 0
 
@@ -661,24 +677,56 @@ class TestBehavioralRanking:
         rankings = load_behavioral_rankings(days=30, path=str(tmp_path / "does_not_exist.jsonl"))
 
         assert rankings["scores"] == {}
-        assert rankings["baseline_ctr"] == pytest.approx(1.0 / 40.0)
+        assert rankings["baseline_ctr"] == 0.0
+        assert rankings["active"] is False
 
-    def test_low_event_volume_has_near_neutral_effect_on_search(self, products, monkeypatch):
-        # Safety property: with only a handful of real events (today's actual
-        # production volume), the behavioral signal must not meaningfully
-        # reorder results - it should only start differentiating products
-        # once genuine traffic accumulates.
+    def test_load_behavioral_rankings_inactive_below_min_impressions(self, tmp_path):
+        # Regression test for the real production incident: a handful of
+        # impressions/clicks (this developer's own manual endpoint testing,
+        # not organic traffic) must not activate the signal at all.
+        path = tmp_path / "events.jsonl"
+        now = int(time.time())
+        lines = [json.dumps({"ts": now, "event_type": "impression", "product_skus": ["FL_1"]})] * 5
+        lines.append(json.dumps({"ts": now, "event_type": "click", "product_sku": "FL_1"}))
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        rankings = load_behavioral_rankings(days=30, path=str(path), min_total_impressions=1000)
+
+        assert rankings["active"] is False
+        assert rankings["scores"] == {}
+        assert rankings["total_impressions"] == 5
+
+    def test_load_behavioral_rankings_active_above_min_impressions(self, tmp_path):
+        path = tmp_path / "events.jsonl"
+        now = int(time.time())
+        lines = [json.dumps({"ts": now, "event_type": "impression", "product_skus": ["FL_1"]})] * 10
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        rankings = load_behavioral_rankings(days=30, path=str(path), min_total_impressions=10)
+
+        assert rankings["active"] is True
+        assert rankings["total_impressions"] == 10
+
+    def test_low_event_volume_has_near_neutral_effect_on_search(self, products, monkeypatch, tmp_path):
+        # Safety property, reproducing the actual production incident: with
+        # only a handful of real events (this developer's own manual testing
+        # volume), the behavioral signal must not reorder results at all -
+        # the min-impressions gate should keep it fully inactive until
+        # genuine traffic accumulates, not just "mostly neutral".
         baseline_results = search_products(products, "omacka", 10)
         assert baseline_results
 
-        tiny_events = [
-            {"event_type": "impression", "product_skus": [baseline_results[0]["id"]]},
-            {"event_type": "click", "product_sku": baseline_results[0]["id"]},
+        path = tmp_path / "events.jsonl"
+        now = int(time.time())
+        lines = [
+            json.dumps({"ts": now, "event_type": "impression", "product_skus": [baseline_results[0]["id"]]}),
+            json.dumps({"ts": now, "event_type": "click", "product_sku": baseline_results[0]["id"]}),
         ]
-        monkeypatch.setattr(
-            search_module, "_behavioral_rankings_cache",
-            {"scores": compute_engagement_scores(tiny_events), "baseline_ctr": baseline_ctr(compute_engagement_scores(tiny_events))},
-        )
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        rankings = load_behavioral_rankings(days=30, path=str(path))
+        assert rankings["active"] is False
+
+        monkeypatch.setattr(search_module, "_behavioral_rankings_cache", rankings)
         monkeypatch.setattr(search_module, "_behavioral_rankings_cache_at", time.time())
 
         boosted_results = search_products(products, "omacka", 10)

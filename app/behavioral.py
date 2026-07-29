@@ -7,13 +7,23 @@ Deliberately self-contained (own JSONL reader, no dependency on
 app.main) for the same reason as app.merchandising: search.py depends
 on this module, so importing back would create a circular import.
 
-Uses Bayesian-smoothed CTR - a prior that pulls low-sample products
-toward the catalog-wide average - rather than a hard "minimum
-impressions" cutoff. This means the signal safely has near-zero effect
-on ranking while event volume is still small (every product's smoothed
-CTR sits close to the same prior-dominated baseline), and gradually
-differentiates products as real event data accumulates over time - no
-code changes or redeploy needed as that happens.
+Two independent safeguards keep this from reacting to noise:
+
+1. A hard minimum-total-impressions gate (BEHAVIORAL_MIN_TOTAL_IMPRESSIONS,
+   default 1000): while the catalog-wide impression count logged so far
+   is below this, load_behavioral_rankings() returns empty scores and the
+   signal is a no-op everywhere. This was added after a real incident: with
+   only ~20 total impressions (mostly this developer's own manual endpoint
+   testing rather than organic traffic), a single product with 1 impression
+   and 1 click produced a smoothed CTR far enough above the (also tiny and
+   noisy) baseline to visibly reorder search results. Per-product Bayesian
+   smoothing alone was not enough to prevent that with so little data -
+   this gate is the actual fix.
+2. Once past that gate, a Bayesian prior still smooths each individual
+   product's CTR toward the pooled catalog baseline, and the baseline
+   itself is the *pooled* click/impression ratio (sum of all clicks over
+   sum of all impressions) rather than an average of per-product ratios,
+   so it isn't dominated by a handful of low-sample outliers either.
 """
 from __future__ import annotations
 
@@ -30,6 +40,7 @@ EVENTS_PATH = os.getenv(
 )
 DEFAULT_PRIOR_CLICKS = 1.0
 DEFAULT_PRIOR_IMPRESSIONS = 40.0
+DEFAULT_MIN_TOTAL_IMPRESSIONS = int(os.getenv("BEHAVIORAL_MIN_TOTAL_IMPRESSIONS", "1000"))
 
 
 def _read_events(days: int = 30, path: str | None = None) -> list[dict]:
@@ -52,6 +63,18 @@ def _read_events(days: int = 30, path: str | None = None) -> list[dict]:
     except OSError:
         return []
     return events
+
+
+def total_impressions(events: list[dict]) -> int:
+    """Total SKU-level impressions across all events - the denominator that
+    matters for deciding whether there's enough volume to trust any CTR
+    computed from it, regardless of how many distinct products it's spread
+    across."""
+    total = 0
+    for event in events:
+        if event.get("event_type") == "impression":
+            total += len(event.get("product_skus") or [])
+    return total
 
 
 def compute_engagement_scores(
@@ -93,9 +116,16 @@ def baseline_ctr(
     prior_clicks: float = DEFAULT_PRIOR_CLICKS,
     prior_impressions: float = DEFAULT_PRIOR_IMPRESSIONS,
 ) -> float:
+    """Pooled click/impression ratio across all scored products (sum of
+    clicks over sum of impressions), not an average of individual products'
+    ratios - the latter weights a product with 1 impression the same as one
+    with 10,000, which is exactly the kind of low-sample noise this
+    function needs to be resistant to."""
     if not scores:
         return prior_clicks / prior_impressions if prior_impressions else 0.0
-    return sum(entry["ctr"] for entry in scores.values()) / len(scores)
+    total_clicks = sum(entry["clicks"] for entry in scores.values())
+    total_impr = sum(entry["impressions"] for entry in scores.values())
+    return (total_clicks + prior_clicks) / (total_impr + prior_impressions)
 
 
 def behavioral_multiplier(
@@ -117,7 +147,25 @@ def behavioral_multiplier(
     return 1.0 + weight * (ratio - 1.0)
 
 
-def load_behavioral_rankings(days: int = 30, path: str | None = None) -> dict:
+def load_behavioral_rankings(
+    days: int = 30,
+    path: str | None = None,
+    min_total_impressions: int | None = None,
+) -> dict:
+    min_total = DEFAULT_MIN_TOTAL_IMPRESSIONS if min_total_impressions is None else min_total_impressions
     events = _read_events(days, path)
+    total_impr = total_impressions(events)
+
+    if total_impr < min_total:
+        # Not enough catalog-wide volume yet to trust any CTR computed from
+        # it - stay a strict no-op rather than let a handful of events (e.g.
+        # a developer's own manual testing) swing real search results.
+        return {"scores": {}, "baseline_ctr": 0.0, "total_impressions": total_impr, "active": False}
+
     scores = compute_engagement_scores(events)
-    return {"scores": scores, "baseline_ctr": baseline_ctr(scores)}
+    return {
+        "scores": scores,
+        "baseline_ctr": baseline_ctr(scores),
+        "total_impressions": total_impr,
+        "active": True,
+    }
