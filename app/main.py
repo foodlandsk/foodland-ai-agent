@@ -2752,7 +2752,7 @@ def track_event(event_request: EventRequest, request: Request) -> dict:
 
 
 @app.get("/recommend/similar")
-def recommend_similar(sku: str = "", limit: int = 6) -> dict:
+def recommend_similar(request: Request, sku: str = "", limit: int = 6, client_id: str = "") -> dict:
     safe_limit = max(1, min(int(limit or 6), 20))
     product = find_product_by_id(products, sku)
     if not product:
@@ -2775,6 +2775,11 @@ def recommend_similar(sku: str = "", limit: int = 6) -> dict:
                 recommendations.append(candidate)
             if len(recommendations) >= safe_limit:
                 break
+
+    if USER_MEMORY_ENABLED:
+        profile_key = user_memory_key(client_id, get_client_key(request))
+        user_profile = get_user_memory(profile_key)
+        recommendations = personalize_products(recommendations[:safe_limit], user_profile)
 
     return {
         "sku": sku,

@@ -2401,8 +2401,9 @@ class TestRecommend:
         monkeypatch.setattr(main, "products", products)
         monkeypatch.setattr(main, "knowledge", knowledge)
         sample_sku = products[0].id
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
 
-        result = main.recommend_similar(sku=sample_sku, limit=4)
+        result = main.recommend_similar(request, sku=sample_sku, limit=4)
 
         assert result["sku"] == sample_sku
         assert result["product"] is not None
@@ -2413,11 +2414,31 @@ class TestRecommend:
     def test_recommend_similar_unknown_sku(self, products, knowledge, monkeypatch):
         monkeypatch.setattr(main, "products", products)
         monkeypatch.setattr(main, "knowledge", knowledge)
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
 
-        result = main.recommend_similar(sku="NOT_REAL", limit=4)
+        result = main.recommend_similar(request, sku="NOT_REAL", limit=4)
 
         assert result["product"] is None
         assert result["recommendations"] == []
+
+    def test_recommend_similar_reorders_by_profile_affinity(self, products, knowledge, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "knowledge", knowledge)
+        monkeypatch.setattr(main, "knowledge_record_by_id", lambda *a, **k: None)
+        sample_sku = products[0].id
+        fixed_candidates = [
+            {"id": "FL_A", "title": "Produkt A", "brand": "OTHER"},
+            {"id": "FL_B", "title": "Produkt B", "brand": "TARGET_BRAND"},
+        ]
+        monkeypatch.setattr(main, "cached_search_products", lambda *a, **k: [dict(p) for p in fixed_candidates])
+        fake_profile = {"product_brands": {"TARGET_BRAND": 6}}
+        monkeypatch.setattr(main, "get_user_memory", lambda profile_key: fake_profile)
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+
+        result = main.recommend_similar(request, sku=sample_sku, limit=5, client_id="client-abc")
+
+        assert result["recommendations"][0]["id"] == "FL_B"
+        assert result["recommendations"][0]["personalized"] is True
 
     def test_find_recipe_record_fuzzy_match(self, knowledge):
         recipes = knowledge.get("sections", {}).get("Recipes", [])
