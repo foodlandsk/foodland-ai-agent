@@ -461,6 +461,21 @@ class _FakeOpenAIClient:
         self.embeddings = _FakeEmbeddingsAPI(vector_fn)
 
 
+class _FakeScopedOpenAIClient(_FakeOpenAIClient):
+    """Mirrors the real OpenAI SDK's with_options(timeout=...): records the
+    timeout it was scoped to, on the same underlying embeddings API so call
+    history is still visible on the original client."""
+    def __init__(self, vector_fn):
+        super().__init__(vector_fn)
+        self.with_options_calls = []
+
+    def with_options(self, timeout=None):
+        self.with_options_calls.append({"timeout": timeout})
+        scoped = _FakeOpenAIClient.__new__(_FakeOpenAIClient)
+        scoped.embeddings = self.embeddings
+        return scoped
+
+
 def _make_vector_fn(mapping, default=(0.0, 0.0, 1.0)):
     def vector_fn(text):
         for key, vector in mapping.items():
@@ -504,6 +519,20 @@ class TestEmbeddings:
 
         assert result == [[1.0, 0.0]]
         assert client.embeddings.calls[0]["input"] == ["gochujang pasta"]
+
+    def test_embed_texts_overrides_client_timeout_for_batch_calls(self):
+        # Regression test: the shared OpenAI client used elsewhere in the app
+        # is tuned for interactive chat (a few seconds), which is too short
+        # for an embeddings batch call of many texts at once and caused a
+        # real production timeout (openai.APITimeoutError) during D1
+        # verification. embed_texts must scope a longer timeout via
+        # with_options() rather than reusing the client's default.
+        client = _FakeScopedOpenAIClient(_make_vector_fn({"gochujang": [1.0, 0.0]}))
+
+        embed_texts(client, ["gochujang pasta"])
+
+        assert client.with_options_calls
+        assert client.with_options_calls[0]["timeout"] > 6
 
     def test_build_product_embeddings_keys_by_product_id(self, products):
         sample = products[:3]

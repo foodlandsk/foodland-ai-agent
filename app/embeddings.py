@@ -37,10 +37,17 @@ def product_embedding_text(product) -> str:
     return text[:_MAX_TEXT_CHARS]
 
 
+EMBEDDING_TIMEOUT_SECONDS = float(os.getenv("EMBEDDING_TIMEOUT_SECONDS", "60"))
+
+
 def embed_texts(client, texts: list[str], model: str = EMBEDDING_MODEL) -> list[list[float]]:
+    """Overrides the client's default timeout for this call: the shared
+    OpenAI client is tuned for interactive chat (a few seconds), far too
+    short for an embeddings batch call of up to 100 texts at once."""
     if not texts:
         return []
-    response = client.embeddings.create(model=model, input=texts)
+    scoped_client = client.with_options(timeout=EMBEDDING_TIMEOUT_SECONDS) if hasattr(client, "with_options") else client
+    response = scoped_client.embeddings.create(model=model, input=texts)
     return [item.embedding for item in response.data]
 
 
