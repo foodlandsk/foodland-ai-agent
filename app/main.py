@@ -68,6 +68,7 @@ from app.search import (
     filter_products,
     format_product,
     fuzzy_hits,
+    get_behavioral_rankings,
     normalize,
     products_context,
     raw_tokens,
@@ -2871,6 +2872,28 @@ def admin_rebuild_embeddings(x_admin_token: str | None = Header(default=None)) -
     clear_embeddings_cache()
 
     return {"products_embedded": len(new_embeddings)}
+
+
+@app.get("/admin/analytics/behavioral-rankings")
+def admin_behavioral_rankings(
+    limit: int = 20,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    require_admin_token(x_admin_token)
+    rankings = get_behavioral_rankings()
+    scores = rankings["scores"]
+    safe_limit = max(1, min(int(limit or 20), 100))
+
+    ranked = sorted(scores.items(), key=lambda item: item[1]["ctr"], reverse=True)
+    top = [{"product_sku": sku, **entry} for sku, entry in ranked[:safe_limit]]
+    bottom = [{"product_sku": sku, **entry} for sku, entry in ranked[-safe_limit:]] if len(ranked) > safe_limit else []
+
+    return {
+        "baseline_ctr": rankings["baseline_ctr"],
+        "products_with_scores": len(scores),
+        "top_products": top,
+        "bottom_products": bottom,
+    }
 
 
 def session_memory_key(session_id: str, client_key: str) -> str:

@@ -92,9 +92,11 @@ from app.autocomplete import (
 from app.feed import load_products_json
 from app.search import (
     autocomplete_suggestions,
+    clear_behavioral_rankings_cache,
     clear_merchandising_cache,
     compute_product_facets,
     filter_products,
+    get_behavioral_rankings,
     get_merchandising_rules,
     normalize,
     tokenize,
@@ -111,6 +113,12 @@ from app.embeddings import (
     product_embedding_text,
     save_embeddings,
     semantic_search,
+)
+from app.behavioral import (
+    baseline_ctr,
+    behavioral_multiplier,
+    compute_engagement_scores,
+    load_behavioral_rankings,
 )
 import app.main as main
 import app.merchandising as merchandising
@@ -573,6 +581,151 @@ class TestEmbeddings:
     def test_semantic_search_no_embeddings_returns_empty(self):
         client = _FakeOpenAIClient(_make_vector_fn({}))
         assert semantic_search(client, "gochujang", {}) == []
+
+
+class TestBehavioralRanking:
+    def test_compute_engagement_scores_counts_by_type(self):
+        events = [
+            {"event_type": "impression", "product_skus": ["FL_1", "FL_2"]},
+            {"event_type": "impression", "product_skus": ["FL_1"]},
+            {"event_type": "click", "product_sku": "FL_1"},
+            {"event_type": "add_to_cart", "product_sku": "FL_1"},
+        ]
+        scores = compute_engagement_scores(events)
+
+        assert scores["FL_1"]["impressions"] == 2
+        assert scores["FL_1"]["clicks"] == 1
+        assert scores["FL_1"]["add_to_cart"] == 1
+        assert scores["FL_2"]["impressions"] == 1
+        assert scores["FL_2"]["clicks"] == 0
+
+    def test_compute_engagement_scores_smoothed_ctr_uses_prior(self):
+        # A single impression and no clicks should sit close to the prior
+        # baseline, not swing to a literal 0% CTR.
+        events = [{"event_type": "impression", "product_skus": ["FL_1"]}]
+        scores = compute_engagement_scores(events, prior_clicks=1.0, prior_impressions=40.0)
+
+        expected = 1.0 / 41.0
+        assert scores["FL_1"]["ctr"] == pytest.approx(expected)
+
+    def test_baseline_ctr_averages_all_scores(self):
+        scores = {"FL_1": {"ctr": 0.1}, "FL_2": {"ctr": 0.3}}
+        assert baseline_ctr(scores) == pytest.approx(0.2)
+
+    def test_baseline_ctr_empty_scores_returns_prior_ratio(self):
+        assert baseline_ctr({}, prior_clicks=1.0, prior_impressions=40.0) == pytest.approx(0.025)
+
+    def test_behavioral_multiplier_neutral_for_unknown_product(self):
+        assert behavioral_multiplier("FL_missing", {}, baseline=0.1) == 1.0
+
+    def test_behavioral_multiplier_neutral_when_baseline_zero(self):
+        scores = {"FL_1": {"ctr": 0.5}}
+        assert behavioral_multiplier("FL_1", scores, baseline=0.0) == 1.0
+
+    def test_behavioral_multiplier_boosts_above_average_ctr(self):
+        scores = {"FL_1": {"ctr": 0.2}}
+        multiplier = behavioral_multiplier("FL_1", scores, baseline=0.1, weight=1.0)
+
+        assert multiplier > 1.0
+
+    def test_behavioral_multiplier_penalizes_below_average_ctr(self):
+        scores = {"FL_1": {"ctr": 0.05}}
+        multiplier = behavioral_multiplier("FL_1", scores, baseline=0.1, weight=1.0)
+
+        assert multiplier < 1.0
+
+    def test_behavioral_multiplier_clamps_extreme_ratios(self):
+        scores = {"FL_huge": {"ctr": 100.0}, "FL_tiny": {"ctr": 0.0001}}
+
+        high = behavioral_multiplier("FL_huge", scores, baseline=0.1, weight=1.0, max_ratio=2.0)
+        low = behavioral_multiplier("FL_tiny", scores, baseline=0.1, weight=1.0, min_ratio=0.5)
+
+        assert high == pytest.approx(2.0)
+        assert low == pytest.approx(0.5)
+
+    def test_load_behavioral_rankings_reads_from_file(self, tmp_path):
+        path = tmp_path / "events.jsonl"
+        now = int(time.time())
+        lines = [
+            json.dumps({"ts": now, "event_type": "impression", "product_skus": ["FL_1"]}),
+            json.dumps({"ts": now, "event_type": "click", "product_sku": "FL_1"}),
+        ]
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        rankings = load_behavioral_rankings(days=30, path=str(path))
+
+        assert "FL_1" in rankings["scores"]
+        assert rankings["baseline_ctr"] > 0
+
+    def test_load_behavioral_rankings_missing_file_returns_neutral(self, tmp_path):
+        rankings = load_behavioral_rankings(days=30, path=str(tmp_path / "does_not_exist.jsonl"))
+
+        assert rankings["scores"] == {}
+        assert rankings["baseline_ctr"] == pytest.approx(1.0 / 40.0)
+
+    def test_low_event_volume_has_near_neutral_effect_on_search(self, products, monkeypatch):
+        # Safety property: with only a handful of real events (today's actual
+        # production volume), the behavioral signal must not meaningfully
+        # reorder results - it should only start differentiating products
+        # once genuine traffic accumulates.
+        baseline_results = search_products(products, "omacka", 10)
+        assert baseline_results
+
+        tiny_events = [
+            {"event_type": "impression", "product_skus": [baseline_results[0]["id"]]},
+            {"event_type": "click", "product_sku": baseline_results[0]["id"]},
+        ]
+        monkeypatch.setattr(
+            search_module, "_behavioral_rankings_cache",
+            {"scores": compute_engagement_scores(tiny_events), "baseline_ctr": baseline_ctr(compute_engagement_scores(tiny_events))},
+        )
+        monkeypatch.setattr(search_module, "_behavioral_rankings_cache_at", time.time())
+
+        boosted_results = search_products(products, "omacka", 10)
+
+        assert [r["id"] for r in boosted_results] == [r["id"] for r in baseline_results]
+
+    def test_behavioral_boost_promotes_high_ctr_product_with_real_traffic(self, products, monkeypatch):
+        baseline_results = search_products(products, "omacka", 10)
+        assert len(baseline_results) >= 2
+        target_id = baseline_results[1]["id"]
+
+        # Simulate substantial, clearly-differentiated real traffic: the
+        # target product gets a much higher click-through rate than everyone
+        # else, well past the point where the Bayesian prior would mask it.
+        events = [{"event_type": "impression", "product_skus": [r["id"] for r in baseline_results]} for _ in range(200)]
+        events += [{"event_type": "click", "product_sku": target_id} for _ in range(150)]
+        scores = compute_engagement_scores(events)
+        monkeypatch.setattr(search_module, "_behavioral_rankings_cache", {"scores": scores, "baseline_ctr": baseline_ctr(scores)})
+        monkeypatch.setattr(search_module, "_behavioral_rankings_cache_at", time.time())
+
+        boosted_results = search_products(products, "omacka", 10)
+
+        assert boosted_results[0]["id"] == target_id
+
+    def test_admin_behavioral_rankings_requires_token(self, monkeypatch):
+        monkeypatch.delenv("ADMIN_ANALYTICS_TOKEN", raising=False)
+        monkeypatch.delenv("ADMIN_RELOAD_TOKEN", raising=False)
+
+        with pytest.raises(main.HTTPException):
+            main.admin_behavioral_rankings(limit=20, x_admin_token=None)
+
+    def test_admin_behavioral_rankings_returns_scored_products(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_ANALYTICS_TOKEN", "test-token")
+        fake_rankings = {
+            "scores": {
+                "FL_1": {"impressions": 100, "clicks": 20, "add_to_cart": 5, "ctr": 0.2},
+                "FL_2": {"impressions": 100, "clicks": 2, "add_to_cart": 0, "ctr": 0.02},
+            },
+            "baseline_ctr": 0.1,
+        }
+        monkeypatch.setattr(main, "get_behavioral_rankings", lambda: fake_rankings)
+
+        result = main.admin_behavioral_rankings(limit=1, x_admin_token="test-token")
+
+        assert result["products_with_scores"] == 2
+        assert result["top_products"][0]["product_sku"] == "FL_1"
+        assert result["bottom_products"][0]["product_sku"] == "FL_2"
 
 
 class TestSemanticSearchEndpoint:

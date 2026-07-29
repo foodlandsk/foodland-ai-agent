@@ -10,6 +10,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass, is_dataclass
 
 from app.feed import Product
+from app.behavioral import behavioral_multiplier, load_behavioral_rankings
 from app.merchandising import (
     is_hidden,
     load_merchandising_rules,
@@ -61,6 +62,33 @@ def clear_merchandising_cache() -> None:
     global _merchandising_rules_cache, _merchandising_rules_cache_at
     _merchandising_rules_cache = None
     _merchandising_rules_cache_at = 0.0
+
+
+BEHAVIORAL_RANKING_ENABLED = os.getenv("BEHAVIORAL_RANKING_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
+BEHAVIORAL_RANKING_WEIGHT = float(os.getenv("BEHAVIORAL_RANKING_WEIGHT", "1.0"))
+BEHAVIORAL_MIN_RATIO = float(os.getenv("BEHAVIORAL_MIN_RATIO", "0.5"))
+BEHAVIORAL_MAX_RATIO = float(os.getenv("BEHAVIORAL_MAX_RATIO", "2.0"))
+BEHAVIORAL_CACHE_SECONDS = int(os.getenv("BEHAVIORAL_CACHE_SECONDS", "300"))
+_behavioral_rankings_cache: dict | None = None
+_behavioral_rankings_cache_at: float = 0.0
+
+
+def get_behavioral_rankings() -> dict:
+    """Cached so a growing events.jsonl is only re-aggregated once every
+    BEHAVIORAL_CACHE_SECONDS, not on every search."""
+    global _behavioral_rankings_cache, _behavioral_rankings_cache_at
+    now = time.time()
+    if _behavioral_rankings_cache is None or now - _behavioral_rankings_cache_at > BEHAVIORAL_CACHE_SECONDS:
+        _behavioral_rankings_cache = load_behavioral_rankings()
+        _behavioral_rankings_cache_at = now
+    return _behavioral_rankings_cache
+
+
+def clear_behavioral_rankings_cache() -> None:
+    global _behavioral_rankings_cache, _behavioral_rankings_cache_at
+    _behavioral_rankings_cache = None
+    _behavioral_rankings_cache_at = 0.0
+
 
 POPULARITY_BOOSTS = {
     "sushi": 7,
@@ -331,6 +359,7 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
     wants_sushi_rice = {"ryza"} <= query_tokens and bool({"sushi", "susi"} & query_tokens)
     bm25_index = get_bm25_index(products) if BM25_ENABLED else None
     merchandising_rules = get_merchandising_rules()
+    behavioral_rankings = get_behavioral_rankings() if BEHAVIORAL_RANKING_ENABLED else None
 
     ranked: list[tuple[float, bool, Product]] = []
     for product in products:
@@ -394,6 +423,15 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
                 str(product_value(product, "product_type", product_value(product, "category", ""))),
                 merchandising_rules,
             )
+            if behavioral_rankings is not None:
+                score *= behavioral_multiplier(
+                    product_id,
+                    behavioral_rankings["scores"],
+                    behavioral_rankings["baseline_ctr"],
+                    BEHAVIORAL_RANKING_WEIGHT,
+                    BEHAVIORAL_MIN_RATIO,
+                    BEHAVIORAL_MAX_RATIO,
+                )
             ranked.append((score, strong_match, product))
 
     strong_ranked = [item for item in ranked if item[1]]
