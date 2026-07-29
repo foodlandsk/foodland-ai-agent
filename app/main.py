@@ -2801,6 +2801,16 @@ def admin_analytics_tasks(
     return {"action_items": analytics_action_items(events, errors, limit)}
 
 
+@app.get("/admin/analytics/events-summary")
+def admin_analytics_events_summary(
+    days: int = 30,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    require_admin_token(x_admin_token)
+    events = read_engagement_events(days)
+    return events_summary(events)
+
+
 def session_memory_key(session_id: str, client_key: str) -> str:
     raw_session = re.sub(r"[^a-zA-Z0-9_-]", "", str(session_id or ""))[:64]
     if raw_session:
@@ -4929,6 +4939,44 @@ def read_error_events(days: int = 7) -> list[dict]:
 def read_engagement_events(days: int = 7) -> list[dict]:
     path = Path(os.getenv("EVENTS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "events.jsonl")))
     return read_jsonl_events(path, days)
+
+
+def events_summary(events: list[dict]) -> dict:
+    events_by_type: Counter[str] = Counter()
+    sessions: set[str] = set()
+    product_touches: Counter[str] = Counter()
+    timestamps: list[int] = []
+
+    for event in events:
+        event_type = event.get("event_type")
+        if event_type:
+            events_by_type[event_type] += 1
+
+        session_id = event.get("session_id")
+        if session_id:
+            sessions.add(session_id)
+
+        sku = event.get("product_sku")
+        if sku:
+            product_touches[sku] += 1
+        for batch_sku in event.get("product_skus") or []:
+            product_touches[batch_sku] += 1
+
+        ts = event.get("ts")
+        if ts:
+            timestamps.append(int(ts))
+
+    return {
+        "total_events": len(events),
+        "events_by_type": dict(events_by_type),
+        "unique_sessions": len(sessions),
+        "unique_products_touched": len(product_touches),
+        "top_products_by_touches": [
+            {"product_sku": sku, "touches": count} for sku, count in product_touches.most_common(10)
+        ],
+        "earliest_ts": min(timestamps) if timestamps else None,
+        "latest_ts": max(timestamps) if timestamps else None,
+    }
 
 
 def read_jsonl_events(path: Path, days: int = 7) -> list[dict]:

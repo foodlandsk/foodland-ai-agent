@@ -1528,6 +1528,55 @@ class TestAdminAnalytics:
         assert main.clean_public_suggested_question("objednavka 123456789") == ""
         assert main.clean_public_suggested_question("recept na pho") == "recept na pho?"
 
+    def test_events_summary_counts_by_type_and_product(self):
+        events = [
+            {"ts": 10, "session_id": "s1", "event_type": "impression", "product_skus": ["FL_1", "FL_2"]},
+            {"ts": 11, "session_id": "s1", "event_type": "click", "product_sku": "FL_1"},
+            {"ts": 12, "session_id": "s1", "event_type": "add_to_cart", "product_sku": "FL_1"},
+            {"ts": 13, "session_id": "s2", "event_type": "click", "product_sku": "FL_2"},
+            {"ts": 14, "session_id": "s2", "event_type": "no_result"},
+        ]
+
+        summary = main.events_summary(events)
+
+        assert summary["total_events"] == 5
+        assert summary["events_by_type"] == {"impression": 1, "click": 2, "add_to_cart": 1, "no_result": 1}
+        assert summary["unique_sessions"] == 2
+        assert summary["unique_products_touched"] == 2
+        assert summary["top_products_by_touches"][0] == {"product_sku": "FL_1", "touches": 3}
+        assert summary["earliest_ts"] == 10
+        assert summary["latest_ts"] == 14
+
+    def test_events_summary_handles_empty_events(self):
+        summary = main.events_summary([])
+
+        assert summary["total_events"] == 0
+        assert summary["events_by_type"] == {}
+        assert summary["unique_sessions"] == 0
+        assert summary["earliest_ts"] is None
+        assert summary["latest_ts"] is None
+
+    def test_admin_analytics_events_summary_endpoint_requires_token(self, monkeypatch):
+        monkeypatch.delenv("ADMIN_ANALYTICS_TOKEN", raising=False)
+        monkeypatch.delenv("ADMIN_RELOAD_TOKEN", raising=False)
+
+        with pytest.raises(main.HTTPException):
+            main.admin_analytics_events_summary(days=30, x_admin_token=None)
+
+    def test_admin_analytics_events_summary_endpoint_with_valid_token(self, monkeypatch, tmp_path):
+        log_path = tmp_path / "events.jsonl"
+        log_path.write_text(
+            '{"ts": 9999999999, "session_id": "s1", "event_type": "click", "product_sku": "FL_1"}\n',
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("EVENTS_LOG_PATH", str(log_path))
+        monkeypatch.setenv("ADMIN_ANALYTICS_TOKEN", "test-token")
+
+        result = main.admin_analytics_events_summary(days=30, x_admin_token="test-token")
+
+        assert result["total_events"] == 1
+        assert result["events_by_type"] == {"click": 1}
+
 
 class TestFastResponses:
     def test_fast_response_enabled_for_product_matches(self, monkeypatch):
