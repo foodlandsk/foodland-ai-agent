@@ -894,6 +894,20 @@
       transition: background 120ms ease, color 120ms ease;
     }
     .fl-ai-suggestion:hover { background: #299B5E; color: #fff; }
+    .fl-ai-feedback { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; }
+    .fl-ai-feedback-label { font-size: 11px; color: #7a8a82; }
+    .fl-ai-feedback-btn {
+      border: 1px solid #d8e6de;
+      border-radius: 999px;
+      background: #fff;
+      padding: 3px 9px;
+      font-size: 13px;
+      cursor: pointer;
+      line-height: 1;
+      transition: background 120ms ease, border-color 120ms ease;
+    }
+    .fl-ai-feedback-btn:hover { border-color: #299B5E; background: #f2faf5; }
+    .fl-ai-feedback-thanks { font-size: 11px; color: #299B5E; font-weight: 700; }
     .fl-ai-show-more {
       display: flex;
       align-items: center;
@@ -1402,6 +1416,46 @@
       `;
       wrap.appendChild(card);
     });
+    messages.appendChild(wrap);
+    scrollToBottom();
+  }
+
+  function addFeedbackControls(query) {
+    const wrap = document.createElement("div");
+    wrap.className = "fl-ai-feedback";
+    const label = document.createElement("span");
+    label.className = "fl-ai-feedback-label";
+    label.textContent = "Bola táto odpoveď užitočná?";
+    wrap.appendChild(label);
+
+    let answered = false;
+    function vote(rating) {
+      if (answered) return;
+      answered = true;
+      fireEvent({ event_type: "feedback", rating: rating, query: query || null });
+      wrap.innerHTML = "";
+      const thanks = document.createElement("span");
+      thanks.className = "fl-ai-feedback-thanks";
+      thanks.textContent = "Ďakujeme za spätnú väzbu!";
+      wrap.appendChild(thanks);
+    }
+
+    const up = document.createElement("button");
+    up.type = "button";
+    up.className = "fl-ai-feedback-btn";
+    up.textContent = "👍";
+    up.setAttribute("aria-label", "Užitočná odpoveď");
+    up.addEventListener("click", function () { vote(1); });
+    wrap.appendChild(up);
+
+    const down = document.createElement("button");
+    down.type = "button";
+    down.className = "fl-ai-feedback-btn";
+    down.textContent = "👎";
+    down.setAttribute("aria-label", "Neužitočná odpoveď");
+    down.addEventListener("click", function () { vote(-1); });
+    wrap.appendChild(down);
+
     messages.appendChild(wrap);
     scrollToBottom();
   }
@@ -1930,6 +1984,7 @@
       conversationHistory.push({role: "user", content: text});
       conversationHistory.push({role: "assistant", content: data.answer || ""});
       scrollToBottom();
+      addFeedbackControls(text);
       addRecipes(data.recipes);
       addArticles(data.articles);
       if (data.intent !== "recipe") {
