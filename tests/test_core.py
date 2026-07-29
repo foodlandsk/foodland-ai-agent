@@ -103,6 +103,15 @@ from app.search import (
 from app.knowledge import load_knowledge_json, search_knowledge, best_faq_answer
 from app.grounding import validate_answer, collect_allowed_urls, collect_allowed_prices
 from app.workflows import detect_workflow, get_contract, products_to_cart_candidates
+from app.embeddings import (
+    build_product_embeddings,
+    cosine_similarity,
+    embed_texts,
+    load_embeddings,
+    product_embedding_text,
+    save_embeddings,
+    semantic_search,
+)
 import app.main as main
 import app.merchandising as merchandising
 import app.search as search_module
@@ -425,6 +434,171 @@ class TestMerchandisingIntegration:
 
         assert rules["hidden"] == {"FL_1"}
         clear_merchandising_cache()
+
+
+class _FakeEmbeddingItem:
+    def __init__(self, embedding):
+        self.embedding = embedding
+
+
+class _FakeEmbeddingResponse:
+    def __init__(self, embeddings):
+        self.data = [_FakeEmbeddingItem(e) for e in embeddings]
+
+
+class _FakeEmbeddingsAPI:
+    def __init__(self, vector_fn):
+        self.vector_fn = vector_fn
+        self.calls = []
+
+    def create(self, model, input):
+        self.calls.append({"model": model, "input": list(input)})
+        return _FakeEmbeddingResponse([self.vector_fn(text) for text in input])
+
+
+class _FakeOpenAIClient:
+    def __init__(self, vector_fn):
+        self.embeddings = _FakeEmbeddingsAPI(vector_fn)
+
+
+def _make_vector_fn(mapping, default=(0.0, 0.0, 1.0)):
+    def vector_fn(text):
+        for key, vector in mapping.items():
+            if key in text:
+                return list(vector)
+        return list(default)
+    return vector_fn
+
+
+class TestEmbeddings:
+    def test_cosine_similarity_identical_vectors_is_one(self):
+        assert cosine_similarity([1.0, 2.0, 3.0], [1.0, 2.0, 3.0]) == pytest.approx(1.0)
+
+    def test_cosine_similarity_orthogonal_vectors_is_zero(self):
+        assert cosine_similarity([1.0, 0.0], [0.0, 1.0]) == pytest.approx(0.0)
+
+    def test_cosine_similarity_opposite_vectors_is_negative_one(self):
+        assert cosine_similarity([1.0, 0.0], [-1.0, 0.0]) == pytest.approx(-1.0)
+
+    def test_cosine_similarity_handles_zero_vector(self):
+        assert cosine_similarity([0.0, 0.0], [1.0, 1.0]) == 0.0
+
+    def test_cosine_similarity_handles_empty_or_mismatched(self):
+        assert cosine_similarity([], []) == 0.0
+        assert cosine_similarity([1.0], [1.0, 2.0]) == 0.0
+
+    def test_product_embedding_text_includes_title_brand_category(self, products):
+        sample = products[0]
+        text = product_embedding_text(sample)
+
+        assert sample.title in text
+        assert sample.brand in text
+
+    def test_embed_texts_empty_list_returns_empty(self):
+        client = _FakeOpenAIClient(_make_vector_fn({}))
+        assert embed_texts(client, []) == []
+
+    def test_embed_texts_calls_client_with_given_texts(self):
+        client = _FakeOpenAIClient(_make_vector_fn({"gochujang": [1.0, 0.0]}))
+        result = embed_texts(client, ["gochujang pasta"])
+
+        assert result == [[1.0, 0.0]]
+        assert client.embeddings.calls[0]["input"] == ["gochujang pasta"]
+
+    def test_build_product_embeddings_keys_by_product_id(self, products):
+        sample = products[:3]
+        client = _FakeOpenAIClient(_make_vector_fn({}, default=(1.0, 0.0, 0.0)))
+
+        embeddings = build_product_embeddings(client, sample, batch_size=2)
+
+        assert set(embeddings.keys()) == {p.id for p in sample}
+
+    def test_save_and_load_embeddings_roundtrip(self, tmp_path):
+        path = tmp_path / "embeddings.json"
+        original = {"FL_1": [0.1, 0.2], "FL_2": [0.3, 0.4]}
+
+        save_embeddings(original, str(path))
+        loaded = load_embeddings(str(path))
+
+        assert loaded == original
+
+    def test_load_embeddings_missing_file_returns_empty(self, tmp_path):
+        assert load_embeddings(str(tmp_path / "does_not_exist.json")) == {}
+
+    def test_semantic_search_ranks_by_similarity(self):
+        client = _FakeOpenAIClient(_make_vector_fn({"gochujang": [1.0, 0.0]}))
+        product_embeddings = {
+            "FL_gochujang": [1.0, 0.0],
+            "FL_unrelated": [0.0, 1.0],
+        }
+
+        results = semantic_search(client, "gochujang pasta", product_embeddings, limit=2)
+
+        assert results[0][0] == "FL_gochujang"
+        assert results[0][1] > results[1][1]
+
+    def test_semantic_search_empty_query_returns_empty(self):
+        client = _FakeOpenAIClient(_make_vector_fn({}))
+        assert semantic_search(client, "   ", {"FL_1": [1.0, 0.0]}) == []
+
+    def test_semantic_search_no_embeddings_returns_empty(self):
+        client = _FakeOpenAIClient(_make_vector_fn({}))
+        assert semantic_search(client, "gochujang", {}) == []
+
+
+class TestSemanticSearchEndpoint:
+    def test_endpoint_returns_error_without_openai_client(self, monkeypatch):
+        monkeypatch.setattr(main, "_get_openai_client", lambda: None)
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+
+        result = main.semantic_search_endpoint(request, query="gochujang", limit=5)
+
+        assert result["products"] == []
+        assert "error" in result
+
+    def test_endpoint_returns_error_without_embeddings(self, monkeypatch):
+        monkeypatch.setattr(main, "_get_openai_client", lambda: _FakeOpenAIClient(_make_vector_fn({})))
+        monkeypatch.setattr(main, "cached_product_embeddings", lambda: {})
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+
+        result = main.semantic_search_endpoint(request, query="gochujang", limit=5)
+
+        assert result["products"] == []
+        assert "error" in result
+
+    def test_endpoint_returns_ranked_products(self, products, monkeypatch):
+        sample = next(p for p in products if p.id)
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "_get_openai_client", lambda: _FakeOpenAIClient(_make_vector_fn({"query": [1.0, 0.0]})))
+        monkeypatch.setattr(main, "cached_product_embeddings", lambda: {sample.id: [1.0, 0.0]})
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+
+        result = main.semantic_search_endpoint(request, query="query", limit=5)
+
+        assert result["products"]
+        assert result["products"][0]["id"] == sample.id
+        assert "similarity" in result["products"][0]
+
+    def test_admin_rebuild_embeddings_requires_token(self, monkeypatch):
+        monkeypatch.delenv("ADMIN_ANALYTICS_TOKEN", raising=False)
+        monkeypatch.delenv("ADMIN_RELOAD_TOKEN", raising=False)
+
+        with pytest.raises(main.HTTPException):
+            main.admin_rebuild_embeddings(x_admin_token=None)
+
+    def test_admin_rebuild_embeddings_saves_and_clears_cache(self, products, monkeypatch, tmp_path):
+        path = tmp_path / "embeddings.json"
+        monkeypatch.setenv("ADMIN_ANALYTICS_TOKEN", "test-token")
+        monkeypatch.setenv("PRODUCT_EMBEDDINGS_PATH", str(path))
+        monkeypatch.setattr(main, "products", products[:2])
+        monkeypatch.setattr(main, "_get_openai_client", lambda: _FakeOpenAIClient(_make_vector_fn({}, default=(1.0, 0.0))))
+
+        result = main.admin_rebuild_embeddings(x_admin_token="test-token")
+
+        assert result["products_embedded"] == 2
+        assert path.exists()
+        reloaded = load_embeddings(str(path))
+        assert len(reloaded) == 2
 
 
 class TestSearchProducts:

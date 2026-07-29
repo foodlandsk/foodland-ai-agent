@@ -34,6 +34,12 @@ from app.autocomplete import (
     autocomplete_products,
     autocomplete_questions,
 )
+from app.embeddings import (
+    build_product_embeddings,
+    load_embeddings,
+    save_embeddings,
+    semantic_search,
+)
 from app.grounding import validate_answer, collect_allowed_urls, collect_allowed_prices
 from app.feed import (
     Product,
@@ -215,6 +221,8 @@ _trending_products_cache: list[dict] = []
 _trending_products_cache_at: float = 0.0
 TRENDING_CACHE_SECONDS = int(os.getenv("TRENDING_CACHE_SECONDS", "300"))
 TRENDING_EVENT_WEIGHTS = {"conversion": 8, "add_to_cart": 5, "click": 2, "impression": 1}
+semantic_search_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
+_product_embeddings_cache: dict[str, list[float]] | None = None
 _facets_cache: dict | None = None
 _facets_cache_at: float = 0.0
 FACETS_CACHE_SECONDS = int(os.getenv("FACETS_CACHE_SECONDS", "600"))
@@ -246,6 +254,18 @@ def cached_search_products(products_list: list[Product] | list[dict], query: str
         product_search_cache.pop(next(iter(product_search_cache)))
     product_search_cache[cache_key] = [dict(product) for product in results]
     return [dict(product) for product in results]
+
+
+def cached_product_embeddings() -> dict[str, list[float]]:
+    global _product_embeddings_cache
+    if _product_embeddings_cache is None:
+        _product_embeddings_cache = load_embeddings(os.getenv("PRODUCT_EMBEDDINGS_PATH"))
+    return _product_embeddings_cache
+
+
+def clear_embeddings_cache() -> None:
+    global _product_embeddings_cache
+    _product_embeddings_cache = None
 
 
 def clear_product_search_cache() -> None:
@@ -2632,6 +2652,33 @@ def search_autocomplete_endpoint(request: SearchAutocompleteRequest, fastapi_req
     }
 
 
+@app.get("/search/semantic")
+def semantic_search_endpoint(request: Request, query: str = "", limit: int = 8) -> dict:
+    client_key = get_client_key(request)
+    enforce_semantic_search_rate_limit(client_key)
+
+    openai_client = _get_openai_client()
+    if openai_client is None:
+        return {"products": [], "error": "Semantic search is not available (no OpenAI API key configured)."}
+
+    safe_limit = max(1, min(int(limit or 8), 20))
+    embeddings = cached_product_embeddings()
+    if not embeddings:
+        return {"products": [], "error": "No product embeddings have been generated yet."}
+
+    scored = semantic_search(openai_client, query, embeddings, safe_limit)
+    results = []
+    for product_id, score in scored:
+        product = find_product_by_id(products, product_id)
+        if not product:
+            continue
+        formatted = format_product(product)
+        formatted["similarity"] = round(score, 4)
+        results.append(formatted)
+
+    return {"products": results}
+
+
 @app.get("/autocomplete")
 def autocomplete(request: Request, q: str = "", limit: int = 4) -> dict:
     client_key = get_client_key(request)
@@ -2809,6 +2856,21 @@ def admin_analytics_events_summary(
     require_admin_token(x_admin_token)
     events = read_engagement_events(days)
     return events_summary(events)
+
+
+@app.post("/admin/embeddings/rebuild")
+def admin_rebuild_embeddings(x_admin_token: str | None = Header(default=None)) -> dict:
+    require_admin_token(x_admin_token)
+
+    openai_client = _get_openai_client()
+    if openai_client is None:
+        raise HTTPException(status_code=503, detail="OpenAI API key not configured.")
+
+    new_embeddings = build_product_embeddings(openai_client, products)
+    save_embeddings(new_embeddings, os.getenv("PRODUCT_EMBEDDINGS_PATH"))
+    clear_embeddings_cache()
+
+    return {"products_embedded": len(new_embeddings)}
 
 
 def session_memory_key(session_id: str, client_key: str) -> str:
@@ -4851,6 +4913,30 @@ def enforce_recommend_rate_limit(client_key: str) -> None:
         raise HTTPException(
             status_code=429,
             detail="Priliš veľa odporúčaní za krátky čas.",
+        )
+
+    events.append(now)
+
+
+def enforce_semantic_search_rate_limit(client_key: str) -> None:
+    limit = int(os.getenv("SEMANTIC_SEARCH_RATE_LIMIT_PER_MINUTE", "20"))
+    now = time.time()
+    window_start = now - 60
+
+    if len(semantic_search_rate_limit_events) > _RATE_LIMIT_MAX_CLIENTS:
+        expired = [k for k, v in semantic_search_rate_limit_events.items() if not v or v[-1] < window_start]
+        for k in expired[:1000]:
+            del semantic_search_rate_limit_events[k]
+
+    events = semantic_search_rate_limit_events[client_key]
+
+    while events and events[0] < window_start:
+        events.popleft()
+
+    if len(events) >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail="Priliš veľa sémantických vyhľadávaní za krátky čas.",
         )
 
     events.append(now)
