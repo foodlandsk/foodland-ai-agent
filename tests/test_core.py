@@ -1675,6 +1675,42 @@ class TestIntentDetection:
         assert main.detect_replacement_subject("cim vynahradim gochujang") == "gochujang"
         assert main.detect_related_subject("cim vynahradim gochujang") == "gochujang"
 
+    def test_recipe_intent_not_falsely_triggered_by_english_recommend(self):
+        # Regression test: a bare "rec" prefix check used to match any
+        # English word starting with those letters ("recommend",
+        # "record"), misclassifying plain product questions as recipe
+        # intent. Only the actual recept/recipe root should match.
+        assert not main.is_recipe_intent(main.normalize("what soy sauce do you recommend for sushi"))
+        assert not main.is_recipe_intent(main.normalize("do you have a record of my order"))
+
+    def test_recipe_intent_detects_english_and_czech_phrasing(self):
+        assert main.is_recipe_intent(main.normalize("recipe for kimchi soup"))
+        assert main.is_recipe_intent(main.normalize("how do i make kimchi"))
+        assert main.is_recipe_intent(main.normalize("jak pripravim kimchi"))
+
+    def test_faq_intent_detects_english_and_czech_phrasing(self):
+        assert main.is_faq_intent("how long does delivery take?")
+        assert main.is_faq_intent("can i pay by card?")
+        assert main.is_faq_intent("jak dlouho trva doruceni objednavky?")
+
+    def test_allergen_intent_detects_english_phrasing(self):
+        assert main.detect_allergen_intent("is this gluten free? does it contain soy?") is not None
+        assert main.detect_allergen_intent("i have a peanut allergy") is not None
+
+    def test_article_info_intent_detects_english_and_czech_phrasing(self):
+        assert main.is_article_info_intent("what is gochujang?")
+        assert main.is_article_info_intent("why is kimchi fermented?")
+        assert main.is_article_info_intent("proc je kimchi fermentovane?")
+        assert main.is_article_info_intent("aky je rozdil medzi miso a tamari?")
+
+    def test_explicit_article_request_detects_english_and_czech_phrasing(self):
+        assert main.is_explicit_article_request("show me the article about kimchi")
+        assert main.is_explicit_article_request("mate clanek o kimchi?")
+
+    def test_random_recipe_intent_detects_english_phrasing(self):
+        assert main.is_random_recipe_intent("what should i cook for dinner tonight?")
+        assert main.is_random_recipe_intent("give me a random recipe")
+
 
 class TestRelatedProducts:
     def test_product_specific_cross_sell_from_knowledge(self, products, knowledge):

@@ -1756,6 +1756,19 @@ FAQ_INTENT_MARKERS = (
     "vyzdvih",
     "reklamac",
     "vraten",
+    "vracen",
+    "delivery",
+    "shipping",
+    "courier",
+    "payment",
+    "pay by card",
+    "cash on delivery",
+    "complaint",
+    "refund",
+    "registration",
+    "password",
+    "loyalty",
+    "discount code",
 )
 
 SHOPPING_LIST_MARKERS = (
@@ -2300,6 +2313,15 @@ RECIPE_INTENT_MARKERS = (
     "ako spravim",
     "ako pripravim",
     "ako urobim",
+    "recipe",
+    "how to make",
+    "how do i make",
+    "how to cook",
+    "how do i cook",
+    "how do i prepare",
+    "jak udelam",
+    "jak pripravim",
+    "jak uvarim",
 )
 
 RANDOM_RECIPE_INTENT_MARKERS = (
@@ -2316,6 +2338,13 @@ RANDOM_RECIPE_INTENT_MARKERS = (
     "nahodne recept",
     "co by som dnes",
     "co si dat dnes",
+    "co bych si dal dnes",
+    "what should i cook",
+    "what to cook for dinner",
+    "dinner idea",
+    "recipe idea",
+    "random recipe",
+    "surprise me with a recipe",
 )
 
 
@@ -2435,6 +2464,12 @@ ALLERGEN_INTENT_MARKERS = (
     "lakto",
     "vhodn",
     "zlozen",
+    "allerg",
+    "gluten free",
+    "does it contain",
+    "does not contain",
+    "suitable for",
+    "ingredients",
 )
 
 ALLERGEN_TERMS = {
@@ -3346,12 +3381,14 @@ def is_explicit_article_request(message: str) -> bool:
         for marker in (
             "clanok",
             "clanky",
+            "clanek",
             "blog",
             "magazin",
             "magazinovy",
             "mate clanok",
             "mas clanok",
             "ukaz clanok",
+            "article",
         )
     )
 
@@ -3680,7 +3717,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                 "role": "system",
                 "content": (
                     "Si Foodland poradkyňa – odborná nákupná asistentka pre Foodland.sk, špeciálne azijské a svetové potraviny. "
-                    "Odpovedaj po slovensky, priateľsky a s predajným tónom. Neprezentuj sa ako AI. "
+                    "Odpovedaj v jazyku otázky zákazníka (napríklad slovensky, česky alebo anglicky); ak jazyk nie je jasný, odpovedaj po slovensky. Odpovedaj priateľsky a s predajným tónom. Neprezentuj sa ako AI. "
                     "Vždy rozlišuj náhrady a doplnky: pri otázke 'čím nahradiť X' odporúčaj podobné alternatívy, nie cross-sell doplnky. "
                     "Ak je zámer replacement_products, textovo iba vysvetli, že nižšie sú podobné alternatívy; nepridávaj domáce kombinácie ani produkty mimo kariet. "
                     "Pri otázke 'čo sa hodí k X' navrhuj doplnkové produkty (cross-sell) – napr. k sójovej omáčke mirin alebo ryžový ocot. "
@@ -5606,7 +5643,7 @@ def recipe_product_subject_from_title(title: str) -> str | None:
 def is_recipe_intent(normalized_message: str) -> bool:
     if any(marker in normalized_message for marker in RECIPE_INTENT_MARKERS):
         return True
-    return any(token.startswith(("rec", "recep")) for token in tokenize(normalized_message))
+    return any(token.startswith("recept") for token in tokenize(normalized_message))
 
 
 def is_random_recipe_intent(message: str) -> bool:
@@ -6857,9 +6894,19 @@ def is_article_info_intent(message: str) -> bool:
             "ako sa vyraba",
             "aky je rozdiel",
             "rozdiel",
+            "rozdil",
             "preco",
+            "proc",
             "benefity",
             "ucinky",
+            "what is",
+            "what does it mean",
+            "how does it taste",
+            "how is it made",
+            "what is the difference",
+            "difference between",
+            "why",
+            "benefits",
         )
     )
 
@@ -7061,7 +7108,7 @@ def detect_allergen_intent(message: str) -> str | None:
     if "intoler" in normalized_message or "zlozen" in normalized_message:
         return "alergeny"
 
-    if "alerg" in normalized_message or "alergen" in normalized_message:
+    if "alerg" in normalized_message or "alergen" in normalized_message or "allerg" in normalized_message:
         return "alergény"
 
     return None
