@@ -50,6 +50,7 @@ def autocomplete_products(products: list, query: str, limit: int = 4) -> list[di
                 "url": str(product_value(product, "link", "")),
                 "price": price,
                 "image": str(product_value(product, "image_link", "")),
+                "brand": str(product_value(product, "brand", "")),
             },
         ))
 

@@ -2701,15 +2701,20 @@ def semantic_search_endpoint(request: Request, query: str = "", limit: int = 8) 
 
 
 @app.get("/autocomplete")
-def autocomplete(request: Request, q: str = "", limit: int = 4) -> dict:
+def autocomplete(request: Request, q: str = "", limit: int = 4, client_id: str = "") -> dict:
     client_key = get_client_key(request)
     enforce_autocomplete_rate_limit(client_key)
 
     safe_limit = max(1, min(int(limit or 4), 12))
     top_questions = cached_top_questions()
+    product_suggestions = autocomplete_products(products, q, safe_limit)
+    if USER_MEMORY_ENABLED:
+        profile_key = user_memory_key(client_id, client_key)
+        user_profile = get_user_memory(profile_key)
+        product_suggestions = personalize_products(product_suggestions, user_profile)
 
     return {
-        "products": autocomplete_products(products, q, safe_limit),
+        "products": product_suggestions,
         "categories": autocomplete_categories(products, q, 3),
         "brands": autocomplete_brands(products, q, 3),
         "top_questions": autocomplete_questions(top_questions, q, 3),

@@ -2358,6 +2358,38 @@ class TestAutocomplete:
 
         assert len(result["products"]) <= 12
 
+    def test_products_include_brand_for_personalization(self, products):
+        results = autocomplete_products(products, "gochuj", 4)
+        assert results
+        assert all("brand" in r for r in results)
+
+    def test_endpoint_reorders_by_profile_affinity(self, products, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "cached_top_questions", lambda: [])
+        fixed_suggestions = [
+            {"title": "Produkt A", "url": "https://x/a", "price": 1.0, "image": "", "brand": "OTHER"},
+            {"title": "Produkt B", "url": "https://x/b", "price": 2.0, "image": "", "brand": "TARGET_BRAND"},
+        ]
+        monkeypatch.setattr(main, "autocomplete_products", lambda *a, **k: [dict(s) for s in fixed_suggestions])
+        fake_profile = {"product_brands": {"TARGET_BRAND": 6}}
+        monkeypatch.setattr(main, "get_user_memory", lambda profile_key: fake_profile)
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+
+        result = main.autocomplete(request, q="produkt", limit=4, client_id="client-abc")
+
+        assert result["products"][0]["title"] == "Produkt B"
+        assert result["products"][0]["personalized"] is True
+
+    def test_endpoint_unaffected_without_profile(self, products, monkeypatch):
+        monkeypatch.setattr(main, "products", products)
+        monkeypatch.setattr(main, "cached_top_questions", lambda: [])
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+
+        without_client_id = main.autocomplete(request, q="sushi", limit=4)
+        with_unknown_client_id = main.autocomplete(request, q="sushi", limit=4, client_id="brand-new-client")
+
+        assert without_client_id["products"] == with_unknown_client_id["products"]
+
     def test_cached_top_questions_reuses_result_within_ttl(self, monkeypatch, tmp_path):
         log_path = tmp_path / "question_analytics.jsonl"
         log_path.write_text('{"ts": 9999999999, "message": "co je kimchi", "matches_count": 1, "intent": "article_products"}\n', encoding="utf-8")
