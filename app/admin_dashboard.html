@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="sk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Foodland Admin Dashboard</title>
+    <style>
+      :root {
+        --green: #299b5e;
+        --green-dark: #1f7a49;
+        --text: #221f20;
+        --muted: #5d6b62;
+        --bg: #f7f8f5;
+        --border: #dde6df;
+        --danger: #c0392b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 24px;
+        background: #fff;
+        border-bottom: 1px solid var(--border);
+        flex-wrap: wrap;
+      }
+      header h1 {
+        font-size: 18px;
+        margin: 0;
+      }
+      .header-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      select, input[type="password"], input[type="text"] {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 13px;
+        background: #fff;
+        color: var(--text);
+      }
+      button {
+        border: 1px solid var(--green);
+        background: var(--green);
+        color: #fff;
+        border-radius: 6px;
+        padding: 7px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #fff;
+        color: var(--green);
+      }
+      button:hover { background: var(--green-dark); border-color: var(--green-dark); }
+      button.secondary:hover { background: #f2faf5; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+      nav.tabs {
+        display: flex;
+        gap: 4px;
+        padding: 0 24px;
+        background: #fff;
+        border-bottom: 1px solid var(--border);
+        overflow-x: auto;
+      }
+      nav.tabs button {
+        background: transparent;
+        color: var(--muted);
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        padding: 12px 14px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      nav.tabs button.active {
+        color: var(--green);
+        border-bottom-color: var(--green);
+      }
+      nav.tabs button:hover:not(.active) { background: #f2faf5; }
+
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .panel {
+        display: none;
+      }
+      .panel.active { display: block; }
+      .card {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 18px;
+        margin-bottom: 18px;
+      }
+      .card h2 {
+        font-size: 15px;
+        margin: 0 0 12px;
+      }
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+      }
+      .stat {
+        background: var(--bg);
+        border-radius: 8px;
+        padding: 12px 14px;
+      }
+      .stat .value { font-size: 22px; font-weight: 700; }
+      .stat .label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      th, td {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+      tr:last-child td { border-bottom: none; }
+      .pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .pill.active { background: #eafaf1; color: var(--green-dark); }
+      .pill.inactive { background: #f4f0e8; color: #8a6d1a; }
+      .muted { color: var(--muted); }
+      .empty { color: var(--muted); font-style: italic; padding: 8px 0; }
+      .error-box {
+        background: #fdecea;
+        color: var(--danger);
+        border: 1px solid #f5c6cb;
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+        font-size: 13px;
+      }
+
+      #gate {
+        position: fixed;
+        inset: 0;
+        background: rgba(20, 30, 24, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+      }
+      #gate .box {
+        background: #fff;
+        border-radius: 12px;
+        padding: 28px;
+        width: 320px;
+        max-width: 90vw;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+      }
+      #gate h2 { margin: 0 0 8px; font-size: 16px; }
+      #gate p { margin: 0 0 16px; font-size: 13px; color: var(--muted); }
+      #gate input { width: 100%; margin-bottom: 12px; }
+      #gate button { width: 100%; }
+      #gate .gate-error { color: var(--danger); font-size: 12px; margin-top: 8px; min-height: 16px; }
+      body.locked main, body.locked nav.tabs, body.locked .header-controls { display: none; }
+      body:not(.locked) #gate { display: none; }
+    </style>
+  </head>
+  <body class="locked">
+    <div id="gate">
+      <div class="box">
+        <h2>Foodland Admin</h2>
+        <p>Zadaj admin token pre prístup k analytike.</p>
+        <input type="password" id="tokenInput" placeholder="Admin token" autocomplete="off" />
+        <button id="unlockBtn" type="button">Odomknúť</button>
+        <div class="gate-error" id="gateError"></div>
+      </div>
+    </div>
+
+    <header>
+      <h1>🍜 Foodland Admin Dashboard</h1>
+      <div class="header-controls">
+        <label for="daysSelect" class="muted" style="font-size:13px;">Obdobie:</label>
+        <select id="daysSelect">
+          <option value="7">7 dní</option>
+          <option value="14">14 dní</option>
+          <option value="30" selected>30 dní</option>
+          <option value="60">60 dní</option>
+        </select>
+        <button class="secondary" id="refreshBtn" type="button">Obnoviť</button>
+        <button class="secondary" id="lockBtn" type="button">Zamknúť</button>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button data-panel="overview" class="active">Prehľad</button>
+      <button data-panel="questions">Otázky</button>
+      <button data-panel="noresults">Bez výsledku</button>
+      <button data-panel="intents">Zámery</button>
+      <button data-panel="events">Eventy</button>
+      <button data-panel="behavioral">Behavioral</button>
+      <button data-panel="fbt">FBT</button>
+      <button data-panel="embeddings">Embeddings</button>
+    </nav>
+
+    <main>
+      <div id="globalError"></div>
+
+      <section id="panel-overview" class="panel active">
+        <div class="card">
+          <h2>Súhrn</h2>
+          <div id="overviewStats" class="stat-grid"></div>
+        </div>
+        <div class="card">
+          <h2>Slabé miesta</h2>
+          <div id="overviewWeakSpots"></div>
+        </div>
+        <div class="card">
+          <h2>Odporúčané akcie</h2>
+          <div id="overviewActions"></div>
+        </div>
+      </section>
+
+      <section id="panel-questions" class="panel">
+        <div class="card">
+          <h2>Najčastejšie otázky</h2>
+          <div id="questionsTable"></div>
+        </div>
+      </section>
+
+      <section id="panel-noresults" class="panel">
+        <div class="card">
+          <h2>Otázky bez výsledku</h2>
+          <div id="noResultsTable"></div>
+        </div>
+      </section>
+
+      <section id="panel-intents" class="panel">
+        <div class="card">
+          <h2>Rozdelenie zámerov</h2>
+          <div id="intentsTable"></div>
+        </div>
+      </section>
+
+      <section id="panel-events" class="panel">
+        <div class="card">
+          <h2>Zozbierané eventy</h2>
+          <div id="eventsStats" class="stat-grid"></div>
+        </div>
+        <div class="card">
+          <h2>Najčastejšie produkty (touches)</h2>
+          <div id="eventsProducts"></div>
+        </div>
+      </section>
+
+      <section id="panel-behavioral" class="panel">
+        <div class="card">
+          <h2>Behavioral ranking <span id="behavioralStatus"></span></h2>
+          <p class="muted" style="font-size:12px;">Aktivuje sa po dostatočnom objeme reálnych impressions (bezpečný cold-start gate).</p>
+          <div id="behavioralTable"></div>
+        </div>
+      </section>
+
+      <section id="panel-fbt" class="panel">
+        <div class="card">
+          <h2>Frequently Bought Together <span id="fbtStatus"></span></h2>
+          <p class="muted" style="font-size:12px;">Aktivuje sa po dostatočnom objeme add_to_cart eventov (bezpečný cold-start gate).</p>
+          <div id="fbtTable"></div>
+        </div>
+      </section>
+
+      <section id="panel-embeddings" class="panel">
+        <div class="card">
+          <h2>Product embeddings</h2>
+          <p class="muted" style="font-size:13px;">Prebuduje embeddings pre sémantické vyhľadávanie (<code>/search/semantic</code>) zo súčasného katalógu. Toto volá OpenAI API pre každý produkt a môže trvať desiatky sekúnd.</p>
+          <button id="rebuildBtn" type="button">Prebudovať embeddings</button>
+          <div id="embeddingsResult" style="margin-top:12px;"></div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        const apiBaseUrl = window.location.origin;
+        let adminToken = "";
+        const loadedPanels = new Set();
+
+        function escapeHtml(value) {
+          return String(value == null ? "" : value).replace(/[&<>"']/g, function (char) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char];
+          });
+        }
+
+        function fmtTs(ts) {
+          if (!ts) return "-";
+          try {
+            return new Date(ts * 1000).toLocaleString("sk-SK");
+          } catch (e) {
+            return String(ts);
+          }
+        }
+
+        function setGlobalError(message) {
+          const box = document.getElementById("globalError");
+          box.innerHTML = message ? `<div class="error-box">${escapeHtml(message)}</div>` : "";
+        }
+
+        async function adminFetch(path) {
+          const days = document.getElementById("daysSelect").value;
+          const separator = path.includes("?") ? "&" : "?";
+          const url = `${apiBaseUrl}${path}${separator}days=${encodeURIComponent(days)}`;
+          const response = await fetch(url, {
+            headers: { "x-admin-token": adminToken },
+          });
+          if (response.status === 401) {
+            lock("Neplatný admin token.");
+            throw new Error("unauthorized");
+          }
+          if (response.status === 404) {
+            throw new Error("Admin analytika nie je na tomto serveri zapnutá.");
+          }
+          if (!response.ok) {
+            throw new Error(`Požiadavka zlyhala (${response.status}).`);
+          }
+          return response.json();
+        }
+
+        function renderTable(container, columns, rows, emptyText) {
+          if (!rows || rows.length === 0) {
+            container.innerHTML = `<div class="empty">${escapeHtml(emptyText || "Žiadne dáta za zvolené obdobie.")}</div>`;
+            return;
+          }
+          const head = columns.map((col) => `<th>${escapeHtml(col.label)}</th>`).join("");
+          const body = rows
+            .map((row) => {
+              const cells = columns
+                .map((col) => `<td>${col.render ? col.render(row) : escapeHtml(row[col.key])}</td>`)
+                .join("");
+              return `<tr>${cells}</tr>`;
+            })
+            .join("");
+          container.innerHTML = `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+        }
+
+        async function loadOverview() {
+          const data = await adminFetch("/admin/analytics/summary");
+          const summary = data.summary || {};
+          const statsEl = document.getElementById("overviewStats");
+          const stats = [
+            ["questions", "Otázok"],
+            ["unique_clients", "Unikátnych klientov"],
+            ["sessions", "Session"],
+            ["no_result_questions", "Bez výsledku"],
+            ["unknown_questions", "Neznámy zámer"],
+            ["backend_errors", "Backend chyby"],
+          ];
+          statsEl.innerHTML = stats
+            .map(
+              ([key, label]) =>
+                `<div class="stat"><div class="value">${escapeHtml(summary[key] ?? 0)}</div><div class="label">${escapeHtml(label)}</div></div>`
+            )
+            .join("");
+
+          renderTable(
+            document.getElementById("overviewWeakSpots"),
+            [
+              { key: "area", label: "Oblasť" },
+              { key: "count", label: "Počet" },
+              { key: "note", label: "Poznámka" },
+            ],
+            data.weak_spots,
+            "Žiadne slabé miesta zaznamenané."
+          );
+
+          renderTable(
+            document.getElementById("overviewActions"),
+            [
+              { key: "title", label: "Akcia" },
+              { key: "type", label: "Typ" },
+              { key: "count", label: "Počet" },
+              {
+                key: "suggested_action",
+                label: "Návrh",
+                render: (row) => escapeHtml(row.suggested_action || ""),
+              },
+            ],
+            data.action_items,
+            "Žiadne odporúčané akcie."
+          );
+        }
+
+        async function loadQuestions() {
+          const data = await adminFetch("/admin/analytics/top-questions?limit=50");
+          renderTable(
+            document.getElementById("questionsTable"),
+            [
+              { key: "question", label: "Otázka" },
+              { key: "count", label: "Počet" },
+            ],
+            data.top_questions
+          );
+        }
+
+        async function loadNoResults() {
+          const data = await adminFetch("/admin/analytics/no-results?limit=50");
+          renderTable(
+            document.getElementById("noResultsTable"),
+            [
+              { key: "question", label: "Otázka" },
+              { key: "intent", label: "Zámer" },
+              { key: "count", label: "Počet" },
+              { key: "last_seen", label: "Naposledy", render: (row) => fmtTs(row.last_seen) },
+            ],
+            data.no_results,
+            "Všetky otázky za dané obdobie mali výsledok."
+          );
+        }
+
+        async function loadIntents() {
+          const data = await adminFetch("/admin/analytics/intents");
+          renderTable(
+            document.getElementById("intentsTable"),
+            [
+              { key: "intent", label: "Zámer" },
+              { key: "count", label: "Počet" },
+              { key: "share", label: "Podiel", render: (row) => `${Math.round((row.share || 0) * 100)}%` },
+            ],
+            data.intents
+          );
+        }
+
+        async function loadEvents() {
+          const data = await adminFetch("/admin/analytics/events-summary");
+          const statsEl = document.getElementById("eventsStats");
+          const byType = data.events_by_type || {};
+          const stats = [
+            ["total_events", "Eventy spolu"],
+            ["unique_sessions", "Unikátne session"],
+            ["unique_products_touched", "Produkty (touched)"],
+          ];
+          let html = stats
+            .map(
+              ([key, label]) =>
+                `<div class="stat"><div class="value">${escapeHtml(data[key] ?? 0)}</div><div class="label">${escapeHtml(label)}</div></div>`
+            )
+            .join("");
+          html += Object.keys(byType)
+            .map(
+              (type) =>
+                `<div class="stat"><div class="value">${escapeHtml(byType[type])}</div><div class="label">${escapeHtml(type)}</div></div>`
+            )
+            .join("");
+          statsEl.innerHTML = html;
+
+          renderTable(
+            document.getElementById("eventsProducts"),
+            [
+              { key: "product_sku", label: "SKU" },
+              { key: "touches", label: "Touches" },
+            ],
+            data.top_products_by_touches,
+            "Zatiaľ žiadne zaznamenané produkty."
+          );
+        }
+
+        async function loadBehavioral() {
+          const data = await adminFetch("/admin/analytics/behavioral-rankings?limit=25");
+          const active = (data.products_with_scores || 0) > 0;
+          document.getElementById("behavioralStatus").innerHTML = active
+            ? '<span class="pill active">AKTÍVNE</span>'
+            : '<span class="pill inactive">NEAKTÍVNE (čaká sa na dáta)</span>';
+
+          const container = document.getElementById("behavioralTable");
+          const intro = `<p class="muted" style="font-size:12px;">Baseline CTR: ${escapeHtml(
+            (data.baseline_ctr || 0).toFixed(4)
+          )} · Produktov so skóre: ${escapeHtml(data.products_with_scores || 0)}</p>`;
+          const tableHost = document.createElement("div");
+          renderTable(
+            tableHost,
+            [
+              { key: "product_sku", label: "SKU" },
+              { key: "impressions", label: "Impressions" },
+              { key: "clicks", label: "Kliky" },
+              { key: "add_to_cart", label: "Add to cart" },
+              { key: "ctr", label: "CTR", render: (row) => (row.ctr || 0).toFixed(4) },
+            ],
+            data.top_products,
+            "Zatiaľ žiadne skóre - nazbiera sa po dostatočnom objeme dát."
+          );
+          container.innerHTML = intro;
+          container.appendChild(tableHost);
+        }
+
+        async function loadFbt() {
+          const data = await adminFetch("/admin/analytics/fbt-pairs?limit=25");
+          document.getElementById("fbtStatus").innerHTML = data.active
+            ? '<span class="pill active">AKTÍVNE</span>'
+            : '<span class="pill inactive">NEAKTÍVNE (čaká sa na dáta)</span>';
+
+          const container = document.getElementById("fbtTable");
+          const intro = `<p class="muted" style="font-size:12px;">Add_to_cart eventov spolu: ${escapeHtml(
+            data.total_add_to_cart_events || 0
+          )} · SKU s pármi: ${escapeHtml(data.skus_with_pairs || 0)}</p>`;
+          const tableHost = document.createElement("div");
+          renderTable(
+            tableHost,
+            [
+              { key: "sku", label: "SKU" },
+              {
+                key: "co_purchased",
+                label: "Kupované spolu s",
+                render: (row) =>
+                  (row.co_purchased || [])
+                    .map((pair) => `${escapeHtml(pair[0])} (${escapeHtml(pair[1])}x)`)
+                    .join(", ") || "-",
+              },
+            ],
+            data.sample,
+            "Zatiaľ žiadne páry - nazbierajú sa po dostatočnom objeme add_to_cart dát."
+          );
+          container.innerHTML = intro;
+          container.appendChild(tableHost);
+        }
+
+        const panelLoaders = {
+          overview: loadOverview,
+          questions: loadQuestions,
+          noresults: loadNoResults,
+          intents: loadIntents,
+          events: loadEvents,
+          behavioral: loadBehavioral,
+          fbt: loadFbt,
+          embeddings: async () => {},
+        };
+
+        async function activatePanel(name, forceReload) {
+          document.querySelectorAll("nav.tabs button").forEach((btn) => {
+            btn.classList.toggle("active", btn.dataset.panel === name);
+          });
+          document.querySelectorAll("main .panel").forEach((panel) => {
+            panel.classList.toggle("active", panel.id === `panel-${name}`);
+          });
+          if (loadedPanels.has(name) && !forceReload) return;
+          setGlobalError("");
+          try {
+            await panelLoaders[name]();
+            loadedPanels.add(name);
+          } catch (error) {
+            if (error.message !== "unauthorized") {
+              setGlobalError(error.message || "Nepodarilo sa načítať dáta.");
+            }
+          }
+        }
+
+        function reloadActivePanel() {
+          const activeBtn = document.querySelector("nav.tabs button.active");
+          const name = activeBtn ? activeBtn.dataset.panel : "overview";
+          activatePanel(name, true);
+        }
+
+        function lock(message) {
+          adminToken = "";
+          sessionStorage.removeItem("foodlandAdminToken");
+          loadedPanels.clear();
+          document.body.classList.add("locked");
+          document.getElementById("gateError").textContent = message || "";
+          document.getElementById("tokenInput").value = "";
+          document.getElementById("tokenInput").focus();
+        }
+
+        async function unlock(token) {
+          adminToken = token;
+          document.getElementById("gateError").textContent = "";
+          try {
+            await loadOverview();
+            loadedPanels.add("overview");
+            sessionStorage.setItem("foodlandAdminToken", token);
+            document.body.classList.remove("locked");
+          } catch (error) {
+            if (error.message === "unauthorized") {
+              document.getElementById("gateError").textContent = "Neplatný admin token.";
+            } else {
+              document.getElementById("gateError").textContent = error.message || "Chyba pripojenia.";
+            }
+            adminToken = "";
+          }
+        }
+
+        document.querySelectorAll("nav.tabs button").forEach((btn) => {
+          btn.addEventListener("click", () => activatePanel(btn.dataset.panel, false));
+        });
+
+        document.getElementById("refreshBtn").addEventListener("click", reloadActivePanel);
+        document.getElementById("daysSelect").addEventListener("change", reloadActivePanel);
+        document.getElementById("lockBtn").addEventListener("click", () => lock(""));
+
+        document.getElementById("unlockBtn").addEventListener("click", () => {
+          const value = document.getElementById("tokenInput").value.trim();
+          if (value) unlock(value);
+        });
+        document.getElementById("tokenInput").addEventListener("keydown", (event) => {
+          if (event.key === "Enter") document.getElementById("unlockBtn").click();
+        });
+
+        document.getElementById("rebuildBtn").addEventListener("click", async () => {
+          const btn = document.getElementById("rebuildBtn");
+          const resultEl = document.getElementById("embeddingsResult");
+          btn.disabled = true;
+          resultEl.innerHTML = '<p class="muted">Prebudovávam, môže to trvať aj minútu...</p>';
+          try {
+            const response = await fetch(`${apiBaseUrl}/admin/embeddings/rebuild`, {
+              method: "POST",
+              headers: { "x-admin-token": adminToken },
+            });
+            if (response.status === 401) {
+              lock("Neplatný admin token.");
+              return;
+            }
+            const data = await response.json();
+            if (!response.ok) {
+              resultEl.innerHTML = `<div class="error-box">${escapeHtml(data.detail || "Prebudovanie zlyhalo.")}</div>`;
+            } else {
+              resultEl.innerHTML = `<div class="stat"><div class="value">${escapeHtml(
+                data.products_embedded
+              )}</div><div class="label">produktov prebudovaných</div></div>`;
+            }
+          } catch (error) {
+            resultEl.innerHTML = `<div class="error-box">${escapeHtml(error.message || "Prebudovanie zlyhalo.")}</div>`;
+          } finally {
+            btn.disabled = false;
+          }
+        });
+
+        const savedToken = sessionStorage.getItem("foodlandAdminToken");
+        if (savedToken) {
+          document.getElementById("tokenInput").value = "";
+          unlock(savedToken);
+        }
+      })();
+    </script>
+  </body>
+</html>
