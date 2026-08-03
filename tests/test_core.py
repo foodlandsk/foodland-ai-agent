@@ -1711,6 +1711,51 @@ class TestIntentDetection:
         assert main.is_random_recipe_intent("what should i cook for dinner tonight?")
         assert main.is_random_recipe_intent("give me a random recipe")
 
+    def test_detect_query_language_english(self):
+        assert main.detect_query_language("What soy sauce do you recommend for sushi?") == "en"
+        assert main.detect_query_language("How long does delivery take?") == "en"
+
+    def test_detect_query_language_defaults_to_sk(self):
+        assert main.detect_query_language("Kolko stoji doprava?") == "sk"
+        assert main.detect_query_language("Jak dlouho trva doruceni objednavky?") == "sk"
+
+    def test_detect_query_language_ignores_lone_english_product_name(self):
+        # A single English word (e.g. a product name) should not flip the
+        # language - only >=2 hits count, to avoid false positives.
+        assert main.detect_query_language("sriracha") == "sk"
+
+    def test_allergen_safety_answer_english_variant(self):
+        answer = main.allergen_safety_answer("lepok", lang="en")
+        assert "gluten" in answer
+        assert "Foodland.sk" in answer
+
+    def test_recipe_answer_english_variant(self):
+        assert main.recipe_answer("kimchi", [{"title": "x"}], lang="en") == (
+            "I found a recipe on Foodland.sk. Open it below."
+        )
+        assert main.recipe_answer("kimchi", [{"title": "x"}, {"title": "y"}], lang="en") == (
+            "I found recipes on Foodland.sk. Pick one from the recommendations below."
+        )
+
+    def test_random_recipes_answer_english_variant(self):
+        answer = main.random_recipes_answer([{"title": "x"}], lang="en")
+        assert "dinner" in answer.lower()
+
+    def test_shopping_list_answer_english_variant(self):
+        answer = main.shopping_list_answer("kimchi", [{"title": "x"}], [], lang="en")
+        assert "shopping list" in answer.lower()
+        assert "kimchi" in answer.lower()
+
+    def test_fallback_answer_english_variant(self):
+        matches = [{"title": "Soy Sauce KIKKOMAN 150ml"}]
+        answer = main.fallback_answer(matches, {}, None, False, lang="en")
+        assert "I found" in answer
+        assert "Soy Sauce KIKKOMAN 150ml" in answer
+
+    def test_fallback_answer_english_no_matches(self):
+        answer = main.fallback_answer([], {}, None, False, lang="en")
+        assert answer == "I couldn't find an exact answer. Try rephrasing your question."
+
 
 class TestRelatedProducts:
     def test_product_specific_cross_sell_from_knowledge(self, products, knowledge):

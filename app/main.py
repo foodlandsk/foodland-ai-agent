@@ -3412,6 +3412,27 @@ def knowledge_sections_for_intent(
     return ()
 
 
+EN_LANGUAGE_MARKERS = frozenset({
+    "what", "how", "why", "does", "do", "you", "your", "please",
+    "the", "is", "are", "have", "has", "for", "with", "and", "this",
+    "that", "can", "could", "would", "recommend", "delivery",
+    "shipping", "allergy", "allergic", "recipe", "ingredients",
+    "product", "products", "thanks", "thank",
+})
+
+
+def detect_query_language(message: str) -> str:
+    """Lightweight heuristic, not a general language detector: only
+    distinguishes English from everything else (Slovak/Czech share so
+    much vocabulary that a reliable SK/CZ split isn't worth the extra
+    complexity for template selection - Czech customers read Slovak
+    text fine). Requires >=2 hits to avoid false positives on short
+    queries that are just an English product name.
+    """
+    hits = raw_tokens(message) & EN_LANGUAGE_MARKERS
+    return "en" if len(hits) >= 2 else "sk"
+
+
 @app.post("/chat")
 def chat(chat_request: ChatRequest, request: Request) -> dict:
     client_key = get_client_key(request)
@@ -3431,6 +3452,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     recipe_subject = detect_recipe_subject(contextual_message)
     needs_article_context = is_article_info_intent(chat_request.message)
     explicit_article_request = is_explicit_article_request(chat_request.message)
+    query_language = detect_query_language(chat_request.message)
     knowledge_sections = knowledge_sections_for_intent(
         is_faq_query=is_faq_query,
         is_random_recipe_query=is_random_recipe_query,
@@ -3453,7 +3475,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         updated_profile = update_user_memory(profile_key, chat_request.message, "allergen_safety", allergen_matches, [])
         log_question(chat_request.message, client_key, len(allergen_matches), intent="allergen_safety", session_id=session_id)
         return {
-            "answer": allergen_safety_answer(allergen_term),
+            "answer": allergen_safety_answer(allergen_term, query_language),
             "products": allergen_matches,
             "articles": articles,
             "knowledge": knowledge_summary(knowledge_matches),
@@ -3484,7 +3506,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         updated_profile = update_user_memory(profile_key, chat_request.message, "recipe", [], random_recipes)
         log_question(chat_request.message, client_key, 0, intent="recipe", session_id=session_id)
         return {
-            "answer": random_recipes_answer(random_recipes),
+            "answer": random_recipes_answer(random_recipes, query_language),
             "recipes": random_recipes,
             "products": [],
             "articles": articles,
@@ -3532,7 +3554,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         updated_profile = update_user_memory(profile_key, chat_request.message, intent, recipe_products, recipes)
         log_question(chat_request.message, client_key, 0, intent=intent, session_id=session_id)
         return {
-            "answer": recipe_products_answer(recipe_product_subject, recipes) if recipe_products else recipe_answer(recipe_subject, recipes),
+            "answer": recipe_products_answer(recipe_product_subject, recipes, query_language) if recipe_products else recipe_answer(recipe_subject, recipes, query_language),
             "recipes": recipes,
             "products": recipe_products,
             "articles": recipe_articles,
@@ -3549,7 +3571,12 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         updated_profile = update_user_memory(profile_key, chat_request.message, "unknown", [], [])
         log_question(chat_request.message, client_key, 0, intent="unknown", session_id=session_id)
         return {
-            "answer": "Na toto neviem spoľahlivo odpovedať ako Foodland poradkyňa. Skúste sa opýtať na produkty, objednávku, dopravu alebo platbu na Foodland.sk.",
+            "answer": (
+                "I can't reliably answer that as the Foodland assistant. Try asking about products, "
+                "orders, delivery, or payment on Foodland.sk."
+                if query_language == "en"
+                else "Na toto neviem spoľahlivo odpovedať ako Foodland poradkyňa. Skúste sa opýtať na produkty, objednávku, dopravu alebo platbu na Foodland.sk."
+            ),
             "products": [],
             "knowledge": knowledge_summary(knowledge_matches),
             "memory": public_user_memory_summary(updated_profile),
@@ -3639,7 +3666,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         else {}
     )
     shopping_list_answer_text = (
-        shopping_list_answer(related_subject or article_product_subject or special_subject or contextual_message, matches, missing_ingredients)
+        shopping_list_answer(related_subject or article_product_subject or special_subject or contextual_message, matches, missing_ingredients, query_language)
         if shopping_list
         else ""
     )
@@ -3663,13 +3690,17 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
 
     if not matches and not knowledge_matches:
         return {
-            "answer": "Nenašla som presný produkt. Skúste napísať názov, značku alebo kategóriu trochu inak.",
+            "answer": (
+                "I couldn't find an exact product match. Try writing the name, brand, or category a bit differently."
+                if query_language == "en"
+                else "Nenašla som presný produkt. Skúste napísať názov, značku alebo kategóriu trochu inak."
+            ),
             "products": [],
         }
 
     if should_use_fast_chat_answer(intent, matches, knowledge_matches, needs_composition_caution):
         return {
-            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
+            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
@@ -3699,7 +3730,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if not client:
         logger.debug("No OPENAI_API_KEY set, using fallback answer.")
         return {
-            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
+            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
@@ -3757,7 +3788,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         # RETRY-01: _call_openai_with_retry pokusi sa max 3x pri RateLimit/Timeout/Connection
         answer_text = _call_openai_with_retry(client, messages, model)
         if not answer_text:
-            answer_text = shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution)
+            answer_text = shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language)
         allowed_urls = collect_allowed_urls(matches, knowledge_matches)
         allowed_prices = collect_allowed_prices(matches)
         grounding_result = validate_answer(
@@ -3785,27 +3816,35 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         logger.warning("OpenAI transient error after retries: %s", exc)
         log_backend_error("openai_transient_error", str(exc))
         return {
-            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
+            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
             "missing_ingredients": missing_ingredients,
             "shopping_list": shopping_list,
             "knowledge": knowledge_summary(knowledge_matches),
-            "warning": "Služba je momentálne preťažená, zobrazujem nájdené produkty.",
+            "warning": (
+                "The service is currently overloaded, showing the products we found."
+                if query_language == "en"
+                else "Služba je momentálne preťažená, zobrazujem nájdené produkty."
+            ),
         }
     except Exception as exc:
         logger.error("OpenAI API failed: %s", exc, exc_info=True)
         log_backend_error("openai_response_failed", str(exc))
         return {
-            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution),
+            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
             "missing_ingredients": missing_ingredients,
             "shopping_list": shopping_list,
             "knowledge": knowledge_summary(knowledge_matches),
-            "warning": "Odpoveď sa nepodarilo vygenerovať, zobrazujem nájdené produkty.",
+            "warning": (
+                "Could not generate a written answer, showing the products we found."
+                if query_language == "en"
+                else "Odpoveď sa nepodarilo vygenerovať, zobrazujem nájdené produkty."
+            ),
         }
 
 
@@ -4930,10 +4969,20 @@ def shopping_list_for_response(cart_candidates: list[dict], missing_ingredients:
     }
 
 
-def shopping_list_answer(subject: str | None, matches: list[dict], missing_ingredients: list[str]) -> str:
+def shopping_list_answer(subject: str | None, matches: list[dict], missing_ingredients: list[str], lang: str = "sk") -> str:
     subject_text = str(subject or "recept").replace("_", " ").strip()
     product_count = min(len(matches or []), 8)
     missing_count = len(missing_ingredients or [])
+    if lang == "en":
+        subject_text_en = readable_subject_label_en(subject) if subject else "this recipe"
+        if product_count and missing_count:
+            return (
+                f"I put together a shopping list for {subject_text_en}: {product_count} items are on Foodland.sk, "
+                f"and {missing_count} fresh or extra ingredients you'll need to get elsewhere."
+            )
+        if product_count:
+            return f"I put together a shopping list for {subject_text_en}; the Foodland.sk items below are ready to add to your cart."
+        return f"I couldn't find suitable products for {subject_text_en} on Foodland.sk, but the ingredients you'll need are listed below."
     if product_count and missing_count:
         return (
             f"Pripravila som nákupný zoznam pre {subject_text}: {product_count} položiek nájdete na Foodland.sk "
@@ -6260,7 +6309,13 @@ def first_article_link(record: dict, title: str) -> str:
     return "https://www.foodland.sk/blog/"
 
 
-def recipe_answer(subject: str, recipes: list[dict] | None = None) -> str:
+def recipe_answer(subject: str, recipes: list[dict] | None = None, lang: str = "sk") -> str:
+    if lang == "en":
+        if recipes:
+            if len(recipes) == 1:
+                return "I found a recipe on Foodland.sk. Open it below."
+            return "I found recipes on Foodland.sk. Pick one from the recommendations below."
+        return "I picked up on a recipe question, but don't have enough detail for an exact recipe. Try writing e.g.: kimchi recipe or pad thai recipe."
     if recipes:
         if len(recipes) == 1:
             return "Našla som recept z Foodland.sk. Otvorte si ho nižšie."
@@ -6269,14 +6324,29 @@ def recipe_answer(subject: str, recipes: list[dict] | None = None) -> str:
     return "Receptovú otázku som zachytila, ale nemám dosť detailov na presný recept. Skúste napísať napríklad: recept na kimchi alebo recept na pad thai."
 
 
-def random_recipes_answer(recipes: list[dict] | None = None) -> str:
+def random_recipes_answer(recipes: list[dict] | None = None, lang: str = "sk") -> str:
+    if lang == "en":
+        if recipes:
+            return "I picked three recipes from different cuisines for dinner. Choose whichever sounds best below."
+        return recipe_answer("general", recipes, lang)
     if recipes:
         return "Na večeru som vybrala tri recepty z rôznych kuchýň. Vyberte si podľa chuti nižšie."
     return recipe_answer("general", recipes)
 
 
-def recipe_products_answer(subject: str | None, recipes: list[dict] | None = None) -> str:
+def recipe_products_answer(subject: str | None, recipes: list[dict] | None = None, lang: str = "sk") -> str:
     subject_text = str(subject or "recept").replace("_", " ")
+    if lang == "en":
+        subject_text_en = readable_subject_label_en(subject) if subject else "this recipe"
+        if recipes:
+            return (
+                f"I put together a shopping list for {subject_text_en}: Foodland.sk products first, then separately the things "
+                "you'll need to get elsewhere. Products are sorted from key ingredients to extras."
+            )
+        return (
+            f"I found relevant Foodland.sk products for the {subject_text_en} recipe. "
+            "They're sorted from key ingredients to extras; add fresh items yourself per the recipe."
+        )
     if recipes:
         return (
             f"Pripravila som nákupný zoznam pre {subject_text}: najprv produkty z Foodland.sk, potom zvlášť veci, ktoré si treba doplniť mimo e-shopu. "
@@ -7292,7 +7362,41 @@ def composition_caution_context(needs_composition_caution: bool) -> str:
     return "Pri bezlepkových otázkach alebo otázkach na zloženie odporuč overiť zloženie v detaile produktu."
 
 
-def allergen_safety_answer(allergen_term: str) -> str:
+ALLERGEN_TERM_EN_LABELS = {
+    "sóju": "soy",
+    "lepok": "gluten",
+    "arašidy": "peanuts",
+    "orechy": "nuts",
+    "mlieko": "milk",
+    "laktózu": "lactose",
+    "vajcia": "eggs",
+    "sezam": "sesame",
+    "ryby": "fish",
+    "mäkkýše": "shellfish",
+    "krevety": "shrimp",
+}
+
+
+def allergen_safety_answer(allergen_term: str, lang: str = "sk") -> str:
+    if lang == "en":
+        if allergen_term in ("alergeny", "alerginy"):
+            return (
+                "I don't want to recommend the wrong product for allergens. "
+                "Please check the ingredients on the specific product page, or tell us which product "
+                "you'd like us to check."
+            )
+        if allergen_term in ("vhodnost pre veganov", "vhodnosť pre veganov"):
+            return (
+                "Got it, you're vegan. Foodland.sk carries several vegan-friendly products "
+                "- plant-based sauces, coconut milk, tofu, tempeh, and more. "
+                "Try using the filters, or tell us exactly what you're looking for."
+            )
+        term_en = ALLERGEN_TERM_EN_LABELS.get(allergen_term, allergen_term)
+        return (
+            f"For allergies or intolerance to {term_en}, I don't want to recommend a product by name alone. "
+            "Please check the ingredients and allergens on the specific product page - the label is what matters. "
+            "Send us the product name and we'll help you find its page on Foodland.sk."
+        )
     if allergen_term in ("alergeny", "alerginy"):
         return (
             "Pri alergènoch vám nechcem odporučiť nesprávny produkt. "
@@ -7459,6 +7563,25 @@ def readable_subject_label(subject: str | None) -> str:
     return labels.get(subject, subject.replace("_", " "))
 
 
+def readable_subject_label_en(subject: str | None) -> str:
+    if not subject:
+        return "this topic"
+    labels = {
+        "sojova_omacka": "soy sauce",
+        "kimchi": "kimchi",
+        "gochujang": "gochujang",
+        "sushi": "sushi",
+        "ramen": "ramen",
+        "pho": "pho",
+        "pad_thai": "pad thai",
+        "miso": "miso paste",
+        "tofu": "tofu",
+        "kokosove_mlieko": "coconut milk",
+        "ryzove_rezance": "rice noodles",
+    }
+    return labels.get(subject, subject.replace("_", " "))
+
+
 def compact_product_titles(matches: list[dict], limit: int = 3) -> str:
     titles = []
     for product in matches[:limit]:
@@ -7473,11 +7596,42 @@ def fallback_answer(
     knowledge_matches: dict | None = None,
     related_subject: str | None = None,
     needs_composition_caution: bool = False,
+    lang: str = "sk",
 ) -> str:
     knowledge_matches = knowledge_matches or {}
     faq_answer = best_faq_answer(knowledge_matches)
     if faq_answer and not matches:
         return faq_answer
+
+    if lang == "en":
+        if matches:
+            count = min(len(matches), 5)
+            caution = (
+                " For gluten-free products or ingredient questions, please check the composition on the product page."
+                if needs_composition_caution
+                else ""
+            )
+            titles = compact_product_titles(matches)
+            if related_subject:
+                subject_label = readable_subject_label_en(related_subject)
+                if titles:
+                    return (
+                        f"For {subject_label}, I'd mainly recommend these related products: {titles}. "
+                        f"See the recommendations below, sorted by relevance.{caution}"
+                    )
+                return f"I found {count} related products and ingredients that go well with {subject_label}.{caution}"
+            if knowledge_matches:
+                if titles:
+                    return f"I found suitable products for this question: {titles}. See details and availability below.{caution}"
+                return f"I found {count} suitable products and added recommendations from the Foodland assistant.{caution}"
+            if titles:
+                return f"I found these most relevant products: {titles}. More recommendations are below.{caution}"
+            return f"I found {count} suitable products. See the recommendations below.{caution}"
+
+        if knowledge_matches:
+            return "I found related information in the Foodland assistant."
+
+        return "I couldn't find an exact answer. Try rephrasing your question."
 
     if matches:
         count = min(len(matches), 5)
@@ -7501,24 +7655,6 @@ def fallback_answer(
             return f"Našla som {count} vhodných produktov a doplnila som odporúčania z Foodland poradkyne.{caution}"
         if titles:
             return f"Našla som tieto najrelevantnejšie produkty: {titles}. Ďalšie odporúčania sú nižšie.{caution}"
-        return f"Našla som {count} vhodných produktov. Pozrite si odporúčania nižšie.{caution}"
-
-    if knowledge_matches:
-        return "Našla som súvisiace informácie vo Foodland poradkyni."
-
-    return "Nenašla som presnú odpoveď. Skúste otázku napísať trochu inak."
-
-    if matches:
-        count = min(len(matches), 5)
-        caution = (
-            " Pri bezlepkových produktoch alebo otázkach na zloženie si prosím overte zloženie v detaile produktu."
-            if needs_composition_caution
-            else ""
-        )
-        if related_subject:
-            return f"Našla som {count} súvisiacich produktov a surovín, ktoré sa hodia k téme {related_subject}.{caution}"
-        if knowledge_matches:
-            return f"Našla som {count} vhodných produktov a doplnila som odporúčania z Foodland poradkyne.{caution}"
         return f"Našla som {count} vhodných produktov. Pozrite si odporúčania nižšie.{caution}"
 
     if knowledge_matches:
