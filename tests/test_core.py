@@ -1655,6 +1655,19 @@ class TestIntentDetection:
         subj = main.detect_related_subject("co potrebujem na sushi?")
         assert subj == "sushi"
 
+    def test_related_subject_onigiri_not_misdetected_as_sushi(self):
+        # Regression test: sushi alias list includes "nigiri", which is a
+        # substring of "onigiri" - onigiri questions must resolve to the
+        # onigiri subject (and surface the onigiri mold), not sushi.
+        subj = main.detect_related_subject("pomocku na balenie onigiri")
+        assert subj == "onigiri"
+        recs = main.related_products_for_subject(main.products, main.knowledge, "onigiri", 3)
+        titles = [r.get("title", "") for r in recs]
+        assert any("onigiri" in main.normalize(t) for t in titles)
+
+    def test_related_subject_nigiri_still_resolves_to_sushi(self):
+        assert main.detect_related_subject("chcem si kupit nigiri na veceru") == "sushi"
+
     def test_related_subject_kimchi(self):
         subj = main.detect_related_subject("ingrediencie na kimchi")
         assert subj == "kimchi_recipe"

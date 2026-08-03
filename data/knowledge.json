@@ -70922,6 +70922,54 @@
         "HU": "HU",
         "VI": "VI",
         "Poznámka": "Spätné pripisovanie kreditov zákazníkovi - odporúčané riešiť podporou, ak nemáme presnejšie pravidlo."
+      },
+      {
+        "Kategória": "Nákup",
+        "Otázka": "Kde môžem sledovať stav svojej objednávky?",
+        "Odpoveď": "Ak ste registrovaný zákazník, stav objednávky si viete pozrieť priamo vo svojom účte na Foodland.sk. O priebehu objednávky (napr. o pripravenosti na osobný odber) vás zároveň informujeme e-mailom.",
+        "SK": "SK",
+        "CZ": "CZ",
+        "AT": "AT",
+        "EN": "EN",
+        "PL": "PL",
+        "HU": "HU",
+        "VI": "VI"
+      },
+      {
+        "Kategória": "Nákup",
+        "Otázka": "Má Foodland kamennú predajňu? Kde ju nájdem a aké má otváracie hodiny?",
+        "Odpoveď": "Áno, predajňa Foodland sa nachádza na adrese Stará Vajnorská 19, 831 04 Bratislava (areál REMPO). Otváracie hodiny: Po–Pi 8:00–18:00, So 9:00–20:00, Ne 9:00–15:00.",
+        "SK": "SK",
+        "CZ": "CZ",
+        "AT": "AT",
+        "EN": "EN",
+        "PL": "PL",
+        "HU": "HU",
+        "VI": "VI"
+      },
+      {
+        "Kategória": "Doprava",
+        "Otázka": "Ak si objednám tovar s osobným odberom, dokedy bude pripravený na vyzdvihnutie?",
+        "Odpoveď": "Po odoslaní objednávky s osobným odberom vám príde e-mail s informáciou, kedy si môžete tovar v predajni vyzdvihnúť.",
+        "SK": "SK",
+        "CZ": "CZ",
+        "AT": "AT",
+        "EN": "EN",
+        "PL": "PL",
+        "HU": "HU",
+        "VI": "VI"
+      },
+      {
+        "Kategória": "Nákup",
+        "Otázka": "Sú ceny v kamennej predajni rovnaké ako na e-shope?",
+        "Odpoveď": "Áno, ceny sú v predajni aj na e-shope rovnaké. V predajni navyše nájdete širší sortiment vrátane čerstvých, chladených a mrazených produktov, ktoré e-shop neponúka.",
+        "SK": "SK",
+        "CZ": "CZ",
+        "AT": "AT",
+        "EN": "EN",
+        "PL": "PL",
+        "HU": "HU",
+        "VI": "VI"
       }
     ],
     "Products_AI": [
@@ -77834,7 +77882,7 @@
     "CrossSell": 2140,
     "Recipes": 53,
     "Magazine": 60,
-    "FAQ": 44,
+    "FAQ": 48,
     "Products_AI": 130,
     "IntentMapping": 318
   }

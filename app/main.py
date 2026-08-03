@@ -1287,6 +1287,10 @@ RELATED_SUBJECT_ALIASES = {
     "kimchi_ramen": ("kimchi ramen", "ramen kimchi"),
     "kimchi_recipe": ("vyrobu kimchi", "kimchi ingrediencie", "kimchi recept", "kimchi navod", "spravit kimchi", "pripravit kimchi", "urobim kimchi", "kimchi suroviny", "ako vyrob kimchi"),
     "kimchi": ("kimchi", "kimci"),
+    # onigiri must be checked before sushi: sushi's "nigiri" alias is a
+    # substring of "onigiri", so without this ordering every onigiri
+    # question got misclassified as a sushi question.
+    "onigiri": ("onigiri", "ryżové gulky", "ryzove gulky", "ryzove gulky", "onigiri"),
     "sushi": ("sushi", "susi", "sushi ryza", "susi ryza", "maki", "maki rolky", "california roll", "futomaki", "hosomaki", "uramaki", "nigiri", "temaki", "sashimi"),
     "gochujang": ("gochujang", "gochu jang", "gochuang", "gochugaru", "korean chili flakes", "koreanska cili"),
     "ramen": ("ramen", "ramyun", "ramyeon", "tonkotsu", "tantanmen", "noodle soup", "noodle broth", "soup noodles", "nudl", "nudle", "nudlov"),
@@ -1321,7 +1325,6 @@ RELATED_SUBJECT_ALIASES = {
     "okonomiyaki": ("okonomiyaki",),
     "takoyaki": ("takoyaki",),
     "shabu_shabu": ("shabu shabu", "shabu-shabu", "hot pot", "hotpot", "hot-pot", "hot potu", "hotpotu"),
-    "onigiri": ("onigiri", "ryżové gulky", "ryzove gulky", "ryzove gulky", "onigiri"),
     "yakisoba": ("yakisoba", "yaki soba", "yakisobu", "yaki sobu", "yakisoby", "yakisobe"),
     "udon": ("udon", "udonom", "udonove nudle", "udonovu polievku"),
     "soba": ("soba", "soba nudle", "soba rezance", "sobove nudle"),
@@ -1769,6 +1772,8 @@ FAQ_INTENT_MARKERS = (
     "password",
     "loyalty",
     "discount code",
+    "predajn",
+    "store",
 )
 
 SHOPPING_LIST_MARKERS = (
