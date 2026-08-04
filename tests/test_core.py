@@ -1886,6 +1886,28 @@ class TestSessionMemory:
         assert "sushi" in main.normalize(contextual)
         assert main.detect_related_subject(contextual) == "sushi"
 
+    def test_followup_falls_back_to_last_product_for_unrecognized_subject(self, products):
+        # Regression test: a real production complaint - a customer asked
+        # about jujube (not a recognized RELATED_SUBJECT_ALIASES dish), then
+        # asked the bare follow-up "Ma kostky?" (does it have pits?). This
+        # must resolve using the specific last-shown product, not silently
+        # fall through to an unrelated subject incidentally tagged by some
+        # other co-result in the same search.
+        main.session_memories.clear()
+        key = main.session_memory_key("memory-test-kostky", "127.0.0.1")
+        memory = main.get_session_memory(key)
+        matches = main.cached_search_products(products, "Jujube eaglobe", 3)
+        assert matches
+        main.update_session_memory(key, "Jujube eaglobe", "product_search", matches, [], {})
+
+        assert main.is_context_followup("Ma kostky?")
+        contextual = main.contextualize_message("Ma kostky?", memory)
+        assert "jujuba" in main.normalize(contextual)
+
+        followup_matches = main.cached_search_products(products, contextual, 5)
+        assert followup_matches
+        assert "jujuba" in main.normalize(followup_matches[0].get("title", ""))
+
     def test_diet_preference_is_remembered(self):
         main.session_memories.clear()
         key = main.session_memory_key("memory-test-2", "127.0.0.1")

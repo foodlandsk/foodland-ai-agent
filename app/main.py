@@ -3208,6 +3208,7 @@ def get_session_memory(memory_key: str) -> dict:
             "diet_terms": deque(maxlen=4),
             "product_titles": deque(maxlen=8),
             "recipe_titles": deque(maxlen=5),
+            "last_top_product_title": "",
             "last_intent": "",
             "updated_at": now,
         }
@@ -3238,9 +3239,20 @@ def contextualize_message(message: str, memory: dict | None) -> str:
 
     parts = [message]
     if is_context_followup(message):
-        subject = best_memory_subject(memory)
-        if subject:
-            parts.append(subject.replace("_", " "))
+        # Prefer the most recently shown product over the coarser dish
+        # subject: subjects can get tagged by an incidental/unrelated
+        # co-result (e.g. a jujube search pulling in an unrelated Japanese
+        # noodle product tags the whole session "japonska_kuchyna"), while
+        # the last product title is what the customer is actually looking
+        # at - and it still resolves via the normal subject-alias matching
+        # once appended, since product titles contain the dish/ingredient
+        # keyword too.
+        if memory.get("last_top_product_title"):
+            parts.append(memory["last_top_product_title"])
+        else:
+            subject = best_memory_subject(memory)
+            if subject:
+                parts.append(subject.replace("_", " "))
     for term in list(memory.get("diet_terms", []))[-2:]:
         if term and term not in normalize(" ".join(parts)):
             parts.append(term)
@@ -3251,7 +3263,7 @@ def is_context_followup(message: str) -> bool:
     normalized_message = normalize(message).strip()
     if len(tokenize(normalized_message)) <= 3 and any(
         marker in normalized_message
-        for marker in ("k tomu", "co este", "este nieco", "dopln", "hodia", "odporuc", "a co", "a este")
+        for marker in ("k tomu", "co este", "este nieco", "dopln", "hodia", "odporuc", "kostk", "a co", "a este")
     ):
         return True
     return normalized_message in {
@@ -3291,6 +3303,10 @@ def update_session_memory(
     for term in detect_diet_terms(message):
         append_unique(memory["diet_terms"], term)
 
+    if matches:
+        top_title = matches[0].get("title")
+        if top_title:
+            memory["last_top_product_title"] = redact_memory_text(str(top_title))[:120]
     for product in (matches or [])[:4]:
         title = product.get("title")
         if title:
@@ -3613,7 +3629,12 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         if is_article_info_intent(chat_request.message)
         else None
     )
-    if not related_subject and is_context_followup(chat_request.message):
+    if not related_subject and is_context_followup(chat_request.message) and not memory.get("last_top_product_title"):
+        # Only fall back to the coarse memory subject when there was no
+        # specific last-seen product to fold into contextual_message in
+        # the first place (contextualize_message() already tried the
+        # more precise product-title-based context and it flows through
+        # detect_related_subject() above on its own).
         related_subject = memory_subject
     needs_composition_caution = is_composition_caution_search(contextual_message)
     if already_have_subject:
