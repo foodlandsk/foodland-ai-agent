@@ -3473,6 +3473,19 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     )
     articles = article_results(knowledge_matches, chat_request.limit) if "Magazine" in knowledge_sections else []
 
+    if is_missing_composition_complaint(chat_request.message):
+        update_session_memory(memory_key, chat_request.message, "missing_composition", [], [], knowledge_matches)
+        updated_profile = update_user_memory(profile_key, chat_request.message, "missing_composition", [], [])
+        log_question(chat_request.message, client_key, 0, intent="missing_composition", session_id=session_id)
+        return {
+            "answer": missing_composition_answer(query_language),
+            "products": [],
+            "articles": articles,
+            "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": "missing_composition",
+        }
+
     if allergen_term and (allergen_product_query(chat_request.message) or not detect_related_subject(chat_request.message)):
         allergen_matches = allergen_product_matches(chat_request.message, chat_request.limit)
         allergen_matches = personalize_products(allergen_matches, user_profile)
@@ -7109,6 +7122,40 @@ def complement_products_for_subject(products_list: list, subject_key: str, limit
                 return recommendations
             break
     return recommendations
+
+
+MISSING_COMPOSITION_MARKERS = (
+    "zlozenie chyba",
+    "chyba zlozenie",
+    "neviem najst zlozenie",
+    "nemozem najst zlozenie",
+    "zlozenie neni",
+    "zlozenie nie je",
+    "chyba mi zlozenie",
+    "missing ingredients",
+    "ingredients are missing",
+    "cant find the ingredients",
+    "cannot find the ingredients",
+)
+
+
+def is_missing_composition_complaint(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(marker in normalized_message for marker in MISSING_COMPOSITION_MARKERS)
+
+
+def missing_composition_answer(lang: str = "sk") -> str:
+    if lang == "en":
+        return (
+            "Sorry about that - some product pages may be missing the full ingredient list. "
+            "Please contact our support team directly at eshop@foodland.sk or +421 2 4468 1527 "
+            "and we will get you the composition for that specific product."
+        )
+    return (
+        "Ospravedlňujeme sa, niektoré produkty môžu mať na stránke neúplne uvedené zloženie. "
+        "Napíšte nám prosím priamo na eshop@foodland.sk alebo zavolajte na +421 2 4468 1527 "
+        "a radi vám zloženie konkrétneho produktu doplníme."
+    )
 
 
 def detect_allergen_intent(message: str) -> str | None:

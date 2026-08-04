@@ -1334,6 +1334,23 @@ class TestIntentDetection:
     def test_allergen_warning_suffix_does_not_override_product_search(self):
         assert main.detect_allergen_intent("chcem ryzove rezance. pozor na alergeny") is None
 
+    def test_missing_composition_complaint_detected(self):
+        # Regression test: a real production complaint cluster where
+        # customers said the composition/ingredient list was missing from
+        # the product page - these must route to a support-escalation
+        # answer, not the generic "check the product page" allergen
+        # template (which is exactly what they were complaining about).
+        assert main.is_missing_composition_complaint("Ale zlozenie chyba")
+        assert main.is_missing_composition_complaint("Chyba zlozenie omacky")
+        assert main.is_missing_composition_complaint("Co mam robit ak pri produkte chyba zlozenie?")
+        assert main.is_missing_composition_complaint("nemozem najst zlozenie pre tento produkt")
+
+    def test_missing_composition_answer_gives_support_contact(self):
+        answer_sk = main.missing_composition_answer("sk")
+        assert "eshop@foodland.sk" in answer_sk
+        answer_en = main.missing_composition_answer("en")
+        assert "eshop@foodland.sk" in answer_en
+
     def test_faq_doprava(self):
         assert main.is_faq_intent("kolko stoji doprava?")
 
