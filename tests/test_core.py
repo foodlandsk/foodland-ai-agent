@@ -1937,6 +1937,12 @@ class TestFAQ:
         answer = main.best_direct_faq_answer("ako mozem zaplatit?", knowledge)
         assert answer
 
+    def test_faq_intent_detects_slovak_loyalty_program_wording(self):
+        # Regression: FAQ_INTENT_MARKERS only had the English "loyalty",
+        # so a Slovak question about "vernostny program" never even reached
+        # the FAQ lookup and fell through to plain product search instead.
+        assert main.is_faq_intent("Ma Foodland vernostny program so zlavami alebo bodmi?")
+
     def test_faq_returns_none_for_product_query(self, knowledge):
         answer = main.best_direct_faq_answer("gochujang pasta", knowledge)
         assert answer is None

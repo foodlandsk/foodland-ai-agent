@@ -1771,6 +1771,7 @@ FAQ_INTENT_MARKERS = (
     "registration",
     "password",
     "loyalty",
+    "vernostn",
     "discount code",
     "predajn",
     "store",
