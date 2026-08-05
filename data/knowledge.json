@@ -70782,7 +70782,7 @@
       {
         "Kategória": "Vernostný program",
         "Otázka": "Má Foodland vernostný program so zľavami alebo bodmi?",
-        "Odpoveď": "Nie, Foodland momentálne neprevádzkuje formálny bodový či vernostný program.",
+        "Odpoveď": "Áno, formou kreditov, ktoré získavate za každý nákup (1 € nákupu = 1 kredit, 1 kredit má hodnotu 0,01 €). Podrobnosti o používaní kreditov nájdete nižšie.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
@@ -70963,6 +70963,42 @@
         "Kategória": "Nákup",
         "Otázka": "Sú ceny v kamennej predajni rovnaké ako na e-shope?",
         "Odpoveď": "Áno, ceny sú v predajni aj na e-shope rovnaké. V predajni navyše nájdete širší sortiment vrátane čerstvých, chladených a mrazených produktov, ktoré e-shop neponúka.",
+        "SK": "SK",
+        "CZ": "CZ",
+        "AT": "AT",
+        "EN": "EN",
+        "PL": "PL",
+        "HU": "HU",
+        "VI": "VI"
+      },
+      {
+        "Kategória": "Nákup",
+        "Otázka": "Je pri kamennej predajni parkovanie?",
+        "Odpoveď": "Áno, parkovanie je dostupné v rámci areálu podľa aktuálnej obsadenosti.",
+        "SK": "SK",
+        "CZ": "CZ",
+        "AT": "AT",
+        "EN": "EN",
+        "PL": "PL",
+        "HU": "HU",
+        "VI": "VI"
+      },
+      {
+        "Kategória": "Produkty",
+        "Otázka": "Odkiaľ pochádzajú vaše produkty?",
+        "Odpoveď": "Naše produkty pochádzajú predovšetkým z Vietnamu, Thajska a USA, ako aj z Japonska, Kórey, Indie, Indonézie, Malajzie, Singapuru a Filipín.",
+        "SK": "SK",
+        "CZ": "CZ",
+        "AT": "AT",
+        "EN": "EN",
+        "PL": "PL",
+        "HU": "HU",
+        "VI": "VI"
+      },
+      {
+        "Kategória": "Produkty",
+        "Otázka": "Čo znamená, ak produkt v e-shope nevidím alebo je vypredaný?",
+        "Odpoveď": "V e-shope zobrazujeme iba produkty, ktoré sú aktuálne skladom. Ak produkt v ponuke nevidíte, je momentálne vypredaný - skúste to prosím neskôr.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
@@ -77882,7 +77918,7 @@
     "CrossSell": 2140,
     "Recipes": 53,
     "Magazine": 60,
-    "FAQ": 48,
+    "FAQ": 51,
     "Products_AI": 130,
     "IntentMapping": 318
   }

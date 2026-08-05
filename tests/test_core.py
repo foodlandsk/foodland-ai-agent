@@ -1941,6 +1941,17 @@ class TestFAQ:
         answer = main.best_direct_faq_answer("gochujang pasta", knowledge)
         assert answer is None
 
+    def test_faq_sub_question_beats_generic_same_category_answer(self, knowledge):
+        # Regression: sub-questions in knowledge.json leave Kategória blank
+        # and inherit the preceding row's category. Without forward-filling
+        # that category for scoring, a specific sub-question like "can I pay
+        # by card in store" lost to the generic "which payment methods do
+        # you support" answer, because only the generic row carried a
+        # Kategória value and got the FAQ_CATEGORY_MARKERS bonus.
+        answer = main.best_direct_faq_answer("Da sa v predajni platit kartou?", knowledge)
+        assert answer
+        assert "predajni" in main.normalize(answer)
+
 
 class TestKnowledgeSearch:
     def test_sriracha_in_products_ai(self, knowledge):

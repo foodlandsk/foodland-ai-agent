@@ -5616,10 +5616,24 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         if delivery_answer:
             return delivery_answer
 
+    current_category = ""
     for record in loaded_knowledge.get("sections", {}).get("FAQ", []):
         question = first_record_value(record, ("Otázka", "Otazka", "question"))
         answer = first_record_value(record, ("Odpoveď", "Odpoved", "answer"))
         category = first_record_value(record, ("Kategória", "Kategoria", "category"))
+        if category:
+            current_category = category
+        else:
+            # Sub-questions in knowledge.json leave Kategória blank and rely on
+            # the preceding row's category (visual grouping in the source
+            # sheet). Without this fallback those rows never get the
+            # FAQ_CATEGORY_MARKERS bonus below, so a generic top-of-group
+            # answer (which does carry the category) systematically outranks
+            # a more specific sub-question even when the sub-question is the
+            # better match (e.g. "card payment in store" losing to "which
+            # payment methods do you support" because only the latter has
+            # Kategória == "Platby").
+            category = current_category
         if not answer:
             continue
 
