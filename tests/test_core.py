@@ -1958,6 +1958,74 @@ class TestFAQ:
         assert answer
         assert "objednavky" in main.normalize(answer) or "ucte" in main.normalize(answer)
 
+    # Regression suite from a systematic audit: all 51 FAQ entries were
+    # tested against realistic short/terse customer phrasings (not just the
+    # FAQ's own question wording). ~12 scored a confident but wrong answer
+    # instead of a clean "no match" - each fixed below with a direct-marker
+    # shortcut, verified not to regress any of the other 50 entries.
+
+    def test_faq_cash_on_delivery_home_beats_card_in_store(self, knowledge):
+        # "da sa platit dobierkou" used to match the unrelated "can I pay by
+        # card in store" FAQ (both mention "plat"/"kart" adjacent words).
+        answer = main.best_direct_faq_answer("da sa platit dobierkou", knowledge)
+        assert answer
+        assert "dobierkou" in main.normalize(answer)
+
+    def test_faq_cash_on_delivery_with_courier_beats_generic_delivery_methods(self, knowledge):
+        # "dobierka kurier" used to match the generic "which delivery
+        # methods do you offer" shortcut instead of the specific COD answer,
+        # since "kurier" triggers both.
+        answer = main.best_direct_faq_answer("dobierka kurier", knowledge)
+        assert answer
+        assert "dobierk" in main.normalize(answer)
+
+    def test_faq_which_countries_beats_generic_delivery_methods(self, knowledge):
+        # "dorucujete do cr?" used to match the generic delivery-methods
+        # shortcut (triggered by "doruc") instead of the countries-list FAQ.
+        answer = main.best_direct_faq_answer("dorucujete do cr?", knowledge)
+        assert answer
+        assert "krajin" in main.normalize(answer)
+
+    def test_faq_no_show_beats_generic_how_to_order(self, knowledge):
+        # "nevyzdvihol som si objednavku" (I never picked up my order) used
+        # to score highest against the unrelated "how do I place an order"
+        # FAQ - actively unhelpful for a customer worried about a no-show.
+        answer = main.best_direct_faq_answer("nevyzdvihol som si objednavku", knowledge)
+        assert answer
+        assert "neprevzati" in main.normalize(answer) or "zmluvnu pokutu" in main.normalize(answer)
+
+    def test_faq_refund_timing_beats_generic_complaint_contact(self, knowledge):
+        # "vratenie penazi" used to match the generic wrong-item complaint
+        # FAQ instead of the specific refund-timing answer.
+        answer = main.best_direct_faq_answer("vratenie penazi", knowledge)
+        assert answer
+        assert "lehotach" in main.normalize(answer) or "obchodnymi podmienkami" in main.normalize(answer)
+
+    def test_faq_credit_note_mechanism_beats_generic_complaint_contact(self, knowledge):
+        answer = main.best_direct_faq_answer("vratenie penazi dobropisom", knowledge)
+        assert answer
+        assert "dobropis" in main.normalize(answer)
+
+    def test_faq_exchange_in_store_beats_complaint_in_store(self, knowledge):
+        # "vymena v predajni" used to tie-break against the unrelated
+        # "can I resolve a complaint in store" FAQ (both share the
+        # "vymen"/"predajni" category-marker bonus).
+        answer = main.best_direct_faq_answer("vymena v predajni", knowledge)
+        assert answer
+        assert "vymen" in main.normalize(answer) or "vraten" in main.normalize(answer)
+
+    def test_faq_credit_validity_beats_generic_credits_intro(self, knowledge):
+        # "platnost kreditov" used to match the top-level "yes we have a
+        # credits program" intro instead of the specific 365-day answer.
+        answer = main.best_direct_faq_answer("platnost kreditov", knowledge)
+        assert answer
+        assert "365" in answer
+
+    def test_faq_credit_expiry_notice_beats_generic_credits_intro(self, knowledge):
+        answer = main.best_direct_faq_answer("upozornenie na vyprsanie kreditov", knowledge)
+        assert answer
+        assert "notifik" in main.normalize(answer) or "30 dni" in main.normalize(answer) or "upozornime" in main.normalize(answer)
+
     def test_faq_sub_question_beats_generic_same_category_answer(self, knowledge):
         # Regression: sub-questions in knowledge.json leave Kategória blank
         # and inherit the preceding row's category. Without forward-filling

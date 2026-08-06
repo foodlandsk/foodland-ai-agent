@@ -5621,6 +5621,21 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         )
         if tracking_answer:
             return tracking_answer
+    # Checked before the delivery-methods shortcut below: "dobierk" also
+    # matches "doruc"/"kurier" there, so a specific cash-on-delivery
+    # question would otherwise get the generic "which delivery methods
+    # do you offer" answer instead of a direct yes/no about COD.
+    if "dobierk" in normalized_message:
+        cod_markers = ("dobierkou", "kurierom") if "kurier" in normalized_message else ("domov", "dobierkou")
+        cod_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=cod_markers)
+        if cod_answer:
+            return cod_answer
+    # Same reasoning: "which countries do you ship to" also contains
+    # "doruc", so it must be checked before the generic shortcut too.
+    if any(marker in normalized_message for marker in ("krajin", "do cr", "do ceska", "do cesko", "do rakuska", "zahranic")):
+        countries_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("krajin", "dorucuje"))
+        if countries_answer:
+            return countries_answer
     if any(marker in normalized_message for marker in ("kurier", "doruc", "zasiel", "posiel", "preprav", "privez", "rozvaz")):
         delivery_answer = direct_faq_answer_by_question_markers(
             loaded_knowledge,
@@ -5628,6 +5643,30 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         )
         if delivery_answer:
             return delivery_answer
+    if any(marker in normalized_message for marker in ("nevyzdvihol", "nevyzdvihla", "neprevzal", "neprevzala", "no-show", "noshow", "nevyzdvihnem", "neprebral")):
+        no_show_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("neprevezmem",))
+        if no_show_answer:
+            return no_show_answer
+    if "vratenie" in normalized_message and "penaz" in normalized_message:
+        if "dobropis" in normalized_message:
+            credit_note_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("vratenie", "dobropisu"))
+            if credit_note_answer:
+                return credit_note_answer
+        refund_timing_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("vratenie", "odstupeni"))
+        if refund_timing_answer:
+            return refund_timing_answer
+    if "vymen" in normalized_message and any(marker in normalized_message for marker in ("predajn", "obchod")):
+        exchange_in_store_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("vymenit", "predajni"))
+        if exchange_in_store_answer:
+            return exchange_in_store_answer
+    if "kredit" in normalized_message and any(marker in normalized_message for marker in ("platnost", "dokedy platia", "vyprsia", "vyprsanie", "expiruju")):
+        if any(marker in normalized_message for marker in ("upozorn", "davate vediet", "notifikacia")):
+            expiry_notice_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("upozornite", "vyprsanim"))
+            if expiry_notice_answer:
+                return expiry_notice_answer
+        validity_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("platia", "kredity"))
+        if validity_answer:
+            return validity_answer
 
     current_category = ""
     for record in loaded_knowledge.get("sections", {}).get("FAQ", []):
