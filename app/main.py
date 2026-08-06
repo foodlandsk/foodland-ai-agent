@@ -5364,8 +5364,22 @@ def cached_top_questions(limit: int = 50) -> list[dict]:
 def public_suggested_question_rows(events: list[dict], limit: int = 5, min_count: int = 2) -> list[dict]:
     safe_limit = max(1, min(int(limit or 5), 8))
     safe_min_count = max(1, min(int(min_count or 2), 20))
+    # Never suggest a question that is itself tracked as a no-result in
+    # this same window - e.g. "Ma kostky?" is only meaningful as a
+    # follow-up right after a specific product was discussed, so it is
+    # frequent AND a frequent no-result at once. Deriving this from the
+    # no-result log (rather than a hardcoded phrase list) means any future
+    # question with the same context-dependent shape is excluded
+    # automatically, with no code change needed.
+    no_result_keys = {
+        normalized_question_key(str(event.get("message", "")))
+        for event in events
+        if is_no_result_event(event)
+    }
     rows = []
     for row in top_question_rows(events, 50):
+        if row.get("normalized") in no_result_keys:
+            continue
         question = clean_public_suggested_question(str(row.get("question") or ""))
         if not question or int(row.get("count", 0) or 0) < safe_min_count:
             continue

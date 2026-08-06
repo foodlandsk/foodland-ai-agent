@@ -2262,6 +2262,27 @@ class TestAdminAnalytics:
         questions = [row["question"] for row in rows]
         assert questions == ["co je kimchi?"]
 
+    def test_public_suggested_questions_exclude_frequent_no_results(self):
+        # Regression: "Ma kostky?" only makes sense as a follow-up right
+        # after a specific product was discussed (Sprint N), so asked cold
+        # it reliably returns zero matches - yet it was frequent enough to
+        # show up as a standalone "suggested question" chip, actively
+        # inviting visitors into a guaranteed no-result experience. Rather
+        # than hardcoding that one phrase, exclude any question that is
+        # itself tracked as a no-result in the same window, so this stays
+        # correct automatically as new context-dependent questions emerge.
+        events = [
+            {"ts": 10, "message": "Ma kostky?", "matches_count": 0, "intent": "product_search"},
+            {"ts": 11, "message": "Ma kostky?", "matches_count": 0, "intent": "product_search"},
+            {"ts": 12, "message": "Korenie na ryzu", "matches_count": 3, "intent": "product_search"},
+            {"ts": 13, "message": "Korenie na ryzu", "matches_count": 5, "intent": "product_search"},
+        ]
+        rows = main.public_suggested_question_rows(events, limit=5, min_count=2)
+
+        questions = [row["question"] for row in rows]
+        assert "Korenie na ryzu?" in questions or "Korenie na ryzu" in questions
+        assert not any("kostky" in main.normalize(q) for q in questions)
+
     def test_clean_public_suggested_question_filters_sensitive_text(self):
         assert main.clean_public_suggested_question("napiste mi na test@example.com") == ""
         assert main.clean_public_suggested_question("pozri https://example.com") == ""
