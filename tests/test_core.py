@@ -1964,6 +1964,19 @@ class TestFAQ:
     # instead of a clean "no match" - each fixed below with a direct-marker
     # shortcut, verified not to regress any of the other 50 entries.
 
+    def test_faq_parking_reaches_intent_gate_and_scores(self, knowledge):
+        # Real user report: "Parkovanie, kde sa da zaparkovat?" answered
+        # with random unrelated products. FAQ_INTENT_MARKERS had no marker
+        # for parking at all, so the question never reached the FAQ branch;
+        # and even a bare "Parkovanie" alone shares only the noun root with
+        # the FAQ's own question wording ("parkovanie" vs "zaparkovat"),
+        # topping out at score 1 - short of the >= 3 threshold.
+        assert main.is_faq_intent("Parkovanie, kde sa da zaparkovat?")
+        answer = main.best_direct_faq_answer("Parkovanie, kde sa da zaparkovat?", knowledge)
+        assert answer
+        assert "parkovanie" in main.normalize(answer)
+        assert main.best_direct_faq_answer("Parkovanie", knowledge) == answer
+
     def test_faq_cash_on_delivery_home_beats_card_in_store(self, knowledge):
         # "da sa platit dobierkou" used to match the unrelated "can I pay by
         # card in store" FAQ (both mention "plat"/"kart" adjacent words).
