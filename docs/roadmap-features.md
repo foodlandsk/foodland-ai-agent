@@ -502,6 +502,22 @@ Zvyšné 3 hraničné prípady sme nechali tak – dva sú takmer duplicitné FA
 
 ---
 
+### Sprint Q – Oprava "Parkovanie" hláseného priamo používateľom
+
+| # | Feature | Súbory | Stav |
+|---|---|---|---|
+| Q1 | Marker + priama skratka pre otázky o parkovaní | `app/main.py` | ✅ Hotovo |
+
+Reálne nahlásené: *"na otazky Parkovanie, kde sa da zaparkovat odpovedal produktmi"*. Sprint P audit tento prípad síce zachytil (#48 v zozname 51), ale zaradil ho do kategórie "brána blokuje → bezpečný fallback" (`FAQ_INTENT_MARKERS` nemal žiadny marker pre parkovanie vôbec), takže sa nepovažoval za prioritný. Realita bola horšia než predpoklad: fallback na `product_search` nevrátil čistú "nič nenašiel" správu, ale náhodné nesúvisiace produkty (korenie, instantná polievka, džús) – zle vyzerajúca odpoveď, nie neutrálna.
+
+Dva súbežné bugy: (1) chýbajúci marker "park" – oprava jedným riadkom; (2) aj s otvorenou bránou zdieľa "parkovanie" (podstatné meno) s vlastným textom FAQ otázky len koreň slova, nie "zaparkovať" (sloveso) – token-overlap dosiahol len skóre 1 z potrebných 3, takže potrebovala vlastnú priamu skratku podľa vzoru Sprint P.
+
+**Ponaučenie:** kategória "brána blokuje" zo Sprint P auditu nie je automaticky nízko-riziková – ak fallback vráti nesúvisiace produkty namiesto čistého "nenašiel som", ide o rovnako zlý zákaznícky zážitok ako sebaisto znejúca zlá FAQ odpoveď.
+
+**Overené naživo** na produkcii pre presné znenie nahlásenej otázky aj jej variácie.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
