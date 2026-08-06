@@ -1751,7 +1751,8 @@ FAQ_INTENT_MARKERS = (
     "privez",
     "rozvaz",
     "packeta",
-    "zasielk",
+    "zasiel",
+    "sledov",
     "objednav",
     "plat",
     "kartou",
@@ -5609,7 +5610,18 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         )
         if shipping_answer:
             return shipping_answer
-    if any(marker in normalized_message for marker in ("kurier", "doruc", "zasielk", "posiel", "preprav", "privez", "rozvaz")):
+    # Checked before the delivery-methods shortcut below: "sledov" (track)
+    # also matches "zasiel" (shipment), so an order-tracking question like
+    # "sledovanie zasielok" would otherwise get the generic "which delivery
+    # methods do you offer" answer instead of "where can I track my order".
+    if any(marker in normalized_message for marker in ("sledov", "kde je moja objednavka", "stav objednavky")):
+        tracking_answer = direct_faq_answer_by_question_markers(
+            loaded_knowledge,
+            required_markers=("sledovat", "objednavky"),
+        )
+        if tracking_answer:
+            return tracking_answer
+    if any(marker in normalized_message for marker in ("kurier", "doruc", "zasiel", "posiel", "preprav", "privez", "rozvaz")):
         delivery_answer = direct_faq_answer_by_question_markers(
             loaded_knowledge,
             required_markers=("sposoby", "dorucenia"),

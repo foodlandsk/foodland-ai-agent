@@ -1947,6 +1947,17 @@ class TestFAQ:
         answer = main.best_direct_faq_answer("gochujang pasta", knowledge)
         assert answer is None
 
+    def test_faq_tracking_question_beats_generic_delivery_methods(self, knowledge):
+        # Regression from a real dashboard no-result: "sledovanie zasielok"
+        # (order tracking) scored zero token overlap with any FAQ entry, so
+        # it needed a direct-marker shortcut like the shipping/delivery ones
+        # above it. "zasiel" also matches the delivery-methods shortcut, so
+        # the tracking check must run first or a tracking question gets the
+        # generic "which delivery methods do you offer" answer instead.
+        answer = main.best_direct_faq_answer("sledovanie zasielok", knowledge)
+        assert answer
+        assert "objednavky" in main.normalize(answer) or "ucte" in main.normalize(answer)
+
     def test_faq_sub_question_beats_generic_same_category_answer(self, knowledge):
         # Regression: sub-questions in knowledge.json leave Kategória blank
         # and inherit the preceding row's category. Without forward-filling
