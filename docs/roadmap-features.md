@@ -582,6 +582,14 @@ Po prvom nasadení sa pri live overení ukázalo, že odpoveď sa orezáva upros
 
 **Overené naživo** na produkcii – kompletná, neorezaná odpoveď o jedle Vindaloo bez zmienky o konkrétnom Foodland produkte.
 
+### Sprint U.1 – Oprava skutočnej cesty pre holý názov jedla
+
+Po nasadení Sprint U prišlo hlásenie: reálny zákazník napísal len **"Vindaloo"** (bez slova "recept") a stále dostal starú generickú odpoveď "Nenašla som presný produkt...". Príčina: `is_recipe_intent()` vyžaduje kulinárske kľúčové slovo (recept, variť, pho, ramen...) – holý názov jedla bez takého slova sa vôbec nedostane do `recipe_subject` vetvy, kam bola AI odpoveď zapojená. Namiesto toho skončí v úplne inej, poslednej "nič sa nenašlo" vetve.
+
+Zapojil som `general_ai_recipe_answer()` priamo do tejto skutočnej finálnej vetvy (`if not matches and not knowledge_matches`). Keďže sem teraz spadne AKÝKOĽVEK dotaz bez zhody (nielen jedlá – napr. názov produktu inej kategórie), rozšíril som prompt, aby si model najprv sám vyhodnotil, či ide vôbec o jedlo/recept/kulinárnu tému. Ak nie, odpovie doslovným kódovým slovom "NEURCITE", ktoré kód mapuje na `None` – zákazník tak pri nesúvisiacom dotaze dostane pôvodnú čestnú "nenašla som" správu namiesto vymyslenej kulinárskej odpovede na niečo, čo jedlo vôbec nie je.
+
+**Overené naživo** – holé "Vindaloo" teraz dáva správnu AI odpoveď; kontrolný test na nesúvisiaci výraz ("babyMonster OREO") správne prešiel bežným produktovým vyhľadávaním (reálne produkty existujú), takže fallback sa ani nemusel použiť.
+
 ---
 
 ## Záver
