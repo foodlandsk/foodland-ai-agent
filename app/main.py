@@ -6532,7 +6532,7 @@ REPLACEMENT_SUBJECT_ALIASES = {
 
 REPLACEMENT_PRODUCT_QUERIES = {
     "mirin": ["mirin", "sladke ryzove vino"],
-    "sojova omacka": ["tamari", "bezlepkova sojova omacka", "japonska sojova omacka"],
+    "sojova omacka": ["tamari sojova omacka", "bezlepkova sojova omacka", "japonska sojova omacka"],
     "rybacia omacka": ["tamari", "sojova omacka", "hubova vegetarianska omacka"],
     "gochujang": ["gochujang", "korejska cili pasta"],
     "ryzovy ocot": ["ryzovy ocot", "rice vinegar"],
@@ -6546,7 +6546,20 @@ REPLACEMENT_PRODUCT_QUERIES = {
 
 def detect_replacement_subject(message: str) -> str | None:
     normalized_message = normalize(message)
-    if not any(marker in normalized_message for marker in ("nahrad", "vynahrad", "namiesto", "alternativ", "cim ", "čim ", "čím ")):
+    has_explicit_marker = any(
+        marker in normalized_message
+        for marker in ("nahrad", "vynahrad", "namiesto", "alternativ", "cim ", "čim ", "čím ")
+    )
+    # "ina sojova omacka ako Kikkoman" (a different X than Y) is a natural
+    # way to ask for an alternative brand, but has none of the markers
+    # above - it fell through to the related_products (cross-sell)
+    # branch instead, which surfaced unrelated pairings (mirin, rice
+    # vinegar) rather than competing soy sauce brands.
+    padded_message = f" {normalized_message} "
+    has_comparative_marker = "ako" in normalized_message and any(
+        marker in padded_message for marker in (" ina ", " ine ", " iny ", " inu ", " inej ", " ineho ")
+    )
+    if not (has_explicit_marker or has_comparative_marker):
         return None
 
     for subject, aliases in REPLACEMENT_SUBJECT_ALIASES.items():

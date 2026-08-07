@@ -1705,6 +1705,27 @@ class TestIntentDetection:
         assert main.detect_replacement_subject("cim vynahradim gochujang") == "gochujang"
         assert main.detect_related_subject("cim vynahradim gochujang") == "gochujang"
 
+    def test_replacement_subject_detects_comparative_phrasing(self, products):
+        # Real user report: "ina sojova omacka ako Kikkoman" (a different
+        # soy sauce than Kikkoman) has none of the explicit markers
+        # (nahrad/namiesto/alternativ), so it fell through to the
+        # related_products cross-sell branch instead, surfacing unrelated
+        # pairings (mirin, rice vinegar) instead of competing soy sauce
+        # brands.
+        subject = main.detect_replacement_subject("ina sojova omacka ako Kikkoman")
+        assert subject == "sojova omacka"
+
+        alternatives = main.alternative_products_for_subject(products, main.knowledge, subject, 6)
+        assert alternatives
+        titles = " ".join(main.normalize(p.get("title", "")) for p in alternatives)
+        assert "tamarind" not in titles
+        assert "omacka" in titles or "omackov" in titles
+
+    def test_replacement_subject_comparative_marker_requires_word_boundary(self):
+        # "vitamina" contains the substring "ina " once padded, but must not
+        # be treated as the comparative "ina ... ako" pattern.
+        assert main.detect_replacement_subject("potrebujem vitamina ako doplnok stravy") is None
+
     def test_recipe_intent_not_falsely_triggered_by_english_recommend(self):
         # Regression test: a bare "rec" prefix check used to match any
         # English word starting with those letters ("recommend",
