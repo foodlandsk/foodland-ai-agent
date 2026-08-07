@@ -549,6 +549,24 @@ Reálne nahlásené: zákazníci sa pýtali na alternatívu ku Kikkoman sójovej
 
 ---
 
+### Sprint T – Systematické dočistenie náhrad + oprava "spôsoby dopravy"
+
+| # | Feature | Súbory | Stav |
+|---|---|---|---|
+| T1 | Rozšírenie tamari/tamarind opravy na `rybacia omacka` a `tamari` subjekt | `app/main.py` | ✅ Hotovo |
+| T2 | Oprava "spôsoby dopravy" vracajúcej náhodné produkty | `app/main.py` | ✅ Hotovo |
+
+Po Sprint S som na požiadanie systematicky prešiel **všetky** dopyty v `REPLACEMENT_PRODUCT_QUERIES` (nie len sójovú omáčku) a našiel rovnaký bug ešte dvakrát: samostatné slovo "tamari" ako fallback dopyt aj pri kategórii **rybacia omáčka** a pri samotnom subjekte **tamari** – s tou istou Tamarind kontamináciou. Opravené rovnakým spôsobom (spresnenie na "tamari sojova omacka"). *(Poznámka: prvý pokus o opravu omylom upravil nesúvisiaci slovník `SPECIAL_PRODUCT_QUERIES`, ktorý má tiež kľúč "tamari" – vrátené späť a opravené na správnom mieste.)*
+
+Popri tom nahlásené: **"spôsoby dopravy foodlandu"** vrátilo náhodné produkty (ryžu, darčekové poukazy). Dva súbežné bugy rovnakého typu ako pri "zásielok":
+- Marker `"doprava"` (nominatív) sa nezhodoval so slovom **"dopravy"** (genitív) – skrátené na koreň "doprav", ktorý pokrýva všetky pády.
+- Aj po otvorení brány chýbal spúšťač "doprav" pre samotnú skratku "spôsoby doručenia" – doplnené.
+- Rozšírenie spúšťača ale spôsobilo novú regresiu: "kedy je doprava zadarmo?" (zdieľa koreň "doprav") by teraz nesprávne dostalo odpoveď o spôsoboch dopravy namiesto o zadarmo doprave. Opravené pridaním kombinovanej kontroly "zadarmo" + "doprav" (odolnej voči poradiu slov) do skratky pre cenu dopravy, vyhodnocovanej PRED skratkou pre spôsoby doručenia.
+
+**Overené naživo** na produkcii pre všetky varianty vrátane regresného testu na "kedy je doprava zadarmo?".
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
