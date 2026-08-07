@@ -533,6 +533,22 @@ Pri manuálnej kontrole tohto exportu sa našiel posledný zvyšný zastaraný z
 
 ---
 
+### Sprint S – Oprava "alternatíva k Kikkoman sójovej omáčke" vracajúcej nesúvisiace produkty
+
+| # | Feature | Súbory | Stav |
+|---|---|---|---|
+| S1 | Detekcia porovnávacej formulácie ("iná X ako Y") ako zámeru náhrady | `app/main.py` | ✅ Hotovo |
+| S2 | Oprava kolízie "tamari" × "tamarind" v dopyte na náhrady sójovej omáčky | `app/main.py` | ✅ Hotovo |
+
+Reálne nahlásené: zákazníci sa pýtali na alternatívu ku Kikkoman sójovej omáčke a dostali aj nesúvisiace produkty. Dva súbežné bugy:
+
+- `detect_replacement_subject()` rozpoznávala len explicitné markery ("nahrad", "namiesto", "alternativ", "čím"). Formulácia **"iná sójová omáčka ako Kikkoman"** žiadny z nich neobsahuje, takže spadla do vetvy `related_products` (cross-sell) namiesto `replacement_products` – a cross-sell vrátil všeobecné "čo sa hodí spolu" páry (mirin, ryžový ocot) namiesto konkurenčných značiek. Pridaná detekcia porovnávacej konštrukcie "iná/iné/iný ... ako", chránená kontrolou hraníc slova (medzery na oboch stranách), aby sa nezachytávali náhodné zhody vo vnútri iných slov (napr. "vitamín**a** ako doplnok").
+- Aj po správnom smerovaní do `replacement_products` mal dopyt pre "sojova omacka" ako prvý fallback query samostatné slovo **"tamari"**, ktoré sa v bežnom produktovom vyhľadávaní zhoduje aj s **"Tamarind"** (úplne iná vec – ovocie, nie omáčka). Výsledok obsahoval tamarindový džús, sušené tamarindy a polievkový základ namiesto sójových omáčok iných značiek. Dopyt spresnený na "tamari sojova omacka", čo problém úplne odstráni a navyše správne vytiahne konkurenčné značky (MEGACHEF, AYUKO, MARUKIN).
+
+**Overené naživo** na produkcii – dotaz teraz vracia výhradne sójové omáčky vrátane alternatívnych značiek k Kikkoman.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
