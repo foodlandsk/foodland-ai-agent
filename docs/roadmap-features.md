@@ -567,6 +567,23 @@ Popri tom nahlásené: **"spôsoby dopravy foodlandu"** vrátilo náhodné produ
 
 ---
 
+### Sprint U – Všeobecná AI odpoveď na recepty/jedlá mimo databázy
+
+| # | Feature | Súbory | Stav |
+|---|---|---|---|
+| U1 | `general_ai_recipe_answer()` – prísne ohraničená AI odpoveď pre recepty mimo databázy | `app/main.py` | ✅ Hotovo |
+| U2 | Voliteľný `max_tokens` parameter pre `_call_openai_with_retry()` | `app/main.py` | ✅ Hotovo |
+
+Na návrh používateľa: keď sa zákazník opýta na jedlo/recept, ktorý **nie je** v databáze receptov Foodlandu (napr. reálny dnešný prípad "Vindaloo" z dashboardu), bot doteraz odpovedal iba genericky "skúste napísať recept na kimchi alebo pad thai". Teraz namiesto toho skúsi krátku všeobecnú kulinársku odpoveď cez OpenAI – čo je to za jedlo, aké typy surovín sa naň zvyčajne používajú.
+
+**Kľúčové bezpečnostné pravidlo** (rovnaký grounding princíp ako všade inde v projekte): systémový prompt explicitne zakazuje AI spomínať konkrétny názov produktu, značku, cenu, sklad alebo odkaz, akoby ich Foodland reálne predával – ide výhradne o všeobecnú kulinársku znalosť, nie o ponuku Foodlandu. Odpoveď vždy končí jasným upozornením, že presný recept v databáze nemáme. Ak OpenAI nie je nakonfigurované alebo volanie zlyhá, bot sa ticho vráti k pôvodnej generickej odpovedi – žiadna zmena správania pre prostredia bez API kľúča.
+
+Po prvom nasadení sa pri live overení ukázalo, že odpoveď sa orezáva uprostred vety (zdieľaný OpenAI helper mal defaultný limit 120 tokenov, nastavený pre bežné 1–2-vetové odpovede appky, čo na vysvetlenie + disclaimer nestačilo). Opravené pridaním voliteľného `max_tokens` parametra do `_call_openai_with_retry()` (existujúce volania bez zmeny správania) a nastavením 280 tokenov pre tento konkrétny prípad.
+
+**Overené naživo** na produkcii – kompletná, neorezaná odpoveď o jedle Vindaloo bez zmienky o konkrétnom Foodland produkte.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
