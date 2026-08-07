@@ -592,6 +592,22 @@ Zapojil som `general_ai_recipe_answer()` priamo do tejto skutočnej finálnej ve
 
 ---
 
+### Sprint V – Oprava "sake sety" (a podobných) vracajúcich len cross-sell namiesto skutočného produktu
+
+| # | Feature | Súbory | Stav |
+|---|---|---|---|
+| V1 | `PRODUCT_SET_SIGNAL_TOKENS` – ruší cross-sell smerovanie pri set/sada/súprava dotazoch | `app/main.py` | ✅ Hotovo |
+
+Reálne nahlásené: **"sake sety"** dostalo cross-sell odpoveď o rôznych fľašiach saké namiesto skutočných produktov **"Saké Set"**, ktoré v katalógu existujú a bežné vyhľadávanie by ich reálne našlo. Príčina: `detect_related_subject()` rozpozná "sake" ako podreťazec kdekoľvek vo vete – takže AKÝKOĽVEK dotaz obsahujúci toto slovo sa presmeruje do cross-sell vetvy skôr, než sa vôbec skúsi bežné vyhľadávanie.
+
+Keďže slovo "set"/"sada"/"súprava" silno signalizuje, že zákazník chce konkrétny typ produktu (nie "čo sa hodí k X"), pridaná množina `PRODUCT_SET_SIGNAL_TOKENS` (set, sety, sada, súprava a ich pády, kit), ktorá pri zhode s tokenmi dotazu vynuluje `related_subject` – presne podľa vzoru, akým už kód rieši rovnaký konflikt pre `special_subject`. Bežné cross-sell formulácie ("čo sa hodí k sake", "sake na varenie") ostávajú nezmenené, keďže neobsahujú žiadne z týchto slov.
+
+Na doplňujúcu požiadavku ("podobne ako ramen sety, sada, súprava") som overil aj ostatné kategórie – "ramen sety/sada" už fungovalo správne (aliasu "ramen" tento konflikt nepostihuje), ale slovo **"súprava"** (reálne používané v katalógu, napr. čajové súpravy) v zozname signálnych slov ešte chýbalo – doplnené pre robustnosť do budúcna.
+
+**Overené naživo** – "sake sety" teraz vracia všetky 3 skutočné "Saké Set" produkty namiesto len fliaš saké.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
