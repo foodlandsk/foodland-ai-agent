@@ -1803,6 +1803,39 @@ class TestIntentDetection:
         answer = main.random_recipes_answer([{"title": "x"}], lang="en")
         assert "dinner" in answer.lower()
 
+    def test_general_ai_recipe_answer_returns_none_without_api_key(self, monkeypatch):
+        monkeypatch.setattr(main, "_get_openai_client", lambda: None)
+        assert main.general_ai_recipe_answer("vindaloo") is None
+
+    def test_general_ai_recipe_answer_uses_configured_prompt_and_strips_result(self, monkeypatch):
+        captured = {}
+
+        def fake_call(client, messages, model):
+            captured["messages"] = messages
+            return "  Vindaloo je pikantné indické kari z Goa.  "
+
+        monkeypatch.setattr(main, "_get_openai_client", lambda: object())
+        monkeypatch.setattr(main, "_call_openai_with_retry", fake_call)
+
+        answer = main.general_ai_recipe_answer("vindaloo")
+
+        assert answer == "Vindaloo je pikantné indické kari z Goa."
+        system_message = captured["messages"][0]
+        assert system_message["role"] == "system"
+        # Must forbid inventing Foodland-specific facts - the whole point of
+        # this feature is a clearly-general answer, not a fabricated one.
+        assert "NIKDY" in system_message["content"]
+        assert "vindaloo" in captured["messages"][1]["content"].lower()
+
+    def test_general_ai_recipe_answer_falls_back_to_none_on_api_error(self, monkeypatch):
+        def raise_timeout(client, messages, model):
+            raise main.APITimeoutError(None)
+
+        monkeypatch.setattr(main, "_get_openai_client", lambda: object())
+        monkeypatch.setattr(main, "_call_openai_with_retry", raise_timeout)
+
+        assert main.general_ai_recipe_answer("vindaloo") is None
+
     def test_shopping_list_answer_english_variant(self):
         answer = main.shopping_list_answer("kimchi", [{"title": "x"}], [], lang="en")
         assert "shopping list" in answer.lower()

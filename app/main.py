@@ -3590,8 +3590,16 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         update_session_memory(memory_key, chat_request.message, intent, recipe_products, recipes, knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, intent, recipe_products, recipes)
         log_question(chat_request.message, client_key, 0, intent=intent, session_id=session_id)
+        if recipe_products:
+            recipe_answer_text = recipe_products_answer(recipe_product_subject, recipes, query_language)
+        elif recipes:
+            recipe_answer_text = recipe_answer(recipe_subject, recipes, query_language)
+        else:
+            # Nic v databaze Foodlandu - skus kratku vseobecnu kulinarsku
+            # odpoved namiesto len "skuste napisat recept na kimchi...".
+            recipe_answer_text = general_ai_recipe_answer(chat_request.message) or recipe_answer(recipe_subject, recipes, query_language)
         return {
-            "answer": recipe_products_answer(recipe_product_subject, recipes, query_language) if recipe_products else recipe_answer(recipe_subject, recipes, query_language),
+            "answer": recipe_answer_text,
             "recipes": recipes,
             "products": recipe_products,
             "articles": recipe_articles,
@@ -6448,6 +6456,41 @@ def recipe_answer(subject: str, recipes: list[dict] | None = None, lang: str = "
         return "Našla som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie."
 
     return "Receptovú otázku som zachytila, ale nemám dosť detailov na presný recept. Skúste napísať napríklad: recept na kimchi alebo recept na pad thai."
+
+
+GENERAL_AI_RECIPE_SYSTEM_PROMPT = (
+    "Si kulinárska poradkyňa pre Foodland.sk (obchod s ázijskými a svetovými potravinami). "
+    "Zákazník sa pýta na jedlo alebo recept, ktorý NIE JE v databáze receptov Foodlandu. "
+    "Daj stručnú (2-4 vety) VŠEOBECNÚ kulinársku odpoveď: čo je to za jedlo a z akých typov "
+    "surovín sa väčšinou pripravuje. "
+    "Toto je tvoja všeobecná znalosť, nie ponuka Foodlandu - preto NIKDY nespomínaj konkrétny "
+    "názov produktu, značku, cenu, sklad ani odkaz, akoby ich Foodland reálne predával. "
+    "Na konci vždy jasne napíš, že presný recept na toto jedlo v databáze Foodlandu nemáme, "
+    "a odporuč zákazníkovi vyhľadať si podobné suroviny priamo v našej ponuke. "
+    "Odpovedaj v jazyku otázky zákazníka; ak jazyk nie je jasný, odpovedaj po slovensky."
+)
+
+
+def general_ai_recipe_answer(dish_query: str) -> str | None:
+    """Krátka VŠEOBECNÁ kulinárska odpoveď pre recept/jedlo, ktoré nie je
+    v databáze Foodlandu. Nikdy nevymýšľa konkrétne Foodland fakty (produkty,
+    ceny, sklad) - iba všeobecnú kulinársku znalosť. Vráti None ak OpenAI
+    nie je nakonfigurované alebo volanie zlyhá (volajúci sa vtedy vráti k
+    pôvodnej fallback odpovedi)."""
+    client = _get_openai_client()
+    if not client:
+        return None
+    try:
+        model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+        messages = [
+            {"role": "system", "content": GENERAL_AI_RECIPE_SYSTEM_PROMPT},
+            {"role": "user", "content": f"Otázka zákazníka: {dish_query}"},
+        ]
+        answer = _call_openai_with_retry(client, messages, model)
+        return answer.strip() or None
+    except (RateLimitError, APITimeoutError, APIConnectionError) as exc:
+        logger.warning("General AI recipe answer failed: %s", exc)
+        return None
 
 
 def random_recipes_answer(recipes: list[dict] | None = None, lang: str = "sk") -> str:
