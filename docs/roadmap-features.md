@@ -518,6 +518,21 @@ Dva súbežné bugy: (1) chýbajúci marker "park" – oprava jedným riadkom; (
 
 ---
 
+### Sprint R – Kompletný FAQ prehľad + oprava posledného zastaraného záznamu
+
+| # | Feature | Súbory | Stav |
+|---|---|---|---|
+| R1 | Export všetkých 51 FAQ o prevádzke ako referenčný dokument pre používateľa | – (dokument) | ✅ Hotovo |
+| R2 | Oprava zastaranej odpovede "plánuje Foodland spustiť vernostný program?" | `data/knowledge.json` | ✅ Hotovo |
+
+Na požiadanie som spracoval a odovzdal kompletný zoznam všetkých 51 produkčných FAQ o prevádzke (Nákup, Predajňa, Doprava, Platby, Reklamácie, Vrátenie tovaru, Registrácia, Vernostný program, Produkty), zoradených podľa kategórie ako referenčný dokument.
+
+Pri manuálnej kontrole tohto exportu sa našiel posledný zvyšný zastaraný záznam: *"Plánuje Foodland v budúcnosti spustiť vernostný program?"* mal odpoveď "webová stránka takýto program neuvádza" – priamo protirečiacu susedným záznamom o fungujúcom kreditovom programe (rovnaký typ nekonzistencie, aký sme opravili pri inom zázname v Sprint O). V praxi to zákazníkom neškodilo (bot pri podobných otázkach reálne vracia správnu odpoveď z iného záznamu vďaka scoringu), ale samotný zápis v databáze bol zavádzajúci. Odpoveď zosúladená s ostatnými kredit-záznamami.
+
+**Overené naživo** na produkcii.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
