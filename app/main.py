@@ -6533,14 +6533,14 @@ REPLACEMENT_SUBJECT_ALIASES = {
 REPLACEMENT_PRODUCT_QUERIES = {
     "mirin": ["mirin", "sladke ryzove vino"],
     "sojova omacka": ["tamari sojova omacka", "bezlepkova sojova omacka", "japonska sojova omacka"],
-    "rybacia omacka": ["tamari", "sojova omacka", "hubova vegetarianska omacka"],
+    "rybacia omacka": ["tamari sojova omacka", "sojova omacka", "hubova vegetarianska omacka"],
     "gochujang": ["gochujang", "korejska cili pasta"],
     "ryzovy ocot": ["ryzovy ocot", "rice vinegar"],
     "kokosove mlieko": ["kokosove mlieko", "kokosovy krem"],
     "miso pasta": ["miso pasta", "miso"],
     "sriracha": ["sriracha", "chili omacka", "sambal"],
     "hoisin omacka": ["hoisin omacka", "sladka sojova omacka"],
-    "tamari": ["tamari", "bezlepkova sojova omacka"],
+    "tamari": ["tamari sojova omacka", "bezlepkova sojova omacka"],
 }
 
 
