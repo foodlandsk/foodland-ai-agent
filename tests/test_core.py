@@ -1705,6 +1705,23 @@ class TestIntentDetection:
         assert main.detect_replacement_subject("cim vynahradim gochujang") == "gochujang"
         assert main.detect_related_subject("cim vynahradim gochujang") == "gochujang"
 
+    def test_product_set_signal_overrides_related_subject_routing(self, products):
+        # Real user report: "sake sety" (sake SETS) was forced into the
+        # generic "sake" cross-sell branch just because it contains "sake"
+        # - even though the actual "Saké Set" products exist and a plain
+        # search finds them near the top. A set/kit word signals the
+        # customer wants that specific product type, not "what goes with
+        # sake" pairings. This mirrors the special_subject override already
+        # used for related_subject in the /chat routing.
+        assert main.detect_related_subject("sake sety") == "sake"
+        for word in ("sety", "sada", "suprava"):
+            assert main.PRODUCT_SET_SIGNAL_TOKENS & main.tokenize(f"sake {word}"), word
+        assert not (main.PRODUCT_SET_SIGNAL_TOKENS & main.tokenize("co sa hodi k sake"))
+
+        matches = main.cached_search_products(products, "sake sety", 6)
+        titles = " ".join(main.normalize(p.get("title", "")) for p in matches)
+        assert "sake set" in titles or "saki set" in titles
+
     def test_replacement_subject_detects_comparative_phrasing(self, products):
         # Real user report: "ina sojova omacka ako Kikkoman" (a different
         # soy sauce than Kikkoman) has none of the explicit markers

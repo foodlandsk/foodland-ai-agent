@@ -1283,6 +1283,8 @@ RELATED_PRODUCT_QUERIES = {
     ],
 }
 
+PRODUCT_SET_SIGNAL_TOKENS = {"set", "sety", "setu", "setov", "sada", "sady", "sad", "kit", "suprava", "supravy", "supravu", "supravou"}
+
 RELATED_SUBJECT_ALIASES = {
     "kimchi_ramen": ("kimchi ramen", "ramen kimchi"),
     "kimchi_recipe": ("vyrobu kimchi", "kimchi ingrediencie", "kimchi recept", "kimchi navod", "spravit kimchi", "pripravit kimchi", "urobim kimchi", "kimchi suroviny", "ako vyrob kimchi"),
@@ -3633,6 +3635,13 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     replacement_subject = detect_replacement_subject(contextual_message)
     related_subject = detect_related_subject(contextual_message)
     if special_subject:
+        related_subject = None
+    if related_subject and PRODUCT_SET_SIGNAL_TOKENS & tokenize(contextual_message):
+        # "sake sety" (sake SETS) was forced into the sake cross-sell
+        # branch just because it contains "sake" - even though a plain
+        # search finds the literal "Sake Set" products among the top
+        # hits. A set/kit/bundle word signals the customer wants a
+        # specific product type, not "what goes well with X" pairings.
         related_subject = None
     cross_sell_matches = cross_sell_products_for_message(products, knowledge, contextual_message, chat_request.limit)
     article_product_subject = (
