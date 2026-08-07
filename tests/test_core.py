@@ -1726,6 +1726,17 @@ class TestIntentDetection:
         # be treated as the comparative "ina ... ako" pattern.
         assert main.detect_replacement_subject("potrebujem vitamina ako doplnok stravy") is None
 
+    def test_replacement_queries_dont_confuse_tamari_with_tamarind(self, products):
+        # Same bare-"tamari" collision as the Kikkoman fix, found by
+        # auditing every REPLACEMENT_PRODUCT_QUERIES entry: "rybacia
+        # omacka" (fish sauce) and the "tamari" subject itself both had
+        # bare "tamari" as their first fallback query, pulling in unrelated
+        # Tamarind fruit products (juice, dried tamarind, soup base).
+        for subject in ("rybacia omacka", "tamari"):
+            alternatives = main.alternative_products_for_subject(products, main.knowledge, subject, 6)
+            titles = " ".join(main.normalize(p.get("title", "")) for p in alternatives)
+            assert "tamarind" not in titles, subject
+
     def test_recipe_intent_not_falsely_triggered_by_english_recommend(self):
         # Regression test: a bare "rec" prefix check used to match any
         # English word starting with those letters ("recommend",
@@ -1997,6 +2008,31 @@ class TestFAQ:
         assert answer
         assert "parkovanie" in main.normalize(answer)
         assert main.best_direct_faq_answer("Parkovanie", knowledge) == answer
+
+    def test_faq_delivery_methods_reaches_gate_with_doprava_declensions(self, knowledge):
+        # Real user report: "sposoby dopravy foodlandu" answered with
+        # random products. FAQ_INTENT_MARKERS had "doprava" (nominative),
+        # which does not match the genitive "dopravy" as a substring -
+        # shortened the marker to the root "doprav" so it covers every
+        # case. Also needed "doprav" added as a trigger for the
+        # delivery-methods shortcut itself (separate from the intent gate).
+        for query in ("sposoby dopravy foodlandu", "sposoby dopravy", "ake su sposoby dopravy"):
+            assert main.is_faq_intent(query), query
+            answer = main.best_direct_faq_answer(query, knowledge)
+            assert answer, query
+            assert "osobny odber" in main.normalize(answer) or "kurierom" in main.normalize(answer)
+
+    def test_faq_free_shipping_still_wins_over_delivery_methods(self, knowledge):
+        # Regression: broadening the delivery-methods shortcut trigger to
+        # "doprav" made it also catch "kedy je doprava zadarmo?" (when is
+        # shipping free), which shares that root - it must still resolve to
+        # the free-shipping-threshold answer, not the generic delivery
+        # methods list, regardless of word order between "doprava" and
+        # "zadarmo".
+        for query in ("kolko stoji doprava?", "kedy je doprava zadarmo?", "doprava je zadarmo od kolko?"):
+            answer = main.best_direct_faq_answer(query, knowledge)
+            assert answer, query
+            assert "49" in answer, query
 
     def test_faq_cash_on_delivery_home_beats_card_in_store(self, knowledge):
         # "da sa platit dobierkou" used to match the unrelated "can I pay by

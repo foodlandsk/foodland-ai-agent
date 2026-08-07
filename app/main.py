@@ -1742,7 +1742,7 @@ SPECIAL_PRODUCT_EXCLUDE_TERMS = {
 
 FAQ_INTENT_MARKERS = (
     "kredit",
-    "doprava",
+    "doprav",
     "doruc",
     "postovn",
     "kurier",
@@ -5618,7 +5618,9 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
     best_score = 0
     best_answer = ""
 
-    if any(marker in normalized_message for marker in ("postovn", "cena dopravy", "stoji doprava", "kolko stoji doprava")):
+    if any(marker in normalized_message for marker in ("postovn", "cena dopravy", "stoji doprava", "kolko stoji doprava")) or (
+        "zadarmo" in normalized_message and "doprav" in normalized_message
+    ):
         shipping_answer = direct_faq_answer_by_question_markers(
             loaded_knowledge,
             required_markers=("doprava", "zadarmo"),
@@ -5651,7 +5653,7 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         countries_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("krajin", "dorucuje"))
         if countries_answer:
             return countries_answer
-    if any(marker in normalized_message for marker in ("kurier", "doruc", "zasiel", "posiel", "preprav", "privez", "rozvaz")):
+    if any(marker in normalized_message for marker in ("kurier", "doruc", "zasiel", "posiel", "preprav", "privez", "rozvaz", "doprav")):
         delivery_answer = direct_faq_answer_by_question_markers(
             loaded_knowledge,
             required_markers=("sposoby", "dorucenia"),
