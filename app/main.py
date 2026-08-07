@@ -3739,6 +3739,9 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         articles = []
 
     if not matches and not knowledge_matches:
+        general_recipe_answer = general_ai_recipe_answer(chat_request.message)
+        if general_recipe_answer:
+            return {"answer": general_recipe_answer, "products": [], "intent": "recipe"}
         return {
             "answer": (
                 "I couldn't find an exact product match. Try writing the name, brand, or category a bit differently."
@@ -6460,13 +6463,17 @@ def recipe_answer(subject: str, recipes: list[dict] | None = None, lang: str = "
 
 GENERAL_AI_RECIPE_SYSTEM_PROMPT = (
     "Si kulinárska poradkyňa pre Foodland.sk (obchod s ázijskými a svetovými potravinami). "
-    "Zákazník sa pýta na jedlo alebo recept, ktorý NIE JE v databáze receptov Foodlandu. "
-    "Daj stručnú (2-4 vety) VŠEOBECNÚ kulinársku odpoveď: čo je to za jedlo a z akých typov "
-    "surovín sa väčšinou pripravuje. "
-    "Toto je tvoja všeobecná znalosť, nie ponuka Foodlandu - preto NIKDY nespomínaj konkrétny "
-    "názov produktu, značku, cenu, sklad ani odkaz, akoby ich Foodland reálne predával. "
-    "Na konci vždy jasne napíš, že presný recept na toto jedlo v databáze Foodlandu nemáme, "
-    "a odporuč zákazníkovi vyhľadať si podobné suroviny priamo v našej ponuke. "
+    "Zákazník napísal výraz, ktorý sa nenašiel medzi produktmi ani receptami Foodlandu. "
+    "Ak je to rozpoznateľné JEDLO, RECEPT alebo KULINÁRSKA TÉMA (napr. názov konkrétneho jedla, "
+    "kuchyne alebo ingrediencie): daj stručnú (2-4 vety) VŠEOBECNÚ kulinársku odpoveď - čo je "
+    "to za jedlo a z akých typov surovín sa väčšinou pripravuje. Toto je tvoja všeobecná znalosť, "
+    "nie ponuka Foodlandu - preto NIKDY nespomínaj konkrétny názov produktu, značku, cenu, sklad "
+    "ani odkaz, akoby ich Foodland reálne predával. Na konci vždy jasne napíš, že presný recept "
+    "na toto jedlo v databáze Foodlandu nemáme, a odporuč zákazníkovi vyhľadať si podobné "
+    "suroviny priamo v našej ponuke. "
+    "Ak výraz NIE JE jedlo, recept ani kulinárska téma (napr. názov produktu inej kategórie, "
+    "meno, značka nesúvisiaca s jedlom, nezmyselný text) - neodpovedaj vôbec, iba doslovne "
+    "napíš presne toto slovo bez úvodzoviek a bez čohokoľvek iného: NEURCITE. "
     "Odpovedaj v jazyku otázky zákazníka; ak jazyk nie je jasný, odpovedaj po slovensky."
 )
 
@@ -6487,7 +6494,10 @@ def general_ai_recipe_answer(dish_query: str) -> str | None:
             {"role": "user", "content": f"Otázka zákazníka: {dish_query}"},
         ]
         answer = _call_openai_with_retry(client, messages, model, max_tokens=280)
-        return answer.strip() or None
+        answer = answer.strip()
+        if not answer or "NEURCITE" in answer:
+            return None
+        return answer
     except (RateLimitError, APITimeoutError, APIConnectionError) as exc:
         logger.warning("General AI recipe answer failed: %s", exc)
         return None

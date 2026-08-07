@@ -1836,6 +1836,21 @@ class TestIntentDetection:
 
         assert main.general_ai_recipe_answer("vindaloo") is None
 
+    def test_general_ai_recipe_answer_returns_none_for_non_food_sentinel(self, monkeypatch):
+        # Real bug found live: "Vindaloo" typed bare (no "recept na" prefix)
+        # doesn't pass is_recipe_intent(), so it never reached the recipe
+        # branch at all - it hits the final "no matches, no knowledge" chat
+        # fallback instead, which now also tries this function. That means
+        # it fires for ANY zero-match query, not just food ones (e.g. a
+        # stray brand name), so the model is instructed to reply with a
+        # literal NEURCITE sentinel for non-food terms, which must map to
+        # None here so the caller falls back to the generic "no exact
+        # match" message instead of showing a bogus food explanation.
+        monkeypatch.setattr(main, "_get_openai_client", lambda: object())
+        monkeypatch.setattr(main, "_call_openai_with_retry", lambda client, messages, model, max_tokens=None: "NEURCITE")
+
+        assert main.general_ai_recipe_answer("babyMonster OREO") is None
+
     def test_shopping_list_answer_english_variant(self):
         answer = main.shopping_list_answer("kimchi", [{"title": "x"}], [], lang="en")
         assert "shopping list" in answer.lower()
