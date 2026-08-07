@@ -2620,7 +2620,7 @@ def _get_openai_client() -> OpenAI | None:
     stop=stop_after_attempt(3),
     reraise=True,
 )
-def _call_openai_with_retry(client: OpenAI, messages: list[dict], model: str) -> str:
+def _call_openai_with_retry(client: OpenAI, messages: list[dict], model: str, max_tokens: int | None = None) -> str:
     """
     Zavola OpenAI chat completion s retry pri transientnych chybach.
     Vracia text odpovede alebo prazdny retazec ak choices[0].message.content je None.
@@ -2629,7 +2629,7 @@ def _call_openai_with_retry(client: OpenAI, messages: list[dict], model: str) ->
         model=model,
         messages=messages,
         temperature=0.2,
-        max_tokens=int(os.getenv("OPENAI_MAX_TOKENS", "120")),
+        max_tokens=max_tokens if max_tokens is not None else int(os.getenv("OPENAI_MAX_TOKENS", "120")),
     )
     return response.choices[0].message.content or ""
 
@@ -6486,7 +6486,7 @@ def general_ai_recipe_answer(dish_query: str) -> str | None:
             {"role": "system", "content": GENERAL_AI_RECIPE_SYSTEM_PROMPT},
             {"role": "user", "content": f"Otázka zákazníka: {dish_query}"},
         ]
-        answer = _call_openai_with_retry(client, messages, model)
+        answer = _call_openai_with_retry(client, messages, model, max_tokens=280)
         return answer.strip() or None
     except (RateLimitError, APITimeoutError, APIConnectionError) as exc:
         logger.warning("General AI recipe answer failed: %s", exc)

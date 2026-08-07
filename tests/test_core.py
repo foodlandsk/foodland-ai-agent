@@ -1810,7 +1810,7 @@ class TestIntentDetection:
     def test_general_ai_recipe_answer_uses_configured_prompt_and_strips_result(self, monkeypatch):
         captured = {}
 
-        def fake_call(client, messages, model):
+        def fake_call(client, messages, model, max_tokens=None):
             captured["messages"] = messages
             return "  Vindaloo je pikantné indické kari z Goa.  "
 
@@ -1828,7 +1828,7 @@ class TestIntentDetection:
         assert "vindaloo" in captured["messages"][1]["content"].lower()
 
     def test_general_ai_recipe_answer_falls_back_to_none_on_api_error(self, monkeypatch):
-        def raise_timeout(client, messages, model):
+        def raise_timeout(client, messages, model, max_tokens=None):
             raise main.APITimeoutError(None)
 
         monkeypatch.setattr(main, "_get_openai_client", lambda: object())
