@@ -2121,6 +2121,16 @@ class TestFAQ:
             assert answer, query
             assert "49" in answer, query
 
+    def test_faq_delivery_time_beats_generic_delivery_methods(self, knowledge):
+        # Real user report: "Ako dlho trva dorucenie zasielok?" (how long
+        # does shipping take) got the generic "which delivery methods do
+        # you offer" answer instead of the specific delivery-time answer -
+        # both contain "doruc", and the generic shortcut ran first.
+        for query in ("Ako dlho trva dorucenie zasielok?", "ako dlho trva dorucenie objednavky"):
+            answer = main.best_direct_faq_answer(query, knowledge)
+            assert answer, query
+            assert "72" in answer or "3 pracovne" in main.normalize(answer), query
+
     def test_faq_cash_on_delivery_home_beats_card_in_store(self, knowledge):
         # "da sa platit dobierkou" used to match the unrelated "can I pay by
         # card in store" FAQ (both mention "plat"/"kart" adjacent words).

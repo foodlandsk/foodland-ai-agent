@@ -5673,6 +5673,14 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         countries_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("krajin", "dorucuje"))
         if countries_answer:
             return countries_answer
+    # And again: "ako dlho trva dorucenie" (how long does delivery take)
+    # also contains "doruc", so it was losing to the generic "which
+    # delivery methods do you offer" shortcut instead of the specific
+    # delivery-time answer.
+    if "dlho" in normalized_message and any(marker in normalized_message for marker in ("doruc", "zasiel", "kurier")):
+        delivery_time_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("dlho", "dorucenie"))
+        if delivery_time_answer:
+            return delivery_time_answer
     if any(marker in normalized_message for marker in ("kurier", "doruc", "zasiel", "posiel", "preprav", "privez", "rozvaz", "doprav")):
         delivery_answer = direct_faq_answer_by_question_markers(
             loaded_knowledge,
