@@ -618,6 +618,16 @@ Nahlásené: **"Čajové sety nie sú matcha čajové sety"** – dotaz "cajove 
 
 ---
 
+### Sprint V.2 – Oprava "ako dlho trvá doručenie zásielok"
+
+Nahlásené: otázka **"Ako dlho trvá doručenie zásielok?"** dostala odpoveď o *spôsoboch* dopravy (osobný odber/kuriér/Packeta) namiesto konkrétnej odpovede o *dobe trvania* doručenia (72 hodín/3 pracovné dni). Rovnaký vzorec ako pri "dobierka"/"krajiny" v Sprint P/T – obe otázky obsahujú slovo "doruc", a všeobecnejšia skratka pre "spôsoby doručenia" sa vyhodnotí skôr než konkrétnejšia.
+
+Pridaná skratka pre "ako dlho trvá doručenie" (spúšťač: slovo "dlho" + doruc/zasiel/kurier), vyhodnocovaná PRED všeobecnou skratkou pre spôsoby doručenia.
+
+**Overené naživo** – otázka teraz vracia správnu odpoveď o dobe doručenia; existujúce opravy z Sprint T (doprava zadarmo, spôsoby dopravy) ostávajú nezmenené.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
