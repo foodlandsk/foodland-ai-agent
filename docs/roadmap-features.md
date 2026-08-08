@@ -628,6 +628,16 @@ Pridaná skratka pre "ako dlho trvá doručenie" (spúšťač: slovo "dlho" + do
 
 ---
 
+### Sprint V.3 – Oprava "typy kariet" unesených témou kari (koreniaca zmes)
+
+Nahlásené: *"Pri otázke na typy kariet doporučuje produkty, čo nie je správne"*. Otázky **"typy kariet"** a **"aký typ kariet prijímate"** (platobné karty) vracali produkty s kari korením/pastou namiesto odpovede o platobných metódach. Príčina: slovo **"kariet"** (karty, genitív množného čísla) obsahuje ako podreťazec slovo **"kari"** (koreniaca zmes) – a rozpoznávanie témy "kari" funguje na jednoduchom porovnaní podreťazca, takže si to nesprávne vyhodnotilo ako otázku o kari. Rovnaká trieda chyby ako "sake" unášajúce "sake sety" pred Sprint V.
+
+Pridaný marker "kariet" a skratka smerujúca na existujúcu FAQ o platobných metódach – keďže sa vyhodnocuje skôr v poradí spracovania než rozpoznávanie témy "kari", vyrieši sa otázka správne skôr, než sa vôbec dostane ku kolízii. Legitímne otázky o kari ("recept na kari", "kari pasta") ostávajú nedotknuté.
+
+**Overené naživo** – "typy kariet" teraz vracia správnu odpoveď o platobných metódach.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
