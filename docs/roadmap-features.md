@@ -608,6 +608,16 @@ Na doplňujúcu požiadavku ("podobne ako ramen sety, sada, súprava") som overi
 
 ---
 
+### Sprint V.1 – Oprava "čajové sety" nachádzajúcich len Matcha sety
+
+Nahlásené: **"Čajové sety nie sú matcha čajové sety"** – dotaz "cajove sety" vracal výhradne 17 produktov "Matcha set" (miska+metlička na prípravu matcha), ani jednu zo 4 skutočných "Japonská čajová súprava" (kanvica+šálky). Príčina: slovo "cajove" v dotaze (tvar prídavného mena) sa vôbec nezhodovalo so slovom "cajova" v názvoch produktov (iný pád/rod) – rovnaký typ chyby ako pri "doprava"/"dopravy". Opravené pridaním "cajov" prefixového synonyma do `data/synonyms.json`, podľa vzoru existujúcich "bezlepk"/"sojov" záznamov.
+
+**Prvý pokus bol širší** – krížové prepojenie "set"/"sety" so "suprava"/"sada" ako synonymá (motivované rovnakým vzorom ako "sake sety" v Sprint V). To ale spôsobilo opačný problém: všetkých 17 Matcha setov začalo zrazu zodpovedať aj slovu "suprava", takže dlhšie názvy skutočných čajových súprav boli v BM25 rankingu (ktorý zvýhodňuje kratšie názvy) zaplavené ešte viac než predtým. Táto časť bola vrátená späť – nie je ani potrebná, keďže oprava zo Sprint V funguje výhradne cez routing (`PRODUCT_SET_SIGNAL_TOKENS`), nezávisle od synonymického slovníka.
+
+**Overené naživo** – "cajove sety" teraz nájde skutočné čajové pomôcky/súpravy namiesto matcha setov; samostatný dotaz "matcha set" ostáva nezmenený.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
