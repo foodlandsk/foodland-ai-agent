@@ -2131,6 +2131,22 @@ class TestFAQ:
             assert answer, query
             assert "72" in answer or "3 pracovne" in main.normalize(answer), query
 
+    def test_faq_card_type_question_not_hijacked_by_curry_subject(self, knowledge):
+        # Real user report: "typy kariet" / "aky typ kariet prijimate"
+        # (which card types do you accept) returned kari-pasta / curry
+        # cross-sell products instead of the payment-methods FAQ. Root
+        # cause: "kariet" (cards, genitive plural) contains "kari" (curry)
+        # as a substring, which detect_related_subject() matches via plain
+        # substring check - same class of bug as "sake" hijacking "sake
+        # sety" before Sprint V.
+        for query in ("typy kariet", "aky typ kariet prijimate"):
+            assert main.is_faq_intent(query), query
+            answer = main.best_direct_faq_answer(query, knowledge)
+            assert answer, query
+            assert "kartou" in main.normalize(answer) or "platob" in main.normalize(answer), query
+        # Legitimate curry questions must still work normally.
+        assert main.detect_related_subject("recept na kari") == "kari"
+
     def test_faq_cash_on_delivery_home_beats_card_in_store(self, knowledge):
         # "da sa platit dobierkou" used to match the unrelated "can I pay by
         # card in store" FAQ (both mention "plat"/"kart" adjacent words).
