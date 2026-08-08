@@ -132,6 +132,7 @@
   },
   "prefixes": {
     "bezlepk": ["bezlepkovy", "bezlepkova", "bezlepkovu", "bezlepkove"],
+    "cajov": ["cajova", "cajove", "cajovy", "cajovu"],
     "sojov": ["sojova", "sojovu", "sojove", "sojovy"],
     "omack": ["omacka", "omacku", "omacky"],
     "rybac": ["rybacia", "rybiu", "rybia"],

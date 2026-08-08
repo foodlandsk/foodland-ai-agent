@@ -1722,6 +1722,28 @@ class TestIntentDetection:
         titles = " ".join(main.normalize(p.get("title", "")) for p in matches)
         assert "sake set" in titles or "saki set" in titles
 
+    def test_cajove_sety_finds_tea_sets_not_only_matcha(self, products):
+        # Real user report: "cajove sety" (tea sets) returned only the 17
+        # "Matcha set" bowl/whisk products, none of the 4 actual "Japonska
+        # cajova suprava" (teapot + cup) products. Root cause: "cajove"
+        # (neuter/plural adjective form used in the query) never matched
+        # "cajova" (feminine form used in the product titles) as an exact
+        # token - a declension gap, same class of bug as "doprava" vs.
+        # "dopravy". Fixing it via a "cajov" prefix synonym (matching the
+        # existing bezlepk/sojov pattern in data/synonyms.json) was enough
+        # on its own; a first attempt that also cross-mapped "set"/"sety"
+        # with "suprava"/"sada" as synonyms was reverted because it caused
+        # the opposite problem - all 17 matcha-set titles started matching
+        # "suprava" too, drowning out the actual tea sets even worse.
+        matches = main.cached_search_products(products, "cajove sety", 6)
+        titles = [main.normalize(p.get("title", "")) for p in matches]
+        assert any("suprava" in t for t in titles)
+
+    def test_matcha_set_query_unaffected_by_cajov_synonym(self, products):
+        matches = main.cached_search_products(products, "matcha set", 6)
+        titles = [main.normalize(p.get("title", "")) for p in matches]
+        assert all("matcha" in t for t in titles)
+
     def test_replacement_subject_detects_comparative_phrasing(self, products):
         # Real user report: "ina sojova omacka ako Kikkoman" (a different
         # soy sauce than Kikkoman) has none of the explicit markers
