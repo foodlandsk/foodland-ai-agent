@@ -757,6 +757,23 @@ Namiesto ďalšieho naživo-ladenia konkrétnej príčiny bola opravená všeobe
 
 ---
 
+### Sprint Y.1 – Automatický "trust audit runner" (`scripts/trust_audit.py`)
+
+Priama reakcia na Sprint Y: namiesto ručného spot-checku dvoch značiek (Kikkoman, Squid Brand) po poistke proti prázdnym výsledkom vznikol nový skript, tretí v rade vedľa `consistency_audit.py` (routovacie kolízie/skloňovanie) a existujúcej test sady – tento kontroluje inú dimenziu: **či sa odpoveď bota niekedy môže rozchádzať s tým, čo naozaj našiel**.
+
+Dva testy, oba úplne offline (žiadny FastAPI server, žiadne volanie na OpenAI):
+
+1. **`--empty-alternatives`** – pre každú z 13 kategórií v `REPLACEMENT_SUBJECT_ALIASES` a KAŽDÚ značku, ktorá sa v nej reálne predáva, zavolá `alternative_products_for_subject(..., exclude_brand=znacka)` a overí, že výsledok nie je nikdy prázdny. Toto je systematické preverenie poistky zo Sprint Y naprieč celým katalógom (17+ značiek len pri sójovej omáčke), nielen dvomi ručne otestovanými prípadmi.
+2. **`--pii-leak`** – sada syntetických správ s emailom/telefónom overuje, že `redact_pii()` ich vždy odstráni pred zápisom do analytics logu.
+
+Dôvod, prečo to musí byť offline skript a nie opakované `/chat` požiadavky: `intent="replacement_products"` nikdy nejde cez rýchlu šablónu (`should_use_fast_chat_answer()`) – každý živý test tejto triedy chýb by teda reálne zavolal OpenAI, presne to, čo Sprint Y už raz spôsobilo neúmyselne.
+
+**Výsledok prvého behu**: 0 nálezov v oboch kontrolách – poistka drží naprieč celým katalógom, nielen pri Kikkoman/Squid Brand.
+
+Spustenie: `python scripts/trust_audit.py` (obe kontroly), `--empty-alternatives`/`--pii-leak` samostatne.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
