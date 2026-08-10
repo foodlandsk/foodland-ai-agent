@@ -1780,6 +1780,7 @@ FAQ_INTENT_MARKERS = (
     "store",
     "park",
     "kariet",
+    "adresa",
 )
 
 SHOPPING_LIST_MARKERS = (
@@ -5718,6 +5719,10 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         card_types_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("platobne", "metody"))
         if card_types_answer:
             return card_types_answer
+    if "adresa" in normalized_message:
+        address_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("kamennu", "predajnu"))
+        if address_answer:
+            return address_answer
     if "kredit" in normalized_message and any(marker in normalized_message for marker in ("platnost", "dokedy platia", "vyprsia", "vyprsanie", "expiruju")):
         if any(marker in normalized_message for marker in ("upozorn", "davate vediet", "notifikacia")):
             expiry_notice_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("upozornite", "vyprsanim"))

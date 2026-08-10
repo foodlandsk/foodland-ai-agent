@@ -2147,6 +2147,16 @@ class TestFAQ:
         # Legitimate curry questions must still work normally.
         assert main.detect_related_subject("recept na kari") == "kari"
 
+    def test_faq_company_address_beats_generic_product_search(self, knowledge):
+        # Real dashboard no-result: "Adresa firmy" got an unrelated dashi
+        # soup-base product instead of the store address FAQ. "adresa" had
+        # no FAQ_INTENT_MARKERS entry at all.
+        for query in ("Adresa firmy", "Adresa", "aka je adresa predajne"):
+            assert main.is_faq_intent(query), query
+            answer = main.best_direct_faq_answer(query, knowledge)
+            assert answer, query
+            assert "vajnorska" in main.normalize(answer), query
+
     def test_faq_cash_on_delivery_home_beats_card_in_store(self, knowledge):
         # "da sa platit dobierkou" used to match the unrelated "can I pay by
         # card in store" FAQ (both mention "plat"/"kart" adjacent words).
