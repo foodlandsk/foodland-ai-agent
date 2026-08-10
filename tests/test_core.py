@@ -1822,6 +1822,37 @@ class TestIntentDetection:
         subject = main.detect_replacement_subject("ina sojova omacka ako Kikkoman")
         assert subject == "sojova omacka"
 
+    def test_replacement_brand_query_returns_other_brands_not_more_of_same(self, products):
+        # Real user report: "alternativa ku Kikkoman sojovej omacke" (an
+        # alternative to Kikkoman soy sauce) - "sojovej omacke" (locative)
+        # didn't match either alias in REPLACEMENT_SUBJECT_ALIASES (only
+        # "sojova omacka"/"sojovu omacku" were listed), so detect_replacement_
+        # subject() fell through to the brand-polluted autocomplete fallback
+        # ("kikkoman sojovej omacke"), and the final plain-search fallback
+        # then matched "kikkoman" as a keyword and recommended MORE Kikkoman
+        # products - the opposite of what "alternative to Kikkoman" means.
+        for message, brand_token in (
+            ("alternativa ku Kikkoman sojovej omacke", "kikkoman"),
+            ("cim nahradim Squid Brand rybaciu omacku", "squid brand"),
+        ):
+            subject = main.detect_replacement_subject(message)
+            assert subject in ("sojova omacka", "rybacia omacka"), message
+            mentioned_brand = main.detect_mentioned_replacement_brand(message, products, subject)
+            assert mentioned_brand and main.normalize(mentioned_brand) == brand_token, message
+            alternatives = main.alternative_products_for_subject(
+                products, main.knowledge, subject, 5, exclude_brand=mentioned_brand
+            )
+            assert alternatives, message
+            assert all(brand_token not in main.normalize(p.get("brand", "")) for p in alternatives), message
+
+    def test_replacement_missing_brand_phrasing_reaches_replacement_subject(self, products):
+        # Real user report: "Nemam Kikkoman sojovu omacku, co pouzit?" (I
+        # don't have Kikkoman soy sauce, what should I use) is a natural
+        # substitute request but had no gate marker at all - the function
+        # returned None before even checking the alias list.
+        subject = main.detect_replacement_subject("nemam Kikkoman sojovu omacku, co pouzit")
+        assert subject == "sojova omacka"
+
         alternatives = main.alternative_products_for_subject(products, main.knowledge, subject, 6)
         assert alternatives
         titles = " ".join(main.normalize(p.get("title", "")) for p in alternatives)

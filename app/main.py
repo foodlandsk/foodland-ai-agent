@@ -3682,7 +3682,10 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     elif special_subject:
         matches = special_products_for_subject(products, special_subject, chat_request.limit)
     elif replacement_subject:
-        matches = alternative_products_for_subject(products, knowledge, replacement_subject, chat_request.limit)
+        mentioned_replacement_brand = detect_mentioned_replacement_brand(chat_request.message, products, replacement_subject)
+        matches = alternative_products_for_subject(
+            products, knowledge, replacement_subject, chat_request.limit, exclude_brand=mentioned_replacement_brand
+        )
     elif article_product_subject:
         matches = article_products_for_subject(products, article_product_subject, chat_request.limit)
     elif cross_sell_matches:
@@ -6630,8 +6633,8 @@ REPLACEMENT_QUERY_FILLER = (
 
 
 REPLACEMENT_SUBJECT_ALIASES = {
-    "rybacia omacka": ("rybacia omacka", "rybaciu omacku", "rybiu omacku", "fish sauce"),
-    "sojova omacka": ("sojova omacka", "sojovu omacku", "shoyu", "soy sauce"),
+    "rybacia omacka": ("rybacia omacka", "rybaciu omacku", "rybiu omacku", "rybacej omacky", "rybacej omacke", "rybacou omackou", "fish sauce"),
+    "sojova omacka": ("sojova omacka", "sojovu omacku", "sojovej omacke", "sojovej omacky", "sojovou omackou", "shoyu", "soy sauce"),
     "gochujang": ("gochujang", "gochu jang", "gochudzang", "gochu"),
     "mirin": ("mirin",),
     "ryzovy ocot": ("ryzovy ocot", "rice vinegar"),
@@ -6664,7 +6667,7 @@ def detect_replacement_subject(message: str) -> str | None:
     normalized_message = normalize(message)
     has_explicit_marker = any(
         marker in normalized_message
-        for marker in ("nahrad", "vynahrad", "namiesto", "alternativ", "cim ", "čim ", "čím ")
+        for marker in ("nahrad", "vynahrad", "namiesto", "alternativ", "nemam", "nemame", "cim ", "čim ", "čím ")
     )
     # "ina sojova omacka ako Kikkoman" (a different X than Y) is a natural
     # way to ask for an alternative brand, but has none of the markers
@@ -6690,14 +6693,43 @@ def detect_replacement_subject(message: str) -> str | None:
     return complete_autocomplete_subject(cleaned) if cleaned else None
 
 
+def detect_mentioned_replacement_brand(message: str, products_list: list[Product] | list[dict], subject: str) -> str | None:
+    """Find a specific brand named in a replacement-style query, e.g.
+    "alternativa ku Kikkoman sojovej omacke" -> "KIKKOMAN". Real user need:
+    "alternative to brand X" means a DIFFERENT brand, so this is used to
+    exclude that brand from alternative_products_for_subject() below -
+    without it, the fallback search matched the brand name as a plain
+    keyword and recommended MORE of the same brand instead of competitors.
+    """
+    if not subject:
+        return None
+    normalized_message = normalize(message)
+    category_products = cached_search_products(products_list, subject, 30)
+    candidate_brands = {str(product.get("brand") or "").strip() for product in category_products}
+    matched: str | None = None
+    for brand in candidate_brands:
+        normalized_brand = normalize(brand)
+        if len(normalized_brand) >= 3 and normalized_brand in normalized_message:
+            if not matched or len(normalized_brand) > len(normalize(matched)):
+                matched = brand
+    return matched
+
+
 def alternative_products_for_subject(
     products_list: list[Product] | list[dict],
     all_knowledge: dict,
     subject: str,
     limit: int,
+    exclude_brand: str | None = None,
 ) -> list[dict]:
     seen: set[str] = set()
     recommendations: list[dict] = []
+    normalized_exclude_brand = normalize(exclude_brand) if exclude_brand else ""
+
+    def is_excluded(product: dict) -> bool:
+        if not normalized_exclude_brand:
+            return False
+        return normalize(str(product.get("brand") or "")) == normalized_exclude_brand
 
     alternative_hits = search_knowledge(all_knowledge, subject, allowed_sections=("Alternatives",))
     for hit in alternative_hits.get("Alternatives", []):
@@ -6709,6 +6741,8 @@ def alternative_products_for_subject(
             alt_title = clean_alternative_title(str(record.get(f"Alternativa {index}") or ""))
             alt_url = str(record.get(f"Alternativa {index}_url") or "").strip()
             for product in products_from_alternative(products_list, alt_title, alt_url, subject):
+                if is_excluded(product):
+                    continue
                 key = product.get("id") or product.get("link") or product.get("title")
                 if not key or key in seen:
                     continue
@@ -6723,6 +6757,8 @@ def alternative_products_for_subject(
 
     for query in REPLACEMENT_PRODUCT_QUERIES.get(subject, []):
         for product in prioritize_replacement_title_matches(cached_search_products(products_list, query, max(limit, 6)), query):
+            if is_excluded(product):
+                continue
             key = product.get("id") or product.get("link") or product.get("title")
             if key and key not in seen:
                 seen.add(key)
@@ -6736,6 +6772,8 @@ def alternative_products_for_subject(
     # Fallback: same-name/category products are still alternatives, unlike cross-sell complements.
     fallback_products = prioritize_replacement_title_matches(cached_search_products(products_list, subject, max(limit * 2, 8)), subject)
     for product in fallback_products:
+        if is_excluded(product):
+            continue
         key = product.get("id") or product.get("link") or product.get("title")
         if key and key not in seen:
             seen.add(key)
