@@ -774,6 +774,18 @@ Spustenie: `python scripts/trust_audit.py` (obe kontroly), `--empty-alternatives
 
 ---
 
+### Sprint Z – Pridanie reálneho receptu na Kuracie Karaage
+
+Používateľ poslal odkaz na reálny recept: `foodland.sk/recepty/japonske-vyprazane-kura-kuracie-karaage/`. Na rozdiel od Vindaloo (Sprint W) mal "karaage" už existujúci `RELATED_PRODUCT_QUERIES` záznam (cross-sell fungoval ešte predtým, než recept existoval), ale chýbal záznam v `Recipes`, mapovanie názvu na subjekt aj `MISSING_INGREDIENTS_BY_SUBJECT`.
+
+Pridané: záznam receptu do `knowledge.json`, `RECIPE_TITLE_PRODUCT_SUBJECTS`, `MISSING_INGREDIENTS_BY_SUBJECT["karaage"]` (kuracie stehná, čerstvý zázvor, citrón, biela kapusta – žiadne z nich Foodland nepredáva), a "karaage" priamo do `RECIPE_INTENT_MARKERS` (rovnaká oprava ako Sprint W.1, aby holé "Karaage" bez slova "recept" fungovalo tiež).
+
+Pri overovaní proti reálnemu receptu (40–50g kukuričného škrobu na obaľovanie) sa zistilo, že kukuričný škrob v existujúcom cross-sell zozname úplne chýbal – pridaný, ale prvý pokus ho pridal na koniec zoznamu, takže sa pri predvolenom limite 6 produktov nikdy nezobrazil (`related_products_for_subject()` berie jeden produkt na dopyt v poradí zoznamu, a zoznam mal 7 položiek). Odhalil to nový regresný test pred commitom – zoznam preusporiadaný tak, aby škrob predbehol dve okrajovejšie položky (cesnak, sezamový olej).
+
+**Overené naživo** – "recept na karaage" vracia skutočný recept z Foodland.sk (intent `recipe`, rýchla šablónová odpoveď bez volania na OpenAI).
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
