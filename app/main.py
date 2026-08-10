@@ -88,7 +88,7 @@ logger = logging.getLogger(__name__)
 
 
 class UTF8StaticFiles(StaticFiles):
-    ALLOWED_SUFFIXES = {".css", ".html", ".ico", ".js", ".json", ".map", ".txt"}
+    ALLOWED_SUFFIXES = {".css", ".html", ".ico", ".js", ".json", ".map", ".txt", ".png", ".jpg", ".jpeg", ".webp", ".svg", ".glb"}
     CHARSET_BY_SUFFIX = {
         ".css": "text/css; charset=utf-8",
         ".html": "text/html; charset=utf-8",
@@ -3399,10 +3399,14 @@ def append_unique(values: deque, value: str) -> None:
     values.append(value)
 
 
-def redact_memory_text(text: str) -> str:
+def redact_pii(text: str) -> str:
     cleaned = re.sub(r"[\w.+-]+@[\w-]+\.[\w.-]+", "[email]", str(text))
     cleaned = re.sub(r"\+?\d[\d\s().-]{6,}\d", "[phone]", cleaned)
-    return cleaned[:200]
+    return cleaned
+
+
+def redact_memory_text(text: str) -> str:
+    return redact_pii(text)[:200]
 
 
 def session_memory_context(memory: dict | None) -> str:
@@ -5208,7 +5212,7 @@ def log_question(message: str, client_key: str, matches_count: int, intent: str 
     record = {
         "ts": int(time.time()),
         "client_hash": hashlib.sha256(f"{salt}:{client_key}".encode("utf-8")).hexdigest()[:24],
-        "message": message[:1000],
+        "message": redact_pii(message)[:1000],
         "matches_count": matches_count,
         "intent": intent,
         "session_id": session_id,
@@ -5246,7 +5250,7 @@ def log_event(event_request: EventRequest, client_key: str) -> None:
         "client_hash": hashlib.sha256(f"{salt}:{client_key}".encode("utf-8")).hexdigest()[:24],
         "session_id": event_request.session_id[:64],
         "event_type": event_request.event_type,
-        "query": (event_request.query or "")[:300] or None,
+        "query": redact_pii(event_request.query or "")[:300] or None,
         "product_sku": event_request.product_sku,
         "product_skus": event_request.product_skus[:50] if event_request.product_skus else None,
         "position": event_request.position,
@@ -6629,6 +6633,10 @@ REPLACEMENT_QUERY_FILLER = (
     "nemame",
     "nemáme",
     "x",
+    "znacka",
+    "znacky",
+    "znacku",
+    "znacke",
 )
 
 
@@ -6690,7 +6698,36 @@ def detect_replacement_subject(message: str) -> str | None:
         cleaned = cleaned.replace(normalize(filler), " ")
     cleaned = re.sub(r"[^a-z0-9 ]+", " ", cleaned)
     cleaned = " ".join(token for token in cleaned.split() if len(token) > 2)
-    return complete_autocomplete_subject(cleaned) if cleaned else None
+    if not cleaned:
+        return None
+    unambiguous_brand_subject = resolve_unambiguous_sauce_brand(cleaned)
+    if unambiguous_brand_subject:
+        return unambiguous_brand_subject
+    return complete_autocomplete_subject(cleaned)
+
+
+def resolve_unambiguous_sauce_brand(cleaned_message: str) -> str | None:
+    """A replacement query naming only a brand with no category word
+    (e.g. "alternativa Kikkoman", no "sojova omacka") used to fall
+    through to a plain brand-name search, surfacing whatever Kikkoman
+    product happened to match (wok sauce, kimchi base, teriyaki
+    marinade) instead of soy sauce alternatives. If the cleaned text is
+    exactly a brand that sells only ONE of our two sauce categories
+    (verified: only MEGACHEF sells both soy and fish sauce - every
+    other brand in the catalog is unambiguous), resolve directly to it.
+    """
+    normalized = normalize(cleaned_message).strip()
+    if not normalized:
+        return None
+    matched_categories = set()
+    for category_subject in ("sojova omacka", "rybacia omacka"):
+        category_products = cached_search_products(products, category_subject, 30)
+        brands = {normalize(str(product.get("brand") or "")) for product in category_products}
+        if normalized in brands:
+            matched_categories.add(category_subject)
+    if len(matched_categories) == 1:
+        return matched_categories.pop()
+    return None
 
 
 def detect_mentioned_replacement_brand(message: str, products_list: list[Product] | list[dict], subject: str) -> str | None:
@@ -8038,6 +8075,16 @@ def refresh_feed() -> None:
     lang_feeds = load_multilang_feeds()
     new_products = lang_feeds.get('sk', [])
     new_translation_index = multilang_translation_index(lang_feeds)
+    if not new_products:
+        # load_multilang_feeds() swallows per-language fetch errors and
+        # just omits the key (network blip, HTTP error, malformed XML) -
+        # no exception reaches feed_refresh_loop()'s try/except in that
+        # case. Without this guard an empty SK feed silently wiped the
+        # live product catalog to [] and every /chat query would answer
+        # "no products found" until the next successful refresh.
+        last_feed_refresh_error = "SK feed returned 0 products; keeping previous catalog."
+        logger.error(last_feed_refresh_error)
+        return
     products = new_products
     product_snapshot = build_product_snapshot(new_products)
     translation_index = new_translation_index

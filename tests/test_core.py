@@ -19,6 +19,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 import time
 import types
 import unicodedata
@@ -1859,6 +1860,35 @@ class TestIntentDetection:
         assert "tamarind" not in titles
         assert "omacka" in titles or "omackov" in titles
 
+    def test_replacement_bare_brand_resolves_to_its_only_sauce_category(self, products):
+        # Follow-up requirement: an alternative to a soy sauce brand must
+        # always recommend soy sauce (never an unrelated product like chili
+        # sauce). "alternativa Kikkoman" (brand name only, no "sojova
+        # omacka") used to fall through to a plain brand-name search and
+        # surfaced whatever Kikkoman product matched - wok sauce, kimchi
+        # base, teriyaki marinade - not soy sauce specifically. Kikkoman and
+        # Squid Brand are unambiguous (verified: only sell one of our two
+        # sauce categories), so those must resolve directly to it.
+        for message, expected_subject, brand_token in (
+            ("alternativa Kikkoman", "sojova omacka", "kikkoman"),
+            ("alternativa k znacke Kikkoman", "sojova omacka", "kikkoman"),
+            ("cim nahradim Squid Brand", "rybacia omacka", "squid brand"),
+        ):
+            subject = main.detect_replacement_subject(message)
+            assert subject == expected_subject, message
+            alternatives = main.alternative_products_for_subject(
+                products, main.knowledge, subject, 6, exclude_brand=brand_token
+            )
+            assert alternatives, message
+            assert all("omacka" in main.normalize(p.get("title", "")) for p in alternatives), message
+
+    def test_replacement_ambiguous_brand_stays_unresolved(self):
+        # MEGACHEF genuinely sells both soy sauce and fish sauce, so a bare
+        # brand name must NOT be force-resolved to either - unlike Kikkoman/
+        # Squid Brand above, there's no single correct category to guess.
+        assert main.detect_replacement_subject("alternativa MEGACHEF") != "sojova omacka"
+        assert main.detect_replacement_subject("alternativa MEGACHEF") != "rybacia omacka"
+
     def test_replacement_subject_comparative_marker_requires_word_boundary(self):
         # "vitamina" contains the substring "ina " once padded, but must not
         # be treated as the comparative "ina ... ako" pattern.
@@ -2143,6 +2173,67 @@ class TestSessionMemory:
         assert "+421" not in redacted
         assert "[email]" in redacted
         assert "[phone]" in redacted
+
+    def test_log_question_redacts_contact_details_in_saved_file(self, monkeypatch):
+        # log_question() hashes the client identity but used to store the
+        # raw question text verbatim - a customer typing an email or phone
+        # number into chat landed in question_analytics.jsonl in plain text.
+        # Uses tempfile directly (not the tmp_path fixture) to avoid this
+        # environment's pytest-tmp-dir PermissionError, unrelated to app code.
+        fd, log_path = tempfile.mkstemp(suffix=".jsonl")
+        os.close(fd)
+        try:
+            monkeypatch.setenv("ANALYTICS_LOG_PATH", log_path)
+            main.log_question("moj email je test@example.com a cislo +421 900 123 456", "client-1", 0)
+            saved = Path(log_path).read_text(encoding="utf-8")
+        finally:
+            os.remove(log_path)
+
+        assert "test@example.com" not in saved
+        assert "421 900 123 456" not in saved
+        assert "[email]" in saved
+        assert "[phone]" in saved
+
+    def test_log_event_redacts_contact_details_in_saved_file(self, monkeypatch):
+        fd, log_path = tempfile.mkstemp(suffix=".jsonl")
+        os.close(fd)
+        try:
+            monkeypatch.setenv("EVENTS_LOG_PATH", log_path)
+            event = main.EventRequest(event_type="search_submit", query="posli mi info na test@example.com")
+            main.log_event(event, "client-1")
+            saved = Path(log_path).read_text(encoding="utf-8")
+        finally:
+            os.remove(log_path)
+
+        assert "test@example.com" not in saved
+        assert "[email]" in saved
+
+    def test_refresh_feed_keeps_old_catalog_when_new_feed_is_empty(self, monkeypatch):
+        # load_multilang_feeds() swallows per-language fetch errors (network
+        # blip, HTTP error, malformed XML) and just omits the 'sk' key -
+        # refresh_feed() used to overwrite the live catalog with [] in that
+        # case, with no exception for the caller's try/except to catch.
+        original_products = main.products
+        original_snapshot = main.product_snapshot
+        try:
+            monkeypatch.setattr(main, "load_multilang_feeds", lambda: {})
+            main.refresh_feed()
+
+            assert main.products is original_products
+            assert main.product_snapshot is original_snapshot
+            assert main.last_feed_refresh_error
+        finally:
+            main.products = original_products
+            main.product_snapshot = original_snapshot
+            main.last_feed_refresh_error = None
+
+    def test_static_files_serve_known_binary_assets(self):
+        # app/mei-avatar.png, app/foodland-symbol.png and
+        # app/foodland-mei-avatar-rigged.glb are served under /static but
+        # ALLOWED_SUFFIXES only listed text formats - real static assets
+        # would 404. Binary suffixes must not get a forced text charset.
+        assert {".png", ".jpg", ".jpeg", ".webp", ".svg", ".glb"} <= main.UTF8StaticFiles.ALLOWED_SUFFIXES
+        assert not ({".png", ".glb"} & set(main.UTF8StaticFiles.CHARSET_BY_SUFFIX))
 
 
 class TestFAQ:
