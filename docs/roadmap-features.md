@@ -658,6 +658,22 @@ Pridané prefixové synonymum "cajnik" pokrývajúce jeho pády, rovnakým spôs
 
 ---
 
+### Sprint W – Pridanie reálneho receptu na Vindaloo
+
+Používateľ upozornil, že recept na Vindaloo je "už v databáze Foodlandu" – po overení (lokálne aj naživo, 53 receptov, žiadny Vindaloo) sa ukázalo, že v skutočnosti chýbal. Používateľ následne poslal reálny odkaz: `foodland.sk/recepty/goanske-bravcove-vindaloo-bez-zemiakov/`.
+
+Recept pridaný korektne, nielen ako záznam v `knowledge.json`:
+- **Recept**: kuchyňa, názov, SK URL – iba overené polia, žiadne vymyslené odkazy pre ostatné jazykové mutácie (schéma nevyžaduje všetkých 7, stačí jeden `_url` field).
+- **Mapovanie názvu na "subject"** (`RECIPE_TITLE_PRODUCT_SUBJECTS`), aby `detect_recipe_subject()` recept vôbec rozpoznal.
+- **`RELATED_PRODUCT_QUERIES["vindaloo"]`**: koriandrové semienka, horčicové semienka, senovka grécka, sušené čili papričky, škorica, basmati ryža – každý výraz individuálne overený proti reálnemu katalógu pred pridaním, nie odhadnutý.
+- **`MISSING_INGREDIENTS_BY_SUBJECT["vindaloo"]`**: čerstvé suroviny, ktoré Foodland nepredáva (bravčové mäso, cesnak, zázvor, ocot, cibuľa).
+
+Všetky tri dátové štruktúry boli potrebné – tri existujúce kontrolné testy (vyžadujúce, aby mal každý recept namapovaný subject) chybu okamžite odhalili.
+
+**Overené naživo** – "recept na vindaloo" teraz vracia skutočný recept z Foodland.sk namiesto AI fallbacku zo Sprint U.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
