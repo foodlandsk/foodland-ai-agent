@@ -1024,7 +1024,7 @@ RELATED_PRODUCT_QUERIES = {
         "sake",
     ],
     "karaage": [
-        "sojova omacka", "sake", "zazvor", "cesnak", "sezamovy olej", "mirin",
+        "sojova omacka", "sake", "zazvor", "mirin", "kukuricny skrob", "cesnak", "sezamovy olej",
     ],
     "tonkatsu": [
         "sojova omacka", "tonkatsu omacka", "panko", "sezamovy olej", "cesnak",
@@ -1515,6 +1515,7 @@ RECIPE_TITLE_PRODUCT_SUBJECTS = (
     ("tom yum", "tom_yum"),
     ("kokosove kari", "thajske_kari"),
     ("vindaloo", "vindaloo"),
+    ("karaage", "karaage"),
     ("tekvicou", "thajske_kari"),
     ("ciernej ryze", "black_rice_salad"),
     ("cierna ryza", "black_rice_salad"),
@@ -1820,6 +1821,7 @@ SHOPPING_LIST_MARKERS = (
 
 MISSING_INGREDIENTS_BY_SUBJECT = {
     "vindaloo": ["bravčové pliecko (mäso)", "čerstvý cesnak", "čerstvý zázvor", "vínny alebo jablčný ocot", "cibuľa"],
+    "karaage": ["kuracie stehná (mäso)", "čerstvý zázvor", "citrón", "biela kapusta"],
     "sushi": ["čerstvá ryba alebo zelenina podľa rolky", "avokádo alebo uhorka"],
     "kimchi_recipe": ["čínska kapusta", "daikon alebo biela reďkovka", "jarná cibuľka", "cesnak"],
     "kimchi": ["čínska kapusta", "daikon alebo biela reďkovka", "jarná cibuľka", "cesnak"],
@@ -2352,6 +2354,7 @@ RECIPE_INTENT_MARKERS = (
     "jak pripravim",
     "jak uvarim",
     "vindaloo",
+    "karaage",
 )
 
 RANDOM_RECIPE_INTENT_MARKERS = (

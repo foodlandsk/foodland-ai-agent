@@ -1671,6 +1671,28 @@ class TestIntentDetection:
         recipes = main.recipe_results(knowledge_matches, 4, "Vindaloo", knowledge)
         assert any("goanske-bravcove-vindaloo" in r.get("link", "") for r in recipes)
 
+    def test_karaage_recipe_added_from_real_foodland_page(self, knowledge, products):
+        # User provided the real recipe at foodland.sk/recepty/
+        # japonske-vyprazane-kura-kuracie-karaage/ to add. Unlike Vindaloo,
+        # "karaage" already had a RELATED_PRODUCT_QUERIES entry (used for
+        # cross-sell before any recipe existed) but no Recipes entry, no
+        # title->subject mapping, and no MISSING_INGREDIENTS_BY_SUBJECT -
+        # all added here, plus cornstarch to the cross-sell list (the core
+        # coating ingredient, verified against the real recipe and missing
+        # from the pre-existing query list entirely).
+        for query in ("recept na karaage", "Karaage", "karaage"):
+            assert main.is_recipe_intent(main.normalize(query)), query
+            assert main.detect_recipe_subject(query) == "karaage", query
+
+        knowledge_matches = main.search_knowledge(knowledge, "recept na karaage", allowed_sections=("Recipes",))
+        recipes = main.recipe_results(knowledge_matches, 4, "recept na karaage", knowledge)
+        assert recipes
+        assert any("japonske-vyprazane-kura-kuracie-karaage" in r.get("link", "") for r in recipes)
+
+        related_matches = main.related_products_for_subject(products, knowledge, "karaage", 6)
+        assert related_matches
+        assert any("skrob" in main.normalize(r.get("title", "")) for r in related_matches)
+
     def test_recipe_product_subject_samples_return_products(self, products):
         subjects = [
             "tom_kha",

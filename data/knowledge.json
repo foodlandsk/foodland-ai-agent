@@ -69391,6 +69391,12 @@
         "Recept (SK názov)": "Goanské bravčové Vindaloo bez zemiakov",
         "SK": "SK",
         "SK_url": "https://www.foodland.sk/recepty/goanske-bravcove-vindaloo-bez-zemiakov/"
+      },
+      {
+        "Kuchyňa": "Japonská kuchyňa",
+        "Recept (SK názov)": "Kuracie Karaage - Japonské vyprážané kura",
+        "SK": "SK",
+        "SK_url": "https://www.foodland.sk/recepty/japonske-vyprazane-kura-kuracie-karaage/"
       }
     ],
     "Magazine": [
@@ -77922,7 +77928,7 @@
   "counts": {
     "Alternatives": 2140,
     "CrossSell": 2140,
-    "Recipes": 54,
+    "Recipes": 55,
     "Magazine": 60,
     "FAQ": 51,
     "Products_AI": 130,
