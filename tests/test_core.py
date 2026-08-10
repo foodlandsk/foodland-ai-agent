@@ -1744,6 +1744,21 @@ class TestIntentDetection:
         titles = [main.normalize(p.get("title", "")) for p in matches]
         assert all("matcha" in t for t in titles)
 
+    def test_replacement_teapot_finds_teapots_not_only_japanese_products(self, products):
+        # Real user report: "nahrada japonskeho cajnika" (replacement for a
+        # Japanese teapot) returned noodles, chopsticks and knives - none
+        # of the 3 actual "Japonsky cajnik" (teapot) products. Root cause:
+        # "cajnika" (genitive) never matched "cajnik" (nominative, as it
+        # appears in product titles) as an exact token, so results were
+        # driven entirely by the generic "japonske/japonsky" adjective
+        # match. Same class of bug as "cajove"/"cajova" - fixed with a
+        # "cajnik" prefix synonym.
+        subject = main.detect_replacement_subject("nahrada japonskeho cajnika")
+        alternatives = main.alternative_products_for_subject(products, main.knowledge, subject, 6)
+        titles = [main.normalize(p.get("title", "")) for p in alternatives]
+        assert sum("cajnik" in t for t in titles) >= 3
+        assert all("cajnik" in t for t in titles[:3])
+
     def test_replacement_subject_detects_comparative_phrasing(self, products):
         # Real user report: "ina sojova omacka ako Kikkoman" (a different
         # soy sauce than Kikkoman) has none of the explicit markers
