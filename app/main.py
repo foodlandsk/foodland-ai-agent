@@ -6711,10 +6711,17 @@ def resolve_unambiguous_sauce_brand(cleaned_message: str) -> str | None:
     (e.g. "alternativa Kikkoman", no "sojova omacka") used to fall
     through to a plain brand-name search, surfacing whatever Kikkoman
     product happened to match (wok sauce, kimchi base, teriyaki
-    marinade) instead of soy sauce alternatives. If the cleaned text is
-    exactly a brand that sells only ONE of our two sauce categories
-    (verified: only MEGACHEF sells both soy and fish sauce - every
-    other brand in the catalog is unambiguous), resolve directly to it.
+    marinade) instead of soy sauce alternatives. If the (filler-stripped)
+    message names a brand that sells only ONE of our two sauce categories
+    (verified: only MEGACHEF sells both soy and fish sauce - every other
+    brand in the catalog is unambiguous), resolve directly to it.
+
+    Substring match, not equality: detect_replacement_subject() is called
+    with contextualize_message()'s output, which can append prior-session
+    context (diet terms, last product title) after the brand name - an
+    exact-equality check missed that live and produced an empty result
+    (subject stayed the polluted literal text while exclude_brand still
+    correctly matched the brand, so the two contradicted each other).
     """
     normalized = normalize(cleaned_message).strip()
     if not normalized:
@@ -6723,7 +6730,7 @@ def resolve_unambiguous_sauce_brand(cleaned_message: str) -> str | None:
     for category_subject in ("sojova omacka", "rybacia omacka"):
         category_products = cached_search_products(products, category_subject, 30)
         brands = {normalize(str(product.get("brand") or "")) for product in category_products}
-        if normalized in brands:
+        if any(brand and brand in normalized for brand in brands):
             matched_categories.add(category_subject)
     if len(matched_categories) == 1:
         return matched_categories.pop()

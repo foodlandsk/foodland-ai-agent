@@ -1882,6 +1882,30 @@ class TestIntentDetection:
             assert alternatives, message
             assert all("omacka" in main.normalize(p.get("title", "")) for p in alternatives), message
 
+    def test_replacement_bare_brand_survives_contextualize_message_pollution(self, products):
+        # Live production bug found during deploy verification: /chat calls
+        # detect_replacement_subject(contextual_message), and
+        # contextualize_message() can append prior-session context (diet
+        # terms, last-seen product title) after the brand name. The first
+        # version of resolve_unambiguous_sauce_brand() required the cleaned
+        # text to EQUAL a brand exactly, so "alternativa Kikkoman
+        # bezlepkove" (a returning customer's gluten-free diet term
+        # appended) missed the resolution entirely: subject stayed the
+        # literal polluted text ("kikkoman bezlepkove") while
+        # detect_mentioned_replacement_brand still correctly found
+        # "KIKKOMAN" - the two contradicted each other and
+        # alternative_products_for_subject's brand-exclusion filter wiped
+        # out every result, returning an empty product list with an answer
+        # claiming success.
+        for message in ("alternativa Kikkoman bezlepkove", "alternativa Kikkoman vegan"):
+            subject = main.detect_replacement_subject(message)
+            assert subject == "sojova omacka", message
+            mentioned_brand = main.detect_mentioned_replacement_brand(message, products, subject)
+            alternatives = main.alternative_products_for_subject(
+                products, main.knowledge, subject, 6, exclude_brand=mentioned_brand
+            )
+            assert alternatives, message
+
     def test_replacement_ambiguous_brand_stays_unresolved(self):
         # MEGACHEF genuinely sells both soy sauce and fish sauce, so a bare
         # brand name must NOT be force-resolved to either - unlike Kikkoman/
