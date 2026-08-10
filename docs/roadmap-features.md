@@ -684,6 +684,23 @@ Pridané "vindaloo" priamo do `RECIPE_INTENT_MARKERS`.
 
 ---
 
+### Sprint X – Automatizovaný nástroj na hľadanie chýb (`scripts/consistency_audit.py`)
+
+Po sérii Sprintov O–W.1, kde každú chybu nahlásil až reálny zákazník, padla otázka: *"Nechcem manuálne opravovať chyby, vieš navrhnúť spôsob overenia a opravy inak?"* Namiesto čakania na ďalšie hlásenia som postavil skript, ktorý aktívne hľadá presne tie dve triedy chýb, ktoré sa v tomto projekte opakovane vyskytli:
+
+1. **Kolízie podreťazcov medzi markermi** – krátky marker použitý na routing (napr. "kari", "sake", "udon", "nigiri") je náhodou podreťazcom iného, nesúvisiaceho markeru (napr. "kariet", "sake sety", "gyudon", "onigiri") a v poradí kontroly vyhrá ten nesprávny. Presne trieda chýb zo Sprint V a V.3.
+2. **Krehkosť voči skloňovaniu** – FAQ/recept sa nespozná pri inak skloňovanom tvare svojho kľúčového slova (napr. "čajníka" namiesto "čajník"). Trieda chýb zo Sprint V.1 a V.5.
+
+Nástroj prehľadáva všetky routovacie slovníky (`FAQ_INTENT_MARKERS`, `RECIPE_INTENT_MARKERS`, `RELATED_SUBJECT_ALIASES`, `REPLACEMENT_SUBJECT_ALIASES`, `RECIPE_TITLE_PRODUCT_SUBJECTS`, `PREFIX_SYNONYMS`...) a hľadá páry, kde je jeden marker podreťazcom druhého bez toho, aby smerovali k rovnakému významu; známe a už overené bezpečné kolízie (napr. "nigiri"/"onigiri", "thai"/"padthai") sú v `KNOWN_SAFE_COLLISIONS`, aby sa neopakovane nehlásili.
+
+**Prvý reálny nález**: "udon" je podreťazcom "gyudon" (hovädzia miska s ryžou – úplne iné jedlo), a keďže "udon" bol v oboch slovníkoch (`RELATED_SUBJECT_ALIASES`, `RECIPE_TITLE_PRODUCT_SUBJECTS`) skôr v poradí, každý dopyt na gyudon sa nesprávne vyhodnotil ako bežná otázka na udon rezance – existujúce a správne ingrediencie v `RELATED_PRODUCT_QUERIES["gyudon"]` (sójová omáčka, mirin, dashi, ryžový ocot) tak boli nedosiahnuteľné. Opravené rovnakým poradím ako pri onigiri/sushi. Pridaný regresný test, **overené naživo**: "čo potrebujem na gyudon" teraz vracia mirin a dashi namiesto udon rezancov.
+
+Druhá kontrola (skloňovanie) generuje kandidátov na kontrolu, nie definitívny verdikt – Slovenčina nie je modelovaná presne, takže časť nálezov sú len rozumné odpovede na nejednoznačné, kontextu zbavené jednoslovné dopyty (napr. samotné "dopravy" bez slovesa/otázky), nie skutočné chyby. Manuálne overené naživo pre klaster okolo "doprava"/"dorucenie"/"dobierkou"/"reklamaciu" – všetky odpovede boli vecne správne, žiadna ďalšia oprava nebola potrebná.
+
+Spustenie: `python scripts/consistency_audit.py` (obe kontroly), `--collisions`/`--declensions` samostatne.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
