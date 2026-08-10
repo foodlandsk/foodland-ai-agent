@@ -6766,6 +6766,26 @@ def alternative_products_for_subject(
     limit: int,
     exclude_brand: str | None = None,
 ) -> list[dict]:
+    recommendations = _alternative_products_for_subject_impl(products_list, all_knowledge, subject, limit, exclude_brand)
+    if recommendations or not exclude_brand:
+        return recommendations
+    # Safety net: if excluding the named brand leaves literally nothing (all
+    # three tiers empty), fall back to showing that brand's own products
+    # rather than an empty list - the AI-generated answer for
+    # replacement_products always claims "here are alternatives below"
+    # regardless of whether matches is empty, so an empty list here means a
+    # customer sees confident text with nothing under it. Some real product
+    # beats a contradiction between what the answer says and what it shows.
+    return _alternative_products_for_subject_impl(products_list, all_knowledge, subject, limit, None)
+
+
+def _alternative_products_for_subject_impl(
+    products_list: list[Product] | list[dict],
+    all_knowledge: dict,
+    subject: str,
+    limit: int,
+    exclude_brand: str | None,
+) -> list[dict]:
     seen: set[str] = set()
     recommendations: list[dict] = []
     normalized_exclude_brand = normalize(exclude_brand) if exclude_brand else ""

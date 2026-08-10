@@ -1906,6 +1906,21 @@ class TestIntentDetection:
             )
             assert alternatives, message
 
+    def test_replacement_exclude_brand_safety_net_never_returns_empty(self, products):
+        # Defense in depth: if replacement_subject ever ends up as a raw
+        # brand-name string (e.g. a resolution fallback failing for reasons
+        # outside this function's control) while exclude_brand still
+        # correctly identifies that same brand, excluding it from a search
+        # FOR that exact literal text is self-defeating and returns nothing
+        # - but replacement_products answers are always AI-generated and
+        # the system prompt tells it to claim "alternatives are below"
+        # regardless of whether matches is empty, so an empty list here
+        # means a confident-sounding answer with nothing under it. Must
+        # fall back to showing that brand's own products rather than empty.
+        recs = main.alternative_products_for_subject(products, main.knowledge, "kikkoman", 6, exclude_brand="KIKKOMAN")
+        assert recs
+        assert all("kikkoman" in main.normalize(p.get("brand", "")) for p in recs)
+
     def test_replacement_ambiguous_brand_stays_unresolved(self):
         # MEGACHEF genuinely sells both soy sauce and fish sauce, so a bare
         # brand name must NOT be force-resolved to either - unlike Kikkoman/
