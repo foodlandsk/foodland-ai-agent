@@ -322,6 +322,14 @@ def cached_autocomplete_suggestions(products_list: list[Product] | list[dict], q
     return [dict(item) for item in results]
 
 RELATED_PRODUCT_QUERIES = {
+    "vindaloo": [
+        "korianderove semienka",
+        "horcicove semienka",
+        "senovka grecka",
+        "susene cili papricky",
+        "skorica",
+        "bazmati ryza",
+    ],
     "cesnak": [
         "sojova omacka",
         "sezamovy olej",
@@ -1503,6 +1511,7 @@ RECIPE_TITLE_PRODUCT_SUBJECTS = (
     ("tom kha", "tom_kha"),
     ("tom yum", "tom_yum"),
     ("kokosove kari", "thajske_kari"),
+    ("vindaloo", "vindaloo"),
     ("tekvicou", "thajske_kari"),
     ("ciernej ryze", "black_rice_salad"),
     ("cierna ryza", "black_rice_salad"),
@@ -1803,6 +1812,7 @@ SHOPPING_LIST_MARKERS = (
 )
 
 MISSING_INGREDIENTS_BY_SUBJECT = {
+    "vindaloo": ["bravčové pliecko (mäso)", "čerstvý cesnak", "čerstvý zázvor", "vínny alebo jablčný ocot", "cibuľa"],
     "sushi": ["čerstvá ryba alebo zelenina podľa rolky", "avokádo alebo uhorka"],
     "kimchi_recipe": ["čínska kapusta", "daikon alebo biela reďkovka", "jarná cibuľka", "cesnak"],
     "kimchi": ["čínska kapusta", "daikon alebo biela reďkovka", "jarná cibuľka", "cesnak"],

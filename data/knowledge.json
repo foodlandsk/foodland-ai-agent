@@ -69385,6 +69385,12 @@
         "PL_url": "https://www.foodland-express.pl/przepisy/sinigang-najlepsza-zupa-jarzynowa-na-swiecie/",
         "HU_url": "https://www.foodland.hu/receptek/sinigang-a-legjobb-zoldsegleves-a-vilagon/",
         "VI_url": "https://vn.foodland.sk/cong-thuc-mon-an/sinigang-canh-chua-thit-heo-va-rau-cu-philippines/"
+      },
+      {
+        "Kuchyňa": "Indická kuchyňa",
+        "Recept (SK názov)": "Goanské bravčové Vindaloo bez zemiakov",
+        "SK": "SK",
+        "SK_url": "https://www.foodland.sk/recepty/goanske-bravcove-vindaloo-bez-zemiakov/"
       }
     ],
     "Magazine": [
@@ -77916,7 +77922,7 @@
   "counts": {
     "Alternatives": 2140,
     "CrossSell": 2140,
-    "Recipes": 53,
+    "Recipes": 54,
     "Magazine": 60,
     "FAQ": 51,
     "Products_AI": 130,

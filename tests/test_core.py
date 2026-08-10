@@ -1630,6 +1630,28 @@ class TestIntentDetection:
                 missing.append(title)
         assert not missing
 
+    def test_vindaloo_recipe_added_from_real_foodland_page(self, knowledge, products):
+        # The bot previously had no Vindaloo recipe at all and truthfully
+        # said so, generating a general AI answer (Sprint U/U.1). The user
+        # then pointed to the real recipe at foodland.sk/recepty/
+        # goanske-bravcove-vindaloo-bez-zemiakov/, so it was added properly:
+        # a Recipes entry, a title->subject mapping, and real
+        # RELATED_PRODUCT_QUERIES/MISSING_INGREDIENTS_BY_SUBJECT entries
+        # (verified against the actual catalog, not guessed) so the three
+        # "every recipe must have a mapped subject" guard tests above still
+        # pass.
+        recipe_subject = main.detect_recipe_subject("recept na vindaloo")
+        assert recipe_subject == "vindaloo"
+
+        knowledge_matches = main.search_knowledge(knowledge, "recept na vindaloo", allowed_sections=("Recipes",))
+        recipes = main.recipe_results(knowledge_matches, 4, "recept na vindaloo", knowledge)
+        assert recipes
+        assert any("vindaloo" in main.normalize(r.get("title", "")) for r in recipes)
+        assert any("goanske-bravcove-vindaloo" in r.get("link", "") for r in recipes)
+
+        related_matches = main.related_products_for_subject(products, knowledge, "vindaloo", 6)
+        assert related_matches
+
     def test_recipe_product_subject_samples_return_products(self, products):
         subjects = [
             "tom_kha",
