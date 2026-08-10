@@ -723,6 +723,21 @@ Pridaná skratka pre holé slovo "predajňu" je obmedzená na dopyty do 2 tokeno
 
 ---
 
+### Sprint X.2 – Oprava "alternatíva ku značke X" vracajúcej viac tej istej značky
+
+Používateľ upozornil, že treba prekontrolovať odpovede na "alternatíva/náhrada rybacej, sójovej omáčky značky X/Y". Po preskúmaní sa ukázalo, že **"alternativa ku Kikkoman sojovej omacke" vracala len ďalšie produkty značky KIKKOMAN** – presný opak toho, čo zákazník žiada. Dve súčasne pôsobiace príčiny:
+
+1. `REPLACEMENT_SUBJECT_ALIASES` pre "sójová omáčka" obsahovalo len tvary "sojova omacka"/"sojovu omacku" – skloňovaný tvar "sojovej omacke" sa nezhodoval so žiadnym aliasom, takže `detect_replacement_subject()` spadol do fallbacku, ktorý ako "subject" použil celý zvyšný text vrátane značky ("kikkoman sojovej omacke"). Ten sa následne v poslednom fallbacku vyhľadal ako obyčajný text a slovo "kikkoman" vyhralo ako keyword zhoda.
+2. Aj keď sa subjekt vyriešil správne, nič neodfiltrovalo spomenutú značku z výsledkov.
+
+**Oprava**: doplnené skloňované tvary do aliasov (`sojovej omacke/omacky`, `rybacej omacky/omacke`, `rybacou/sojovou omackou`); nová funkcia `detect_mentioned_replacement_brand()`, ktorá rozpozná značku v dopyte (porovnáva len proti značkám skutočne predávaným v danej kategórii, aby sa minimalizovalo riziko falošnej zhody); `alternative_products_for_subject()` teraz prijíma `exclude_brand` a filtruje ňou všetky tri úrovne fallbacku (kurátorské Alternatívy, kategóriové dopyty, obyčajné vyhľadávanie).
+
+Mimochodom opravené aj: **"Nemám Kikkoman sójovú omáčku, čo použiť?"** – prirodzená formulácia žiadosti o náhradu, ktorá nemala žiadny spúšťací marker vôbec (pridané "nemam"/"nemame").
+
+**Overené naživo** – "alternativa ku Kikkoman sojovej omacke" vracia HEALTHY BOY/Marukin/Pearl River Bridge (žiadny Kikkoman); "cim nahradim Squid Brand rybaciu omacku" vracia Pearl River Bridge/Ayuko/Kikkoman (žiadny Squid Brand).
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
