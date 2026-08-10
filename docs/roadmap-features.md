@@ -648,6 +648,16 @@ Nájdené pri pravidelnej kontrole dashboardu: **"Adresa firmy"** a samostatné 
 
 ---
 
+### Sprint V.5 – Oprava "náhrada japonského čajníka" vracajúcej rezance a paličky
+
+Nahlásené: **"Náhrada japonského čajníka"** vracalo instantné rezance, jedálne paličky a nože namiesto skutočných "Japonský čajník" produktov (existujú 3). Rovnaká trieda chyby ako "čajové/čajová" v Sprint V.1: slovo **"čajníka"** (genitív) sa nezhodovalo so slovom **"čajník"** v názvoch produktov, takže výsledky ovládlo len všeobecné prídavné meno "japonské/japonský", ktoré zdieľajú desiatky nesúvisiacich produktov.
+
+Pridané prefixové synonymum "cajnik" pokrývajúce jeho pády, rovnakým spôsobom ako "cajov" predtým.
+
+**Overené naživo** – "náhrada japonského čajníka" teraz vracia všetky 3 skutočné čajníky na prvých miestach. *(Poznámka: prvý overovací pokus kontroloval len text odpovede, ktorý sa nemenil – opravené overenie kontrolujúce skutočné produkty potvrdilo nasadenie.)*
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
