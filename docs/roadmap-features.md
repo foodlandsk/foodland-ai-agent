@@ -701,6 +701,28 @@ Spustenie: `python scripts/consistency_audit.py` (obe kontroly), `--collisions`/
 
 ---
 
+### Sprint X.1 – Sémantické vyhľadávanie: overené a zamietnuté; opravené 3 zvyšné FAQ medzery
+
+Navrhol som ako ďalší smer nasadiť existujúci (no nepoužívaný) `/search/semantic` endpoint (OpenAI embeddings nad produktmi) ako štrukturálne riešenie tried chýb z predošlých Sprintov. Pred nasadením som to overil naživo proti trom reálnym prípadom z tejto session:
+
+- **FAQ/intent-routing chyby** (kariet, doprava, adresa) sú mimo dosahu úplne – endpoint prehľadáva len produktové embeddings, nie FAQ.
+- Aj pri produktových prípadoch nebola relevancia jasne lepšia: "náhrada japonského čajníka" mala skutočný čajník až na 5. mieste, zaplavený paličkami a rezancami – rovnaký bug ako predtým, len cez iný mechanizmus.
+- Reálne produkčné dáta (30 dní `/admin/analytics/summary`) ukázali len 10 unikátnych "no results" dopytov, z toho 8 boli FAQ otázky nesprávne padnuté do `product_search` intentu – sémantika nad produktmi by im nepomohla.
+
+**Záver: nenasadené.** Náklad (ephemeral cache na Railway, nutný rebuild po každom deploy, latencia navyše) prevažuje nad zanedbateľným prínosom pri tomto objeme.
+
+Namiesto toho som opravil klasickým spôsobom 3 zo zvyšných FAQ medzier z tej istej analýzy:
+
+- **"Termín dodania"** – slovo "dodan" sa nenachádzalo v `FAQ_INTENT_MARKERS` ani nikde inde vo FAQ korpuse, takže sa dopyt vôbec nedostal do FAQ systému.
+- **"Rýchlosť doručenia"** – dostal sa do FAQ systému cez "doruc", ale prehral proti všeobecnej skratke "spôsoby doručenia", ktorá kontrolovala len slovo "dlho", nie "rýchlosť".
+- **Holé slovo "Predajňu"** – skórovalo len 1 zhodu tokenu voči FAQ o predajni (pod prahom ≥3 vo všeobecnom scoringu) a spadlo do prázdneho produktového vyhľadávania.
+
+Pridaná skratka pre holé slovo "predajňu" je obmedzená na dopyty do 2 tokenov, aby nepreberala dlhšie vety s vlastným zámerom (napr. "dá sa v predajni platiť kartou?") – tento konkrétny regresný prípad odhalila plná test sada pred commitom a bol opravený pred nasadením.
+
+**Overené naživo** – všetky tri dopyty teraz vracajú správnu FAQ odpoveď namiesto prázdneho výsledku.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
