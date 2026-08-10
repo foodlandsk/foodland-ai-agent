@@ -1725,6 +1725,19 @@ class TestIntentDetection:
     def test_related_subject_nigiri_still_resolves_to_sushi(self):
         assert main.detect_related_subject("chcem si kupit nigiri na veceru") == "sushi"
 
+    def test_related_subject_gyudon_not_misdetected_as_udon(self):
+        # Regression test found by scripts/consistency_audit.py, not by a
+        # customer report: "udon" is a substring of "gyudon" (beef rice
+        # bowl, unrelated to udon noodles), so gyudon questions were being
+        # misclassified as plain udon-noodle questions and the correct
+        # RELATED_PRODUCT_QUERIES["gyudon"] ingredients were unreachable.
+        assert main.detect_related_subject("recept na gyudon") == "gyudon"
+        recs = main.related_products_for_subject(main.products, main.knowledge, "gyudon", 3)
+        assert recs
+
+    def test_related_subject_udon_still_resolves_to_udon(self):
+        assert main.detect_related_subject("udon rezance") == "udon"
+
     def test_related_subject_kimchi(self):
         subj = main.detect_related_subject("ingrediencie na kimchi")
         assert subj == "kimchi_recipe"

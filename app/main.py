@@ -1336,6 +1336,10 @@ RELATED_SUBJECT_ALIASES = {
     "takoyaki": ("takoyaki",),
     "shabu_shabu": ("shabu shabu", "shabu-shabu", "hot pot", "hotpot", "hot-pot", "hot potu", "hotpotu"),
     "yakisoba": ("yakisoba", "yaki soba", "yakisobu", "yaki sobu", "yakisoby", "yakisobe"),
+    # gyudon must be checked before udon: udon's alias is a substring
+    # of "gyudon", so without this ordering every gyudon question got
+    # misclassified as a plain udon-noodle question.
+    "gyudon": ("gyudon", "hovaezi don", "beef bowl"),
     "udon": ("udon", "udonom", "udonove nudle", "udonovu polievku"),
     "soba": ("soba", "soba nudle", "soba rezance", "sobove nudle"),
     "mandu": ("mandu",),
@@ -1360,7 +1364,6 @@ RELATED_SUBJECT_ALIASES = {
     "nam_van": ("nam van", "goi cuon", "vietnamske rolky", "cerstve rolky"),
     "sukiyaki": ("sukiyaki",),
     "bao_bun": ("bao bun", "bao", "baozi", "parovany bun", "parovane buchty"),
-    "gyudon": ("gyudon", "hovaezi don", "beef bowl"),
     "oyakodon": ("oyakodon", "oyako don"),
     "karaage": ("karaage",),
     "tonkatsu": ("tonkatsu",),
@@ -1546,6 +1549,9 @@ RECIPE_TITLE_PRODUCT_SUBJECTS = (
     ("gimbap", "gimbap"),
     ("japonske kuracie kari", "japanese_curry"),
     ("kuracie kari", "kari"),
+    # gyudon must be checked before udon here too - same substring
+    # collision as the RELATED_SUBJECT_ALIASES reorder above.
+    ("gyudon", "gyudon"),
     ("udon", "udon"),
     ("teriyaki tofu", "teriyaki"),
     ("kuromame gohan", "kuromame_gohan"),
