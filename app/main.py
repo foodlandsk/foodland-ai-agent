@@ -2344,6 +2344,7 @@ RECIPE_INTENT_MARKERS = (
     "jak udelam",
     "jak pripravim",
     "jak uvarim",
+    "vindaloo",
 )
 
 RANDOM_RECIPE_INTENT_MARKERS = (

@@ -1652,6 +1652,24 @@ class TestIntentDetection:
         related_matches = main.related_products_for_subject(products, knowledge, "vindaloo", 6)
         assert related_matches
 
+    def test_bare_vindaloo_reaches_recipe_not_ai_fallback(self, knowledge):
+        # Real user report, right after the recipe was added: bare
+        # "Vindaloo" (no "recept na" prefix) still triggered the general
+        # AI fallback and didn't link the real recipe. Root cause:
+        # is_recipe_intent() needs a cooking-related word (recept/navod/
+        # etc.) - a bare dish name alone never qualified, so it fell
+        # through to the same "no matches, no knowledge" catch-all that
+        # general_ai_recipe_answer() is wired into, even though the
+        # recipe now exists. Added "vindaloo" directly to
+        # RECIPE_INTENT_MARKERS.
+        for query in ("Vindaloo", "vindaloo"):
+            assert main.is_recipe_intent(main.normalize(query)), query
+            assert main.detect_recipe_subject(query) == "vindaloo", query
+
+        knowledge_matches = main.search_knowledge(knowledge, "Vindaloo", allowed_sections=("Recipes",))
+        recipes = main.recipe_results(knowledge_matches, 4, "Vindaloo", knowledge)
+        assert any("goanske-bravcove-vindaloo" in r.get("link", "") for r in recipes)
+
     def test_recipe_product_subject_samples_return_products(self, products):
         subjects = [
             "tom_kha",
