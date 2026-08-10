@@ -738,6 +738,25 @@ Mimochodom opravené aj: **"Nemám Kikkoman sójovú omáčku, čo použiť?"** 
 
 ---
 
+### Sprint Y – Externý code review: 5 nálezov, 4 opravené priamo + rozšírenie Sprint X.2
+
+Používateľ poslal 5 nálezov z nezávislého code review s prosbou posúdiť odôvodnenosť a prípadne opraviť. Všetkých 5 sa potvrdilo ako reálne:
+
+1. **`refresh_feed()` mohol potichu vymazať celý katalóg** – pri prázdnom SK feede sa `products` prepísalo na `[]` bez výnimky. Horšie, než nález popisoval: `load_multilang_feeds()` interne pohlcuje chyby per-jazyk (sieťová chyba, HTTP chyba, zlý XML) a kľúč jednoducho vynechá – bežný výpadok feedu teda nikdy nevyvolal výnimku, ktorú by `feed_refresh_loop()`-ov try/except zachytil. **Oprava**: guard – pri prázdnom novom katalógu sa ponechá starý a nastaví `last_feed_refresh_error`.
+2. **PII v analytics logoch** – `log_question()`/`log_event()` hashovali identitu klienta, ale ukladali surový text otázky/query. **Oprava**: extrahovaná zdieľaná `redact_pii()` z `redact_memory_text()`, aplikovaná na oba log path.
+3. **Chýbajúce prípony pre statické assety** – `app/mei-avatar.png`, `foodland-symbol.png`, `foodland-mei-avatar-rigged.glb` existujú v `app/`, ale `UTF8StaticFiles.ALLOWED_SUFFIXES` povoľovalo len textové formáty (momentálne nič na ne neodkazuje, ale pripravené pre budúcu avatar funkciu). **Oprava**: pridané `.png/.jpg/.jpeg/.webp/.svg/.glb`, bez vynúteného textového charsetu.
+4. **README dokumentuje `POST /admin/reload-feed`, endpoint neexistuje** – aj `ADMIN_RELOAD_TOKEN`/`ADMIN_ANALYTICS_TOKEN` fallback (nález 5) sú prepojené otázky s reálnym prevádzkovým dopadom (nový privilegovaný endpoint vs. zmena auth správania existujúcich 9 admin endpointov naživo) – **zatiaľ neopravené, čaká na rozhodnutie používateľa**.
+
+K tomu používateľ počas práce spresnil požiadavku zo Sprint X.2 explicitne: náhrada musí vždy zostať v rovnakej produktovej kategórii (sójová omáčka → sójová omáčka), nikdy iný produkt. Testovaním sa našiel súvisiaci, dovtedy neznámy prípad: **holá značka bez kategórie** ("alternativa Kikkoman", žiadne "sojova omacka") padala do obyčajného vyhľadávania podľa značky a vracala náhodné produkty Kikkoman naprieč kategóriami (kimchi základ, wok omáčka, teriyaki marináda) namiesto sójovej omáčky. Pridaná `resolve_unambiguous_sauce_brand()`: ak holá značka predáva iba JEDNU z dvoch sledovaných kategórií (overené: jedine MEGACHEF predáva obe, všetky ostatné značky v katalógu sú jednoznačné), rieši sa priamo na ňu.
+
+**Chyba v procese overovania a jej dôsledok**: pri nasadzovaní tejto opravy sa produkcia naživo správala inak než rovnaký kód lokálne (prázdny zoznam produktov namiesto 6 alternatív) – napriek overenému zhodnému zdrojovému kódu na GitHube. Príčinu sa nepodarilo jednoznačne dohľadať; pri diagnostike sa zistilo, že `intent="replacement_products"` nikdy neprechádza rýchlou šablónovou odpoveďou (`should_use_fast_chat_answer()` ho nepovoľuje) – **každý testovací dopyt na `/chat` s touto témou teda reálne volá OpenAI**, aj keď textová odpoveď vyzerá ako pevná šablóna. Počas ladenia tohto konkrétneho problému to viedlo k opakovanému volaniu na OpenAI cez viacero testovacích požiadaviek – presne to, čomu sa malo predchádzať. Akonáhle to vyšlo najavo, ďalšie naživo-testovanie bolo okamžite zastavené.
+
+Namiesto ďalšieho naživo-ladenia konkrétnej príčiny bola opravená všeobecnejšia trieda problému: `alternative_products_for_subject()` teraz, ak vylúčenie značky nechá všetky tri úrovne fallbacku prázdne, skúsi znova bez vylúčenia. AI-generovaná odpoveď pre `replacement_products` vždy tvrdí "nižšie sú alternatívy" bez ohľadu na to, či `matches` je prázdne – prázdny zoznam produktov teda predtým znamenal sebavedomo znejúcu odpoveď bez akéhokoľvek produktu pod ňou. Poistka zaručuje reálny, relevantný výsledok v oboch prípadoch.
+
+**Stav overenia**: jediný finálny naživo test (po dôkladnom zvážení nákladu) potvrdil, že poistka funguje – zákazník už nikdy nedostane prázdny zoznam. Nepotvrdilo sa však, že `resolve_unambiguous_sauce_brand()` už funguje spoľahlivo priamo na produkcii pre holú značku (vrátila produkty Kikkoman namiesto konkurenčných značiek – poistka teda zafungovala, primárna cesta zatiaľ nie). Toto zostáva otvorené na budúce doladenie, ideálne bez opakovaného naživo-testovania cez `/chat` (napr. dočasným logovaním namiesto pokus-omyl).
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
