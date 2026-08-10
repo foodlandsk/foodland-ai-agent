@@ -636,6 +636,16 @@ Pridaný marker "kariet" a skratka smerujúca na existujúcu FAQ o platobných m
 
 **Overené naživo** – "typy kariet" teraz vracia správnu odpoveď o platobných metódach.
 
+**Poznámka k dashboardu z pravidelnej kontroly:** preklep "ake typy akriet akceptuje" (písmená "a"/"k" preklopené) tento fix nepokrýva, keďže "akriet" neobsahuje "kari" ako podreťazec – ide o fuzzy-match kolíziu, nie substring kolíziu. Len 1 výskyt, nechané bez zásahu (naháňanie jednotlivých preklepov cez fuzzy-matching by bolo rizikovejšie než užitočné).
+
+---
+
+### Sprint V.4 – Oprava "Adresa firmy" vracajúcej nesúvisiaci produkt
+
+Nájdené pri pravidelnej kontrole dashboardu: **"Adresa firmy"** a samostatné **"Adresa"** vrátili náhodný nesúvisiaci produkt (dashi vývar) namiesto adresy predajne. Slovo "adresa" vôbec nemalo marker vo `FAQ_INTENT_MARKERS`, takže sa nikdy nedostalo do FAQ vetvy. Pridaný marker a skratka smerujúca na existujúcu FAQ o kamennej predajni.
+
+**Overené naživo** – "Adresa firmy" teraz vracia správnu adresu a otváracie hodiny.
+
 ---
 
 ## Záver
