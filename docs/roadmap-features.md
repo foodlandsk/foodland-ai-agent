@@ -674,6 +674,16 @@ Všetky tri dátové štruktúry boli potrebné – tri existujúce kontrolné t
 
 ---
 
+### Sprint W.1 – Oprava holého "Vindaloo" stále padajúceho do AI fallbacku
+
+Nahlásené hneď po Sprint W: holé **"Vindaloo"** (bez slova "recept") stále dávalo všeobecnú AI odpoveď a nepriložilo odkaz na skutočný recept. Príčina: `is_recipe_intent()` vyžaduje kulinárske slovo (recept/návod/postup...) – samotný názov jedla bez neho vôbec neprejde do receptovej vetvy a spadne do rovnakého "nič sa nenašlo" fallbacku zo Sprint U.1, aj keď recept už v databáze existuje.
+
+Pridané "vindaloo" priamo do `RECIPE_INTENT_MARKERS`.
+
+**Overené naživo** – holé "Vindaloo" teraz vracia skutočný recept s odkazom.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
