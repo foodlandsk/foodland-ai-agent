@@ -1796,6 +1796,7 @@ FAQ_INTENT_MARKERS = (
     "park",
     "kariet",
     "adresa",
+    "dodan",
 )
 
 SHOPPING_LIST_MARKERS = (
@@ -5696,7 +5697,10 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
     # also contains "doruc", so it was losing to the generic "which
     # delivery methods do you offer" shortcut instead of the specific
     # delivery-time answer.
-    if "dlho" in normalized_message and any(marker in normalized_message for marker in ("doruc", "zasiel", "kurier")):
+    if "dodan" in normalized_message or (
+        any(marker in normalized_message for marker in ("dlho", "rychlost"))
+        and any(marker in normalized_message for marker in ("doruc", "zasiel", "kurier"))
+    ):
         delivery_time_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("dlho", "dorucenie"))
         if delivery_time_answer:
             return delivery_time_answer
@@ -5740,6 +5744,14 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         address_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("kamennu", "predajnu"))
         if address_answer:
             return address_answer
+    if "predajn" in normalized_message and len(tokenize(normalized_message)) <= 2:
+        # Only a bare word like "Predajnu" defaults to the general store-info
+        # FAQ - a longer sentence mentioning "predajni" (e.g. "can I pay by
+        # card in store") has its own specific intent and must fall through
+        # to the general scoring loop below instead of being shortcut here.
+        store_info_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("kamennu", "predajnu"))
+        if store_info_answer:
+            return store_info_answer
     if "kredit" in normalized_message and any(marker in normalized_message for marker in ("platnost", "dokedy platia", "vyprsia", "vyprsanie", "expiruju")):
         if any(marker in normalized_message for marker in ("upozorn", "davate vediet", "notifikacia")):
             expiry_notice_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("upozornite", "vyprsanim"))

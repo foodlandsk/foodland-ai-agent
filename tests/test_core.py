@@ -2199,6 +2199,36 @@ class TestFAQ:
             assert answer, query
             assert "72" in answer or "3 pracovne" in main.normalize(answer), query
 
+    def test_faq_delivery_deadline_wording_reaches_delivery_time_answer(self, knowledge):
+        # Real dashboard no-result: "Termindodania" (delivery deadline) never
+        # matched any FAQ_INTENT_MARKERS root at all - "dodan" doesn't appear
+        # anywhere else in the FAQ corpus (verified), so it's a pure
+        # vocabulary gap, not a routing collision like the "dlho" cases above.
+        for query in ("termin dodania", "aky je termin dodania"):
+            assert main.is_faq_intent(query), query
+            answer = main.best_direct_faq_answer(query, knowledge)
+            assert answer, query
+            assert "72" in answer or "3 pracovne" in main.normalize(answer), query
+
+    def test_faq_delivery_speed_wording_beats_generic_delivery_methods(self, knowledge):
+        # Real dashboard no-result: "rychlost dorucenia" (delivery speed)
+        # reached the FAQ system fine via "doruc" but the generic "which
+        # delivery methods" shortcut won because it only checked for "dlho",
+        # not "rychlost".
+        answer = main.best_direct_faq_answer("rychlost dorucenia", knowledge)
+        assert answer
+        assert "72" in answer or "3 pracovne" in main.normalize(answer)
+
+    def test_faq_bare_store_word_gets_store_info_not_none(self, knowledge):
+        # Real dashboard no-result: the bare word "Predajnu" (store,
+        # accusative) only overlaps one token with the store-info FAQ, which
+        # scores below the >=3 confidence threshold in the general scoring
+        # loop and returned None - falling through to a product search with
+        # zero results instead of the obvious store-info answer.
+        answer = main.best_direct_faq_answer("predajnu", knowledge)
+        assert answer
+        assert "vajnorska" in main.normalize(answer)
+
     def test_faq_card_type_question_not_hijacked_by_curry_subject(self, knowledge):
         # Real user report: "typy kariet" / "aky typ kariet prijimate"
         # (which card types do you accept) returned kari-pasta / curry
