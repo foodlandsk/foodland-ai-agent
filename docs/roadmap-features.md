@@ -786,6 +786,18 @@ Pri overovaní proti reálnemu receptu (40–50g kukuričného škrobu na obaľo
 
 ---
 
+### Sprint Z.1 – Oprava náhodných produktov pri "čo mám kúpiť, keď mám alergiu"
+
+Skontroloval dashboard (bez nových kritických nálezov mimo už riešeného) a nahlásená chyba: **"Co ma kupit ked ma alergiu na lepok"** správne rozpoznalo alergén ("lepok") a vrátilo správnu bezpečnostnú odpoveď ("neodporúčam produkt len podľa názvu, overte zloženie"), ale k nej pripojilo 6 úplne nesúvisiacich produktov – liči nektár, senovku grécku, instantnú pho polievku, čili rezance, mangové čatní, massaman kari pastu.
+
+Príčina: `allergen_product_query()` už správne rozpoznávalo gramaticky správne "čo mám kúpiť" ako všeobecnú žiadosť o odporúčanie (vráti "", teda žiadne produkty). Problém bol v poradí krokov – čistiaci krok (`cleanup_patterns`) najprv odstráni samostatné slovo "ma" (určené pre frázy typu "produkt MÁ lepok"), a až POTOM sa kontroluje, či je zvyšný text všeobecná žiadosť. Pri hovorovom "čo **ma** kúpiť" (namiesto "mám") sa teda "ma" odstránilo skôr, než sa vôbec stihlo porovnať s "čo mam kupit" – zvyšný pokrútený text ("co kupit ked alergiu na") sa potom použil ako doslovný vyhľadávací dopyt, čo vysvetľuje náhodné výsledky.
+
+**Oprava**: pridané "co ma kupit"/"co si ma kupit" medzi rozpoznávané všeobecné frázy, plus nová kontrola na CELÝ pôvodný text (nie až po čistení) hneď po kontrole konkrétneho produktu – takže konkrétny produkt v otázke má stále prednosť, ale všeobecná žiadosť sa už zachytí skôr, než ju čistenie znetvorí.
+
+**Overené naživo** – "Co ma kupit ked ma alergiu na lepok" teraz vracia iba bezpečnostnú odpoveď, žiadne produkty.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
