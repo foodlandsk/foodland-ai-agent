@@ -7634,6 +7634,9 @@ def allergen_product_query(message: str) -> str:
         if product_query in normalized_message:
             return product_query
 
+    if is_generic_allergen_recommendation_tail(normalized_message):
+        return ""
+
     after_question = message.rsplit("?", 1)[-1].strip()
     if after_question and after_question != message.strip():
         normalized_after_question = normalize(after_question)
@@ -7707,6 +7710,8 @@ def is_generic_allergen_recommendation_tail(normalized_text: str) -> bool:
         "ake produkty",
         "co mam kupit",
         "co si mam kupit",
+        "co ma kupit",
+        "co si ma kupit",
     )
     if any(marker in cleaned for marker in generic_markers):
         return True

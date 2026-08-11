@@ -3019,6 +3019,25 @@ class TestAllergenSafetyAnswer:
         answer = main.allergen_safety_answer("alergeny")
         assert "alergen" in answer.lower() or "overte" in answer.lower()
 
+    def test_generic_recommendation_request_returns_no_random_products(self):
+        # Real user report: "Co ma kupit ked ma alergiu na lepok" (colloquial
+        # "ma" instead of grammatically correct "mam") returned random
+        # unrelated products (lychee nectar, fenugreek seeds, instant pho
+        # soup...) instead of the safe "check the label" answer with no
+        # products. Root cause: the cleanup_patterns step in
+        # allergen_product_query() strips the standalone word "ma" (meant
+        # for "produkt MA lepok" phrasing) before the generic-request check
+        # ever saw it, so "co ma kupit" could never match there - only the
+        # grammatically correct "co mam kupit" worked.
+        for message in (
+            "Co ma kupit ked ma alergiu na lepok",
+            "co mam kupit ked mam alergiu na lepok",
+            "co si ma kupit ked mam intoleranciu na lepok",
+        ):
+            assert main.detect_allergen_intent(message) == "lepok", message
+            assert main.allergen_product_query(message) == "", message
+            assert main.allergen_product_matches(message, 6) == [], message
+
 
 class TestAutocomplete:
     def test_products_prefix_match(self, products):
