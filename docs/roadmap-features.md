@@ -814,6 +814,25 @@ Mimochodom skontrolovaný dashboard kvôli nahláseným chybám pri dopytoch na 
 
 ---
 
+### Sprint Z.3 – Dve reálne chyby pri priamych dopytoch na konkrétnu značku ("chcem X od Y")
+
+Používateľ poslal screenshot: **"Chcem sojovu omacku od kikkoman"** vrátilo SEMPIO a DEK SOM BOON – ani jeden Kikkoman produkt, napriek tomu, že Kikkoman sójová omáčka je skladom a správne označená značkou (overené cez živý autocomplete). Predchádzajúci lokálny test s izolovaným volaním `cached_search_products` dal SPRÁVNY výsledok (samé Kikkoman), takže rozdiel musel byť niekde v plnom `search_products` pipeline, ktorý som postupne prešiel:
+
+- `strict_product_match`, tokenizácia a `brand_hits` fungujú správne – "kikkoman" prežije tokenizáciu a každý Kikkoman SKU dostane bonus `+5*brand_hits`.
+- Priamo skontrolovaný `/admin/analytics/behavioral-rankings` na produkcii: jeden reálny Kikkoman SKU (Ponzu variant, FL_6600) má skutočne podpriemernú CTR (17 zobrazení, 0 klikov oproti ~3,5% priemeru) – čo ho posadí na dno klampovaného rozsahu behaviorálneho násobiteľa (0,5×). Toto NIE je hypotéza, ale overený fakt z reálnych dát.
+
+**Oprava**: keď zákazník výslovne pomenuje značku produktu (`brand_hits > 0`), behaviorálny násobiteľ sa na tento produkt vôbec neaplikuje – explicitná zhoda značky je oveľa silnejší a istejší signál relevancie než priemerná CTR popularita a nemal by sa ňou riediť. Bežné dopyty bez pomenovania značky fungujú nezmenené.
+
+Pri diagnostike tohto problému používateľ ukázal **druhý, súvisiaci bug**: **"Yamasa sojova omacka"** dostalo odpoveď v štýle krížového predaja ("skvelo pasuje k tomu tamari sójová omáčka alebo mirin...") odporúčajúcu úplne INÚ značku (Kikkoman), nie samotnú Yamasa sójovku, ktorú si zákazník pýtal – podľa používateľa **"ten bug sa prejavuje u všetkých značiek"**.
+
+Príčina: fráza "sójová omáčka" (a ~150 ďalších kategórií/jedál) je registrovaná v `RELATED_SUBJECT_ALIASES` pre krížový predaj ("čo sa hodí k X"). Táto zhoda sa spúšťa na akúkoľvek správu obsahujúcu danú frázu bez ohľadu na to, aká značka je pred ňou – a keďže `related_subject` smeruje priamo na krížový predaj, kód sa nikdy ani nepozrie, či si zákazník nepýta konkrétny pomenovaný produkt.
+
+**Oprava**: znovupoužitá existujúca funkcia `detect_mentioned_replacement_brand()` (zo Sprint Y) – ak `related_subject` zachytí frázu A správa obsahuje reálnu značku, ktorá v danej kategórii skutočne predáva produkty, `related_subject` sa vynuluje a dopyt prejde do bežného vyhľadávania (rovnaká vrstva kaskády ako existujúci `PRODUCT_SET_SIGNAL_TOKENS` override zo Sprint V). Dopyty bez pomenovanej značky (napr. "aký ocot máte?") zostávajú nezmenené – zámerný kompromis zo Sprint Z.2 platí ďalej.
+
+**Overené naživo** – "Yamasa sojova omacka" teraz vracia `intent: product_search` s produktmi YAMASA (4 zo 6 výsledkov); opätovne overené aj Kikkoman oprava ("chcem sojovu omacku od kikkoman" → všetkých 6 produktov Kikkoman).
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
