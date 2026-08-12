@@ -798,6 +798,22 @@ Príčina: `allergen_product_query()` už správne rozpoznávalo gramaticky spr�
 
 ---
 
+### Sprint Z.2 – Pridanie "ocot" ako related_subject a overenie Kikkoman opravy
+
+Používateľ sa opýtal, či bot rozumie nadväzujúcim otázkam v konverzácii. Otestoval som naživo scenár "aký ocot máte?" → "čo mám kúpiť k tomu?" a zistil som, že "ocot" (na rozdiel od "ryžový ocot", ktorý má vlastný subjekt) nemal vôbec nastavené `RELATED_SUBJECT_ALIASES`, takže nadväzujúca otázka spadla do obyčajného vyhľadávania nad kontextovaným textom (ktorý obsahuje názov posledného produktu) – náhodou vrátilo ĎALŠIE octy namiesto skutočného odporúčania.
+
+**Oprava**: pridaný subjekt "ocot" (kontrolovaný AŽ PO "ryzovy_ocot" – rovnaká trieda kolízie ako gyudon/udon, keďže "ocot" je podreťazec "ryzovy ocot"), s cross-sell zoznamom overeným proti katalógu (cukor, sezamový olej, sójová omáčka, cesnak, čili omáčka).
+
+Prvý pokus omylom vložil zoznam do nesprávneho slovníka (`RECIPE_SHOPPING_CORE_QUERIES` namiesto `RELATED_PRODUCT_QUERIES` – obe majú zhodou okolností kľúč `"ryzovy_ocot"`, na ktorý som sa pri hľadaní miesta na vloženie omylom naviazal) – odhalilo sa to až testom skutočného výstupu funkcie, nie len kontrolou zápisu v slovníku.
+
+**Zámerný kompromis** (potvrdený s používateľom): priama otázka "aký ocot máte?" teraz tiež ukáže krížový predaj namiesto samotných octov – rovnaké správanie ako existujúci "gochujang"/"kimchi". Zachované kvôli konzistencii, keďže oprava opravy by znamenala stratu pôvodnej opravy (obe otázky idú cez rovnakú funkciu, niet spôsobu ako rozlíšiť "ukáž mi produkt" od "ukáž mi čo sa hodí k nemu").
+
+**Overené naživo** (dvoma po sebe idúcimi požiadavkami s rovnakým session_id, keďže `related_products` intent ide cez OpenAI, nie rýchlu šablónu) – druhá otázka teraz vracia zmysluplné položky (mirin, ryžový ocot, dashi, sladká čili omáčka, sezamový olej), nie náhodné produkty. Presné položky sa líšia od izolovaného testu, pretože nadväzujúci mechanizmus reťazí kontext na POSLEDNÝ zobrazený produkt (tentoraz sójová omáčka, keďže tá bola prvá v poradí prvej odpovede) – existujúca vlastnosť pamäte relácie, nie niečo nové zavedené touto opravou.
+
+Mimochodom skontrolovaný dashboard kvôli nahláseným chybám pri dopytoch na KIKKOMAN: záznam "alternativa kikkoman" (count 29) má `last_seen` nezmenené od Sprint Y – ide o starú stopu z vtedajšieho testovania, nie o pokračujúci problém. Čerstvý naživo test ("alternativa Kikkoman") teraz správne vracia 6 produktov od iných značiek (Yan Wal Yun, Hutaku, ABC, Lee Kum Kee), žiadny Kikkoman – oprava zo Sprint Y funguje správne, žiadny ďalší zásah nebol potrebný.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
