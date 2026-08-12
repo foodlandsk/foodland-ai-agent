@@ -1761,6 +1761,25 @@ class TestIntentDetection:
     def test_related_subject_udon_still_resolves_to_udon(self):
         assert main.detect_related_subject("udon rezance") == "udon"
 
+    def test_related_subject_plain_vinegar_gets_real_pairing_not_more_vinegar(self, products):
+        # Real user scenario: "aky ocot mate?" then "co mam kupit k tomu?"
+        # (what vinegar do you have / what should I buy to go with it).
+        # Plain "ocot" had no RELATED_SUBJECT_ALIASES entry at all, so the
+        # follow-up fell through to a plain keyword search on the
+        # contextualized message (which embeds the last shown product's
+        # title) - it happened to return more vinegar (coincidental
+        # title-word overlap with "ocot"), not a genuine complementary
+        # pairing. "ocot" must be checked after "ryzovy_ocot" (same class
+        # of fix as gyudon/udon): "ocot" is a substring of "ryzovy ocot".
+        for query in ("aky ocot mate", "jablcny ocot", "biely ocot"):
+            assert main.detect_related_subject(query) == "ocot", query
+        assert main.detect_related_subject("ryzovy ocot") == "ryzovy_ocot"
+
+        recs = main.related_products_for_subject(products, main.knowledge, "ocot", 6)
+        titles = [main.normalize(r.get("title", "")) for r in recs]
+        assert recs
+        assert not any("ocot" in t for t in titles), titles
+
     def test_related_subject_kimchi(self):
         subj = main.detect_related_subject("ingrediencie na kimchi")
         assert subj == "kimchi_recipe"

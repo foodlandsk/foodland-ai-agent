@@ -530,6 +530,13 @@ RELATED_PRODUCT_QUERIES = {
         "sezamovy olej",
         "nakladany zazvor",
     ],
+    "ocot": [
+        "cukor",
+        "sezamovy olej",
+        "sojova omacka",
+        "cesnak",
+        "cili omacka",
+    ],
     "kimchi": [
         "ramen",
         "jazminova ryza",
@@ -1451,6 +1458,10 @@ RELATED_SUBJECT_ALIASES = {
     "sake": ("sake", "sake na varen", "varecke sake", "rice wine", "japanese sake", "varenie sake"),
     "shiitake": ("shiitake", "shiitake houby", "shiitake huby", "shiitake grib", "dried shiitake", "susene shiitake"),
     "ryzovy_ocot": ("ryzovy ocot", "rice vinegar", "ocot sushi", "sushi ocot", "ryzoveho octu", "ryzovym octom"),
+    # "ocot" must be checked after "ryzovy_ocot" above: it is a substring
+    # of "ryzovy ocot"/"rice vinegar", so without this ordering a rice-
+    # vinegar question would lose its sushi-specific cross-sell.
+    "ocot": ("ocot", "octom", "octu", "octe", "octy", "vinegar"),
 
     "cesnak": ("cesnak", "cesnakom", "cesnaku", "cesnakovy olej", "garlic", "cesnakoveho", "cesnakova"),
     "nakladany_zazvor": ("nakladany zazvor", "nakladanym zazvorom", "nakladaneho zazvoru", "pickled ginger", "sushi ginger", "gari"),
@@ -2452,6 +2463,7 @@ ALREADY_HAVE_COMPLEMENT_QUERIES = {
     "sezamovy_olej": ["sojova omacka", "ryzovy ocot", "mirin", "gochujang", "kimchi"],
     "kari": ["kokosove mlieko", "jazminova ryza", "rybacia omacka", "koriander", "sriracha"],
     "ryzovy_ocot": ["sushi ryza", "nori", "wasabi", "nakladany zazvor", "sojova omacka"],
+    "ocot": ["cukor", "sezamovy olej", "sojova omacka", "cesnak", "cili omacka"],
     "wasabi": ["sojova omacka", "nakladany zazvor", "nori", "sushi ryza", "ryzovy ocot"],
     "udon": ["sojova omacka", "dashi", "wakame", "miso pasta", "sriracha"],
     "hoisin": ["sojova omacka", "sezamovy olej", "ramen rezance", "udon", "sriracha"],
