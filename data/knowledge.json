@@ -70503,7 +70503,7 @@
       {
         "Kategória": "Doprava",
         "Otázka": "Kedy je doprava zadarmo?",
-        "Odpoveď": "Doprava je zadarmo nad 49 € pre nefiremných (súkromných) zákazníkov.",
+        "Odpoveď": "Doprava je zadarmo nad 49 € pre nefiremných (súkromných) zákazníkov. Pri objednávkách pod túto sumu závisí cena dopravy od viacerých faktorov – najmä od hmotnosti balíka (produkty sú rozdelené do váhových kategórií, ktoré sa určia až po vložení do košíka) a od zvoleného spôsobu platby (dobierka, bankový prevod, platobná brána). Presnú cenu dopravy preto najlepšie zistíte tak, že si vyskladate objednávku a prejdete až ku košíku – tam sa ešte pred potvrdením objednávky zobrazí celková cena vrátane dopravy, takže viete presne, koľko zaplatíte, ešte než sa rozhodnete objednávku dokončiť.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",

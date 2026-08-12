@@ -1809,6 +1809,8 @@ FAQ_INTENT_MARKERS = (
     "kariet",
     "adresa",
     "dodan",
+    "pockanie",
+    "odber",
 )
 
 SHOPPING_LIST_MARKERS = (
@@ -3896,6 +3898,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                 "role": "user",
                 "content": (
                     f"Otázka zákazníka: {chat_request.message}\n\n"
+                    f"Jazyk odpovede (pouzi presne tento formulovany jazyk, nie jazyk okolo neho): {'anglictina' if query_language == 'en' else 'slovencina'}\n\n"
                     f"Zistený zámer: {intent}\n\n"
                     f"Relevantné produkty:\n{products_context(matches)}\n\n"
                     f"Foodland Knowledge:\n{knowledge_context(knowledge_matches)}\n\n"
@@ -5694,8 +5697,21 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
     best_score = 0
     best_answer = ""
 
-    if any(marker in normalized_message for marker in ("postovn", "cena dopravy", "stoji doprava", "kolko stoji doprava")) or (
+    # "Kolko treba zaplatit za dopravu?" (how much do I need to pay for
+    # delivery) has neither "stoji" nor the exact phrase "cena dopravy" -
+    # it fell through to the generic delivery-methods shortcut below
+    # instead. Broadened to a flexible "kolko"+"doprav" combination,
+    # matching how "zadarmo"+"doprav" already works just below.
+    if any(marker in normalized_message for marker in ("postovn", "cena dopravy", "stoji doprava")) or (
         "zadarmo" in normalized_message and "doprav" in normalized_message
+    ) or (
+        # "kolko" alone is ambiguous between cost ("kolko stoji dorucenie")
+        # and duration ("kolko trva dorucenie", handled separately below by
+        # the "trva" pairing) - require a cost-specific verb alongside it so
+        # this does not also swallow the duration question.
+        "kolko" in normalized_message
+        and any(marker in normalized_message for marker in ("stoji", "zaplatit", "platit"))
+        and any(marker in normalized_message for marker in ("doprav", "postovn", "doruc", "zasiel", "kurier"))
     ):
         shipping_answer = direct_faq_answer_by_question_markers(
             loaded_knowledge,
@@ -5733,13 +5749,27 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
     # also contains "doruc", so it was losing to the generic "which
     # delivery methods do you offer" shortcut instead of the specific
     # delivery-time answer.
+    # "kolko trva dorucenie" (how much time does delivery take) uses "kolko"
+    # instead of "dlho" - only paired with "trva" (takes/lasts) though,
+    # since bare "kolko" + "doruc" is ambiguous with a COST question
+    # ("kolko stoji dorucenie"), which the shipping-cost shortcut above
+    # already owns.
     if "dodan" in normalized_message or (
-        any(marker in normalized_message for marker in ("dlho", "rychlost"))
+        (any(marker in normalized_message for marker in ("dlho", "rychlost")) or ("kolko" in normalized_message and "trva" in normalized_message))
         and any(marker in normalized_message for marker in ("doruc", "zasiel", "kurier"))
     ):
         delivery_time_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("dlho", "dorucenie"))
         if delivery_time_answer:
             return delivery_time_answer
+    # "je osobny odber na pockanie" (is in-store pickup ready-while-you-wait)
+    # had no FAQ_INTENT_MARKERS trigger word at all until "pockanie"/"odber"
+    # were added, so it fell all the way through to the general AI answer -
+    # whose system prompt always appends a cross-sell nudge when any
+    # products happen to be attached, even for a pure logistics question.
+    if "pockanie" in normalized_message and any(marker in normalized_message for marker in ("odber", "vyzdvih")):
+        pickup_ready_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("odberom", "pripraveny"))
+        if pickup_ready_answer:
+            return pickup_ready_answer
     if any(marker in normalized_message for marker in ("kurier", "doruc", "zasiel", "posiel", "preprav", "privez", "rozvaz", "doprav")):
         delivery_answer = direct_faq_answer_by_question_markers(
             loaded_knowledge,

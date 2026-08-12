@@ -2382,6 +2382,20 @@ class TestFAQ:
         assert answer
         assert any(kw in (answer or "").lower() for kw in ("doprava", "eur", "zadarmo", "dopravy"))
 
+    def test_faq_shipping_cost_explains_it_depends_on_weight_and_payment_method(self, knowledge):
+        # User feedback: the old answer ("Doprava je zadarmo nad 49 EUR...")
+        # was too simplistic below that threshold - it didn't explain WHY
+        # the price varies (weight category, only known after adding to
+        # cart; payment method - COD/bank transfer/gateway) or that the
+        # real total is shown at checkout before the order is confirmed.
+        answer = main.best_direct_faq_answer("kedy je doprava zadarmo?", knowledge)
+        assert answer
+        normalized = main.normalize(answer)
+        assert "49" in answer  # free-shipping threshold still stated
+        assert "hmotnost" in normalized or "vahov" in normalized  # weight-based factor explained
+        assert "platby" in normalized or "dobierka" in normalized  # payment-method factor explained
+        assert "kosik" in normalized  # points customer to checkout for the real total
+
     def test_faq_payment(self, knowledge):
         answer = main.best_direct_faq_answer("ako mozem zaplatit?", knowledge)
         assert answer
@@ -2461,6 +2475,25 @@ class TestFAQ:
             assert answer, query
             assert "72" in answer or "3 pracovne" in main.normalize(answer), query
 
+    def test_faq_shipping_cost_wording_with_kolko_and_zaplatit(self, knowledge):
+        # Real user report (screenshot): "Kolko treba zaplatit za dopravu?"
+        # got the delivery-METHODS answer instead of the shipping-cost
+        # answer - the shortcut required the exact phrase "kolko stoji
+        # doprava" and didn't recognize "kolko treba zaplatit za dopravu"
+        # as the same question. Broadened to a flexible "kolko" + cost verb
+        # (stoji/zaplatit/platit) + doprav/postovn/doruc combination -
+        # verified this doesn't also swallow "kolko trva dorucenie" (a
+        # duration question, not cost), which must still reach the
+        # delivery-time answer instead.
+        for query in ("kolko treba zaplatit za dopravu", "kolko stoji dorucenie"):
+            answer = main.best_direct_faq_answer(query, knowledge)
+            assert answer, query
+            assert "zadarmo" in main.normalize(answer), query
+
+        duration_answer = main.best_direct_faq_answer("kolko trva dorucenie", knowledge)
+        assert duration_answer
+        assert "72" in duration_answer or "3 pracovne" in main.normalize(duration_answer)
+
     def test_faq_delivery_deadline_wording_reaches_delivery_time_answer(self, knowledge):
         # Real dashboard no-result: "Termindodania" (delivery deadline) never
         # matched any FAQ_INTENT_MARKERS root at all - "dodan" doesn't appear
@@ -2471,6 +2504,28 @@ class TestFAQ:
             answer = main.best_direct_faq_answer(query, knowledge)
             assert answer, query
             assert "72" in answer or "3 pracovne" in main.normalize(answer), query
+
+    def test_faq_pickup_ready_while_you_wait_no_longer_leaks_to_ai_cross_sell(self, knowledge):
+        # Real user report (screenshot): a question about whether in-store
+        # pickup is ready "na pockanie" (while you wait) got an AI-generated
+        # answer with an unsolicited product recommendation attached (a
+        # Wasabi sauce card) - the user's complaint: "pri takych otazkach
+        # nema byt doporucenie produktov" (such questions must not get
+        # product recommendations). Root cause: neither "pockanie" nor
+        # "odber" was in FAQ_INTENT_MARKERS at all, so is_faq_intent()
+        # rejected the message before it ever reached the FAQ system,
+        # falling all the way through to the general AI answer path -
+        # whose system prompt always appends a cross-sell nudge when any
+        # (even coincidentally matched) products are attached.
+        for query in (
+            "je osobny odber na pockanie",
+            "da sa vyzdvihnut tovar na pockanie",
+            "mozem si tovar vyzdvihnut hned na pockanie",
+        ):
+            assert main.is_faq_intent(query), query
+            answer = main.best_direct_faq_answer(query, knowledge)
+            assert answer, query
+            assert "e-mail" in main.normalize(answer) or "email" in main.normalize(answer), query
 
     def test_faq_delivery_speed_wording_beats_generic_delivery_methods(self, knowledge):
         # Real dashboard no-result: "rychlost dorucenia" (delivery speed)
