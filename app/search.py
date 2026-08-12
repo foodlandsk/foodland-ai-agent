@@ -423,7 +423,19 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
                 str(product_value(product, "product_type", product_value(product, "category", ""))),
                 merchandising_rules,
             )
-            if behavioral_rankings is not None:
+            # Real customer report: "chcem sojovu omacku od kikkoman"
+            # (I want soy sauce FROM Kikkoman) returned zero Kikkoman
+            # products - every Kikkoman SKU has an explicit brand_hits
+            # match (score += 5*brand_hits above) but one specific SKU
+            # had a real below-baseline CTR (confirmed via /admin/
+            # analytics/behavioral-rankings) eligible for the maximum
+            # 0.5x behavioral penalty, enough to drop it below brands the
+            # customer never named. When someone explicitly names a
+            # product's own brand, that is a much stronger and more
+            # certain relevance signal than general CTR popularity - it
+            # should not be diluted by how other customers on average
+            # engage with that brand.
+            if behavioral_rankings is not None and brand_hits == 0:
                 score *= behavioral_multiplier(
                     product_id,
                     behavioral_rankings["scores"],

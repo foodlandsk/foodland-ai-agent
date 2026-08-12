@@ -759,6 +759,36 @@ class TestBehavioralRanking:
 
         assert boosted_results[0]["id"] == target_id
 
+    def test_behavioral_penalty_does_not_suppress_explicit_brand_match(self, products, monkeypatch):
+        # Real user report: "chcem sojovu omacku od kikkoman" (I want soy
+        # sauce FROM Kikkoman) returned zero Kikkoman products - confirmed
+        # via /admin/analytics/behavioral-rankings that a real Kikkoman SKU
+        # had a below-baseline CTR (17 impressions, 0 clicks) eligible for
+        # the full 0.5x behavioral penalty, enough to drop it below brands
+        # the customer never named. A customer explicitly naming a
+        # product's own brand is a much stronger and more certain
+        # relevance signal than average CTR popularity, so it must not be
+        # diluted by the behavioral multiplier.
+        query = "chcem sojovu omacku od kikkoman"
+        baseline_results = search_products(products, query, 6)
+        assert baseline_results
+        assert all(main.normalize(r.get("brand", "")) == "kikkoman" for r in baseline_results)
+
+        scores = {r["id"]: {"ctr": 0.0175, "impressions": 17, "clicks": 0} for r in baseline_results}
+        monkeypatch.setattr(search_module, "_behavioral_rankings_cache", {"scores": scores, "baseline_ctr": 0.035})
+        monkeypatch.setattr(search_module, "_behavioral_rankings_cache_at", time.time())
+
+        penalized_results = search_products(products, query, 6)
+        assert all(main.normalize(r.get("brand", "")) == "kikkoman" for r in penalized_results)
+
+        # A generic query naming no brand must still be affected normally.
+        generic_baseline = search_products(products, "sojova omacka", 6)
+        target_id = generic_baseline[0]["id"]
+        boost_scores = {target_id: {"ctr": 0.0175, "impressions": 17, "clicks": 0}}
+        monkeypatch.setattr(search_module, "_behavioral_rankings_cache", {"scores": boost_scores, "baseline_ctr": 0.035})
+        penalized_generic = search_products(products, "sojova omacka", 6)
+        assert [r["id"] for r in penalized_generic] != [r["id"] for r in generic_baseline]
+
     def test_admin_behavioral_rankings_requires_token(self, monkeypatch):
         monkeypatch.delenv("ADMIN_ANALYTICS_TOKEN", raising=False)
         monkeypatch.delenv("ADMIN_RELOAD_TOKEN", raising=False)
