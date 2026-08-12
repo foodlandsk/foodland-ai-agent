@@ -3682,6 +3682,20 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         # hits. A set/kit/bundle word signals the customer wants a
         # specific product type, not "what goes well with X" pairings.
         related_subject = None
+    if related_subject:
+        # Real user report (screenshot, confirmed across brands): "Yamasa
+        # sojova omacka" / "Sempio gochujang" named a specific brand but
+        # got a cross-sell answer ("skvelo pasuje k tomu...") recommending
+        # a DIFFERENT brand entirely, because "sojova omacka"/"gochujang"
+        # already match a RELATED_SUBJECT_ALIASES entry regardless of what
+        # brand prefixes it. A customer naming a specific brand wants that
+        # product, not "what pairs with this category" - fall through to
+        # plain product search instead, which already handles brand+
+        # category combinations correctly (same fix as the Kikkoman
+        # behavioral-ranking issue above, one layer up in the cascade).
+        mentioned_related_brand = detect_mentioned_replacement_brand(contextual_message, products, related_subject)
+        if mentioned_related_brand:
+            related_subject = None
     cross_sell_matches = cross_sell_products_for_message(products, knowledge, contextual_message, chat_request.limit)
     article_product_subject = (
         detect_article_product_subject(contextual_message, articles)

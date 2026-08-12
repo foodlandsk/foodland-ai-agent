@@ -1847,6 +1847,36 @@ class TestIntentDetection:
         titles = " ".join(main.normalize(p.get("title", "")) for p in matches)
         assert "sake set" in titles or "saki set" in titles
 
+    def test_explicit_brand_overrides_related_subject_routing(self, products):
+        # Real user report (screenshot, confirmed across brands): "Yamasa
+        # sojova omacka" got a cross-sell answer ("skvelo pasuje k tomu
+        # tamari sojova omacka alebo mirin...") recommending a DIFFERENT
+        # brand (Kikkoman) entirely, instead of the actual Yamasa soy sauce
+        # the customer named - because "sojova omacka" already matches the
+        # "sojova_omacka" RELATED_SUBJECT_ALIASES entry regardless of what
+        # brand prefixes it, and related_subject routing never looks at
+        # matches at all, just returns cross-sell for the category. A
+        # customer naming a specific brand wants that product.
+        for message, brand_token in (
+            ("Yamasa sojova omacka", "yamasa"),
+            ("Squid Brand rybacia omacka", "squid brand"),
+        ):
+            assert main.detect_related_subject(message), message  # sanity: alias still matches
+            mentioned = main.detect_mentioned_replacement_brand(message, products, main.detect_related_subject(message))
+            assert mentioned and main.normalize(mentioned) == brand_token, message
+
+            matches = main.cached_search_products(products, message, 6)
+            assert matches, message
+            # The named brand must lead the results - not necessarily fill
+            # every slot, since a brand with few SKUs naturally has other
+            # brands fill the remaining ones.
+            assert brand_token in main.normalize(matches[0].get("brand", "")), message
+            assert any(brand_token in main.normalize(p.get("brand", "")) for p in matches), message
+
+        # No brand named: the existing tradeoff (confirmed with the user)
+        # stays unchanged - direct "aky ocot mate" still routes to cross-sell.
+        assert main.detect_related_subject("aky ocot mate") == "ocot"
+
     def test_cajove_sety_finds_tea_sets_not_only_matcha(self, products):
         # Real user report: "cajove sety" (tea sets) returned only the 17
         # "Matcha set" bowl/whisk products, none of the 4 actual "Japonska
