@@ -50,7 +50,7 @@ Toto je presne ten zoznam, ktorý V2.2–V2.4 majú postupne presunúť za `Cust
 
 ## Zistené systematické medzery (zo synthetic QA V2.1, real production dôkaz čaká na prístup k Railway)
 
-- Recipe detekcia nerozpozná niektoré recipe-shopping formulácie skôr, než ich zachytí cross-sell vetva (`"co potrebujem na tom kha gai"` → `related_products`, nie `recipe_to_products`).
+- ~~Recipe detekcia nerozpozná niektoré recipe-shopping formulácie skôr, než ich zachytí cross-sell vetva (`"co potrebujem na tom kha gai"` → `related_products`, nie `recipe_to_products`).~~ **Opravené (Sprint V2.1.1)** – `"tom kha"` pridané do `RECIPE_INTENT_MARKERS`. Pozor: toto NIE je štrukturálna oprava celej triedy – je to úmyselne úzky, jednorazový marker presne ako `"vindaloo"`/`"karaage"`. Rovnaká medzera existuje ďalej pre iné jedlá s vlastnou receptovou kartou, ktoré nemajú vlastnú cross-sell `*_shopping_core_products()` funkciu (napr. `pad_thai`, `karaage` má už markera, `bibimbap`, `bulgogi`...) – kandidát na skutočnú V2.3 recipe-routing štrukturálnu opravu, keď bude jasné pravidlo na odlíšenie "má vlastnú doladenú cross-sell funkciu, zámerne zostáva na related_products" od "nemá nič, mala by ísť na recipe_to_products".
 - `detect_allergen_intent()` nezachytí holé "ma to lepok?" bez pomenovaného produktu.
 - `detect_out_of_domain()` nezachytí všeobecné mimo-doménové otázky (napr. "aky je najlepsi film?").
 

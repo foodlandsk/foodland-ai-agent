@@ -911,3 +911,23 @@ Luigi's Box paritu je realistické dosiahnuť v **3 mesiacoch** pri sústredenom
 - `"aky je najlepsi film?"` (mimo-doménová otázka) nie je zachytené `detect_out_of_domain()` – padá do `product_search` namiesto refusal správy.
 
 Tieto tri zistenia sú reálnym kandidátom na V2.2/V2.3 (product search routing / recipe routing) – práve typ systematickej slabiny, ktorú štandardizovaná `CustomerIntent` vrstva má postupne odstrániť namiesto ďalšej vetvy v kaskáde.
+
+---
+
+### Sprint V2.1.1 – Oprava "čo potrebujem na tom kha gai" (recipe_to_products routing gap)
+
+**Zákaznícky problém:** `"co potrebujem na tom kha gai"` (nákupný zoznam bez slova "recept") dostal odpoveď z cross-sell vetvy (`intent: related_products`) namiesto `recipe_to_products`, hoci Tom Kha Gai má v `knowledge.json` reálnu, overenú Foodland receptovú kartu aj mapovanie chýbajúcich surovín (`MISSING_INGREDIENTS_BY_SUBJECT["tom_kha"]`).
+
+**Architektonická príčina:** `is_recipe_intent()` (brána pred `detect_recipe_subject()`) vracia `True` iba pri slovách typu "recept"/"návod"/"ako pripravím"/"how to make" (`RECIPE_INTENT_MARKERS`) alebo pri holom tokene začínajúcom na "recept". Nákupno-zoznamová formulácia ("čo potrebujem na X"/"čo kúpiť na X") sa rozpoznáva úplne inou, samostatnou funkciou (`wants_recipe_products()`), ktorá sa ale používa AŽ POTOM, čo je `recipe_subject` už nájdený – nikdy nie ako vstupná brána. Bez slova "recept" tak správa nikdy nedosiahne `detect_recipe_subject()` a spadne až do neskoršej cross-sell vetvy, kde `tom_kha` je mimochodom tiež definovaný ako `RELATED_SUBJECT_ALIASES` téma – takže zákazník dostane produkty, ale bez receptovej karty, `missing_ingredients` a `shopping_list` polí, ktoré `recipe_to_products` workflow poskytuje.
+
+**Zvažovaná, ale zamietnutá širšia oprava:** Prvý pokus rozšíril `is_recipe_intent()` štrukturálne – aby nákupno-zoznamová formulácia platila pre KAŽDÝ subjekt s reálnym overeným receptom (nie len tom_kha), overené cez nový `_SUBJECTS_WITH_VERIFIED_RECIPE` frozenset postavený nad `knowledge.json["Recipes"]`. Toto síce správne vylúčilo `kimchi`/`kimchi_ramen`/`sushi` (nemajú vlastný receptový záznam), ale **rozbilo 2 existujúce, zámerné testy**: `"nakupny zoznam na tom yum"` a `"nakupny zoznam na kimchi ramen"` už majú vlastné, starostlivo doladené cross-sell funkcie (`tom_yum_shopping_core_products()`, `kimchi_ramen_shopping_core_products()`) s vlastným poradím/vylúčeniami produktov, overenými existujúcimi testami – aj keď majú reálny recept (Tom Yum áno), zámerne zostávajú na `related_products` pre túto formuláciu. Široká oprava by tak menila správanie, ktoré nikto nežiadal opraviť, a vyžadovala by prehodnotenie ladenia týchto funkcií. Podľa V2 sekcie 27 (kontrolné prípady) bola táto oprava zamietnutá v prospech užšej.
+
+**V2 vylepšenie (implementované):** Pridané `"tom kha"` do `RECIPE_INTENT_MARKERS` – rovnaký, už zavedený vzor ako existujúce položky `"vindaloo"`/`"karaage"` (Sprint V.6/Z, presne tá istá trieda chyby: holé meno jedla bez slova "recept" musí tiež spustiť recipe workflow). Minimálny, presne ohraničený zásah – žiadny iný subjekt (sushi, pho, ramen, kimchi, tom_yum, kimchi_ramen) nie je zmenou dotknutý.
+
+**Migrované správanie:** `"co potrebujem na tom kha gai"`, `"co kupit na tom kha gai"` aj holé `"tom kha gai"` teraz vracajú `intent: recipe_to_products` s reálnou receptovou kartou ("Tom Kha Gai"), zoradenými produktmi (kokosové mlieko, galangal, citrónová tráva, kaffirové listy, rybacia omáčka, Tom Kha pasta) a `missing_ingredients`.
+
+**Regresné testy:** `test_tom_kha_shopping_list_reaches_recipe_to_products_without_recept_word` (overuje `is_recipe_intent`/`detect_recipe_subject`/plný `chat()` beh vrátane receptovej karty) + kontrolný test `test_tom_kha_fix_does_not_change_neighboring_shopping_list_subjects` (sushi/pho/ramen/kimchi/tom_yum/kimchi_ramen zostávajú nezmenené – presne tie 2 prípady, ktoré odhalili prečo bola širšia oprava zlá).
+
+**Testy – plný beh:** 369/369 (367 z predošlého behu + 2 nové), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` čisté.
+
+**Naživo overené:** rovnaké obmedzenie ako Sprint V2.1 – Railway (`foodland-ai-agent-production.up.railway.app`) nedosiahnuteľné z tohto prostredia (proxy 403 policy denial). Treba overiť zo session s prístupom po merge.

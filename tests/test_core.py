@@ -1562,6 +1562,58 @@ class TestIntentDetection:
         assert "kimchi" in ramen_titles
         assert "ryzova muka" not in ramen_titles
 
+    def test_tom_kha_shopping_list_reaches_recipe_to_products_without_recept_word(self):
+        # Real user report: "co potrebujem na tom kha gai" is a shopping-list
+        # style question with no "recept"/how-to wording at all (unlike the
+        # pho/kimchi ramen cases above, which both contain "k receptu").
+        # is_recipe_intent() only fired on RECIPE_INTENT_MARKERS or a bare
+        # "recept*" token, so this fell through entirely into the generic
+        # cross-sell branch (intent "related_products") instead of the
+        # recipe_to_products workflow - even though Tom Kha Gai has a real
+        # Foodland recipe card and missing-ingredient mapping. Fixed by
+        # adding "tom kha" to RECIPE_INTENT_MARKERS (same pattern as the
+        # existing vindaloo/karaage entries).
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+
+        for query in ("co potrebujem na tom kha gai", "co kupit na tom kha gai", "tom kha gai"):
+            assert main.is_recipe_intent(main.normalize(query)), query
+            assert main.detect_recipe_subject(query) == "tom_kha", query
+
+        result = main.chat(main.ChatRequest(message="co potrebujem na tom kha gai", limit=8), request)
+        titles = nrm(" | ".join(product.get("title", "") for product in result.get("products", [])))
+
+        assert result.get("intent") == "recipe_to_products"
+        assert any(recipe.get("title", "") == "Tom Kha Gai" for recipe in result.get("recipes", []))
+        assert "kokosove mlieko" in titles
+        assert "galangal" in titles
+
+    def test_tom_kha_fix_does_not_change_neighboring_shopping_list_subjects(self):
+        # Control cases (roadmap section 27): the tom_kha fix above must not
+        # sweep up lookalike dishes that intentionally keep their existing
+        # related_products/cross-sell routing for shopping-list phrasing
+        # without "recept" (tom_yum and kimchi_ramen have their own tuned
+        # *_shopping_core_products() cross-sell functions and are covered by
+        # dedicated tests elsewhere asserting intent == "related_products";
+        # sushi/pho/ramen/kimchi have no dedicated recipe-title marker for
+        # this bare phrasing at all).
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        for query in (
+            "co potrebujem na sushi",
+            "co potrebujem na pho",
+            "co potrebujem na ramen",
+            "co potrebujem na kimchi",
+            "nakupny zoznam na tom yum",
+            "nakupny zoznam na kimchi ramen",
+        ):
+            assert not main.is_recipe_intent(main.normalize(query)), query
+            assert main.detect_recipe_subject(query) is None, query
+
+        tom_yum_result = main.chat(main.ChatRequest(message="nakupny zoznam na tom yum", limit=8), request)
+        assert tom_yum_result.get("intent") == "related_products"
+
+        kimchi_ramen_result = main.chat(main.ChatRequest(message="nakupny zoznam na kimchi ramen", limit=8), request)
+        assert kimchi_ramen_result.get("intent") == "related_products"
+
     def test_related_shopping_list_intent_detected(self):
         assert main.wants_shopping_list("nákupný zoznam na sushi")
         assert main.missing_ingredients_for_subject("sushi", [])
