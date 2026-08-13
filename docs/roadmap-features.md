@@ -833,6 +833,21 @@ Príčina: fráza "sójová omáčka" (a ~150 ďalších kategórií/jedál) je 
 
 ---
 
+### Sprint Z.4 – Jazyk odpovede, nechcený krížový predaj pri FAQ a doplnenie fráz pre cenu/dobu doručenia
+
+Používateľ poslal dva súvisiace screenshoty z tej istej konverzácie:
+
+1. **"What soy sauce do you recommend for sushi?"** (po anglicky) dostalo odpoveď **po slovensky**. `detect_query_language()` už správne rozpoznáva "en" (existujúci test to potvrdzuje), ale tento výsledok sa nikdy nedostal do promptu pre OpenAI – správa zákazníka bola obalená v celej slovenskej šablóne ("Otázka zákazníka:", "Zistený zámer:"...) bez akéhokoľvek explicitného pokynu na jazyk, čo pravdepodobne posúva model k prevažujúcemu jazyku vlastného kontextu napriek inštrukcii v systémovom prompte. **Oprava**: pridaný explicitný riadok "Jazyk odpovede: ..." s už vypočítanou hodnotou `query_language`, hneď za otázku zákazníka.
+2. K tomu bola pripojená **nesúvisiaca produktová karta** (Wasabi omáčka) k logistickej otázke o vyzdvihnutí "na počkanie" – podľa používateľa *"pri takých otázkach nemá byť doporučenie produktov"*. Príčina: ani "pockanie" ani "odber" neboli v `FAQ_INTENT_MARKERS`, takže `is_faq_intent()` odmietol správu skôr, než sa vôbec dostala k deterministickému FAQ systému, a spadla až do všeobecnej AI odpovede, ktorej systémový prompt vždy pripojí návrh krížového predaja, ak sú priložené akékoľvek produkty. **Oprava**: pridané oba markery plus vyhradená skratka mieriaca presne na správnu FAQ.
+
+Pri overovaní bol nahlásený aj **pôvodný spúšťač** tejto konverzácie: **"Kolko treba zaplatit za dopravu?"** vrátilo FAQ o spôsoboch doručenia namiesto ceny dopravy – skratka vyžadovala presnú frázu "kolko stoji doprava", nie flexibilnú kombináciu. **Oprava**: rozšírené na "kolko" + cenové sloveso (stoji/zaplatit/platit) + doprav/postovn/doruc. Pri overovaní sa našla aj susedná medzera – "kolko trva dorucenie" (doba namiesto ceny, "kolko" namiesto "ako dlho") – opravené párovaním "kolko" s "trva" špecificky, aby sa neprekrývalo s cenovou skratkou (overené obojsmerne: "kolko stoji dorucenie" → cena, "kolko trva dorucenie" → doba).
+
+**Obsahové vylepšenie** (na základe podrobného zadania od používateľa): odpoveď na "kedy je doprava zadarmo" doteraz len konštatovala prah 49 €, bez vysvetlenia, od čoho závisí cena pod touto sumou. Prepísaná tak, aby vysvetlila dva reálne faktory (hmotnostná kategória – zistí sa až po vložení do košíka; spôsob platby – dobierka/prevod/platobná brána) a nasmerovala zákazníka na pokladňu, kde sa pred potvrdením objednávky zobrazí skutočná celková cena.
+
+**Overené naživo**: "Kolko treba zaplatit za dopravu?" → FAQ s vysvetlením faktorov; "je osobny odber na pockanie" → FAQ bez produktov; anglická otázka o sushi → odpoveď po anglicky.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
