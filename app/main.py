@@ -79,6 +79,7 @@ from app.search import (
     tokenize,
 )
 from app.workflows import products_to_cart_candidates
+from app.intent import build_customer_intent
 
 
 logging.basicConfig(
@@ -3549,7 +3550,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if is_missing_composition_complaint(chat_request.message):
         update_session_memory(memory_key, chat_request.message, "missing_composition", [], [], knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, "missing_composition", [], [])
-        log_question(chat_request.message, client_key, 0, intent="missing_composition", session_id=session_id)
+        _ci = build_customer_intent(chat_request.message, "missing_composition", language=query_language)
+        log_question(chat_request.message, client_key, 0, intent="missing_composition", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
         return {
             "answer": missing_composition_answer(query_language),
             "products": [],
@@ -3564,7 +3566,12 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         allergen_matches = personalize_products(allergen_matches, user_profile)
         update_session_memory(memory_key, chat_request.message, "allergen_safety", allergen_matches, [], knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, "allergen_safety", allergen_matches, [])
-        log_question(chat_request.message, client_key, len(allergen_matches), intent="allergen_safety", session_id=session_id)
+        _ci = build_customer_intent(
+            chat_request.message, "allergen_safety",
+            allergen_constraints=[allergen_term] if allergen_term else None,
+            language=query_language,
+        )
+        log_question(chat_request.message, client_key, len(allergen_matches), intent="allergen_safety", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
         return {
             "answer": allergen_safety_answer(allergen_term, query_language),
             "products": allergen_matches,
@@ -3580,7 +3587,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if faq_answer and is_faq_query:
         update_session_memory(memory_key, chat_request.message, "faq", [], [], knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, "faq", [], [])
-        log_question(chat_request.message, client_key, 0, intent="faq", session_id=session_id)
+        _ci = build_customer_intent(chat_request.message, "faq", language=query_language)
+        log_question(chat_request.message, client_key, 0, intent="faq", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
         return {
             "answer": faq_answer,
             "products": [],
@@ -3595,7 +3603,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         random_recipes = personalize_recipes(random_recipes, user_profile)
         update_session_memory(memory_key, chat_request.message, "recipe", [], random_recipes, knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, "recipe", [], random_recipes)
-        log_question(chat_request.message, client_key, 0, intent="recipe", session_id=session_id)
+        _ci = build_customer_intent(chat_request.message, "recipe", language=query_language)
+        log_question(chat_request.message, client_key, 0, intent="recipe", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
         return {
             "answer": random_recipes_answer(random_recipes, query_language),
             "recipes": random_recipes,
@@ -3643,7 +3652,13 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         shopping_list = shopping_list_for_response(recipe_cart_candidates, missing_ingredients) if recipe_products else {}
         update_session_memory(memory_key, chat_request.message, intent, recipe_products, recipes, knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, intent, recipe_products, recipes)
-        log_question(chat_request.message, client_key, 0, intent=intent, session_id=session_id)
+        _ci = build_customer_intent(
+            chat_request.message, intent,
+            subject=recipe_subject, recipe=recipe_subject,
+            use_case=recipe_product_subject or None,
+            language=query_language,
+        )
+        log_question(chat_request.message, client_key, 0, intent=intent, session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
         if recipe_products:
             recipe_answer_text = recipe_products_answer(recipe_product_subject, recipes, query_language)
         elif recipes:
@@ -3668,7 +3683,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if detect_out_of_domain(chat_request.message):
         update_session_memory(memory_key, chat_request.message, "unknown", [], [], knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, "unknown", [], [])
-        log_question(chat_request.message, client_key, 0, intent="unknown", session_id=session_id)
+        _ci = build_customer_intent(chat_request.message, "unknown", language=query_language)
+        log_question(chat_request.message, client_key, 0, intent="unknown", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
         return {
             "answer": (
                 "I can't reliably answer that as the Foodland assistant. Try asking about products, "
@@ -3836,7 +3852,12 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     fallback_related_subject = None if replacement_subject else related_subject
     update_session_memory(memory_key, chat_request.message, intent, matches, [], knowledge_matches)
     updated_profile = update_user_memory(profile_key, chat_request.message, intent, matches, [])
-    log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id)
+    _ci = build_customer_intent(
+        chat_request.message, intent,
+        subject=related_subject or article_product_subject or special_subject or replacement_subject or already_have_subject,
+        language=query_language,
+    )
+    log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
 
     if not matches and not knowledge_matches and not needs_knowledge:
         fallback_sections = (
@@ -5286,7 +5307,15 @@ def enforce_semantic_search_rate_limit(client_key: str) -> None:
     events.append(now)
 
 
-def log_question(message: str, client_key: str, matches_count: int, intent: str = "", session_id: str = "") -> None:
+def log_question(
+    message: str,
+    client_key: str,
+    matches_count: int,
+    intent: str = "",
+    session_id: str = "",
+    primary_intent: str = "",
+    subject: str = "",
+) -> None:
     path = Path(os.getenv("ANALYTICS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "question_analytics.jsonl")))
     salt = os.getenv("ANALYTICS_SALT", "")
     record = {
@@ -5296,6 +5325,10 @@ def log_question(message: str, client_key: str, matches_count: int, intent: str 
         "matches_count": matches_count,
         "intent": intent,
         "session_id": session_id,
+        # V2.1: canonical CustomerIntent fields, additive and optional so
+        # existing readers of this JSONL file are unaffected.
+        "primary_intent": primary_intent,
+        "subject": subject,
     }
     if os.getenv("ANALYTICS_INCLUDE_IP", "false").lower() == "true":
         record["ip"] = client_key

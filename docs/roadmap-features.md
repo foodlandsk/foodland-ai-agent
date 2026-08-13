@@ -882,3 +882,32 @@ Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
 (. **Synonymický slovníj** – nahradí 20 hardcoded if-blokov
 
 Luigi's Box paritu je realistické dosiahnuť v **3 mesiacoch** pri sústredenom vývoji.
+
+---
+
+### Sprint V2.1 – Foodland AI Advisor V2: CustomerIntent foundation
+
+**Zákaznícky problém / architektonická príčina:** `/chat` v `app/main.py` je jeden ~500-riadkový kaskádový if-blok, ktorý postupne počíta desiatky nezávislých booleovských signálov (`allergen_term`, `is_faq_query`, `recipe_subject`, `already_have_subject`, `special_subject`, `replacement_subject`, `related_subject`, `article_product_subject`, `cross_sell_matches`, `product_advice_context`...) a až na konci z nich odvodí jeden legacy `intent` string. `app/workflows.py` (Sprint 1, staršia analýza) už obsahuje `detect_workflow()`/`WorkflowResult`/`get_contract()` presne pre tento účel, ale nikdy nebol zapojený do `/chat` – reálne sa importuje iba `products_to_cart_candidates()`. Každá nová trieda chýb (Sprint V–Z.6 vyššie) sa doteraz opravovala pridaním ďalšej vetvy/výnimky do tejto kaskády – presne ten vzor "regression-driven spaghetti", ktorému má V2 architektúra zabrániť.
+
+**V2 vylepšenie:** Pridaný `app/intent.py` – nová, samostatná (bez FastAPI/OpenAI závislostí) foundation vrstva:
+- `CustomerIntent` dataclass s kanonickou schémou z V2 architektúry (`primary_intent`, `subject`, `brand`, `category`, `recipe`, `cuisine`, `use_case`, `dietary_constraints`, `allergen_constraints`, `customer_has`, `requested_output`, `language`, `confidence`, `original_message`).
+- `PRIMARY_INTENTS` – 15 kanonických zámerov z V2 návrhu (`product_search`, `product_advice`, `product_comparison`, `category_discovery`, `recipe_only`, `recipe_to_products`, `replacement`, `cross_sell`, `product_information`, `allergen_safety`, `faq`, `availability_or_price`, `conversation_followup`, `general_culinary`, `out_of_domain`).
+- `LEGACY_INTENT_MAP` + `map_legacy_intent()` – **compatibility adapter**, ktorý mapuje všetkých 11 legacy intent stringov, ktoré `/chat` reálne produkuje (`missing_composition→faq`, `allergen_safety→allergen_safety`, `faq→faq`, `recipe→recipe_only`, `recipe_to_products→recipe_to_products`, `unknown→out_of_domain`, `article_products→product_information`, `replacement_products→replacement`, `product_advice→product_advice`, `related_products→cross_sell`, `product_search→product_search`), s bezpečným fallbackom na `product_search` pre čokoľvek nezmapované.
+- `build_customer_intent()` – čistá funkcia, ktorá poskladá `CustomerIntent` z **už vypočítaných** legacy signálov (nepridáva žiadnu novú NLU logiku, iba prenáša to, čo kaskáda už zistila).
+
+**Migrované správanie:** `/chat` teraz na 7 miestach (všetky `log_question()` volania – missing_composition, allergen_safety, faq, random recipe, recipe_subject vetva, out_of_domain, hlavná product-search vetva) postaví `CustomerIntent` a zaloguje jeho `primary_intent`/`subject` do `question_analytics.jsonl` (nové, voliteľné polia s defaultom `""` – existujúci čitatelia logu nie sú ovplyvnení). **Žiadna existujúca routovacia vetva, odpoveď ani JSON kontrakt `/chat` sa nemenili** – ide o čisto aditívnu zmenu (nový import, nový parameter v `log_question()` s defaultom, nové kľúče v logovanom zázname). Toto je základ (V2.1), na ktorom V2.2 (product search routing) a V2.3 (recipe routing) postavia skutočné presmerovanie rozhodnutí cez `CustomerIntent`.
+
+**Regresné testy:** nový `tests/test_intent.py` (29 testov) – kompletné pokrytie `LEGACY_INTENT_MAP` (všetkých 11 legacy hodnôt), fallback správanie `map_legacy_intent()`, `CustomerIntent` defaulty a immutabilita mutable-default polí naprieč inštanciami, `build_customer_intent()` pre reprezentatívne scenáre (product_search, cross_sell, replacement, allergen_safety, recipe_to_products).
+
+**Testy – plný beh:** `tests/test_core.py` (312/312 pri repo štandardnom `-k` filtri), `tests/test_integration.py` (26/26, end-to-end `chat()` cez mock OpenAI), `tests/test_intent.py` (29/29 nové) → **367/367 spolu, 0 regresií**. `scripts/trust_audit.py` (empty-alternatives aj pii-leak) čisté. `scripts/consistency_audit.py` nezmenené voči predchádzajúcemu stavu (žiadne nové kolízie markerov, existujúce skloňovacie kandidáty sú nezmenené, nesúvisia s touto zmenou).
+
+**Synthetic QA (before/after):** 13 reprezentatívnych scenárov naprieč rodinami z V2 sekcie 17 (ryža, sushi ryža vs. ryžovar, značka Kikkoman, replacement, recipe-to-products, recipe-only, product-information, cross-sell/customer_has, kuchynský riad, FAQ, alergén, out-of-domain) spustených priamo cez `chat()` pred aj po zmene – legacy `intent` pole identické pred/po (0 zmien v správaní). Po zmene navyše `primary_intent`/`subject` správne zachytené vo všetkých 13 prípadoch.
+
+**Naživo overené:** Railway produkcia (`foodland-ai-agent-production.up.railway.app`) nebola v tomto behu dosiahnuteľná – sieťová politika tohto agentného prostredia zamietla `CONNECT` na tento hostiteľ (`403`, `gateway answered 403 to CONNECT (policy denial or upstream failure)`), podľa vlastných pravidiel proxy nemá zmysel to obchádzať. Zmena je zlúčená do `main` a nasadená cez Railway auto-deploy; **finálne overenie na produkcii treba spustiť zo session/prostredia, ktoré má prístup k `foodland-ai-agent-production.up.railway.app`**.
+
+**Zostávajúca najvyššia priorita pre ďalšiu V2 iteráciu (zistené touto session zo synthetic QA, nie hypotéza):**
+- `"co potrebujem na tom kha gai"` padá do `related_products` (cross_sell) namiesto `recipe_to_products` – `detect_recipe_subject()` nerozpoznáva "tom kha gai" skôr, než sa vyhodnotí cross-sell vetva.
+- `"ma to lepok?"` (bez konkrétneho produktu) nie je zachytené ako `allergen_safety` – padá do `product_search`.
+- `"aky je najlepsi film?"` (mimo-doménová otázka) nie je zachytené `detect_out_of_domain()` – padá do `product_search` namiesto refusal správy.
+
+Tieto tri zistenia sú reálnym kandidátom na V2.2/V2.3 (product search routing / recipe routing) – práve typ systematickej slabiny, ktorú štandardizovaná `CustomerIntent` vrstva má postupne odstrániť namiesto ďalšej vetvy v kaskáde.
