@@ -848,6 +848,16 @@ Pri overovaní bol nahlásený aj **pôvodný spúšťač** tejto konverzácie: 
 
 ---
 
+### Sprint Z.5 – Informačné otázky o produkte ("čo je X") unesené krížovým predajom (aplikovaná externá záplata)
+
+Používateľ dodal hotovú záplatu (`productadvicefix.patch`) z paralelnej Claude Code relácie, riešiacu ďalšiu triedu chýb v tej istej rodine: otázky **"čo je X"**, **"na čo sa používa X"**, **"ako chutí X"** padali cez celú routovaciu kaskádu až do krížového predaja a dostávali odpoveď v štýle *"K X odporúčam tieto súvisiace produkty..."*, ktorá vôbec nezodpovedala na to, čo sa zákazník pýtal. Príčina: `is_article_info_intent()` nerozpoznávala "na čo sa používa" vôbec, a `detect_article_product_subject()` pokrýva len malý pevný zoznam ~11 tém (kimchi, pho, udon...) – čokoľvek iné prepadlo do cross-sell.
+
+Záplatu som pred nasadením neprijal naslepo – vlastný commit message priznával, že jedna z overovacích dátových sád ešte nebola spustená, a uvádzaný počet testov (413) nesedel s aktuálnou sadou tohto repozitára (390), čo potvrdilo, že bola vyvinutá proti inej/staršej verzii kódu. Preto som ju sám nezávisle preveril: prečítal oba diffy proti reálnej štruktúre `knowledge.json` a potvrdil, že každé odkazované pole skutočne existuje (`Chutovy profil - SK`, `Pouzitie v kuchyni - SK` sú reálne, zákaznícky-orientované polia; `Kedy odporucit - SK` je naopak interná inštrukcia pre AI, nie text pre zákazníka – presne ako záplata tvrdila), prešiel celú routovaciu kaskádu a potvrdil, že nová logika mení iba VÝBER TEXTU odpovede, nie ktoré produkty sa zobrazia, spustil plnú test sadu (307/307) aj oba audit skripty (čisté), a doplnil 4 regresné testy, ktoré záplata sama neobsahovala.
+
+**Overené naživo** – "co je gochujang" teraz vracia `intent: product_advice` s odpoveďou, ktorá najprv vysvetlí, čo gochujang je a ako chutí, až potom pripojí ľahké odporúčanie.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
