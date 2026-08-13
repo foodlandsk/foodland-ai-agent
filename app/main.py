@@ -2557,6 +2557,13 @@ ALLERGEN_TERMS = {
     "krev": "krevety",
 }
 
+# Subset of ALLERGEN_TERMS that is unambiguous allergen vocabulary on
+# its own - unlike "mlieko"/"ryb"/"vajc"/"orech", which are also just
+# plain grocery nouns. Used to safely widen bare "ma/je/su X?" allergen
+# questions without misrouting generic product questions that happen to
+# name a food (e.g. "aku ma chut toto mlieko").
+BARE_ALLERGEN_QUESTION_TERMS = ("lepok", "gluten", "arasid", "sezam", "makky", "krev", "soja", "soj")
+
 OUT_OF_DOMAIN_MARKERS = (
     # --- potravinovy obchod: existujuce markery ---
     "bicyk",
@@ -7717,7 +7724,19 @@ def detect_allergen_intent(message: str) -> str | None:
     if "bezlepk" in normalized_message:
         return "lepok"
 
-    if not any(marker in normalized_message for marker in ALLERGEN_INTENT_MARKERS):
+    # Real user report: "ma to lepok?" (bare "has X allergen" question
+    # using "ma/je/su" instead of "obsahuje"/"vhodn"/"alerg"...) fell
+    # through the marker gate below entirely - ALLERGEN_INTENT_MARKERS
+    # only recognizes explicit safety-framing words, not a plain named
+    # allergen term paired with a "has" verb. Bypass the gate when both
+    # are present, but only for unambiguous allergen vocabulary - not
+    # generic grocery nouns from ALLERGEN_TERMS like "mlieko"/"ryb"/
+    # "vajc"/"orech" that are also just plain product words ("aku ma
+    # chut toto mlieko" is a taste question, not an allergen question).
+    allergen_question_verb = re.search(r"\b(ma|maju|je|su)\b", normalized_message) is not None
+    if not any(marker in normalized_message for marker in ALLERGEN_INTENT_MARKERS) and not (
+        allergen_question_verb and any(term in normalized_message for term in BARE_ALLERGEN_QUESTION_TERMS)
+    ):
         return None
 
     for term, label in ALLERGEN_TERMS.items():

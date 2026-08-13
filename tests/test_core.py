@@ -1332,6 +1332,30 @@ class TestIntentDetection:
         term = main.detect_allergen_intent("mam celiakiu, bezlepkove produkty")
         assert term == "lepok"
 
+    def test_bare_allergen_question_without_safety_framing_word(self):
+        # Real user report: "ma to lepok?" names a real allergen term
+        # (already correctly in ALLERGEN_TERMS) but uses "ma" instead of
+        # any of the explicit safety-framing words in
+        # ALLERGEN_INTENT_MARKERS (alerg/intoler/celiak/obsahuje/vhodn/...)
+        # - it fell through the gate entirely and never reached the
+        # ALLERGEN_TERMS lookup. Fixed via BARE_ALLERGEN_QUESTION_TERMS.
+        assert main.detect_allergen_intent("ma to lepok?") == "lepok"
+        assert main.detect_allergen_intent("je v tom lepok?") == "lepok"
+        assert main.detect_allergen_intent("ma to arasidy?") == "arašidy"
+        assert main.detect_allergen_intent("ma to sezam?") == "sezam"
+
+    def test_bare_allergen_question_control_cases_stay_unaffected(self):
+        # Control cases (roadmap section 27): the bare-question fix above
+        # is deliberately scoped to BARE_ALLERGEN_QUESTION_TERMS, not all of
+        # ALLERGEN_TERMS - "mlieko"/"ryb"/"vajc"/"orech" are also plain
+        # grocery nouns, so a generic product question that happens to
+        # name one of them must not become an allergen-safety answer.
+        assert main.detect_allergen_intent("aku ma chut toto mlieko") is None
+        assert main.detect_allergen_intent("kolko ma gramov toto mlieko") is None
+        assert main.detect_allergen_intent("mate mlieko?") is None
+        assert main.detect_allergen_intent("ma tento produkt orechy?") is None
+        assert main.detect_allergen_intent("chcem kupit orechy") is None
+
     def test_allergen_NOT_triggered_for_product_search(self):
         term = main.detect_allergen_intent("mate bezlepkovu sojovu omacku?")
         assert term is None, f"False allergen trigger: {term}"
