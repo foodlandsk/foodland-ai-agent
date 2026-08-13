@@ -103,7 +103,7 @@ from app.search import (
     tokenize,
     search_products,
 )
-from app.knowledge import load_knowledge_json, search_knowledge, best_faq_answer
+from app.knowledge import load_knowledge_json, search_knowledge, best_faq_answer, best_product_advice_answer
 from app.grounding import validate_answer, collect_allowed_urls, collect_allowed_prices
 from app.workflows import detect_workflow, get_contract, products_to_cart_candidates
 from app.embeddings import (
@@ -2028,6 +2028,46 @@ class TestIntentDetection:
         # Squid Brand above, there's no single correct category to guess.
         assert main.detect_replacement_subject("alternativa MEGACHEF") != "sojova omacka"
         assert main.detect_replacement_subject("alternativa MEGACHEF") != "rybacia omacka"
+
+    def test_product_advice_intent_recognizes_usage_and_taste_questions(self):
+        # Applied patch (external, reviewed and verified before commit):
+        # "co je X" / "na co sa pouziva X" / "ako chuti X" style questions
+        # were falling through to cross-sell handling and getting answered
+        # with "K X odporucam tieto suvisiace produkty..." phrasing that
+        # never actually addressed what was asked.
+        for query in ("co je gochujang", "na co sa pouziva gochujang", "ako chuti sriracha", "what is it used for"):
+            assert main.is_article_info_intent(query), query
+
+    def test_product_advice_answer_uses_taste_and_usage_fields_only(self, knowledge, products):
+        query = "co je gochujang"
+        knowledge_matches = main.search_knowledge(knowledge, query, allowed_sections=("Products_AI",))
+        matches = main.cached_search_products(products, query, 6)
+        links = {m.get("link") for m in matches if m.get("link")}
+
+        answer = best_product_advice_answer(knowledge_matches, matched_links=links)
+
+        assert answer
+        # Must be genuine taste/usage prose, not the internal AI-instruction
+        # fields ("Kedy odporucit - SK", "Pozor / overit - SK" etc.), which
+        # are written as directives to the model ("odporuc pri otazkach
+        # na...", "nevymyslaj inu cenu...") rather than customer sentences.
+        normalized_answer = main.normalize(answer)
+        assert "odporuc" not in normalized_answer
+        assert "nevymyslaj" not in normalized_answer
+        assert "umami" in normalized_answer or "pikant" in normalized_answer
+
+    def test_product_advice_answer_none_when_no_products_ai_hit(self, knowledge):
+        empty_matches = main.search_knowledge(knowledge, "kolobezka bicykel", allowed_sections=("Products_AI",))
+        assert best_product_advice_answer(empty_matches) is None
+
+    def test_product_advice_answer_ignores_unmatched_record(self, knowledge, products):
+        # The guard: a Products_AI record that scores well on generic
+        # keyword overlap but isn't among the products actually shown for
+        # this query must not be presented as fact about those products.
+        query = "co je gochujang"
+        knowledge_matches = main.search_knowledge(knowledge, query, allowed_sections=("Products_AI",))
+        answer = best_product_advice_answer(knowledge_matches, matched_links={"https://example.com/not-a-real-product"})
+        assert answer is None
 
     def test_replacement_subject_comparative_marker_requires_word_boundary(self):
         # "vitamina" contains the substring "ina " once padded, but must not

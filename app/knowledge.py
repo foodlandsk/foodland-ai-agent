@@ -243,6 +243,40 @@ def best_faq_answer(results: dict[str, list[dict[str, Any]]]) -> str | None:
     return first_value(hits[0]["record"], ["Odpoveď", "answer"]) or None
 
 
+def best_product_advice_answer(
+    results: dict[str, list[dict[str, Any]]],
+    matched_links: set[str] | None = None,
+) -> str | None:
+    """Only "taste"/"usage" are genuinely customer-facing prose - other
+    Products_AI fields (e.g. "Kedy odporucit - SK", "Pozor / overit - SK")
+    are internal instructions written for the AI, not sentences to show a
+    customer. Also require the record to match one of the products already
+    found for this query: a topical keyword match (e.g. "chilli sauce") can
+    outscore the one Products_AI record that's actually about the product
+    being asked about, or land on an unrelated one entirely.
+    """
+    hits = results.get("Products_AI", [])
+    if not hits:
+        return None
+    record = None
+    if matched_links:
+        for hit in hits:
+            url = hit["record"].get("Produkt (URL)") or hit["record"].get("product_name")
+            if url and url in matched_links:
+                record = hit["record"]
+                break
+    elif hits:
+        record = hits[0]["record"]
+    if record is None:
+        return None
+    taste = first_value(record, ["taste", "Chutovy profil - SK"])
+    usage = first_value(record, ["usage", "Pouzitie v kuchyni - SK"])
+    parts = [part for part in (taste, usage) if part]
+    if not parts:
+        return None
+    return " ".join(parts[:2])
+
+
 def first_value(record: dict[str, Any], keys: list[str]) -> str:
     for key in keys:
         value = record.get(key)

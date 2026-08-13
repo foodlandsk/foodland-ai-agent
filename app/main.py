@@ -51,6 +51,7 @@ from app.feed import (
 )
 from app.knowledge import (
     best_faq_answer,
+    best_product_advice_answer,
     knowledge_context,
     knowledge_summary,
     load_knowledge_json,
@@ -3194,7 +3195,7 @@ def update_user_memory(
 
 
 def memory_intent_bucket(intent: str) -> str:
-    if intent in {"product_search", "related_products", "replacement_products", "article_products", "allergen_safety"}:
+    if intent in {"product_search", "related_products", "replacement_products", "article_products", "product_advice", "allergen_safety"}:
         return "buy"
     if intent in {"recipe", "recipe_to_products"}:
         return "cook"
@@ -3704,6 +3705,14 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         if is_article_info_intent(chat_request.message)
         else None
     )
+    product_advice_context = (
+        is_article_info_intent(chat_request.message)
+        and not article_product_subject
+        and not already_have_subject
+        and not special_subject
+        and not replacement_subject
+        and bool((knowledge_matches or {}).get("Products_AI"))
+    )
     if not related_subject and is_context_followup(chat_request.message) and not memory.get("last_top_product_title"):
         # Only fall back to the coarse memory subject when there was no
         # specific last-seen product to fold into contextual_message in
@@ -3750,13 +3759,25 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                 int(product.get("recommendation_priority") or 999),
             ),
         )
+    product_advice_text = (
+        best_product_advice_answer(
+            knowledge_matches,
+            matched_links={m.get("link") for m in matches if m.get("link")},
+        )
+        if product_advice_context
+        else None
+    )
     intent = (
         "article_products"
         if article_product_subject
         else (
             "replacement_products"
             if replacement_subject
-            else ("related_products" if not special_subject and (related_subject or cross_sell_matches) else "product_search")
+            else (
+                "product_advice"
+                if product_advice_context
+                else ("related_products" if not special_subject and (related_subject or cross_sell_matches) else "product_search")
+            )
         )
     )
     annotate_recommendations(
@@ -3820,7 +3841,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
 
     if should_use_fast_chat_answer(intent, matches, knowledge_matches, needs_composition_caution):
         return {
-            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language),
+            "answer": product_advice_text or shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language, is_product_advice=product_advice_context),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
@@ -3850,7 +3871,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if not client:
         logger.debug("No OPENAI_API_KEY set, using fallback answer.")
         return {
-            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language),
+            "answer": product_advice_text or shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language, is_product_advice=product_advice_context),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
@@ -3874,6 +3895,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                     "Pri otázke 'čo sa hodí k X' navrhuj doplnkové produkty (cross-sell) – napr. k sójovej omáčke mirin alebo ryžový ocot. "
                     "k ramen navrhni dashi alebo kimchi. Používaj formulácie: 'Odporúčam tiež...', "
                     "'Skvelo sa hodí k...', 'Zákazníci si k tomu zvyčajne berú aj...'. "
+                    "Ak sa zákazník pýta, čo produkt je, na čo sa používa alebo ako chutí, "
+                    "odpovedz na základe kontextu Products_AI v 1-2 vetách, až potom môžeš doplniť súvisiace odporúčania. "
                     "Používaj iba poskytnutý kontext: produkty, FAQ, recepty, cross-sell, alternatívy a Products_AI. "
                     "Pri produktoch uvádzaj cenu a odkaz, ak sú dostupné. Pri alergiách, zložení a dostupnosti "
                     "odporuč overiť detail produktu. Nevymýšľaj ceny, sklad ani vlastnosti produktu. "
@@ -3909,7 +3932,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         # RETRY-01: _call_openai_with_retry pokusi sa max 3x pri RateLimit/Timeout/Connection
         answer_text = _call_openai_with_retry(client, messages, model)
         if not answer_text:
-            answer_text = shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language)
+            answer_text = product_advice_text or shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language, is_product_advice=product_advice_context)
         allowed_urls = collect_allowed_urls(matches, knowledge_matches)
         allowed_prices = collect_allowed_prices(matches)
         grounding_result = validate_answer(
@@ -3937,7 +3960,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         logger.warning("OpenAI transient error after retries: %s", exc)
         log_backend_error("openai_transient_error", str(exc))
         return {
-            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language),
+            "answer": product_advice_text or shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language, is_product_advice=product_advice_context),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
@@ -3954,7 +3977,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         logger.error("OpenAI API failed: %s", exc, exc_info=True)
         log_backend_error("openai_response_failed", str(exc))
         return {
-            "answer": shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language),
+            "answer": product_advice_text or shopping_list_answer_text or fallback_answer(matches, knowledge_matches, fallback_related_subject, needs_composition_caution, query_language, is_product_advice=product_advice_context),
             "products": matches,
             "articles": articles,
             "cart_candidates": cart_candidates,
@@ -4848,7 +4871,7 @@ def recommendation_context_label(context: str | None) -> str:
 
 
 def cart_candidates_for_response(matches: list[dict], intent: str, context: str | None = None) -> list[dict]:
-    if intent not in {"related_products", "replacement_products", "product_search", "recipe_to_products", "article_products"}:
+    if intent not in {"related_products", "replacement_products", "product_search", "recipe_to_products", "article_products", "product_advice"}:
         return []
     reason = f"Odporúčanie Foodland Mei: {str(context or intent).replace('_', ' ')[:80]}"
     candidates = products_to_cart_candidates(matches or [], reason)
@@ -5619,7 +5642,7 @@ def analytics_action_items(events: list[dict], errors: list[dict] | None = None,
 
 
 def low_relevance_rows(events: list[dict], limit: int = 20) -> list[dict]:
-    product_intents = {"product_search", "related_products", "replacement_products", "article_products", "recipe_to_products", "allergen_safety"}
+    product_intents = {"product_search", "related_products", "replacement_products", "article_products", "product_advice", "recipe_to_products", "allergen_safety"}
     grouped: dict[str, dict] = {}
     for event in events:
         intent = str(event.get("intent") or "")
@@ -5671,7 +5694,7 @@ def suggested_analytics_action(intent: str, normalized_question: str, issue_type
 
 def is_no_result_event(event: dict) -> bool:
     intent = str(event.get("intent") or "")
-    product_intents = {"product_search", "related_products", "replacement_products", "article_products", "recipe_to_products", "allergen_safety"}
+    product_intents = {"product_search", "related_products", "replacement_products", "article_products", "product_advice", "recipe_to_products", "allergen_safety"}
     return intent in product_intents and int(event.get("matches_count", 0) or 0) == 0
 
 
@@ -7383,12 +7406,18 @@ def is_article_info_intent(message: str) -> bool:
             "proc",
             "benefity",
             "ucinky",
+            "na co sa pouziva",
+            "na co sa pouzivaju",
+            "ako sa pouziva",
+            "aky ma pouziva",
             "what is",
             "what does it mean",
             "how does it taste",
             "how is it made",
             "what is the difference",
             "difference between",
+            "what is it used for",
+            "used for",
             "why",
             "benefits",
         )
@@ -8050,6 +8079,7 @@ def fallback_answer(
     related_subject: str | None = None,
     needs_composition_caution: bool = False,
     lang: str = "sk",
+    is_product_advice: bool = False,
 ) -> str:
     knowledge_matches = knowledge_matches or {}
     faq_answer = best_faq_answer(knowledge_matches)
@@ -8065,7 +8095,7 @@ def fallback_answer(
                 else ""
             )
             titles = compact_product_titles(matches)
-            if related_subject:
+            if related_subject and not is_product_advice:
                 subject_label = readable_subject_label_en(related_subject)
                 if titles:
                     return (
@@ -8094,7 +8124,7 @@ def fallback_answer(
             else ""
         )
         titles = compact_product_titles(matches)
-        if related_subject:
+        if related_subject and not is_product_advice:
             subject_label = readable_subject_label(related_subject)
             if titles:
                 return (
