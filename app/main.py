@@ -1715,7 +1715,15 @@ SPECIAL_PRODUCT_QUERIES = {
     ],
     "plain_rice": [
         "jazminova ryza",
-        "sushi ryza",
+        "basmati ryza",
+    ],
+    "rice_cooker": [
+        "ryzovar",
+        "hrniec na ryzu",
+    ],
+    "rice_seasoning": [
+        "koreniaca zmes na ryzu",
+        "korenie na ryzu",
     ],
     "sushi_condiments": [
         "nori",
@@ -1765,7 +1773,9 @@ SPECIAL_PRODUCT_EXCLUDE_TERMS = {
     "korean_paste": ("rezance", "snack", "rolky", "omacka na morske", "caj", "dzus"),
     "safe_snack": ("spicy", "hot", "cili", "chilli", "paliv", "angry", "wasabi", "soju", "sake", "alkohol"),
     "safe_sauce": ("rybacia", "arasid"),
-    "plain_rice": ("ocot", "ryzovar", "vinegar"),
+    "plain_rice": ("ryzovar", "hrniec", "muka", "ocot", "vinegar", "rezance", "korenie", "koreniaca", "papier"),
+    "rice_cooker": ("muka", "ocot", "korenie", "koreniaca"),
+    "rice_seasoning": ("hrniec", "ryzovar", "ocot", "muka"),
     "sushi_condiments": ("ryza", "rice"),
     "tofu_seaweed": ("bravc", "kurac", "maso"),
 }
@@ -3699,6 +3709,21 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         mentioned_related_brand = detect_mentioned_replacement_brand(contextual_message, products, related_subject)
         if mentioned_related_brand:
             related_subject = None
+    if related_subject and related_subject.endswith("_kuchyna") and any(
+        marker in normalize(contextual_message)
+        for marker in ("noz", "nozice", "palick", "tanier", "misk", "misa", "cajnik", "salk", "lyzic", "podlozk", "sekaci", "brusny")
+    ):
+        # Real user report: "japonske noze" / "noz japonsky" (Japanese
+        # knives) got swept into the broad "japonska_kuchyna" cuisine
+        # cross-sell (soy sauce, mirin, dashi, wasabi, sushi rice) instead
+        # of actual knife products - the "japonska_kuchyna" alias
+        # "japonsk" matches ANY word starting with it, including
+        # kitchenware (knives, chopsticks, plates, bowls, teapots), not
+        # just food/ingredient questions. Same fix pattern as the
+        # explicit-brand override above: a specific kitchenware term
+        # signals the customer wants that literal product, not "what
+        # goes with this cuisine" pairings.
+        related_subject = None
     cross_sell_matches = cross_sell_products_for_message(products, knowledge, contextual_message, chat_request.limit)
     article_product_subject = (
         detect_article_product_subject(contextual_message, articles)
@@ -7265,8 +7290,13 @@ def detect_special_product_subject(message: str) -> str | None:
         {"sushi", "susi"} & set(normalized_message.split())
     ):
         return "gluten_free_sushi"
-    if "ryz" in normalized_message and "ocot" in normalized_message and any(
-        marker in normalized_message for marker in ("nie ocot", "nie ryzovar")
+    if "ryzovar" in normalized_message or ("hrniec" in normalized_message and "ryz" in normalized_message):
+        return "rice_cooker"
+    if "korenie" in normalized_message and "ryz" in normalized_message:
+        return "rice_seasoning"
+    if "ryz" in normalized_message and not any(
+        marker in normalized_message
+        for marker in ("ryzovar", "hrniec", "korenie", "muka", "ocot", "rezance", "sushi", "susi", "papier", "nudle")
     ):
         return "plain_rice"
     if "sushi" in normalized_message and "dopln" in normalized_message and any(

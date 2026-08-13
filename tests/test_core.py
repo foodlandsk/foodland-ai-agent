@@ -1822,6 +1822,42 @@ class TestIntentDetection:
         subj = main.detect_special_product_subject("ryzovy ocot")
         assert subj == "rice_vinegar"
 
+    def test_special_plain_rice_finds_actual_grain_not_cooker_or_flour(self, products):
+        # Real user reports (screenshots): "Mate ryzu?", "aka ryza mate",
+        # "obycajna biela ryza" all returned rice FLOUR and/or rice COOKERS
+        # instead of actual rice grain - the shared "ryz" root makes these
+        # families compete on roughly equal BM25/keyword footing in plain
+        # search. Root cause: the old plain_rice trigger required the
+        # customer to literally type "nie ocot"/"nie ryzovar" ("not
+        # vinegar"/"not rice cooker") as an explicit exclusion clause -
+        # something no real customer phrases that way - so it was
+        # effectively unreachable.
+        for query in ("mate ryzu", "aka ryza mate", "obycajna biela ryza", "chcem ryzu bez octu"):
+            assert main.detect_special_product_subject(query) == "plain_rice", query
+        matches = main.special_products_for_subject(products, "plain_rice", 6)
+        assert matches
+        titles = [main.normalize(m.get("title", "")) for m in matches]
+        assert all("hrniec" not in t and "muka" not in t and "ryzovar" not in t for t in titles)
+
+    def test_special_rice_cooker_finds_appliance_not_flour(self, products):
+        # Real user report (screenshot): "Ryzovar mate?" returned rice
+        # flour before the actual rice cooker. Nothing routed rice-cooker
+        # questions to a dedicated subject at all.
+        for query in ("ryzovar mate", "aky ryzovar odporucate", "hrniec na ryzu"):
+            assert main.detect_special_product_subject(query) == "rice_cooker", query
+        matches = main.special_products_for_subject(products, "rice_cooker", 6)
+        assert matches
+        assert all("hrniec" in main.normalize(m.get("title", "")) or "ryzovar" in main.normalize(m.get("title", "")) for m in matches)
+
+    def test_special_rice_seasoning_finds_seasoning_not_cooker(self):
+        # Real user message from the same conversation: "Korenie na ryzu"
+        # (seasoning for rice) also returned rice cookers instead of a
+        # seasoning product.
+        assert main.detect_special_product_subject("korenie na ryzu") == "rice_seasoning"
+
+    def test_special_sushi_rice_unaffected_by_rice_family_changes(self):
+        assert main.detect_special_product_subject("sushi ryza") == "sushi_rice"
+
     def test_special_vegan_fish_sauce(self):
         subj = main.detect_special_product_subject("nahrada za rybaciu omacku vegan")
         assert subj == "vegan_fish_sauce_replacement"
@@ -1876,6 +1912,34 @@ class TestIntentDetection:
         # No brand named: the existing tradeoff (confirmed with the user)
         # stays unchanged - direct "aky ocot mate" still routes to cross-sell.
         assert main.detect_related_subject("aky ocot mate") == "ocot"
+
+    def test_kitchenware_term_overrides_cuisine_related_subject_routing(self, products):
+        # Real user report: "japonske noze" / "noz japonsky" (Japanese
+        # knives) got the "japonska_kuchyna" cuisine cross-sell answer
+        # (soy sauce, mirin, dashi, wasabi, sushi rice) instead of actual
+        # knife products - the "japonska_kuchyna" alias "japonsk" matches
+        # ANY word starting with it, including kitchenware (knives,
+        # chopsticks, plates, bowls, teapots), not just food questions.
+        # Confirmed the same class of bug affects the whole kitchenware
+        # category, not just knives, before fixing.
+        for message, expected_word in (
+            ("japonske noze", "noz"),
+            ("noz japonsky", "noz"),
+            ("japonske palicky", "palick"),
+            ("japonsky tanier", "tanier"),
+            ("japonsky cajnik", "cajnik"),
+        ):
+            assert main.detect_related_subject(message) == "japonska_kuchyna", message  # sanity: alias still matches
+            matches = main.cached_search_products(products, message, 4)
+            assert matches, message
+            # The top result must be the actual item asked for - not
+            # necessarily every slot, since a narrow item range naturally
+            # has closely related products fill the remaining ones.
+            assert expected_word in main.normalize(matches[0].get("title", "")), message
+
+        # A genuine cuisine-level question with no kitchenware term must be
+        # unaffected - the override is scoped to kitchenware terms only.
+        assert main.detect_related_subject("japonska kuchyna recepty") == "japonska_kuchyna"
 
     def test_cajove_sety_finds_tea_sets_not_only_matcha(self, products):
         # Real user report: "cajove sety" (tea sets) returned only the 17
