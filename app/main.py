@@ -2380,6 +2380,15 @@ RECIPE_INTENT_MARKERS = (
     "jak uvarim",
     "vindaloo",
     "karaage",
+    # Real user report: "co potrebujem na tom kha gai" (a shopping-list
+    # style question, no "recept"/how-to wording at all) fell through
+    # is_recipe_intent() entirely and got misrouted into the generic
+    # cross-sell branch instead of the recipe_to_products workflow that
+    # already has a real Tom Kha Gai recipe card and missing-ingredient
+    # mapping. Same fix pattern as vindaloo/karaage above: a bare dish
+    # marker so the recipe workflow is reachable without the word
+    # "recept".
+    "tom kha",
 )
 
 RANDOM_RECIPE_INTENT_MARKERS = (
