@@ -951,3 +951,23 @@ Tieto tri zistenia sú reálnym kandidátom na V2.2/V2.3 (product search routing
 **Testy – plný beh:** 369/369, 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` čisté.
 
 **Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – prístup na `foodland-ai-agent-production.up.railway.app` zamietnutý sieťovou politikou tohto vykonávacieho prostredia (proxy 403, nie chyba Foodland backendu ani Railway deploymentu). GitHub merge overený priamo (commit SHA v tomto behu). Treba dobehnúť zo session/prostredia s priamym prístupom na produkciu.
+
+---
+
+### Sprint V2.1.3 – Oprava mimo-doménovej otázky ("aky je najlepsi film?")
+
+**Zákaznícky problém:** `"aky je najlepsi film?"` (a podobné všeobecné mimo-doménové otázky – politika, všeobecné znalosti, domáce úlohy) nedostali refusal odpoveď, ale **sebavedomo znejúcu, no nezmyselnú produktovú odpoveď**. Priamo otestované: `"kto je prezident slovenska?"` vrátilo *"Našla som tieto najrelevantnejšie produkty: Kľučenka good luck mačka, Tom Yum pasta, Collon sušienky..."* – toto je vážnejší problém, než pôvodne predpokladaný "chýbajúci refusal", pretože prezentuje náhodné produkty ako "najrelevantnejšie".
+
+**Architektonická príčina:** `detect_out_of_domain()` je čisto negatívny, enumeratívny zoznam (`OUT_OF_DOMAIN_MARKERS`) konkrétnych mimo-doménových kategórií (bicykle, elektronika, oblečenie, nábytok, financie, cestovanie...). Takýto zoznam princípovo nemôže pokryť všetky témy, ktoré NIE sú o Foodland – chýbala napr. celá kategória zábava/médiá (filmy, seriály), všeobecné znalosti/politika a školské domáce úlohy.
+
+**Reálna kolízia nájdená pred nasadením:** Prvý návrh použiť bare slová `"film"`/`"serial"` ako markery by **rozbil existujúcu funkciu** – `RELATED_SUBJECT_ALIASES["asian_snack"]` už obsahuje frázy `"na film"`, `"k filmu"`, `"na serial"`, `"k serialu"` (legitímna žiadosť o snack na filmový/seriálový večer). Overené automatickým kolíznym skriptom aj `scripts/consistency_audit.py --collisions` a naživo cez `chat()`: `"co si dat na film"` musí naďalej fungovať ako cross-sell na snacky, nie ako refusal.
+
+**V2 vylepšenie (implementované):** Doplnené viacslovné, kolízne overené frázy do `OUT_OF_DOMAIN_MARKERS` v troch kategóriách: zábava/médiá (`"najlepsi film"`, `"najlepsi serial"`, `"aky film mi"`, `"dobry film odporuc"`, `"filmovu recenziu"`, `"herec vo filme"`), všeobecné znalosti/politika (`"kto je prezident"`, `"hlavne mesto"`, `"kto vyhral volby"`, `"politicku stranu"`) a domáce úlohy/škola (`"domacu ulohu"`, `"domaca uloha"`, `"domacou ulohou"`, `"domacej ulohy"`, `"referat na tema"` – viacero skloňovaných tvarov, keďže "domacou ulohou" bez tejto formy zostávalo nezachytené).
+
+**Explicitne priznané obmedzenie (nie je to skryté):** Toto **NIE JE štrukturálna oprava** celej triedy chýb – zoznam zostáva principiálne neúplný (napr. "čo si myslíš o politike?", "odporúčaš mi dobrú knihu?" zostávajú nepokryté, zámerne nechané mimo rozsahu tejto opravy, aby sa predišlo riziku blokovania legitímnych produktových otázok generickými frázami ako "čo si myslíš o..."). Skutočná štrukturálna oprava (pozitívny signál "je toto o Foodland doméne" namiesto rastúceho negatívneho zoznamu) je zdokumentovaná v `docs/advisor-v2-architecture.md` ako kandidát na budúcu iteráciu.
+
+**Regresné testy:** `test_out_of_domain_entertainment_trivia_and_school` (5 pozitívnych prípadov + plný `chat()` beh s overením `intent: unknown` a bez produktov) + kritický kontrolný test `test_out_of_domain_fix_does_not_break_asian_snack_cross_sell` (overuje, že `"co si dat na film"`/`"co si dat k filmu"`/`"nieco na serial"` naďalej správne vracajú `asian_snack` cross-sell, nie refusal).
+
+**Testy – plný beh:** 373/373 (371 z predošlého behu + 2 nové), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé dve opravy (proxy 403 tohto vykonávacieho prostredia, nie chyba Foodland backendu/Railway deploymentu). GitHub merge treba overiť priamo cez commit SHA po zlúčení; finálne naživo overenie treba spustiť zo session s priamym prístupom na produkciu.
