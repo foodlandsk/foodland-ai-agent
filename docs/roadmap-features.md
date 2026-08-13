@@ -931,3 +931,23 @@ Tieto tri zistenia sú reálnym kandidátom na V2.2/V2.3 (product search routing
 **Testy – plný beh:** 369/369 (367 z predošlého behu + 2 nové), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` čisté.
 
 **Naživo overené:** rovnaké obmedzenie ako Sprint V2.1 – Railway (`foodland-ai-agent-production.up.railway.app`) nedosiahnuteľné z tohto prostredia (proxy 403 policy denial). Treba overiť zo session s prístupom po merge.
+
+---
+
+### Sprint V2.1.2 – Oprava holej alergénovej otázky ("ma to lepok?")
+
+**Zákaznícky problém:** `"ma to lepok?"` (bez pomenovaného produktu, bez slova "alergia"/"obsahuje"/"vhodné") spadlo cez `detect_allergen_intent()` úplne bez odpovede na alergén – namiesto bezpečnostnej odpovede dostal zákazník obyčajné produktové vyhľadávanie.
+
+**Architektonická príčina:** `ALLERGEN_INTENT_MARKERS` (vstupná brána pred vyhľadaním konkrétneho alergénu v `ALLERGEN_TERMS`) vyžaduje explicitné bezpečnostné slovo (alerg/intoler/celiak/obsahuje/vhodn/zlozen/bezlepk/lakto...). Prirodzená otázka v tvare "má/je v tom/sú tam [alergén]?" toto slovo neobsahuje – hoci `ALLERGEN_TERMS` už správne obsahuje `"lepok": "lepok"` (aj ďalšie), vyhľadávací cyklus, ktorý by ho našiel, sa vôbec nespustí, lebo brána ho zastaví skôr.
+
+**Zvažovaná širšia verzia:** Prvý pokus obišiel bránu pre AKÝKOĽVEK termín z `ALLERGEN_TERMS` v kombinácii so slovesom "má/je/sú". Testovanie ale odhalilo falošné pozitíva na generických produktových otázkach, ktoré náhodou obsahujú potravinové podstatné meno zhodné s alergénom: `"aku ma chut toto mlieko"` (aká chuť má toto mlieko - otázka o chuti) a `"kolko ma gramov toto mlieko"` (koľko má gramov - otázka o množstve) sa oba nesprávne zmenili na alergénovú odpoveď namiesto skutočnej odpovede na otázku. Príčina: "mlieko"/"ryby"/"vajcia"/"orechy" sú v `ALLERGEN_TERMS` aj bežné produktové slová, nie len alergény.
+
+**V2 vylepšenie (implementované):** Nová `BARE_ALLERGEN_QUESTION_TERMS` – užšia podmnožina `ALLERGEN_TERMS` obmedzená na jednoznačné alergénové slová bez bežného produktového dvojvýznamu (lepok, gluten, arašidy, sezam, mäkkýše, krevety, sója). Kombinácia (sloveso "má/je/sú" AKO CELÉ SLOVO + termín z tejto užšej množiny) obchádza `ALLERGEN_INTENT_MARKERS` bránu; samotné vyhľadanie labelu naďalej používa plný `ALLERGEN_TERMS` slovník bez zmeny.
+
+**Migrované správanie:** `"ma to lepok?"`, `"je v tom lepok?"`, `"ma to arasidy?"`, `"ma to sezam?"` teraz vracajú `intent: allergen_safety` s bezpečnou odpoveďou ("neodporúčam produkt len podľa názvu, overte zloženie na detaile produktu"), bez produktov. `"mate mlieko?"`, `"chcem kupit orechy"`, `"aku ma chut toto mlieko"`, `"kolko ma gramov toto mlieko"` zostávajú nezmenené (product_search).
+
+**Regresné testy:** rozšírené `TestAllergenSafety` v `tests/test_core.py` o pozitívne prípady (lepok/arašidy/sezam s viacerými slovesami) aj kontrolné prípady (mlieko/ryby/orechy s rovnakým slovesným vzorom musia zostať `None`/`product_search`).
+
+**Testy – plný beh:** 369/369, 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – prístup na `foodland-ai-agent-production.up.railway.app` zamietnutý sieťovou politikou tohto vykonávacieho prostredia (proxy 403, nie chyba Foodland backendu ani Railway deploymentu). GitHub merge overený priamo (commit SHA v tomto behu). Treba dobehnúť zo session/prostredia s priamym prístupom na produkciu.
