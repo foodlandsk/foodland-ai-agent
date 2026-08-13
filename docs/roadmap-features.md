@@ -858,6 +858,20 @@ Záplatu som pred nasadením neprijal naslepo – vlastný commit message prizn�
 
 ---
 
+### Sprint Z.6 – Workflow s ryžou/ryžovarom a japonské nože unesené kuchyňovým krížovým predajom
+
+Používateľ upozornil: *"Uprav workflow s ryžou, ryžovar... nie je dobrá logika"*, doložené niekoľkými screenshotmi: **"Mate ryzu?"** vrátilo ryžovú múku a ryžovary namiesto samotnej ryže; **"Korenie na ryzu"** aj **"Ryzovar mate?"** tiež vrátili nesprávnu položku z rodiny "ryž-".
+
+Príčina bola bizarná: spúšťač pre `plain_rice` vyžadoval, aby zákazník doslova napísal **"nie ocot"**/**"nie ryžovar"** ("not vinegar"/"not rice cooker") ako explicitnú vylučovaciu vetu vo vlastnej otázke – žiadny reálny zákazník sa takto nepýta, takže táto vetva bola prakticky nedosiahnuteľná. Všetko teda padalo do obyčajného vyhľadávania, kde spoločný koreň "ryz" robí zrno/múku/ryžovar/ocot/rezance rovnocennými konkurentmi.
+
+**Oprava**: prepracované na tri samostatné podtémy s reálnymi slovenskými frázami ako spúšťačmi namiesto umelej vylučovacej syntaxe – `rice_cooker` ("ryžovar"/"hrniec na ryžu"), `rice_seasoning` ("korenie"+"ryž"), `plain_rice` (holý koreň "ryz" bez ostatných kvalifikátorov) – každá s vlastným overeným zoznamom dopytov a vylúčení, aby sa navzájom nekontaminovali. Existujúce `sushi_rice`/`rice_vinegar` zostali nezmenené.
+
+Pri vyšetrovaní si používateľ všimol súvisiaci prípad a požiadal o test: **"Japonske nože, nôž japonsky"**. Potvrdené: rovnaká trieda chyby, iný mechanizmus – tieto dopyty dostali odpoveď z krížového predaja **"japonska_kuchyna"** (sójová omáčka, mirin, dashi, wasabi, sushi ryža) namiesto skutočných nožov, pretože alias "japonsk" sa zhoduje s AKÝMKOĽVEK slovom začínajúcim naň, vrátane kuchynského vybavenia. Overené, že to postihuje celú kategóriu (paličky, taniere, misky, čajníky), nie len nože – opravené všeobecne: keď kuchyňová téma (*_kuchyna) zachytí správu SÚČASNE s konkrétnym kuchynským výrazom, prepadne do bežného vyhľadávania namiesto krížového predaja (rovnaký vzor ako existujúci override pre explicitnú značku tesne nad ním v kaskáde). Skutočná otázka na kuchyňu bez kuchynského výrazu zostáva nedotknutá.
+
+**Overené naživo**: "mate ryzu" → skutočná ryža; "ryzovar mate" → skutočný ryžovar; "japonske noze" → skutočné nože. Plná test sada (312/312), collision audit čistý, 8 nových regresných testov.
+
+---
+
 ## Záver
 
 Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
