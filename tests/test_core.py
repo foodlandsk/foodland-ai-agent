@@ -1837,6 +1837,35 @@ class TestIntentDetection:
     def test_NOT_out_of_domain_for_food(self):
         assert not main.detect_out_of_domain("gochujang pasta 500g")
 
+    def test_out_of_domain_entertainment_trivia_and_school(self):
+        # Real user report: "aky je najlepsi film?" (general entertainment
+        # trivia, unrelated to Foodland) got answered with a confident but
+        # nonsensical product search instead of the refusal message.
+        for query in (
+            "aky je najlepsi film?",
+            "aky je najlepsi serial?",
+            "kto je prezident slovenska?",
+            "aka je hlavne mesto francuzska",
+            "pomozes mi s domacou ulohou z matematiky?",
+        ):
+            assert main.detect_out_of_domain(query), query
+
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="aky je najlepsi film?", limit=8), request)
+        assert result.get("intent") == "unknown"
+        assert not result.get("products")
+
+    def test_out_of_domain_fix_does_not_break_asian_snack_cross_sell(self):
+        # Control case (roadmap section 27): the new entertainment markers
+        # are deliberately specific multi-word phrases ("najlepsi film",
+        # not bare "film"/"serial") because those bare words are substrings
+        # of the existing asian_snack cross-sell aliases ("na film",
+        # "k filmu", "na serial", "k serialu") - a real snack request for
+        # movie/series night must keep working.
+        for query in ("co si dat na film", "co si dat k filmu", "nieco na serial"):
+            assert not main.detect_out_of_domain(query), query
+            assert main.detect_related_subject(query) == "asian_snack", query
+
     def test_related_subject_sushi(self):
         subj = main.detect_related_subject("co potrebujem na sushi?")
         assert subj == "sushi"

@@ -2661,6 +2661,32 @@ OUT_OF_DOMAIN_MARKERS = (
     # --- cestovanie ---
     "hotelovu rezervaci",
     "dovolenk",
+    # --- zabava a media ---
+    # Real user report: "aky je najlepsi film?" (general entertainment
+    # trivia, not a Foodland question) fell through detect_out_of_domain()
+    # entirely and got answered with a confident-sounding but nonsensical
+    # product search. Deliberately NOT the bare words "film"/"serial" -
+    # those are substrings of the existing "asian_snack" cross-sell
+    # aliases ("na film", "k filmu", "na serial", "k serialu" - "co si
+    # dat na film" is a legitimate snack request), so only specific
+    # multi-word phrases are used here to avoid that collision.
+    "najlepsi film",
+    "najlepsi serial",
+    "aky film mi",
+    "dobry film odporuc",
+    "filmovu recenziu",
+    "herec vo filme",
+    # --- vseobecne znalosti a politika ---
+    "kto je prezident",
+    "hlavne mesto",
+    "kto vyhral volby",
+    "politicku stranu",
+    # --- domace ulohy a skola ---
+    "domacu ulohu",
+    "domaca uloha",
+    "domacou ulohou",
+    "domacej ulohy",
+    "referat na tema",
 )
 
 # BUG-03 fix: OpenAI client singleton – nevytvara novy connection pool pri kazdom requeste
