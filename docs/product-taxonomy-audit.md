@@ -194,8 +194,166 @@ v tomto vykonávacom prostredí).
 python3 scripts/taxonomy_audit.py                        # plný výpis
 python3 scripts/taxonomy_audit.py --family ryz            # detail jednej rodiny
 python3 scripts/taxonomy_audit.py --json audit_raw.json   # surové dáta na ďalšie spracovanie
+python3 scripts/taxonomy_audit.py --taxonomy-engine       # V2.1 product-level taxonomy coverage
+python3 scripts/taxonomy_audit.py --shadow-interpretation # legacy search vs V2.1 taxonomy, 8 required queries
 ```
 
 Skript nemá žiadne hardcoded počty produktov ani kategórií — všetko
 prepočíta nanovo z `data/products.json` a `data/knowledge.json` pri
 každom behu.
+
+---
+
+# Sprint V2.1 — Feed Foundation, Product Normalization & Taxonomy Engine
+
+Dátum tohto behu: 2026-08-14. Zdroj: aktuálny live feed
+(`googleMerchant_sk_export.xml`, stiahnutý cez `app/import_feed.py` do
+`data/products.json` bezprostredne pred týmto behom) — **2 325 produktov**
+v čase tohto behu. Nepovažuj toto číslo za fixné.
+
+## Feed
+
+`app/feed.py` teraz zachováva viac zo zdrojového feedu:
+
+- `parse_category_memberships(product_type)` — deterministický rozklad
+  `g:product_type` na plochý zoznam `category_memberships[]` (rozdelenie
+  na `>`, orezanie whitespace, odstránenie prázdnych/duplicitných
+  segmentov, zachovanie zdrojového poradia). **Nie strom** — Fáza 4
+  vyššie ukazuje presne prečo (napr. `Ryžový papier` a `Múka` zdieľajú tú
+  istú leaf kategóriu `Múka, škrob & ryžový papier`).
+- `Product.category_memberships` — odvodená `@property`, nie uložené
+  pole (žiadna duplicita v `products.json`).
+- Nové polia zo živého feedu: `additional_image_links[]` (opakované
+  `g:additional_image_link`), `unit_pricing_base_measure`,
+  `shipping_weight`, `condition`, `identifier_exists` — všetky s
+  bezpečným defaultom pre staré JSON snapshoty (spätná kompatibilita
+  overená `tests/test_feed.py::TestBackwardCompatibility`).
+- `find_duplicate_gtins()` — len detekcia, nikdy automatické zlúčenie
+  produktov (Foodland product id zostáva primárna identita).
+
+## Produktový normalizér (`app/product_normalizer.py`, nový modul)
+
+Čisto štrukturálne odvodeniny, žiadna sémantika:
+
+- `extract_url_category(link)` — prvý segment cesty URL (napr.
+  `ryzove-rezance`, `basmati-ryza`) ako doplnkový signál.
+- `parse_package_size(unit_pricing_measure, title)` — štruktúrovaná
+  veľkosť balenia (`value`, `unit`, `multipack_count`); nejednoznačné
+  tvary ("10 ks", "500 g / drained 300 g") sa zámerne NEODHADUJÚ —
+  zostávajú v `raw` s `value=None`.
+- `normalize_brand()` / `title_search_form` — opätovne používajú
+  existujúce `app.search.normalize()`, žiadna konkurenčná
+  normalizačná implementácia.
+
+## Taxonómia — produktová úroveň (nové v `app/taxonomy.py`)
+
+**Dôležité:** toto je DRUHÝ, nezávislý klasifikátor popri
+`classify_rice_query()` z Fázy 16 vyššie. `classify_rice_query()`
+klasifikuje **text správy zákazníka** a zámerne vracia `family="rice"`
+pre celý jazykový zhluk (vrátane ryžovaru) — slúži len na shadow
+analytics jedného jazykového zhluku. Nový `classify_product()`/
+`build_taxonomy_index()` klasifikuje **produkt z katalógu** a garantuje
+mandatory invariant zo sekcie V2.1 zadania: `family != word root`.
+
+`FAMILY_DEFINITIONS` (dátovo-riadený zoznam pravidiel, najšpecifickejšie
+prvé — rovnaká kolízna disciplína ako existujúci `RICE_SUBFAMILY_PHRASES`)
+pokrýva pilotnú rodinu `rice` a jej kolízne susedné rodiny, každé pravidlo
+podložené reálnym dôkazom zo živého feedu:
+
+| rule_id | canonical_family | canonical_subfamily | confidence (category/title) | reálny dôkaz |
+|---|---|---|---|---|
+| plain_rice (+jasmine/basmati/glutinous varianty) | `rice` | `plain_rice` | HIGH / MEDIUM | leaf kategórie `Ryža`, `Jazmínová ryža`, `Basmati ryža` |
+| sushi_rice | `rice` | `sushi_rice` | HIGH / MEDIUM | aliasované kategórie `Ryža na suši (sushi)` + `Suši ryža` |
+| rice_noodles | `noodles` | `rice_noodles` | HIGH / MEDIUM | leaf kategória `Ryžové rezance` |
+| rice_vinegar | `vinegar` | `rice_vinegar` | — / HIGH | generická kategória `Ocot`, titulok `ryžový ocot` |
+| rice_flour | `flour` | `rice_flour` | — / HIGH | generická kategória `Múka`, titulok `ryžová múka` |
+| rice_paper | `rice_paper` | — | HIGH / MEDIUM | leaf kategória `Ryžový papier` |
+| rice_cooker | `kitchenware` | `rice_cooker` | HIGH / MEDIUM | leaf kategória `Ryžovary` |
+| rice_wine, rice_drink | `beverages` | `rice_wine` / `rice_drink` | — / MEDIUM | titulky "Makgeolli"/"ryžové víno", "ryžový nápoj" |
+
+### Povinná kolízna invariant (overené `tests/test_taxonomy.py::TestClassifyProductRiceCollisions`)
+
+Nad reálnymi produktmi zo živého feedu (nie vymyslenými príkladmi):
+
+```
+canonical_family("Chantaboon ryžové rezance ... FARMER 400 g")  = noodles     (≠ rice)
+canonical_family("Ryžový ocot CHINKIANG GOLD PLUM 550ml")        = vinegar     (≠ rice)
+canonical_family("Lepkavá ryžová múka TAIKY 400g")               = flour       (≠ rice)
+canonical_family("Okrúhly ryžový papier ... TUFOCO 400g")        = rice_paper  (≠ rice)
+canonical_family("Elektrický hrniec na ryžu REMO 0,8 L")         = kitchenware (≠ rice)
+canonical_family("Basmati ryža - LAILA - 1 kg")                  = rice
+```
+
+Všetkých 6 produktov v jednej kolíznej skupine ("ryz\*" koreň) dostáva
+šesť odlišných `canonical_family` hodnôt — presne mandatory invariant zo
+zadania tohto sprintu.
+
+### Pokrytie (V2.1 engine, `--taxonomy-engine`, beh na 2 325 produktoch)
+
+```
+total_products        = 2325
+classified_products   = 166
+taxonomy_coverage      = 0.0714   (rice pilot only - zámerne úzke, nie odhad)
+confidence_counts      = HIGH=111  MEDIUM=45  LOW=10  UNKNOWN=2159
+canonical_family_count    = 7   (rice, noodles, vinegar, flour, rice_paper, kitchenware, beverages)
+canonical_subfamily_count = 8
+
+families:      rice=79  noodles=46  vinegar=12  beverages=10  kitchenware=7  rice_paper=7  flour=5
+subfamilies:   plain_rice=68  rice_noodles=46  rice_vinegar=12  sushi_rice=11
+               rice_wine=8  rice_cooker=7  rice_flour=5  rice_drink=2
+```
+
+Nízke celkové `taxonomy_coverage` (7 %) je OČAKÁVANÉ a správne — rice je
+zámerne jediná implementovaná pilotná rodina (sekcia "Rice pilot" tohto
+sprintu), nie odhad celého katalógu. Zvyšných 2 159 produktov má
+`confidence=UNKNOWN`, `canonical_family=None` a zostáva plne dostupných
+legacy vyhľadávaniu (žiadny produkt sa nestráca).
+
+## Shadow interpretation (`--shadow-interpretation`, 8 povinných dopytov)
+
+Pre každý z 8 povinných dopytov: legacy search dnes už (vďaka existujúcim
+`SPECIAL_PRODUCT_QUERIES`) vracia správne produkty, ale bez štruktúrovanej
+identity. Nová V2.1 taxonómia teraz vie vysvetliť PREČO sú tieto výsledky
+správne — top-5 legacy výsledok pre každý dopyt sa mapuje na presne JEDNU
+`family/subfamily` kombináciu, nulová krížová kontaminácia:
+
+```
+"ryža"            -> rice/sushi_rice (3), rice/plain_rice (2)
+"jazmínová ryža"  -> rice/plain_rice (5)
+"basmati ryža"    -> rice/plain_rice (5)
+"ryža na sushi"   -> rice/sushi_rice (5)
+"ryžové rezance"  -> noodles/rice_noodles (5)
+"ryžový ocot"     -> vinegar/rice_vinegar (5)
+"ryžový papier"   -> rice_paper/- (5)
+"ryžovar"         -> kitchenware/rice_cooker (5)
+```
+
+Toto NEMENÍ žiadne `/chat` správanie (žiadny customer-facing kód číta
+`product_taxonomy_index`) — demonštruje len, že štruktúrovaná
+reprezentácia existuje a je pripravená pre budúce V2.2 retrieval.
+
+## Dátová kvalita
+
+`find_duplicate_gtins()` beží nad aktuálnym katalógom ako súčasť auditu;
+zistenia sa reportujú, produkty sa NIKDY automaticky nezlučujú len na
+základe zhodného GTIN (Foodland product id zostáva primárna identita).
+
+Na aktuálnom live feede (2 325 produktov) nájdené **4 skupiny** so
+zdieľaným GTIN medzi dvoma odlišnými Foodland product id (napr.
+`FL_10393`/`FL_6472`, `FL_2812`/`FL_3818`) — pravdepodobne varianty
+alebo duplicitné zdrojové záznamy na strane merchant feedu. Nahlásené,
+NEOPRAVENÉ (mimo rozsahu tohto sprintu — oprava zdrojového katalógu nie
+je úloha AI advisora).
+
+## Migrácia — čo je shadow, čo je customer-facing
+
+- **Shadow / interné dáta only:** `product_taxonomy_index` (rebuild v
+  `refresh_feed()`), `classify_product()`, `build_taxonomy_index()`,
+  `find_by_family()`/`find_by_attributes()`/`get_taxonomy()` query API.
+  Žiaden `/chat` kód path ich číta.
+- **Customer-facing, nezmenené:** legacy `SPECIAL_PRODUCT_QUERIES`,
+  `search_products()`, celá existujúca `/chat` routovacia kaskáda.
+- **Ďalší odporúčaný krok (V2.2):** Structured Retrieval & Category-Aware
+  Ranking — napojiť `find_by_family()`/`find_by_attributes()` na
+  retrieval plan namiesto re-tokenizácie `product_type` per request, pod
+  kontrolovaným rollout (rovnaký Stage A→B vzor ako `classify_rice_query()`).

@@ -80,7 +80,7 @@ from app.search import (
 )
 from app.workflows import products_to_cart_candidates
 from app.intent import build_customer_intent
-from app.taxonomy import classify_rice_query
+from app.taxonomy import classify_rice_query, build_taxonomy_index, taxonomy_coverage
 
 
 logging.basicConfig(
@@ -215,6 +215,9 @@ feed_refresh_task: asyncio.Task | None = None
 # Knowledge-builder state
 product_snapshot: ProductSnapshot = build_product_snapshot(products)
 translation_index: dict[str, dict[str, "Product"]] = {}
+# V2.1 taxonomy foundation (shadow only - not used by legacy search/routing).
+# Rebuilt in lockstep with `products` on every refresh_feed() call.
+product_taxonomy_index = build_taxonomy_index(products)
 rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 event_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 autocomplete_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
@@ -8451,7 +8454,7 @@ async def feed_refresh_loop(refresh_minutes: int) -> None:
 
 def refresh_feed() -> None:
     """Nacita produkty zo vsetkych jazykovych mutacii feedu (SK/CZ/DE/EN/HU/PL)."""
-    global products, product_snapshot, translation_index
+    global products, product_snapshot, translation_index, product_taxonomy_index
     global last_feed_refresh_at, last_feed_refresh_error
 
     lang_feeds = load_multilang_feeds()
@@ -8467,9 +8470,15 @@ def refresh_feed() -> None:
         last_feed_refresh_error = "SK feed returned 0 products; keeping previous catalog."
         logger.error(last_feed_refresh_error)
         return
+    # Built from new_products before the global swap, so a taxonomy bug
+    # can never leave `products` and `product_taxonomy_index` out of sync
+    # (V2.1 taxonomy foundation - failure isolated per-product inside
+    # build_taxonomy_index(), never wipes a healthy catalog).
+    new_taxonomy_index = build_taxonomy_index(new_products)
     products = new_products
     product_snapshot = build_product_snapshot(new_products)
     translation_index = new_translation_index
+    product_taxonomy_index = new_taxonomy_index
     clear_product_search_cache()
     last_feed_refresh_at = int(time.time())
     last_feed_refresh_error = None

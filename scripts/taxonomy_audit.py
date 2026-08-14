@@ -171,10 +171,79 @@ def family_detail(products: list[dict], root: str) -> None:
             print(f"   {pid}  {title!r}  cat={cat}")
 
 
+def load_feed_products() -> list:
+    """Real app.feed.Product objects (not raw dicts) - needed for the V2.1
+    product-level taxonomy engine, which reads .category_memberships /
+    .link, not the flattened JSON shape used by profile_catalog() above."""
+    from app.feed import load_products_json
+
+    return load_products_json(ROOT / "data" / "products.json")
+
+
+def taxonomy_engine_report(products: list) -> dict:
+    """V2.1 product-level taxonomy coverage (docs/product-taxonomy-audit.md,
+    'Taxonomy coverage' section) - built from app.taxonomy.classify_product(),
+    not the root-stem heuristics above."""
+    from app.taxonomy import build_taxonomy_index, taxonomy_coverage
+
+    index = build_taxonomy_index(products)
+    return taxonomy_coverage(index)
+
+
+# The 8 required shadow-interpretation phrases (Section 41 of the V2.1
+# sprint spec / docs/product-taxonomy-audit.md) - demonstrates that the
+# structured product representation exists without changing /chat output.
+SHADOW_INTERPRETATION_QUERIES = [
+    "ryža",
+    "jazmínová ryža",
+    "basmati ryža",
+    "ryža na sushi",
+    "ryžové rezance",
+    "ryžový ocot",
+    "ryžový papier",
+    "ryžovar",
+]
+
+
+def shadow_interpretation_report(products: list) -> list[dict]:
+    """For each required query: what legacy search returns today vs. what
+    canonical_family/subfamily the matching catalog products resolve to in
+    the new V2.1 taxonomy engine. Read-only, does not touch /chat."""
+    from app.search import search_products
+    from app.taxonomy import build_taxonomy_index
+
+    index = build_taxonomy_index(products)
+    rows = []
+    for query in SHADOW_INTERPRETATION_QUERIES:
+        legacy_hits = search_products(products, query, limit=5)
+        legacy_titles = [h.get("title", "") for h in legacy_hits]
+        families = Counter()
+        for hit in legacy_hits:
+            tax = index.get(str(hit.get("id", "")))
+            if tax and tax.canonical_family:
+                families[f"{tax.canonical_family}/{tax.canonical_subfamily or '-'}"] += 1
+            else:
+                families["UNKNOWN"] += 1
+        rows.append({
+            "query": query,
+            "legacy_top_titles": legacy_titles,
+            "v2_family_interpretation": dict(families),
+        })
+    return rows
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--family", help="Drill into one root stem's colliding products")
     parser.add_argument("--json", help="Also dump raw stats as JSON to this path")
+    parser.add_argument(
+        "--taxonomy-engine", action="store_true",
+        help="Report V2.1 product-level taxonomy coverage (app.taxonomy.classify_product)",
+    )
+    parser.add_argument(
+        "--shadow-interpretation", action="store_true",
+        help="Compare legacy search vs V2.1 taxonomy interpretation for the required rice-collision queries",
+    )
     args = parser.parse_args()
 
     products = load_products()
@@ -229,6 +298,37 @@ def main() -> None:
 
     if args.family:
         family_detail(products, args.family)
+
+    if args.taxonomy_engine or args.shadow_interpretation:
+        feed_products = load_feed_products()
+
+    if args.taxonomy_engine:
+        report = taxonomy_engine_report(feed_products)
+        print("\n" + "=" * 70)
+        print("V2.1 PRODUCT-LEVEL TAXONOMY ENGINE COVERAGE (app.taxonomy.classify_product)")
+        print("=" * 70)
+        print(f"\ntotal_products = {report['total_products']}")
+        print(f"classified_products = {report['classified_products']}")
+        print(f"taxonomy_coverage = {report['taxonomy_coverage']:.4f}")
+        print(f"confidence_counts = {report['confidence_counts']}")
+        print(f"canonical_family_count = {report['canonical_family_count']}")
+        print(f"canonical_subfamily_count = {report['canonical_subfamily_count']}")
+        print("\n--- families ---")
+        for name, count in sorted(report["families"].items(), key=lambda kv: -kv[1]):
+            print(f"  {count:4d}  {name}")
+        print("\n--- subfamilies ---")
+        for name, count in sorted(report["subfamilies"].items(), key=lambda kv: -kv[1]):
+            print(f"  {count:4d}  {name}")
+
+    if args.shadow_interpretation:
+        rows = shadow_interpretation_report(feed_products)
+        print("\n" + "=" * 70)
+        print("SHADOW INTERPRETATION: legacy search vs V2.1 taxonomy (read-only)")
+        print("=" * 70)
+        for row in rows:
+            print(f"\nquery: {row['query']!r}")
+            print(f"  legacy top titles: {row['legacy_top_titles']}")
+            print(f"  v2 family interpretation: {row['v2_family_interpretation']}")
 
     if args.json:
         out = {

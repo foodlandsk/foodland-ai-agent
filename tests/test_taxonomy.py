@@ -25,7 +25,19 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.taxonomy import RICE_SUBFAMILY_CONFIDENCE, TaxonomyMatch, classify_rice_query
+from app.taxonomy import (
+    RICE_SUBFAMILY_CONFIDENCE,
+    TaxonomyMatch,
+    ProductTaxonomy,
+    build_taxonomy_index,
+    classify_product,
+    classify_rice_query,
+    find_by_attributes,
+    find_by_family,
+    get_taxonomy,
+    taxonomy_coverage,
+)
+from app.feed import Product
 from app.search import normalize
 
 
@@ -140,3 +152,234 @@ class TestShadowModeIntegrity:
         assert record["family"] == "rice"
         assert record["subfamily"] == "plain_rice"
         assert "message" in record and "client_hash" in record
+
+
+def make_product(**overrides) -> Product:
+    base = dict(
+        id="FL_TEST", title="", description="", product_type="", link="",
+        image_link="", price=None, sale_price=None, currency="EUR", brand="",
+        availability="in_stock", gtin="", unit_pricing_measure="",
+    )
+    base.update(overrides)
+    return Product(**base)
+
+
+class TestClassifyProductRiceCollisions:
+    """Sprint V2.1 product-level engine (docs/product-taxonomy-audit.md).
+
+    Distinct from TestRiceSubfamilyClassification above: classify_product()
+    classifies a catalog PRODUCT's real identity, not a customer message.
+    canonical_family("ryžové rezance") etc. must NOT be "rice" - grounded in
+    real data/products.json titles and category paths (verified live-feed
+    evidence gathered for this sprint).
+    """
+
+    def test_plain_rice_family_is_rice(self):
+        p = make_product(
+            title="Basmati ryža - LAILA - 1 kg",
+            product_type="Vegánske potraviny > Super potraviny > Basmati ryža > Ryža",
+        )
+        tax = classify_product(p)
+        assert tax.canonical_family == "rice"
+        assert tax.canonical_subfamily == "plain_rice"
+        assert tax.attributes.get("variety") == "basmati"
+
+    def test_rice_noodles_family_is_not_rice(self):
+        p = make_product(
+            title="Chantaboon ryžové rezance tyčinky 3 mm FARMER 400 g",
+            product_type="Zdravé potraviny > Bezlepkové potraviny > Ryžové rezance > Rezance, niťovky a cestoviny",
+        )
+        tax = classify_product(p)
+        assert tax.canonical_family != "rice"
+        assert tax.canonical_family == "noodles"
+        assert tax.canonical_subfamily == "rice_noodles"
+
+    def test_rice_vinegar_family_is_not_rice(self):
+        p = make_product(
+            title="Ryžový ocot CHINKIANG GOLD PLUM 550ml",
+            product_type="Vegetariánske potraviny > Zdravé potraviny > Ocot > Koreniny a ochucovadlá",
+        )
+        tax = classify_product(p)
+        assert tax.canonical_family != "rice"
+        assert tax.canonical_family == "vinegar"
+        assert tax.canonical_subfamily == "rice_vinegar"
+
+    def test_rice_flour_family_is_not_rice(self):
+        p = make_product(
+            title="Lepkavá ryžová múka TAIKY 400g",
+            product_type="Múka > Múka, škrob & ryžový papier",
+        )
+        tax = classify_product(p)
+        assert tax.canonical_family != "rice"
+        assert tax.canonical_family == "flour"
+        assert tax.canonical_subfamily == "rice_flour"
+
+    def test_rice_paper_family_is_not_rice(self):
+        p = make_product(
+            title="Okrúhly ryžový papier na čerstvé jarné rolky TUFOCO 400g",
+            product_type="Obaľovacia zmes, tempura & panko > Zdravé potraviny > Ryžový papier > Múka, škrob & ryžový papier",
+        )
+        tax = classify_product(p)
+        assert tax.canonical_family != "rice"
+        assert tax.canonical_family == "rice_paper"
+
+    def test_rice_cooker_family_is_not_rice(self):
+        p = make_product(
+            title="Elektrický hrniec na ryžu REMO 0,8 L | 350 W",
+            product_type="Potreby na výrobu suši > Ryžovary > Kuchynský riad > Kuchynské náradie a pomôcky > Kuchynské potreby",
+        )
+        tax = classify_product(p)
+        assert tax.canonical_family != "rice"
+        assert tax.canonical_family == "kitchenware"
+        assert tax.attributes.get("object_type") == "rice_cooker"
+
+    def test_collision_group_generates_distinct_canonical_families(self):
+        collision_group = [
+            make_product(title="Basmati ryža - LAILA - 1 kg", product_type="Basmati ryža > Ryža"),
+            make_product(title="Chantaboon ryžové rezance tyčinky 3 mm FARMER 400 g", product_type="Ryžové rezance > Rezance, niťovky a cestoviny"),
+            make_product(title="Ryžový ocot CHINKIANG GOLD PLUM 550ml", product_type="Ocot > Koreniny a ochucovadlá"),
+            make_product(title="Lepkavá ryžová múka TAIKY 400g", product_type="Múka > Múka, škrob & ryžový papier"),
+            make_product(title="Ryžový papier na čerstvé jarné rolky TUFOCO 400g", product_type="Ryžový papier > Múka, škrob & ryžový papier"),
+            make_product(title="Komerčný ryžovar CUCKOO SR 4600 GL 4,6L", product_type="Ryžovary > Kuchynský riad"),
+        ]
+        families = [classify_product(p).canonical_family for p in collision_group]
+        assert families == ["rice", "noodles", "vinegar", "flour", "rice_paper", "kitchenware"]
+        assert len(set(families)) == len(families)
+
+
+class TestClassifyProductAttributes:
+    def test_sushi_rice_use_case_attribute(self):
+        p = make_product(
+            title="Suši ryža japonská HARUKA 1 kg",
+            product_type="Zdravé potraviny > Bezlepkové potraviny > Ryža na suši (sushi) > Sushi ingrediencie > Suši ryža > Ryža",
+        )
+        tax = classify_product(p)
+        assert tax.canonical_family == "rice"
+        assert tax.canonical_subfamily == "sushi_rice"
+        assert tax.attributes.get("use_case") == "sushi"
+
+    def test_jasmine_variety(self):
+        p = make_product(title="Thajská Jazmínová ryža Golden Coral 1 kg", product_type="Jazmínová ryža > Ryža")
+        tax = classify_product(p)
+        assert tax.attributes.get("variety") == "jasmine"
+
+    def test_glutinous_variety_distinct_from_rice_flour(self):
+        grain = make_product(title="Lepkavá ryža ABC 1kg", product_type="Ryža")
+        flour = make_product(title="Lepkavá ryžová múka TAIKY 400g", product_type="Múka")
+        assert classify_product(grain).attributes.get("variety") == "glutinous"
+        assert classify_product(flour).canonical_family == "flour"
+
+    def test_noodles_ingredient_base_attribute(self):
+        p = make_product(title="Hnedé ryžové rezance PHO GAO LUT 400g", product_type="Ryžové rezance")
+        tax = classify_product(p)
+        assert tax.attributes.get("ingredient_base") == "rice"
+
+
+class TestCategoryAliases:
+    """Two catalog labels for the same sushi-rice set (Section 19)."""
+
+    def test_ryza_na_susi_and_susi_ryza_resolve_the_same_way(self):
+        variant_a = make_product(title="Suši ryža KIMPO 1 kg", product_type="Ryža na suši (sushi) > Suši ryža > Ryža")
+        variant_b = make_product(title="Suši ryža OBENTO 1 kg", product_type="Suši ryža > Ryža")
+        tax_a = classify_product(variant_a)
+        tax_b = classify_product(variant_b)
+        assert tax_a.canonical_subfamily == tax_b.canonical_subfamily == "sushi_rice"
+
+
+class TestConfidenceLevels:
+    def test_category_match_is_high_confidence(self):
+        p = make_product(title="Niečo", product_type="Ryžovary")
+        tax = classify_product(p)
+        assert tax.confidence == "HIGH"
+
+    def test_title_only_match_is_downgraded_from_category_confidence(self):
+        p = make_product(title="ryzovar", product_type="Nesúvisiaca kategória")
+        tax = classify_product(p)
+        assert tax.canonical_family == "kitchenware"
+        assert tax.confidence == "MEDIUM"
+
+
+class TestUnknownProducts:
+    def test_unrelated_product_is_unknown_not_dropped(self):
+        p = make_product(title="Gochujang pasta 500g", product_type="Kórejské > Pasty")
+        tax = classify_product(p)
+        assert tax.canonical_family is None
+        assert tax.confidence == "UNKNOWN"
+        assert isinstance(tax, ProductTaxonomy)
+
+    def test_unknown_product_still_gets_dietary_facets(self):
+        p = make_product(
+            title="Gochujang pasta 500g",
+            product_type="Vegánske potraviny > Kórejské > Pasty",
+        )
+        tax = classify_product(p)
+        assert tax.canonical_family is None
+        assert "vegan" in tax.dietary_facets
+
+
+class TestBuildTaxonomyIndex:
+    def test_indexes_every_product_by_id(self):
+        products = [
+            make_product(id="FL_1", title="Basmati ryža", product_type="Ryža"),
+            make_product(id="FL_2", title="Gochujang pasta 500g", product_type=""),
+        ]
+        index = build_taxonomy_index(products)
+        assert set(index.keys()) == {"FL_1", "FL_2"}
+        assert index["FL_1"].canonical_family == "rice"
+        assert index["FL_2"].canonical_family is None
+
+    def test_one_bad_product_does_not_break_the_batch(self):
+        good = make_product(id="FL_1", title="Basmati ryža", product_type="Ryža")
+
+        class Broken:
+            id = "FL_broken"
+
+            @property
+            def category_memberships(self):
+                raise RuntimeError("boom")
+
+        index = build_taxonomy_index([good, Broken()])
+        assert index["FL_1"].canonical_family == "rice"
+        assert index["FL_broken"].confidence == "UNKNOWN"
+
+    def test_taxonomy_version_is_set(self):
+        p = make_product(id="FL_1", title="Basmati ryža", product_type="Ryža")
+        index = build_taxonomy_index([p])
+        assert index["FL_1"].taxonomy_version >= 1
+
+
+class TestQueryApi:
+    def _index(self):
+        return build_taxonomy_index([
+            make_product(id="FL_1", title="Basmati ryža", product_type="Basmati ryža > Ryža"),
+            make_product(id="FL_2", title="Jazmínová ryža FOODLAND 5 kg", product_type="Jazmínová ryža > Ryža"),
+            make_product(id="FL_3", title="Ryžový ocot X", product_type="Ocot"),
+        ])
+
+    def test_find_by_family(self):
+        index = self._index()
+        rice_ids = find_by_family(index, "rice")
+        assert set(rice_ids) == {"FL_1", "FL_2"}
+
+    def test_find_by_attributes(self):
+        index = self._index()
+        jasmine_ids = find_by_attributes(index, variety="jasmine")
+        assert jasmine_ids == ["FL_2"]
+
+    def test_get_taxonomy_returns_none_for_unknown_id(self):
+        index = self._index()
+        assert get_taxonomy(index, "FL_missing") is None
+        assert get_taxonomy(index, "FL_1") is not None
+
+
+class TestTaxonomyCoverage:
+    def test_coverage_stats_computed_from_index(self):
+        index = build_taxonomy_index([
+            make_product(id="FL_1", title="Basmati ryža", product_type="Basmati ryža > Ryža"),
+            make_product(id="FL_2", title="Gochujang pasta 500g", product_type=""),
+        ])
+        stats = taxonomy_coverage(index)
+        assert stats["total_products"] == 2
+        assert stats["classified_products"] == 1
+        assert stats["taxonomy_coverage"] == 0.5
+        assert stats["families"]["rice"] == 1

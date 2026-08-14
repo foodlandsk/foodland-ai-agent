@@ -6,6 +6,7 @@ import os
 import re
 import urllib.request
 import xml.etree.ElementTree as ET
+from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Iterable
@@ -16,6 +17,30 @@ GOOGLE_NS = "{http://base.google.com/ns/1.0}"
 
 # Language codes supported by Foodland multi-language feeds.
 FEED_LANGS: list[str] = ["sk", "cz", "de", "en", "hu", "pl"]
+
+
+def parse_category_memberships(product_type: str) -> list[str]:
+    """Split a raw ``g:product_type`` value into its ``>``-separated segments.
+
+    This is deliberately NOT a parent/child tree (V2.1 taxonomy foundation,
+    docs/product-taxonomy-audit.md): Foodland mixes product family, variety,
+    dietary facet, cuisine facet and merchandising labels in one path with
+    no consistent ordering. This function only extracts the flat list of
+    distinct category labels a product belongs to - source order is kept
+    (it is evidence for the taxonomy engine) but never treated as a
+    hierarchy by itself.
+    """
+    if not product_type:
+        return []
+    segments = [s.strip() for s in product_type.split(">")]
+    memberships: list[str] = []
+    seen: set[str] = set()
+    for segment in segments:
+        if not segment or segment in seen:
+            continue
+        seen.add(segment)
+        memberships.append(segment)
+    return memberships
 
 
 @dataclass(slots=True)
@@ -34,10 +59,20 @@ class Product:
     gtin: str
     unit_pricing_measure: str
     lang: str = "sk"  # language mutation this product was loaded from
+    additional_image_links: list[str] = field(default_factory=list)
+    unit_pricing_base_measure: str = ""
+    shipping_weight: str = ""
+    condition: str = ""
+    identifier_exists: str = ""
 
     @property
     def effective_price(self) -> float | None:
         return self.sale_price if self.sale_price is not None else self.price
+
+    @property
+    def category_memberships(self) -> list[str]:
+        """Derived, not stored: avoids duplicating product_type in JSON."""
+        return parse_category_memberships(self.product_type)
 
 
 def parse_price(value: str | None) -> tuple[float | None, str]:
@@ -69,6 +104,11 @@ def parse_google_merchant_feed(path_or_url: str, lang: str = "sk") -> list[Produ
     for item in tree.findall(".//item"):
         price, currency = parse_price(child_text(item, f"{GOOGLE_NS}price"))
         sale_price, sale_currency = parse_price(child_text(item, f"{GOOGLE_NS}sale_price"))
+        additional_images = [
+            el.text.strip()
+            for el in item.findall(f"{GOOGLE_NS}additional_image_link")
+            if el.text and el.text.strip()
+        ]
 
         products.append(
             Product(
@@ -86,6 +126,11 @@ def parse_google_merchant_feed(path_or_url: str, lang: str = "sk") -> list[Produ
                 gtin=child_text(item, f"{GOOGLE_NS}gtin"),
                 unit_pricing_measure=child_text(item, f"{GOOGLE_NS}unit_pricing_measure"),
                 lang=lang,
+                additional_image_links=additional_images,
+                unit_pricing_base_measure=child_text(item, f"{GOOGLE_NS}unit_pricing_base_measure"),
+                shipping_weight=child_text(item, f"{GOOGLE_NS}shipping_weight"),
+                condition=child_text(item, f"{GOOGLE_NS}condition"),
+                identifier_exists=child_text(item, f"{GOOGLE_NS}identifier_exists"),
             )
         )
 
@@ -160,3 +205,18 @@ def load_products_json(path: str | Path) -> list[Product]:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     # `lang` field may be absent in older JSON snapshots – default to "sk".
     return [Product(**{**item, "lang": item.get("lang", "sk")}) for item in data]
+
+
+def find_duplicate_gtins(products: Iterable[Product]) -> dict[str, list[str]]:
+    """Report GTIN values shared by more than one distinct product id.
+
+    Detection only (Product Identity, docs/product-taxonomy-audit.md): the
+    Foodland product id remains primary identity. A shared GTIN is never
+    used to merge two products - it is just surfaced here for the taxonomy
+    audit report.
+    """
+    by_gtin: dict[str, set[str]] = defaultdict(set)
+    for product in products:
+        if product.gtin:
+            by_gtin[product.gtin].add(product.id)
+    return {gtin: sorted(ids) for gtin, ids in by_gtin.items() if len(ids) > 1}

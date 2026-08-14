@@ -19,13 +19,38 @@ Customer message
   -> Analytics + Evaluation (EVALUATE / LEARN)
 ```
 
+Táto horná vrstva (CustomerIntent -> Workflow -> ...) je zámerne **nezávislá**
+od produktovej reprezentácie nižšie. Sprint V2.1 sa jej vôbec nedotýka.
+
+### Nižšia vrstva: produktová reprezentácia (Sprint V2.1, nová)
+
+```
+Merchant Feed (Google Merchant XML)
+  -> Feed Parser (app/feed.py: parse_google_merchant_feed)
+  -> Source Product (Product dataclass + .category_memberships)
+  -> Product Normalizer (app/product_normalizer.py: normalize_product)
+  -> Taxonomy Engine (app/taxonomy.py: classify_product)
+  -> Normalized Product (ProductTaxonomy, keyed by product id)
+  -> Structured Product Index (product_taxonomy_index global, app/main.py)
+  -> future Retrieval Plan (V2.2, NOT built yet)
+  -> future Category-Aware Ranking (V2.2, NOT built yet)
+  -> future Answer Composer (V2.5, NOT built yet)
+```
+
+`product_taxonomy_index` is rebuilt in lockstep with `products` on every
+`refresh_feed()` call (see V2.1 row below) but is **not read by any
+customer-facing code path** in this sprint - it exists so V2.2 retrieval
+can later query `find_by_family()`/`find_by_attributes()` instead of
+re-tokenizing `product_type` per request.
+
 ## Fázy
 
 | Fáza | Stav | Poznámka |
 |---|---|---|
 | V2.1 Intent foundation | **PARTIAL** | `app/intent.py` existuje: `CustomerIntent`, `PRIMARY_INTENTS` (15 kanonických zámerov), `LEGACY_INTENT_MAP`/`map_legacy_intent()`, `build_customer_intent()`. Zapojené do `/chat` len ako **analytics-only** vrstva (7 volaní `log_question()` teraz logujú `primary_intent`/`subject`). Routovacie rozhodnutia (ktoré produkty/recepty sa vrátia, aký text sa zobrazí) **stále riadi legacy kaskáda**, nie `CustomerIntent`. |
 | V2.2 Product routing | **TODO** | `cached_search_products()`/`special_products_for_subject()`/`article_products_for_subject()`/`alternative_products_for_subject()` sa stále volajú priamo z legacy `if/elif` reťazca v `chat()`, nie cez `CustomerIntent`/retrieval plan. `app/search.py: search_products()` berie iba `(products, raw_message, limit)` – žiadne štruktúrované obmedzenia (brand/category/use_case/include/exclude). |
-| Product Taxonomy (catalog-first) | **STAGE A – shadow mode** | Prvý taxonomy beh (`docs/product-taxonomy-audit.md`, generovaný `scripts/taxonomy_audit.py` nad **aktuálnym** katalógom, nie hardcoded číslami). Vybraná JEDNA rodina – `rice` (ryža) – na základe reálneho dôkazu: 7 odlišných podrodín zdieľajúcich koreň "ryz\*", opakovaná história produkčných chýb (Sprint Z.6), overená `IntentMapping` podpora. `app/taxonomy.py` (`classify_rice_query()`) beží v `/chat` **iba v shadow/observation móde** – loguje klasifikáciu do `taxonomy_shadow.jsonl` cez `log_taxonomy_shadow()`, **nemení žiadne routovacie rozhodnutie, produkty ani text odpovede** (overené testom `TestShadowModeIntegrity`). Legacy `SPECIAL_PRODUCT_QUERIES` rice logika (`plain_rice`, `sushi_rice`, `rice_vinegar`, `rice_cooker`, `rice_seasoning`, `rice_side`) zostáva nezmenená a naďalej riadi skutočné správanie. Stage B (aktivovanie taxonómie pre skutočné routovanie jednej rodiny) vyžaduje najprv porovnanie shadow logov s produkčnými dátami – blokované `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` v tomto vykonávacom prostredí, kandidát na ďalšiu iteráciu. |
+| Product Taxonomy (catalog-first, query-level) | **STAGE A – shadow mode** | Prvý taxonomy beh (`docs/product-taxonomy-audit.md`, generovaný `scripts/taxonomy_audit.py` nad **aktuálnym** katalógom, nie hardcoded číslami). Vybraná JEDNA rodina – `rice` (ryža) – na základe reálneho dôkazu: 7 odlišných podrodín zdieľajúcich koreň "ryz\*", opakovaná história produkčných chýb (Sprint Z.6), overená `IntentMapping` podpora. `app/taxonomy.py` (`classify_rice_query()`) beží v `/chat` **iba v shadow/observation móde** – loguje klasifikáciu do `taxonomy_shadow.jsonl` cez `log_taxonomy_shadow()`, **nemení žiadne routovacie rozhodnutie, produkty ani text odpovede** (overené testom `TestShadowModeIntegrity`). Legacy `SPECIAL_PRODUCT_QUERIES` rice logika (`plain_rice`, `sushi_rice`, `rice_vinegar`, `rice_cooker`, `rice_seasoning`, `rice_side`) zostáva nezmenená a naďalej riadi skutočné správanie. Stage B (aktivovanie taxonómie pre skutočné routovanie jednej rodiny) vyžaduje najprv porovnanie shadow logov s produkčnými dátami – blokované `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` v tomto vykonávacom prostredí, kandidát na ďalšiu iteráciu. |
+| **V2.1 Feed Foundation / Product Normalization / Taxonomy Engine (product-level)** | **PARTIAL – data layer built, not yet consumed by retrieval** | Nová, oddelená vrstva od riadku vyššie: `classify_rice_query()` klasifikuje **správu zákazníka** (a stále vracia `family="rice"` pre celý jazykový zhluk vrátane ryžovaru); nový `app/taxonomy.py: classify_product()`/`build_taxonomy_index()` klasifikuje **produkt z katalógu** a garantuje `canonical_family("ryžovar") != "rice"` (mandatory invariant, `docs/product-taxonomy-audit.md`). `app/feed.py` pridáva `parse_category_memberships()` + `Product.category_memberships` (odvodené, neduplikované v JSON), `additional_image_links`, `unit_pricing_base_measure`, `shipping_weight`, `condition`, `identifier_exists`, `find_duplicate_gtins()`. Nový `app/product_normalizer.py` (URL kategória, package size, brand/text search-form – čisto štrukturálne, žiadna sémantika). `product_taxonomy_index` sa prestavuje v `app/main.py: refresh_feed()` v lockstepe s `products` (atomický swap, per-produkt failure isolation), ale **žiadny customer-facing kód ho zatiaľ nečíta** – legacy search/routing beží bezo zmeny. Pilotná rodina `rice` s 8 pod-konceptmi (plain_rice/sushi_rice/rice_noodles/rice_vinegar/rice_flour/rice_paper/rice_cooker/rice_drink+rice_wine), viď `docs/product-taxonomy-audit.md` pre presné pokrytie. Deterministické, dátovo-riadené (`FAMILY_DEFINITIONS`), žiadne LLM volanie za behu. |
 | V2.3 Recipe routing | **TODO** | Recipe-only, recipe-to-products, missing-ingredients a core-product-mapping logika (`recipe_results()`, `recipe_shopping_core_products()`, `missing_ingredients_for_subject()`, `sushi_shopping_core_products()`, `tom_yum_shopping_core_products()`, `kimchi_ramen_shopping_core_products()`) sú samostatné funkcie volané z toho istého legacy `if` bloku v `chat()`, nie zjednotený recipe workflow. `app/workflows.py` (`detect_workflow`, `WorkflowResult`, `get_contract`, `WORKFLOW_CONTRACTS`) existuje od skoršej analýzy, ale **nie je zapojený do `/chat` vôbec** – jediný reálne používaný export je `products_to_cart_candidates()`. |
 | V2.4 Replace/cross-sell/comparison | **TODO** | `replacement_subject`/`related_subject`/`special_subject`/`already_have_subject` sú oddelené legacy detektory s ručne poskladanými prioritnými pravidlami priamo v `chat()` (viď napr. override pre "japonske noze" alebo explicitnú značku pri cross-sell, Sprint Z.3/Z.6 v roadmape). Nie sú prvotriedne `CustomerIntent` zámery – `map_legacy_intent()` ich už vie namapovať na `replacement`/`cross_sell`, ale iba spätne, po tom čo legacy kaskáda rozhodla. `product_comparison` z kanonického zoznamu nemá v legacy kóde vôbec zodpovedajúci detektor. `category_discovery` má od Sprintu V2.1.6 prvý, úzky detektor (`is_category_discovery_query()` – presná zhoda 6 fráz, nie substring), zapojený priamo ako legacy `chat()` vetva (rovnaký vzor ako `allergen_safety`/`out_of_domain`), s `intent="category_discovery"` mapovaným priamo na kanonický zámer v `app/intent.py`. Nepokrýva všetky formulácie (napr. "čo máte v ponuke?" zámerne vynechané – príliš kolízne s konkrétnymi produktovými dopytmi ako "čo máte v ponuke na sushi?"). |
 | V2.5 Answer composer | **TODO** | Odpoveď sa skladá ad-hoc na mieste v `chat()` (`fallback_answer()`, `recipe_products_answer()`, `shopping_list_answer()`, `allergen_safety_answer()`, priamy OpenAI system prompt s pravidlami pre všetky intenty naraz) – nie centralizovaný composer podľa `CustomerIntent.primary_intent`. |
