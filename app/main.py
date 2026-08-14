@@ -2562,7 +2562,15 @@ ALLERGEN_TERMS = {
 # plain grocery nouns. Used to safely widen bare "ma/je/su X?" allergen
 # questions without misrouting generic product questions that happen to
 # name a food (e.g. "aku ma chut toto mlieko").
-BARE_ALLERGEN_QUESTION_TERMS = ("lepok", "gluten", "arasid", "sezam", "makky", "krev", "soja", "soj")
+# NOTE: "soja"/"soj" were removed after a real regression - "sojova
+# omacka" (soy sauce) is one of the store's flagship product
+# categories, and the extremely common word "je" ("is") co-occurs with
+# it constantly ("co je lepsie svetla alebo tmava sojova omacka?",
+# "aka je cena kikkoman sojovej omacky?") - both got misrouted into an
+# allergy warning instead of answering the actual question. "soja"/
+# "soj" turned out to be exactly the kind of ambiguous grocery noun
+# this list was designed to exclude, same as "mlieko"/"orech".
+BARE_ALLERGEN_QUESTION_TERMS = ("lepok", "gluten", "arasid", "sezam", "makky", "krev")
 
 OUT_OF_DOMAIN_MARKERS = (
     # --- potravinovy obchod: existujuce markery ---

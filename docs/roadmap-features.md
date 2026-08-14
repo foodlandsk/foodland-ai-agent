@@ -971,3 +971,25 @@ Tieto tri zistenia sú reálnym kandidátom na V2.2/V2.3 (product search routing
 **Testy – plný beh:** 373/373 (371 z predošlého behu + 2 nové), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` čisté.
 
 **Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé dve opravy (proxy 403 tohto vykonávacieho prostredia, nie chyba Foodland backendu/Railway deploymentu). GitHub merge treba overiť priamo cez commit SHA po zlúčení; finálne naživo overenie treba spustiť zo session s priamym prístupom na produkciu.
+
+---
+
+### Sprint V2.1.4 – Oprava vlastnej regresie: sójová omáčka nesprávne padala do alergénovej odpovede
+
+**Zákaznícky problém, zistený širším synthetic QA behom (25 scenárov naprieč porovnaním, cenou, dostupnosťou, kuchynským riadom, dietetickými požiadavkami):** `"co je lepsie svetla alebo tmava sojova omacka?"` (porovnanie svetlej a tmavej sójovej omáčky) a `"aka je cena kikkoman sojovej omacky?"` (cena Kikkoman sójovej omáčky) obe vrátili **alergénovú bezpečnostnú odpoveď o sóji** namiesto skutočnej odpovede na otázku – dve úplne bežné, vysokoobjemové otázky o vlajkovej produktovej kategórii obchodu.
+
+**Príčina – vlastná regresia z minulého Sprintu (V2.1.2):** Pri oprave "ma to lepok?" (predošlý sprint) som do `BARE_ALLERGEN_QUESTION_TERMS` zahrnul aj `"soja"`/`"soj"` ako údajne jednoznačné alergénové slová. To bola chyba rovnakého druhu, akej som sa vtedy vedome vyhol pri `"mlieko"`/`"orech"`/`"ryb"`/`"vajc"` – **"sójová omáčka" je jedna z najpredávanejších kategórií tohto obchodu** (Kikkoman, Yamasa, Healthy Boy, Lee Kum Kee a ďalšie – téma desiatok predošlých Sprintov v tejto roadmape), nie len alergén. Keďže moja oprava obchádza bránu pri kombinácii slovesa "má/je/sú" + akéhokoľvek slova z `BARE_ALLERGEN_QUESTION_TERMS`, a slovo "je" je v slovenčine extrémne bežné, prakticky KAŽDÁ veta o sójovej omáčke obsahujúca "je" ("čo JE lepšie...", "aká JE cena...") sa nesprávne zmenila na alergénovú odpoveď.
+
+**Ako bola nájdená:** Nie ručným hľadaním konkrétnej chyby, ale širším synthetic QA behom (25 scenárov naprieč porovnaním, cenou/dostupnosťou, kuchynským riadom, typmi/preklepmi, dietetickými požiadavkami, no-result prípadmi) spusteným ako súčasť pravidelného V2 loop postupu (krok "Measure" pred diagnostikou ďalšej slabiny) – presne postup, ktorý má tento typ regresie odhaliť skôr, než sa dostane do produkcie.
+
+**Oprava:** Odstránené `"soja"`/`"soj"` z `BARE_ALLERGEN_QUESTION_TERMS` – rovnaké zaobchádzanie ako pri `"mlieko"`/`"orech"`. Zostávajúca množina (lepok, gluten, arašidy, sezam, mäkkýše, krevety) neobsahuje žiadne bežné produktové/kategóriové slovo z katalógu. Explicitná žiadosť o vyhnutie sa sóji ("bez sóje", "alergia na sóju") zostáva nezmenená – tá ide cez pôvodnú, staršiu `ALLERGEN_INTENT_MARKERS` bránu (`"bez soj"`/`"bez soja"`), nie cez bránu opravovanú touto ani predošlou opravou.
+
+**Migrované správanie:** `"co je lepsie svetla alebo tmava sojova omacka?"` teraz vracia `intent: product_advice` s relevantnými produktmi; `"aka je cena kikkoman sojovej omacky?"` vracia `intent: product_search` s Kikkoman sójovými omáčkami. `"ma to lepok?"`, `"bez soje, co mate?"`, `"alergia na soju"` zostávajú nezmenené (alergénová odpoveď tam, kde je to správne).
+
+**Regresné testy:** nový `test_bare_allergen_question_does_not_hijack_soy_sauce_questions` – 4 prípady sójovej omáčky musia byť `None` (nie alergén), 2 explicitné alergénové žiadosti o sóju musia zostať `"sóju"` (cez starú bránu, aby budúca zmena tejto brány neomylom "opravila" aj tento prípad naspäť).
+
+**Testy – plný beh:** 374/374 (373 z predošlého behu + 1 nový), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` (empty-alternatives aj pii-leak) čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy.
+
+**Poučenie pre ďalšie V2 iterácie:** Každá nová "bezpečná" množina slov (ako `BARE_ALLERGEN_QUESTION_TERMS`) musí byť pred nasadením otestovaná nielen proti známym kontrolným prípadom z danej opravy, ale aj proti **širšiemu synthetic QA vzorku** naprieč inými kategóriami produktov – práve preto V2 loop krok "Measure" beží pred každou diagnózou, nie len raz na začiatku.

@@ -1356,6 +1356,26 @@ class TestIntentDetection:
         assert main.detect_allergen_intent("ma tento produkt orechy?") is None
         assert main.detect_allergen_intent("chcem kupit orechy") is None
 
+    def test_bare_allergen_question_does_not_hijack_soy_sauce_questions(self):
+        # Real regression: "soja"/"soj" were originally included in
+        # BARE_ALLERGEN_QUESTION_TERMS as supposedly unambiguous allergen
+        # vocabulary, but "sojova omacka" (soy sauce) is one of the store's
+        # flagship product categories, and the extremely common word "je"
+        # ("is") co-occurs with it constantly - so ordinary comparison/price
+        # questions about soy sauce were wrongly answered with a soy allergy
+        # warning instead of the actual answer. Removed from the bare-verb
+        # bypass set entirely (same treatment as mlieko/orech/ryb/vajc).
+        assert main.detect_allergen_intent("co je lepsie svetla alebo tmava sojova omacka?") is None
+        assert main.detect_allergen_intent("aka je cena kikkoman sojovej omacky?") is None
+        assert main.detect_allergen_intent("aka sojova omacka je najlepsia?") is None
+        assert main.detect_allergen_intent("preco je sojova omacka tmava") is None
+        # Explicit allergen-avoidance phrasing for soy must still work -
+        # unaffected, since it goes through the pre-existing
+        # ALLERGEN_INTENT_MARKERS "bez soj"/"bez soja" markers, not the
+        # bare-question bypass this test is about.
+        assert main.detect_allergen_intent("bez soje, co mate?") == "sóju"
+        assert main.detect_allergen_intent("alergia na soju, co mozem kupit?") == "sóju"
+
     def test_allergen_NOT_triggered_for_product_search(self):
         term = main.detect_allergen_intent("mate bezlepkovu sojovu omacku?")
         assert term is None, f"False allergen trigger: {term}"
