@@ -2623,6 +2623,46 @@ class TestSessionMemory:
         contextual = main.contextualize_message("mate sojovu omacku kikoman", memory)
         assert "pikantne" not in main.normalize(contextual)
 
+    def test_diet_terms_does_not_invert_negated_statements(self):
+        # Real regression, second occurrence of the same root-cause class:
+        # "nechcem nic pikantne" ("I don't want anything spicy") was
+        # recorded as a POSITIVE "pikantne" preference - the opposite of
+        # what the customer said. detect_diet_terms() had no negation
+        # awareness at all (not just for the comparative form fixed
+        # earlier). Same risk applies to vegan/vegetarian/bezlepkove: "nie
+        # som vegan" / "nechcem vegansky produkt" must not be recorded as
+        # a vegan preference either.
+        assert main.detect_diet_terms("nechcem nic pikantne") == []
+        assert main.detect_diet_terms("nemam rad pikantne jedla") == []
+        assert main.detect_diet_terms("neznasam pikantne") == []
+        assert main.detect_diet_terms("nechcem vegansky produkt") == []
+        assert main.detect_diet_terms("nie som vegan") == []
+        assert main.detect_diet_terms("nemam rad kokos") == []
+        # Genuine preference statements are unaffected.
+        assert main.detect_diet_terms("mam rad korejske pikantne kimchi") == ["pikantne"]
+        assert main.detect_diet_terms("som vegan") == ["veganske"]
+        assert main.detect_diet_terms("hladam bezlepkove produkty") == ["bezlepkove"]
+
+    def test_negated_spice_statement_does_not_corrupt_later_unrelated_answer(self):
+        # Real regression found via a multi-turn synthetic QA session:
+        # "nechcem nic pikantne" got wrongly recorded as a "pikantne" diet
+        # term, which contextualize_message() then silently injected into
+        # a much later, completely unrelated comparison question ("aky je
+        # rozdiel medzi mirin a rizovym octom?" - what's the difference
+        # between mirin and rice vinegar), corrupting its Products_AI
+        # knowledge lookup into an unrelated, broken answer fragment about
+        # a different product's flavor profile.
+        main.session_memories.clear()
+        key = main.session_memory_key("memory-test-negation-contamination", "127.0.0.1")
+        memory = main.get_session_memory(key)
+        main.update_session_memory(key, "nechcem nic pikantne", "related_products", [], [], {})
+
+        assert list(memory["diet_terms"]) == []
+        contextual = main.contextualize_message(
+            "aky je rozdiel medzi mirin a rizovym octom?", memory,
+        )
+        assert "pikantne" not in main.normalize(contextual)
+
     def test_memory_redacts_contact_details(self):
         redacted = main.redact_memory_text("Moj email je test@example.com a telefon +421 900 123 456")
 
