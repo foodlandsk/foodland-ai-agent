@@ -1037,3 +1037,25 @@ Tieto tri zistenia sú reálnym kandidátom na V2.2/V2.3 (product search routing
 **Testy – plný beh:** 380/380 (377 z predošlého behu + 3 nové), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` (empty-alternatives aj pii-leak) čisté.
 
 **Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy (proxy 403 tohto vykonávacieho prostredia, nie chyba Foodland backendu/Railway deploymentu).
+
+---
+
+### Sprint V2.1.7 – Negovaná preferencia sa zaznamenala ako opak toho, čo zákazník povedal
+
+**Ako bola nájdená:** Krok "Measure" tejto iterácie spustil nový synthetic QA vzorok (negácie, viac-kolové konverzácie, množstvo/cena, porovnania) namiesto priameho pokračovania na `product_comparison` feature (naplánovaný ako ďalší krok minule). Jeden z 18 scenárov – porovnávacia otázka o mirine a ryžovom occite – vrátila **polámanú, nezmyselnú odpoveď**: `"vyrazne umami, pikantne, fermentovane a slano-kysle podla typu produktu kimchi, bibimbap, marinady, polievky, ryzove misky a rychle korejske jedla"` namiesto zmysluplnej vety o mirine. V izolácii (bez predošlého kontextu) fungovala tá istá otázka správne – jasný signál na kontamináciu session pamäte, rovnaký vzor ako Sprint V2.1.5.
+
+**Príčina:** Bisekciou sa zistilo, že prvá správa v konverzácii, `"nechcem nic pikantne"` ("nechcem nič pikantné"), sa nesprávne zaznamenala do `memory["diet_terms"]` ako **pozitívna** preferencia `"pikantne"` – presný opak toho, čo zákazník povedal. `detect_diet_terms()` totiž kontrolovala iba holý podreťazec `"pikant"`/`"paliv"` bez akéhokoľvek povedomia o negácii ("nechcem", "nemám rád" pred slovom úplne menia význam, ale kód ich ignoroval). Táto falošná preferencia sa potom cez `contextualize_message()` (rovnaký bezpodmienečný injection mechanizmus ako v Sprinte V2.1.5) vložila do neskoršej, úplne nesúvisiacej otázky o mirine, čo zmiatlo vyhľadávanie v Products_AI znalostiach a vrátilo útržok textu patriaci inému produktu (pravdepodobne gochujang/kimchi, súdiac podľa spomienky "kimchi, bibimbap").
+
+**Toto je DRUHÝ výskyt rovnakej triedy chyby za dve po sebe idúce iterácie** (prvý bol porovnávací tvar "pikantnejšie" v Sprinte V2.1.5). Podľa V2 sekcie 20-21 (uprednostniť štrukturálnu opravu pred ďalšou jednorazovou výnimkou, keď sa rovnaká príčina opakuje) bola táto oprava navrhnutá všeobecnejšie než len ďalšie vylúčenie jedného konkrétneho tvaru.
+
+**V2 vylepšenie (implementované):** Nová `DIET_TERM_NEGATION_MARKERS` ("nechcem", "nemam rad", "nemam rada", "neznasam", "nie som") – ak správa obsahuje ktorýkoľvek z týchto markerov KDEKOĽVEK, `detect_diet_terms()` vráti prázdny zoznam namiesto pokusu o presné vyhodnotenie, ktorá časť vety je negovaná. Toto je **hrubší** prístup než presné negačné parsovanie (zložená veta typu "nechcem sladké, chcem pikantné" by stratila aj druhú, skutočnú preferenciu), ale bezpečnejší zlyhávací režim – nikdy nezaznamenať opačnú preferenciu je dôležitejšie než zachytiť každý okrajový prípad. Oprava je zámerne všeobecná naprieč VŠETKÝMI kategóriami `detect_diet_terms()` (pikantné, vegán, vegetariánske, bezlepkové), nie len pre "pikantne".
+
+**Migrované správanie:** `"nechcem nic pikantne"`, `"nemam rad pikantne jedla"`, `"neznasam pikantne"`, `"nechcem vegansky produkt"`, `"nie som vegan"`, `"nemam rad kokos"` už nezanechávajú žiadnu stopu v `diet_terms`. Skutočné preferencie (`"mam rad pikantne kimchi"`, `"som vegan"`, `"hladam bezlepkove produkty"`) zostávajú nezmenené. Porovnávacia otázka o mirine teraz naprieč celou konverzáciou vracia zmysluplnú odpoveď.
+
+**Regresné testy:** `test_diet_terms_does_not_invert_negated_statements` (6 negovaných tvarov musia byť `[]`, 3 skutočné preferencie musia zostať nezmenené naprieč všetkými kategóriami, nie len pikantné) + `test_negated_spice_statement_does_not_corrupt_later_unrelated_answer` (end-to-end cez `contextualize_message()` s presne tou reálnou kombináciou správ, ktorá spôsobila polámanú odpoveď).
+
+**Testy – plný beh:** 382/382 (380 z predošlého behu + 2 nové), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` (empty-alternatives aj pii-leak) čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy.
+
+**Architektonické odporúčanie:** Toto je už druhý nález presne tejto triedy chyby za dve iterácie. `docs/advisor-v2-architecture.md` (V2.6 riadok) teraz explicitne odporúča, aby ďalšia V2.6 iterácia riešila samotný `contextualize_message()` injection mechanizmus (aplikovať pamäť až po vyhodnotení explicitného zámeru, podľa V2 sekcie 12), nie ďalší jednotlivý detektor – tretí výskyt by mal byť signálom na túto väčšiu, štrukturálnu prácu namiesto ďalšej záplaty.

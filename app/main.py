@@ -3491,8 +3491,25 @@ def detect_cuisines_from_text(text: str) -> list[str]:
     return cuisines[:4]
 
 
+# Real regression, second occurrence of the same root-cause class as
+# the "pikantnejsie" comparative-form fix: detect_diet_terms() matched
+# bare substrings with no negation awareness at all, so "nechcem nic
+# pikantne" ("I don't want anything spicy") got recorded as a POSITIVE
+# "pikantne" preference - the opposite of what the customer said. That
+# silently-injected (via contextualize_message()) inverted preference
+# then corrupted a later, unrelated question into a broken answer
+# built from an unrelated product's knowledge text. A blanket guard is
+# coarser than real negation-scoped parsing (a compound sentence like
+# "nechcem sladke, chcem pikantne" would lose the genuine second half),
+# but never recording an inverted preference is the safer failure mode
+# for a signal that persists silently across an entire conversation.
+DIET_TERM_NEGATION_MARKERS = ("nechcem", "nemam rad", "nemam rada", "neznasam", "nie som")
+
+
 def detect_diet_terms(text: str) -> list[str]:
     normalized_text = normalize(text)
+    if any(marker in normalized_text for marker in DIET_TERM_NEGATION_MARKERS):
+        return []
     terms: list[str] = []
     if any(marker in normalized_text for marker in ("bezlepk", "celiak", "bez lepku")):
         terms.append("bezlepkove")
