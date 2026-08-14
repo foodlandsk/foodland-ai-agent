@@ -80,6 +80,7 @@ from app.search import (
 )
 from app.workflows import products_to_cart_candidates
 from app.intent import build_customer_intent
+from app.taxonomy import classify_rice_query
 
 
 logging.basicConfig(
@@ -3630,6 +3631,7 @@ def detect_query_language(message: str) -> str:
 def chat(chat_request: ChatRequest, request: Request) -> dict:
     client_key = get_client_key(request)
     enforce_rate_limit(client_key)
+    log_taxonomy_shadow(chat_request.message, client_key, classify_rice_query(chat_request.message, normalize))
 
     session_id = getattr(chat_request, "session_id", "") or ""
     memory_key = session_memory_key(session_id, client_key)
@@ -5465,6 +5467,32 @@ def log_question(
             file.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception as exc:
         logger.error("Failed to log question: %s", exc, exc_info=True)
+
+
+def log_taxonomy_shadow(message: str, client_key: str, match) -> None:
+    # V2 catalog-first taxonomy, Stage A (shadow/observation mode -
+    # see docs/product-taxonomy-audit.md). Logs the rice-family
+    # classification for later comparison against legacy routing;
+    # does not affect routing, products, or answer text in any way.
+    if match.subfamily is None:
+        return
+    path = Path(os.getenv("TAXONOMY_SHADOW_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "taxonomy_shadow.jsonl")))
+    salt = os.getenv("ANALYTICS_SALT", "")
+    record = {
+        "ts": int(time.time()),
+        "client_hash": hashlib.sha256(f"{salt}:{client_key}".encode("utf-8")).hexdigest()[:24],
+        "message": redact_pii(message)[:500],
+        "family": match.family,
+        "subfamily": match.subfamily,
+        "confidence": match.confidence,
+        "matched_phrase": match.matched_phrase,
+    }
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as file:
+            file.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as exc:
+        logger.error("Failed to log taxonomy shadow: %s", exc, exc_info=True)
 
 
 def log_backend_error(event: str, detail: str) -> None:
