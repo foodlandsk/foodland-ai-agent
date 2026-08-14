@@ -1886,6 +1886,61 @@ class TestIntentDetection:
             assert not main.detect_out_of_domain(query), query
             assert main.detect_related_subject(query) == "asian_snack", query
 
+    def test_category_discovery_detects_generic_inventory_questions(self):
+        # Real user report: "aku kategoriu produktov mate?" (a generic
+        # "what do you sell" question, no specific product/subject named)
+        # either dead-ended with an unhelpful empty answer or, worse,
+        # confidently presented RANDOM irrelevant products as "most
+        # relevant" (plain keyword search always finds *something*).
+        # category_discovery is a canonical V2 intent that had no detector
+        # at all.
+        for query in (
+            "aku kategoriu produktov mate?",
+            "ake kategorie produktov mate?",
+            "co vsetko predavate?",
+            "aky sortiment mate?",
+            "ake znacky predavate?",
+            "aky tovar mate?",
+        ):
+            assert main.is_category_discovery_query(query), query
+
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="aku kategoriu produktov mate?", limit=8), request)
+        assert result.get("intent") == "category_discovery"
+        assert not result.get("products")
+        answer = result.get("answer", "")
+        assert "foodland.sk" in main.normalize(answer)
+        # Grounded in real product_type data, not invented category names.
+        real_categories = set(main.top_product_categories(main.products, 20))
+        assert any(nrm(cat) in nrm(answer) for cat in real_categories)
+
+    def test_category_discovery_does_not_hijack_specific_product_questions(self):
+        # Control cases (roadmap section 27): the detector requires an
+        # EXACT message match (not substring), specifically so a longer,
+        # specific query naming a real product/cuisine is never swept into
+        # the generic category-discovery answer.
+        for query in (
+            "aky tovar mate na sushi?",
+            "co mate v ponuke na sushi",
+            "co vsetko mate na thajsku kuchynu?",
+            "aku ryzu mate",
+            "ake znacky sojovej omacky mate?",
+            "mate ryzu?",
+        ):
+            assert not main.is_category_discovery_query(query), query
+
+    def test_top_product_categories_excludes_dietary_marketing_noise(self):
+        # Cross-cutting attribute tags like "Vegánske potraviny"/"Zdravé
+        # potraviny" are real product_type breadcrumb segments but are not
+        # useful as a "what departments do you have" answer - they should
+        # not appear in the curated category list.
+        categories = main.top_product_categories(main.products, 30)
+        normalized_categories = {nrm(c) for c in categories}
+        assert "veganske potraviny" not in normalized_categories
+        assert "zdrave potraviny" not in normalized_categories
+        assert "bio potraviny" not in normalized_categories
+        assert categories
+
     def test_related_subject_sushi(self):
         subj = main.detect_related_subject("co potrebujem na sushi?")
         assert subj == "sushi"

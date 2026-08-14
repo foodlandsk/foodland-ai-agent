@@ -2697,6 +2697,44 @@ OUT_OF_DOMAIN_MARKERS = (
     "referat na tema",
 )
 
+# Real user report: "aku kategoriu produktov mate?" and similar generic
+# inventory questions either dead-ended with an unhelpful empty answer
+# or, worse, confidently presented RANDOM irrelevant products as "most
+# relevant" (cached_search_products() always finds *something* via
+# token/fuzzy matching, even for filler words). category_discovery is a
+# canonical V2 primary intent (see app/intent.py) with no detector at
+# all in the legacy cascade. Exact-message match (not substring) so a
+# longer, specific query like "aky tovar mate na sushi?" is never swept
+# in - only bare "what do you sell" style questions with nothing else
+# in them.
+CATEGORY_DISCOVERY_MARKERS = frozenset((
+    "aku kategoriu produktov mate",
+    "ake kategorie produktov mate",
+    "co vsetko predavate",
+    "aky sortiment mate",
+    "ake znacky predavate",
+    "aky tovar mate",
+))
+
+# product_type breadcrumb segments that are cross-cutting dietary/
+# marketing tags, not real navigational categories - excluded from the
+# category-discovery answer so it reads like an actual department list
+# ("Sojove omacky, Korenie, Cajove prislusenstvo...") rather than a mix
+# of attribute tags ("Vegan", "Zdrave potraviny", "Darcekove sety"...).
+CATEGORY_DISCOVERY_NOISE = frozenset((
+    "veganske potraviny",
+    "vegetarianske potraviny",
+    "zdrave potraviny",
+    "super potraviny",
+    "bezlepkove potraviny",
+    "susene produkty",
+    "darcekove sety",
+    "darcekove poukazy",
+    "bio potraviny",
+    "horeca - pre hotely, restauracie, catering",
+    "box asia to go",
+))
+
 # BUG-03 fix: OpenAI client singleton – nevytvara novy connection pool pri kazdom requeste
 _openai_client: OpenAI | None = None
 
@@ -3755,6 +3793,19 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "knowledge": knowledge_summary(knowledge_matches),
             "memory": public_user_memory_summary(updated_profile),
             "intent": "unknown",
+        }
+
+    if is_category_discovery_query(chat_request.message):
+        update_session_memory(memory_key, chat_request.message, "category_discovery", [], [], knowledge_matches)
+        updated_profile = update_user_memory(profile_key, chat_request.message, "category_discovery", [], [])
+        _ci = build_customer_intent(chat_request.message, "category_discovery", language=query_language)
+        log_question(chat_request.message, client_key, 0, intent="category_discovery", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
+        return {
+            "answer": category_discovery_answer(products, query_language),
+            "products": [],
+            "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": "category_discovery",
         }
 
     already_have_subject = detect_already_have_subject(contextual_message)
@@ -7798,6 +7849,37 @@ def detect_allergen_intent(message: str) -> str | None:
 def detect_out_of_domain(message: str) -> bool:
     normalized_message = normalize(message)
     return any(marker in normalized_message for marker in OUT_OF_DOMAIN_MARKERS)
+
+
+def is_category_discovery_query(message: str) -> bool:
+    normalized_message = normalize(message).strip().rstrip("?!.")
+    return normalized_message in CATEGORY_DISCOVERY_MARKERS
+
+
+def top_product_categories(products_list: list[Product] | list[dict], limit: int = 8) -> list[str]:
+    counts: Counter = Counter()
+    for product in products_list:
+        raw_type = product_field(product, "product_type", "")
+        first_segment = raw_type.split(">")[0].strip() if raw_type else ""
+        if first_segment and normalize(first_segment) not in CATEGORY_DISCOVERY_NOISE:
+            counts[first_segment] += 1
+    return [name for name, _ in counts.most_common(limit)]
+
+
+def category_discovery_answer(products_list: list[Product] | list[dict], lang: str = "sk") -> str:
+    categories = top_product_categories(products_list, 8)
+    if not categories:
+        return (
+            "Foodland.sk offers a wide range of Asian and international groceries. "
+            "Tell me what you are looking for, or browse the full catalog on Foodland.sk."
+            if lang == "en"
+            else "Foodland.sk ponúka široký sortiment ázijských a svetových potravín. "
+            "Napíšte mi, čo konkrétne hľadáte, alebo si prezrite celý katalóg na Foodland.sk."
+        )
+    listed = ", ".join(categories)
+    if lang == "en":
+        return f"Foodland.sk carries many categories, for example: {listed} and more. Tell me what you are looking for and I will suggest specific products."
+    return f"Foodland.sk ponúka široký sortiment naprieč mnohými kategóriami, napríklad: {listed} a ďalšie. Napíšte mi, čo konkrétne hľadáte, a poradím vám konkrétne produkty."
 
 
 def allergen_product_matches(message: str, limit: int) -> list[dict]:
