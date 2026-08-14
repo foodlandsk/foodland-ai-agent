@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Compile check (catches syntax/encoding errors early)
+        run: python -m compileall app scripts
+
+      - name: Full test suite
+        run: pytest tests/test_core.py -q
+
+      - name: Consistency audit (marker/alias collisions)
+        run: python scripts/consistency_audit.py --collisions
+
+      - name: Trust audit (empty results, PII leaks)
+        run: python scripts/trust_audit.py
+
+      - name: Deployment package check
+        run: python scripts/check_deployment.py

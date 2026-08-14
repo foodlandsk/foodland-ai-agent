@@ -1308,7 +1308,7 @@ RELATED_SUBJECT_ALIASES = {
     # onigiri must be checked before sushi: sushi's "nigiri" alias is a
     # substring of "onigiri", so without this ordering every onigiri
     # question got misclassified as a sushi question.
-    "onigiri": ("onigiri", "ryżové gulky", "ryzove gulky", "ryzove gulky", "onigiri"),
+    "onigiri": ("onigiri", "ryžové gulky", "ryzove gulky", "ryzove gulky", "onigiri"),
     "sushi": ("sushi", "susi", "sushi ryza", "susi ryza", "maki", "maki rolky", "california roll", "futomaki", "hosomaki", "uramaki", "nigiri", "temaki", "sashimi"),
     "gochujang": ("gochujang", "gochu jang", "gochuang", "gochugaru", "korean chili flakes", "koreanska cili"),
     "ramen": ("ramen", "ramyun", "ramyeon", "tonkotsu", "tantanmen", "noodle soup", "noodle broth", "soup noodles", "nudl", "nudle", "nudlov"),
@@ -6567,9 +6567,9 @@ def article_matches_cuisine(article: dict, cuisine: str) -> bool:
 
 
 def article_card(record: dict) -> dict:
-    title = first_record_value(record, ("Clanok", "článok", "article", "nazov", "nĂˇzov"))
+    title = first_record_value(record, ("Clanok", "článok", "article", "nazov", "názov"))
     topic = first_record_value(record, ("Tema", "téma", "topic"))
-    note = first_record_value(record, ("PoznĂˇmka", "Poznamka", "note"))
+    note = first_record_value(record, ("Poznámka", "Poznamka", "note"))
     return {
         "title": title,
         "topic": topic,
@@ -7911,7 +7911,7 @@ def allergen_safety_answer(allergen_term: str, lang: str = "sk") -> str:
         )
     if allergen_term in ("alergeny", "alerginy"):
         return (
-            "Pri alergènoch vám nechcem odporučiť nesprávny produkt. "
+            "Pri alergénoch vám nechcem odporučiť nesprávny produkt. "
             "Prosím overte zloženie v detaile konkrétneho produktu alebo nám napíšte názov produktu, "
             "ktorý chcete skontrolovať."
         )

@@ -110,7 +110,7 @@ _install_stubs()
 import app.main as main  # noqa: E402
 from app.workflows import detect_workflow, get_contract  # noqa: E402
 
-# ─── Pomocne fixtures ────────────────────────────────────────────────────────���
+# ─── Pomocne fixtures ───────────────────────────────────────────────────────────
 
 SAMPLE_PRODUCTS = [
     {

@@ -3798,3 +3798,37 @@ def test_regression_intent(query, expected_intent):
     assert actual == expected_intent, \
         f"Intent mismatch for '{query}': got {actual}, expected {expected_intent}"
 
+
+# ---------------------------------------------------------------------------
+# Audit scripts wired into the normal pytest run.
+#
+# scripts/consistency_audit.py and scripts/trust_audit.py were built earlier
+# this project as standalone tools you had to remember to run by hand before
+# a commit. Only the zero-noise checks are wired in here as hard gates
+# (marker/alias collisions, empty-alternatives, PII leaks) - both scripts'
+# own docstrings explain that the declension checks are candidate
+# generators, not verdicts, and would make `pytest` fail on findings that
+# need a human "is this actually a bug?" triage step, so those stay
+# standalone (`python scripts/consistency_audit.py --declensions`).
+# ---------------------------------------------------------------------------
+
+def test_audit_no_marker_alias_collisions():
+    from scripts.consistency_audit import check_collisions
+
+    findings = check_collisions()
+    assert not findings, "New marker/alias substring collision(s), see scripts/consistency_audit.py:\n" + "\n".join(findings)
+
+
+def test_audit_no_empty_replacement_alternatives():
+    from scripts.trust_audit import check_empty_alternatives
+
+    findings = check_empty_alternatives()
+    assert not findings, "replacement_products reply would show zero alternatives, see scripts/trust_audit.py:\n" + "\n".join(findings)
+
+
+def test_audit_no_pii_leak_in_redaction():
+    from scripts.trust_audit import check_pii_leak
+
+    findings = check_pii_leak()
+    assert not findings, "redact_pii() left PII in the output, see scripts/trust_audit.py:\n" + "\n".join(findings)
+
