@@ -1059,3 +1059,36 @@ Tieto tri zistenia sú reálnym kandidátom na V2.2/V2.3 (product search routing
 **Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy.
 
 **Architektonické odporúčanie:** Toto je už druhý nález presne tejto triedy chyby za dve iterácie. `docs/advisor-v2-architecture.md` (V2.6 riadok) teraz explicitne odporúča, aby ďalšia V2.6 iterácia riešila samotný `contextualize_message()` injection mechanizmus (aplikovať pamäť až po vyhodnotení explicitného zámeru, podľa V2 sekcie 12), nie ďalší jednotlivý detektor – tretí výskyt by mal byť signálom na túto väčšiu, štrukturálnu prácu namiesto ďalšej záplaty.
+
+---
+
+### Sprint V2.2.0 – Prvý katalógovo-riadený taxonomy beh: rodina "ryža" (Stage A, shadow mode)
+
+**Zadanie:** Namiesto ručného klasifikovania Foodland katalógu podľa príkladov z promptu (výslovne zakázané zadaním) – najprv preskúmať **aktuálny** katalóg programaticky, až potom navrhnúť taxonómiu.
+
+**Fáza 1-4 – profil katalógu (reálne čísla, nie odhady):** Nový `scripts/taxonomy_audit.py` (spustiteľný opakovane, žiadne hardcoded počty) vygeneroval z `data/products.json` a `data/knowledge.json`:
+
+```
+total_products = 2140
+unique_brands = 368
+unique_categories_top_level = 127
+unique_categories_all_levels = 166
+```
+
+Detailná inšpekcia koreňa `ryz` (`--family ryz`) potvrdila presne tú triedu chyby, ktorú Sprint Z.6 už raz opravil ručne: **7 odlišných produktových podrodín** zdieľa jeden jazykový koreň – samotná ryža (69 produktov), ryžové rezance (63), ryžový ocot (23), ryžová múka (3), ryžový papier, ryžovar (má vlastnú reálnu katalógovú kategóriu `Ryžovary`), ryžový nápoj (2, len MEDIUM confidence).
+
+**Fáza 9 – recepty/IntentMapping ako overený sémantický zdroj:** `data/knowledge.json["sections"]["IntentMapping"]` (318 záznamov) obsahuje kurátorovanú kategóriu `"Ryža / výber produktu"` (4 záznamy) s priamo použiteľným, overeným obsahom – napr. presne pre otázku "Aký je rozdiel medzi jazmínovou a basmati ryžou?" je poznámka "Porovnať arómu, zrnitosť, kuchyňu a použitie." Toto je grounded zdroj pre budúci `product_comparison` intent, nie vymyslený text.
+
+**Fáza 5-11 – kanonická taxonómia, `docs/product-taxonomy-audit.md`:** Navrhnutá rodina `rice` s 8 podrodinami (7× HIGH confidence z jasného katalógového/kategóriového dôkazu, 1× MEDIUM z `rice_drink` s iba 2 produktmi – podľa Fázy 11 pravidla MEDIUM nesmie tvoriť tvrdé retrieval obmedzenie, preto sa v tejto iterácii do klasifikátora vôbec nezapája).
+
+**V2 vylepšenie (implementované, Fáza 26 krok 11-13):** Nový `app/taxonomy.py` (`classify_rice_query()`) – frázovo založený klasifikátor bez akéhokoľvek ručne udržiavaného zoznamu SKU (Fáza 12: 2140 produktov sa neklasifikuje ručne, klasifikuje sa text dopytu/nazvu podľa opakovane použiteľných fráz). Poradie kontroly zámerne kopíruje existujúcu disciplínu z `RELATED_SUBJECT_ALIASES` (najšpecifickejšie frázy najprv – `"ryzovy ocot"` pred holým `"ryza"`), plus špeciálne pravidlo: `"aku ryzu odporucas na sushi?"` (ryža a sushi ako samostatné slová, nie zložená fráza) sa vyhodnotí rovnako ako `"sushi ryza"` – presne podľa overeného `IntentMapping` záznamu.
+
+**Rollout Stage A (Fáza 16 – shadow/observation mode, zámerne, nie plné nasadenie):** `classify_rice_query()` je zapojené do `/chat` **výhradne na účely logovania** cez nový `log_taxonomy_shadow()` – zapisuje do `taxonomy_shadow.jsonl`, ale **nemení žiadne routovacie rozhodnutie, produkty ani text odpovede**. Overené priamo: identická štruktúra a obsah `/chat` odpovede pred aj po zmene pre viacero ryžových aj neryžových dopytov. Existujúca legacy rice logika (`SPECIAL_PRODUCT_QUERIES["plain_rice"/"sushi_rice"/"rice_vinegar"/"rice_cooker"/"rice_seasoning"/"rice_side"]` zo Sprintu Z.6) zostáva plne funkčná a nedotknutá – Stage B (skutočné nahradenie) je zámerne mimo rozsahu tejto iterácie a vyžaduje najprv porovnanie shadow logov s reálnymi dátami.
+
+**Regresné a kolízne testy (Fáza 21-22):** nový `tests/test_taxonomy.py` (21 testov) – klasifikácia podľa reálnych zákazníckych fráz aj podľa **skutočných názvov produktov** vytiahnutých z `data/products.json` (nie vymyslené príklady), explicitný kolízny test (`test_collision_family_generates_distinct_subfamilies` – všetkých 6 členov kolíznej skupiny musí dostať RÔZNE podrodiny), špecifickosťový test (`ryzovar` musí vyhrať nad `plain_rice` aj v prítomnosti `"sushi ryzu"` v tej istej vete) a `TestShadowModeIntegrity` (čistá funkcia, žiadny vedľajší efekt na `/chat` odpoveď).
+
+**Testy – plný beh:** 403/403 (382 z predošlého behu + 21 nových), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy (proxy 403 tohto vykonávacieho prostredia).
+
+**Ďalší krok (mimo rozsahu tejto iterácie):** Po nazbieraní shadow dát z produkcie (keď bude dostupný prístup) porovnať `taxonomy_shadow.jsonl` voči skutočným `SPECIAL_PRODUCT_QUERIES` rozhodnutiam a `/admin/analytics/no-results`, rozhodnúť o Stage B pre `rice`, a až potom zvážiť druhú rodinu (`rezance`/nudle majú tiež silný katalógový aj `IntentMapping` dôkaz podľa `docs/product-taxonomy-audit.md`).
