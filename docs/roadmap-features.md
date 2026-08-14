@@ -40,7 +40,7 @@ app/autocomplete.py  (nový súbor ~150 riadkov)
 
 main.py
   GET /autocomplete?q=&limit= endpoint (~30 riadkov)
-  cache top questions z question_analytics.jsonl (refresh kΌždých 60s)
+  cache top questions z question_analytics.jsonl (refresh každých 60s)
 ```
 
 ### Výstup
@@ -71,7 +71,7 @@ main.py
 - title × 8, brand × 5, category × 4, description × 1
 - exact match v title: +12
 - availability: +1 (iba tie-break)
-- ~20 ručnùch synonymov pre konkrétne slová
+- ~20 ručných synonymov pre konkrétne slová
 - **Žiadne IDF váhy, žiadne embeddings, žiadne behavioral signals**
 
 ### Čo treba (postupne)
@@ -188,10 +188,10 @@ POST /recommend/basket
 
 ## Feature 6 – Merchandising pravidlá
 
-**Popis:** Pin/hide/boost produkty, sez�2înné kampane, vypredané dole
+**Popis:** Pin/hide/boost produkty, sezónne kampane, vypredané dole
 
 ### Aktuálny stav
-�}iadny rules engine. Edinrý "merchandising": `availability == "in_stock"` → +1 bod.
+Žiadny rules engine. Jediný "merchandising": `availability == "in_stock"` → +1 bod.
 
 ### Čo treba
 ```json
@@ -273,8 +273,7 @@ Widget (`widget.js`, 42K po refaktore) má:
 
 Quick prompts (0.5 dňa) – len widget.js:
 ```javascript
-const QUICK_PROMPTS = ["🍜 Odporüčtdt
-‛ramen", 🌶️ Ďo je gochujang?", "🍱 Bezlepkové produkty"];
+const QUICK_PROMPTS = ["🍜 Odporúčaš ramen?", "🌶️ Čo je gochujang?", "🍱 Bezlepkové produkty"];
 ```
 
 Feedback (0.5 dňa)– widget.js + `/events`:
@@ -309,7 +308,7 @@ fireEvent({event_type: "feedback", rating: +1/-1, session_id})
 | B3 | Recommend endpointy (F5) | 2d | `main.py` + nové route |
 | B4 | Widget klik tracking (F9) | 1d | `widget.js` |
 
-### Sprint C – Search quality (1 týzĔn)
+### Sprint C – Search quality (1 týždeň)
 
 | # | Feature | Čas | Súbory |
 |---|---|---|---|
@@ -318,7 +317,7 @@ fireEvent({event_type: "feedback", rating: +1/-1, session_id})
 | C3 | CZ/EN synonymá (F7b) | 2d | `data/synonyms.json` rozšírenie |
 | C4 | Merchandising rules (F6) | 2d | `app/merchandising.py` (nový) |
 
-### Sprint D – ML & infraštruktúra (2Ϊ�N týždeň)
+### Sprint D – ML & infraštruktúra (2–3 týždne)
 
 | # | Feature | Závislosti | Stav |
 |---|---|---|---|
@@ -869,6 +868,27 @@ Príčina bola bizarná: spúšťač pre `plain_rice` vyžadoval, aby zákazník
 Pri vyšetrovaní si používateľ všimol súvisiaci prípad a požiadal o test: **"Japonske nože, nôž japonsky"**. Potvrdené: rovnaká trieda chyby, iný mechanizmus – tieto dopyty dostali odpoveď z krížového predaja **"japonska_kuchyna"** (sójová omáčka, mirin, dashi, wasabi, sushi ryža) namiesto skutočných nožov, pretože alias "japonsk" sa zhoduje s AKÝMKOĽVEK slovom začínajúcim naň, vrátane kuchynského vybavenia. Overené, že to postihuje celú kategóriu (paličky, taniere, misky, čajníky), nie len nože – opravené všeobecne: keď kuchyňová téma (*_kuchyna) zachytí správu SÚČASNE s konkrétnym kuchynským výrazom, prepadne do bežného vyhľadávania namiesto krížového predaja (rovnaký vzor ako existujúci override pre explicitnú značku tesne nad ním v kaskáde). Skutočná otázka na kuchyňu bez kuchynského výrazu zostáva nedotknutá.
 
 **Overené naživo**: "mate ryzu" → skutočná ryža; "ryzovar mate" → skutočný ryžovar; "japonske noze" → skutočné nože. Plná test sada (312/312), collision audit čistý, 8 nových regresných testov.
+
+---
+
+### Sprint AA – CI pipeline, automatizované audit testy a oprava kódovania (mojibake) v main.py/docs/testoch
+
+Po technickom audite (viď predchádzajúci záznam) používateľ požiadal priamo: *"Potrebujem aby si vykonal, commitol úpravy aby nevznikli tie chyby"*. Zamerané na bezpečné, priamo preventívne položky z auditu, ktoré sa dajú spoľahlivo otestovať a nasadiť bez rizika regresie – väčšie architektonické zmeny (presun na `workflows.py`, rozdelenie `main.py`, oddelenie admin tokenu) zámerne vynechané, popísané na konci.
+
+**1. CI pipeline** (`.github/workflows/ci.yml`, nový) – beží na každý push/PR do `main`: `compileall` (zachytí syntax/kódovacie chyby už pri importe), plná testovacia sada (`pytest tests/test_core.py`), oba existujúce audit skripty (`consistency_audit.py --collisions`, `trust_audit.py`) a `check_deployment.py`. Doteraz repozitár nemal žiadnu ochrannú sieť – dokonca aj druhý, paralelný Claude Code session pracujúci na tomto repozitári (viditeľný napr. v `Claude-Session` trailer prijatej záplaty pre product advice) mohol commitnúť čokoľvek bez kontroly. Pridaný `requirements-dev.txt` (`-r requirements.txt` + `pytest`), keďže pytest doteraz nebol v žiadnom trackovanom requirements súbore.
+
+**2. Audit skripty zapojené do bežného `pytest` behu** – `scripts/consistency_audit.py` a `scripts/trust_audit.py` doteraz existovali len ako standalone skripty spúšťané ručne pred commitom. Pridané 3 nové testy do `tests/test_core.py` (`test_audit_no_marker_alias_collisions`, `test_audit_no_empty_replacement_alternatives`, `test_audit_no_pii_leak_in_redaction`), ktoré volajú `check_collisions()`/`check_empty_alternatives()`/`check_pii_leak()` priamo a assertujú prázdny výsledok – teraz bežia automaticky pri každom `pytest`. Zámerne NEpridané ako hard gate: declension-robustness checky (`check_faq_declensions`, `check_recipe_declensions`) – ich vlastný docstring hovorí, že sú to "candidate generators, not a verdict" vyžadujúce ručnú triáž ako pri Sprint P, nie automatické zlyhanie buildu.
+
+**3. Vedľajší nález – reálna existujúca chyba kódovania (mojibake)**: pri lokálnom overení nového CI kroku (`check_deployment.py`, kontroluje 5 konkrétnych Unicode kódových bodov typických pre CP1250/UTF-8 mojibake vo všetkých textových súboroch) skript zlyhal na 3 existujúcich súboroch – teda ide o predošlú, dovtedy nedetegovanú chybu, nie o niečo, čo tento zásah spôsobil. Rozšíreným allowlist-based skenom (namiesto pevného zoznamu 5 znakov) sa našli aj ďalšie prípady, ktoré pôvodný skript prehliadol (napr. slovo "týždeň" s jedným písmenom nahradeným za U+0114) – pevný zoznam markerov v `check_deployment.py` je teda neúplný a stojí za rozšírenie v budúcnosti.
+
+Nájdené a opravené (byte-presný patch, zachované CRLF):
+- `app/main.py` – slová "názov" a "Poznámka" mali písmeno "á" nahradené dvojicou nesprávnych znakov (klasická CP1250-vs-UTF-8 mojibake, kde UTF-8 bajty pre "á" boli preinterpretované ako CP1250); alias pre onigiri používal poľské "ż" namiesto slovenského "ž"; a najdôležitejšie – **slovo "alergénoch" malo "é" nahradené za "è" priamo v zákazníckej správe o alergénoch** (`allergen_term in ("alergeny","alerginy")` vetva) – toto jediné z nálezov sa reálne zobrazovalo zákazníkom.
+- `docs/roadmap-features.md` – 7 miest (napr. "sezónne kampane", "Žiadny rules engine. Jediný...", "týždeň"), všetko len v dokumentácii, žiadny dopad na produkciu.
+- `tests/test_integration.py` – 1 miesto, dekoratívny komentár, bez dopadu.
+
+**Overené**: `check_deployment.py` prechádza (exit 0); `compileall app scripts` bez chýb; plná sada 315/315 passed (312 pôvodných + 3 nové audit testy), 0 volaní na OpenAI (celý beh je offline); `consistency_audit.py --collisions` čistý.
+
+**Vedome nedodané v tomto zásahu** (z auditu, vyššie riziko regresie, potrebná samostatná diskusia): presun `/chat` na existujúci `app/workflows.py` (postavený a otestovaný, ale nepoužívaný), rozdelenie `app/main.py` (8270 riadkov, ~222 funkcií) na moduly, oddelenie admin tokenu od hlavnej konfigurácie.
 
 ---
 
