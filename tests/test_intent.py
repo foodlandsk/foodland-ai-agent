@@ -51,6 +51,7 @@ KNOWN_LEGACY_INTENTS_IN_MAIN = (
     "product_advice",
     "related_products",
     "product_search",
+    "category_discovery",
 )
 
 
@@ -99,6 +100,7 @@ class TestLegacyIntentMap:
         ("product_advice", "product_advice"),
         ("related_products", "cross_sell"),
         ("product_search", "product_search"),
+        ("category_discovery", "category_discovery"),
     ])
     def test_specific_mappings(self, legacy, expected):
         assert map_legacy_intent(legacy) == expected

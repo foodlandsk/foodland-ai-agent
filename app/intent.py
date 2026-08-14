@@ -61,6 +61,7 @@ _DEFAULT_REQUESTED_OUTPUT: dict[str, str] = {
     "recipe_only": "recipe",
     "recipe_to_products": "shopping_list",
     "product_comparison": "comparison",
+    "category_discovery": "answer",
 }
 
 # Compatibility adapter: maps the legacy intent strings currently produced
@@ -80,6 +81,7 @@ LEGACY_INTENT_MAP: dict[str, str] = {
     "product_advice": "product_advice",
     "related_products": "cross_sell",
     "product_search": "product_search",
+    "category_discovery": "category_discovery",
 }
 
 # Legacy intent strings whose mapping above is a confident, deterministic

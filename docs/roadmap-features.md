@@ -1015,3 +1015,25 @@ Tieto tri zistenia sú reálnym kandidátom na V2.2/V2.3 (product search routing
 **Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy (proxy 403 tohto vykonávacieho prostredia).
 
 **Architektonické pozorovanie pre V2.6:** Táto oprava rieši jeden konkrétny falošný pozitívny prípad, nie samotný mechanizmus. `contextualize_message()` bezpodmienečne vkladá `diet_terms` do každej nasledujúcej správy bez kontroly relevancie (na rozdiel od `last_top_product_title`, ktorý sa pripája len pri `is_context_followup()`). Akékoľvek budúce falošné pozitívum v `detect_diet_terms()` alebo `detect_memory_subjects()` bude mať rovnaký rozsah škody – kontaminuje celý zvyšok konverzácie, nie len jednu odpoveď. Skutočná V2.6 štrukturálna oprava (aplikovať pamäť až po vyhodnotení explicitného zámeru, nie pred ním, podľa V2 sekcie 12) by toto riziko odstránila systematicky.
+
+---
+
+### Sprint V2.1.6 – Prvý detektor pre `category_discovery` ("aku kategoriu produktov mate?")
+
+**Zákaznícky problém:** Všeobecné otázky o sortimente ("aku kategoriu produktov mate?", "aky sortiment mate?", "ake znacky predavate?") nemali žiadny dedikovaný handler. V praxi to viedlo k dvom zlým výsledkom, oba overené priamo cez `chat()`: buď prázdna odpoveď `"Našla som súvisiace informácie vo Foodland poradkyni."` bez produktov (dead-end), alebo – horšie – `cached_search_products()` vždy nájde NEJAKÚ zhodu cez token/fuzzy matching aj pre výplňové slová, takže napr. "ake znacky predavate?" sebavedomo vrátilo Arašidy Tom Yum, Pocky tyčinky a Arašidy vo wasabi ako "najrelevantnejšie produkty" – rovnaká trieda dôveryhodnostného problému ako mimo-doménová otázka zo Sprintu V2.1.3.
+
+**Architektonická príčina:** `category_discovery` je kanonický V2 zámer (existuje v `app/intent.py` `PRIMARY_INTENTS` už od V2.1), ale v legacy `chat()` kaskáde nemal vôbec zodpovedajúci detektor – zdokumentovaná medzera vo fáze V2.4.
+
+**Zvažované, ale zamietnuté:** Naivná verzia by mohla generovať zoznam kategórií priamo z `product_type` breadcrumb dát bez filtrovania – overené, že to obsahuje 127 rôznych "top-level" segmentov vrátane prierezových dietetických/marketingových značiek ("Vegánske potraviny", "Zdravé potraviny", "Super potraviny", "Darčekové sety"...), ktoré by pôsobili ako nezmyselný zoznam, nie skutočný prehľad oddelení. Namiesto vymýšľania kurátorovaného zoznamu (riziko halucinácie/neoverenej domény) bol použitý **skutočný, dátami podložený** prístup: top 8 kategórií podľa počtu produktov, s odfiltrovanou malou, explicitne zdokumentovanou množinou prierezových značiek.
+
+**Reálna kolízia nájdená a vyriešená pred nasadením:** Substring-based marker (`"aky tovar mate"` ako `in` kontrola) by nesprávne zachytil dlhšie, konkrétne dopyty ako `"aky tovar mate na sushi?"` alebo `"co mate v ponuke na sushi"`. Namiesto substring zhody použitá **presná zhoda celej správy** (po normalizácii a odstránení koncovej interpunkcie) – overené kolízne testy aj `scripts/consistency_audit.py --collisions`.
+
+**V2 vylepšenie (implementované):** `is_category_discovery_query()` (presná zhoda 6 fráz), `top_product_categories()` (top-N reálnych kategórií z `product_type`, filtrované cez `CATEGORY_DISCOVERY_NOISE`), `category_discovery_answer()` (grounded odpoveď s reálnymi názvami kategórií). Zapojené do `chat()` ako nová vetva hneď za `out_of_domain` (rovnaký vzor), s `intent="category_discovery"` namapovaným priamo na kanonický zámer v `app/intent.py`.
+
+**Migrované správanie:** Všetkých 6 pokrytých fráz teraz vracia `intent: category_discovery` s odpoveďou typu *"Foodland.sk ponúka široký sortiment naprieč mnohými kategóriami, napríklad: Misy a misky, Vonné tyčinky, Nealkoholické nápoje... Napíšte mi, čo konkrétne hľadáte."* – žiadne vymyslené ani irelevantné produkty. Zámerne mimo rozsahu: `"co mate v ponuke?"` (príliš kolízne s "čo mate v ponuke na X"), `"co vsetko mate skladom?"` (existujúca `best_direct_faq_answer()` už dáva lepšiu, dostupnostne zameranú odpoveď pre túto konkrétnu formuláciu, keby bola volaná – zostáva ako budúci kandidát, nie súčasť tejto opravy).
+
+**Regresné testy:** `test_category_discovery_detects_generic_inventory_questions` (6 pozitívnych fráz + plný `chat()` beh overujúci `intent`, žiadne produkty, a že odpoveď skutočne obsahuje reálny názov kategórie z katalógu) + `test_category_discovery_does_not_hijack_specific_product_questions` (6 kontrolných prípadov – konkrétne produktové/kuchynné dopyty musia zostať nedotknuté) + `test_top_product_categories_excludes_dietary_marketing_noise` (prierezové značky nesmú byť v zozname).
+
+**Testy – plný beh:** 380/380 (377 z predošlého behu + 3 nové), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` (empty-alternatives aj pii-leak) čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy (proxy 403 tohto vykonávacieho prostredia, nie chyba Foodland backendu/Railway deploymentu).
