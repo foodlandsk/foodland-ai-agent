@@ -206,10 +206,25 @@ každom behu.
 
 # Sprint V2.1 — Feed Foundation, Product Normalization & Taxonomy Engine
 
-Dátum tohto behu: 2026-08-14. Zdroj: aktuálny live feed
-(`googleMerchant_sk_export.xml`, stiahnutý cez `app/import_feed.py` do
-`data/products.json` bezprostredne pred týmto behom) — **2 325 produktov**
-v čase tohto behu. Nepovažuj toto číslo za fixné.
+Dátum tohto behu: 2026-08-14. Zdroj: committed `data/products.json`
+(**2 140 produktov**) — rovnaký snapshot, aký používa existujúca pinned
+testovacia sada (`tests/test_core.py`). Nepovažuj toto číslo za fixné.
+
+**Poznámka k dátam:** počas tejto iterácie bol `data/products.json`
+krátko obnovený zo živého feedu (2 325 produktov, overené priamo z
+`app/import_feed.py` — živý feed bol z tohto prostredia dostupný), no
+tento refresh spôsobil **3 reálne test failures** v CI
+(`test_search_autocomplete_boosts_favorite_brand`,
+`test_replacement_bare_brand_resolves_to_its_only_sauce_category`,
+`test_replacement_bare_brand_survives_contextualize_message_pollution`)
+– tieto testy sú zámerne napevno naviazané na presné zloženie tejto
+konkrétnej fixture (napr. "Kikkoman predáva iba sójovú omáčku" prestalo
+platiť, keď živý feed pridal "Kimchi základ KIKKOMAN"). Príčina bola
+potvrdená ako **rozdiel v dátach, nie regresia V2.1 kódu** – opravené
+vrátením `data/products.json` na pôvodný commitnutý stav namiesto úpravy
+testov. Produkčný `refresh_feed()` naďalej vždy načítava skutočný živý
+feed (pozri Fáza "Integrácia do refresh pipeline" nižšie) – iba tento
+checked-in dev/test fixture súbor zostáva zámerne pinned.
 
 ## Feed
 
@@ -288,26 +303,29 @@ Všetkých 6 produktov v jednej kolíznej skupine ("ryz\*" koreň) dostáva
 šesť odlišných `canonical_family` hodnôt — presne mandatory invariant zo
 zadania tohto sprintu.
 
-### Pokrytie (V2.1 engine, `--taxonomy-engine`, beh na 2 325 produktoch)
+### Pokrytie (V2.1 engine, `--taxonomy-engine`, beh na 2 140 produktoch)
 
 ```
-total_products        = 2325
-classified_products   = 166
-taxonomy_coverage      = 0.0714   (rice pilot only - zámerne úzke, nie odhad)
-confidence_counts      = HIGH=111  MEDIUM=45  LOW=10  UNKNOWN=2159
+total_products        = 2140
+classified_products   = 155
+taxonomy_coverage      = 0.0724   (rice pilot only - zámerne úzke, nie odhad)
+confidence_counts      = HIGH=108  MEDIUM=39  LOW=8  UNKNOWN=1985
 canonical_family_count    = 7   (rice, noodles, vinegar, flour, rice_paper, kitchenware, beverages)
 canonical_subfamily_count = 8
 
-families:      rice=79  noodles=46  vinegar=12  beverages=10  kitchenware=7  rice_paper=7  flour=5
-subfamilies:   plain_rice=68  rice_noodles=46  rice_vinegar=12  sushi_rice=11
-               rice_wine=8  rice_cooker=7  rice_flour=5  rice_drink=2
+families:      rice=78  noodles=39  vinegar=10  beverages=8  rice_paper=8  kitchenware=7  flour=5
+subfamilies:   plain_rice=66  rice_noodles=39  sushi_rice=12  rice_vinegar=10
+               rice_cooker=7  rice_wine=6  rice_flour=5  rice_drink=2
 ```
 
-Nízke celkové `taxonomy_coverage` (7 %) je OČAKÁVANÉ a správne — rice je
+Nízke celkové `taxonomy_coverage` (~7 %) je OČAKÁVANÉ a správne — rice je
 zámerne jediná implementovaná pilotná rodina (sekcia "Rice pilot" tohto
-sprintu), nie odhad celého katalógu. Zvyšných 2 159 produktov má
+sprintu), nie odhad celého katalógu. Zvyšných 1 985 produktov má
 `confidence=UNKNOWN`, `canonical_family=None` a zostáva plne dostupných
-legacy vyhľadávaniu (žiadny produkt sa nestráca).
+legacy vyhľadávaniu (žiadny produkt sa nestráca). Na aktuálnom živom
+feede (2 325 produktov, overené priamo) sú čísla proporčne rovnaké
+(`classified_products=166`, `taxonomy_coverage=0.0714`, rovnakých
+7 rodín/8 podrodín) — pozri poznámku k dátam vyššie.
 
 ## Shadow interpretation (`--shadow-interpretation`, 8 povinných dopytov)
 
@@ -328,6 +346,8 @@ správne — top-5 legacy výsledok pre každý dopyt sa mapuje na presne JEDNU
 "ryžovar"         -> kitchenware/rice_cooker (5)
 ```
 
+(beh na committed `data/products.json`, 2 140 produktov; rovnaký nulovo-kontaminovaný výsledok potvrdený aj na živom feede, 2 325 produktov)
+
 Toto NEMENÍ žiadne `/chat` správanie (žiadny customer-facing kód číta
 `product_taxonomy_index`) — demonštruje len, že štruktúrovaná
 reprezentácia existuje a je pripravená pre budúce V2.2 retrieval.
@@ -338,12 +358,13 @@ reprezentácia existuje a je pripravená pre budúce V2.2 retrieval.
 zistenia sa reportujú, produkty sa NIKDY automaticky nezlučujú len na
 základe zhodného GTIN (Foodland product id zostáva primárna identita).
 
-Na aktuálnom live feede (2 325 produktov) nájdené **4 skupiny** so
-zdieľaným GTIN medzi dvoma odlišnými Foodland product id (napr.
+Na committed `data/products.json` (2 140 produktov) nájdených **5 skupín**
+so zdieľaným GTIN medzi dvoma odlišnými Foodland product id (napr.
 `FL_10393`/`FL_6472`, `FL_2812`/`FL_3818`) — pravdepodobne varianty
-alebo duplicitné zdrojové záznamy na strane merchant feedu. Nahlásené,
-NEOPRAVENÉ (mimo rozsahu tohto sprintu — oprava zdrojového katalógu nie
-je úloha AI advisora).
+alebo duplicitné zdrojové záznamy na strane merchant feedu (na živom
+feede, 2 325 produktov, 4 skupiny — mierne odlišné zloženie katalógu).
+Nahlásené, NEOPRAVENÉ (mimo rozsahu tohto sprintu — oprava zdrojového
+katalógu nie je úloha AI advisora).
 
 ## Migrácia — čo je shadow, čo je customer-facing
 
