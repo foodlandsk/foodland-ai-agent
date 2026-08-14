@@ -1197,6 +1197,9 @@
       cook_intent: "Recept",
       explain_intent: "Tip",
       replace_intent: "Náhrada",
+      taxonomy_category: "Kategória",
+      question: "Otázka",
+      comparison: "Porovnanie",
     }[type] || "Tip";
   }
 

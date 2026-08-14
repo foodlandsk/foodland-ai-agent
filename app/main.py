@@ -33,6 +33,8 @@ from app.autocomplete import (
     autocomplete_categories,
     autocomplete_products,
     autocomplete_questions,
+    question_suggestions,
+    taxonomy_category_suggestions,
 )
 from app.embeddings import (
     build_product_embeddings,
@@ -80,7 +82,7 @@ from app.search import (
 )
 from app.workflows import products_to_cart_candidates
 from app.intent import build_customer_intent
-from app.taxonomy import classify_rice_query, build_taxonomy_index, taxonomy_coverage
+from app.taxonomy import classify_rice_query, build_taxonomy_index, taxonomy_coverage, build_concept_index
 
 
 logging.basicConfig(
@@ -218,6 +220,7 @@ translation_index: dict[str, dict[str, "Product"]] = {}
 # V2.1 taxonomy foundation (shadow only - not used by legacy search/routing).
 # Rebuilt in lockstep with `products` on every refresh_feed() call.
 product_taxonomy_index = build_taxonomy_index(products)
+taxonomy_concept_index = build_concept_index(product_taxonomy_index)
 rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 event_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 autocomplete_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
@@ -4362,6 +4365,20 @@ def search_autocomplete(
     for item in autocomplete_intent_suggestions(query, profile):
         add_suggestion(item)
 
+    # V2.2 taxonomy-aware suggestions: grounded compound category
+    # concepts (app.taxonomy.build_concept_index) and curated
+    # product-choice questions (data/knowledge.json IntentMapping).
+    # Scored to compete with exact-match products/intents (see
+    # docs/advisor-v2-architecture.md) - never filters UNKNOWN products,
+    # purely additive alongside every existing suggestion source below.
+    for index, item in enumerate(taxonomy_category_suggestions(query, taxonomy_concept_index, 4)):
+        item["score"] = 620 - index * 20 + min(int(item.get("product_count", 0)), 20)
+        add_suggestion(item)
+
+    for index, item in enumerate(question_suggestions(all_knowledge, query, 3)):
+        item["score"] = (580 if item.get("type") == "comparison" else 540) - index * 15
+        add_suggestion(item)
+
     for phrase, replacement in PHRASE_SYNONYMS.items():
         if normalized_query in phrase or normalized_query in replacement or any(token in tokenize(phrase) for token in query_tokens):
             add_suggestion({"type": "synonym", "label": replacement, "query": replacement, "score": 92})
@@ -4528,6 +4545,9 @@ def diverse_autocomplete_items(items, limit: int) -> list[dict]:
         "cook_intent": 1,
         "explain_intent": 1,
         "replace_intent": 1,
+        "taxonomy_category": 4,
+        "question": 2,
+        "comparison": 1,
     }
 
     for item in ordered:
@@ -8480,7 +8500,7 @@ async def feed_refresh_loop(refresh_minutes: int) -> None:
 
 def refresh_feed() -> None:
     """Nacita produkty zo vsetkych jazykovych mutacii feedu (SK/CZ/DE/EN/HU/PL)."""
-    global products, product_snapshot, translation_index, product_taxonomy_index
+    global products, product_snapshot, translation_index, product_taxonomy_index, taxonomy_concept_index
     global last_feed_refresh_at, last_feed_refresh_error
 
     lang_feeds = load_multilang_feeds()
@@ -8505,6 +8525,7 @@ def refresh_feed() -> None:
     product_snapshot = build_product_snapshot(new_products)
     translation_index = new_translation_index
     product_taxonomy_index = new_taxonomy_index
+    taxonomy_concept_index = build_concept_index(new_taxonomy_index)
     clear_product_search_cache()
     last_feed_refresh_at = int(time.time())
     last_feed_refresh_error = None

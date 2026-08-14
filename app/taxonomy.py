@@ -197,6 +197,7 @@ class FamilyRule:
     category_terms: tuple[str, ...] = ()  # normalized; matched against category_memberships (+ aliases)
     title_phrases: tuple[str, ...] = ()  # normalized; matched as substrings of the normalized title
     attributes: tuple[tuple[str, str], ...] = ()
+    display_label: str = ""  # Slovak concept name (V2.2 autocomplete), e.g. "Jazmínová ryža"
 
 
 # Rice pilot family (Sprint V2.1) - every rule grounded in real
@@ -213,6 +214,7 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         category_terms=("ryzovary",),
         title_phrases=("ryzovar", "hrniec na ryzu"),
         attributes=(("object_type", "rice_cooker"),),
+        display_label="Ryžovar",
     ),
     FamilyRule(
         rule_id="rice_paper",
@@ -221,6 +223,7 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         confidence="HIGH",
         category_terms=("ryzovy papier",),
         title_phrases=("ryzovy papier",),
+        display_label="Ryžový papier",
     ),
     FamilyRule(
         rule_id="rice_noodles",
@@ -230,6 +233,7 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         category_terms=("ryzove rezance",),
         title_phrases=("ryzove rezance", "ryzovymi rezancami", "ryzovych rezancov"),
         attributes=(("ingredient_base", "rice"),),
+        display_label="Ryžové rezance",
     ),
     FamilyRule(
         rule_id="rice_vinegar",
@@ -238,6 +242,7 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         confidence="HIGH",
         title_phrases=("ryzovy ocot",),
         attributes=(("source", "rice"),),
+        display_label="Ryžový ocot",
     ),
     FamilyRule(
         rule_id="rice_flour",
@@ -246,6 +251,7 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         confidence="HIGH",
         title_phrases=("ryzova muka", "muka z ryze", "muka z lepkavej ryze"),
         attributes=(("ingredient_base", "rice"),),
+        display_label="Ryžová múka",
     ),
     FamilyRule(
         rule_id="rice_wine",
@@ -254,6 +260,7 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         confidence="MEDIUM",
         title_phrases=("ryzove vino", "makgeolli"),
         attributes=(("source", "rice"),),
+        display_label="Ryžové víno",
     ),
     FamilyRule(
         rule_id="rice_drink",
@@ -262,6 +269,7 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         confidence="MEDIUM",
         title_phrases=("ryzovy napoj",),
         attributes=(("source", "rice"),),
+        display_label="Ryžový nápoj",
     ),
     FamilyRule(
         rule_id="sushi_rice",
@@ -271,6 +279,7 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         category_terms=("sushi_rice_category",),
         title_phrases=("susi ryza", "ryza na susi", "sushi ryza"),
         attributes=(("use_case", "sushi"),),
+        display_label="Ryža na sushi",
     ),
     FamilyRule(
         rule_id="jasmine_rice",
@@ -280,6 +289,7 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         category_terms=("jazminova ryza",),
         title_phrases=("jazminova ryza",),
         attributes=(("variety", "jasmine"),),
+        display_label="Jazmínová ryža",
     ),
     FamilyRule(
         rule_id="basmati_rice",
@@ -289,6 +299,7 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         category_terms=("basmati ryza",),
         title_phrases=("basmati ryza",),
         attributes=(("variety", "basmati"),),
+        display_label="Basmati ryža",
     ),
     FamilyRule(
         rule_id="glutinous_rice",
@@ -297,6 +308,7 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         confidence="HIGH",
         title_phrases=("lepkava ryza", "lepkavej ryze", "lepkavu ryzu"),
         attributes=(("variety", "glutinous"),),
+        display_label="Lepkavá ryža",
     ),
     FamilyRule(
         rule_id="plain_rice",
@@ -305,8 +317,11 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         confidence="HIGH",
         category_terms=("ryza",),
         title_phrases=("ryza", "ryzu", "ryze", "ryzou", "ryzi"),
+        display_label="Ryža",
     ),
 ]
+
+FAMILY_DEFINITIONS_BY_ID: dict[str, FamilyRule] = {rule.rule_id: rule for rule in FAMILY_DEFINITIONS}
 
 
 @dataclass(slots=True)
@@ -314,6 +329,7 @@ class ProductTaxonomy:
     product_id: str
     canonical_family: str | None = None
     canonical_subfamily: str | None = None
+    concept_id: str = ""  # FamilyRule.rule_id that matched (V2.2 autocomplete grouping); "" if UNKNOWN
     attributes: dict[str, str] = field(default_factory=dict)
     dietary_facets: list[str] = field(default_factory=list)
     cuisine_facets: list[str] = field(default_factory=list)
@@ -382,6 +398,7 @@ def classify_product(product: Product) -> ProductTaxonomy:
             product_id=product.id,
             canonical_family=rule.family,
             canonical_subfamily=rule.subfamily,
+            concept_id=rule.rule_id,
             attributes=dict(rule.attributes),
             dietary_facets=dietary_facets,
             cuisine_facets=[],
@@ -469,3 +486,41 @@ def taxonomy_coverage(index: dict[str, ProductTaxonomy]) -> dict:
         "families": families,
         "subfamilies": subfamilies,
     }
+
+
+# Confidence levels grounded enough to proactively suggest to a customer
+# (Sprint V2.2 autocomplete). LOW is excluded - too weak a signal to show
+# as a semantic concept, even though it still counts toward taxonomy_coverage.
+_SUGGESTABLE_CONFIDENCE = {"HIGH", "MEDIUM"}
+
+
+def build_concept_index(index: dict[str, ProductTaxonomy]) -> list[dict]:
+    """Precomputed, compact list of semantic concepts for autocomplete
+    (Sprint V2.2) - one entry per FamilyRule that actually has current
+    catalog evidence, with a real product count. Rebuilt alongside
+    build_taxonomy_index() on every feed refresh (docs/advisor-v2-architecture.md).
+
+    Deliberately grouped by `concept_id` (the FamilyRule that matched),
+    not by (family, subfamily) alone - two rules can share a subfamily
+    (e.g. jasmine_rice / basmati_rice both -> rice/plain_rice) but are
+    still distinct customer-facing concepts.
+    """
+    counts: dict[str, int] = {}
+    for tax in index.values():
+        if tax.concept_id and tax.confidence in _SUGGESTABLE_CONFIDENCE:
+            counts[tax.concept_id] = counts.get(tax.concept_id, 0) + 1
+
+    concepts: list[dict] = []
+    for concept_id, count in counts.items():
+        rule = FAMILY_DEFINITIONS_BY_ID.get(concept_id)
+        if rule is None or not rule.display_label:
+            continue
+        concepts.append({
+            "concept_id": concept_id,
+            "label": rule.display_label,
+            "family": rule.family,
+            "subfamily": rule.subfamily,
+            "attributes": dict(rule.attributes),
+            "product_count": count,
+        })
+    return concepts

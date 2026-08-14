@@ -29,6 +29,8 @@ from app.taxonomy import (
     RICE_SUBFAMILY_CONFIDENCE,
     TaxonomyMatch,
     ProductTaxonomy,
+    FAMILY_DEFINITIONS,
+    build_concept_index,
     build_taxonomy_index,
     classify_product,
     classify_rice_query,
@@ -383,3 +385,58 @@ class TestTaxonomyCoverage:
         assert stats["classified_products"] == 1
         assert stats["taxonomy_coverage"] == 0.5
         assert stats["families"]["rice"] == 1
+
+
+class TestConceptIndex:
+    """Sprint V2.2 autocomplete: app.taxonomy.build_concept_index()."""
+
+    def test_every_rule_has_a_display_label(self):
+        for rule in FAMILY_DEFINITIONS:
+            assert rule.display_label, f"{rule.rule_id} is missing display_label"
+
+    def test_classify_product_sets_concept_id_on_match(self):
+        p = make_product(title="Basmati ryža - LAILA - 1 kg", product_type="Basmati ryža > Ryža")
+        tax = classify_product(p)
+        assert tax.concept_id == "basmati_rice"
+
+    def test_classify_product_leaves_concept_id_empty_on_unknown(self):
+        p = make_product(title="Gochujang pasta 500g", product_type="")
+        tax = classify_product(p)
+        assert tax.concept_id == ""
+
+    def test_concept_index_groups_and_counts_real_products(self):
+        products = [
+            make_product(id="FL_1", title="Basmati ryža A", product_type="Basmati ryža > Ryža"),
+            make_product(id="FL_2", title="Basmati ryža B", product_type="Basmati ryža > Ryža"),
+            make_product(id="FL_3", title="Jazmínová ryža C", product_type="Jazmínová ryža > Ryža"),
+        ]
+        index = build_taxonomy_index(products)
+        concepts = build_concept_index(index)
+        by_id = {c["concept_id"]: c for c in concepts}
+        assert by_id["basmati_rice"]["product_count"] == 2
+        assert by_id["basmati_rice"]["label"] == "Basmati ryža"
+        assert by_id["jasmine_rice"]["product_count"] == 1
+
+    def test_concept_index_excludes_low_confidence(self):
+        # rice_wine/rice_drink rules only match via title (no category_terms),
+        # so their real confidence is downgraded HIGH->MEDIUM base "MEDIUM"->LOW -
+        # LOW must never surface as a proactive suggestion concept.
+        products = [make_product(id="FL_1", title="Kórejský ryžový nápoj Woongjin 500ml", product_type="Nealkoholické nápoje")]
+        index = build_taxonomy_index(products)
+        concepts = build_concept_index(index)
+        assert not any(c["concept_id"] == "rice_drink" for c in concepts)
+
+    def test_concept_index_excludes_unknown_products(self):
+        products = [make_product(id="FL_1", title="Gochujang pasta 500g", product_type="")]
+        index = build_taxonomy_index(products)
+        concepts = build_concept_index(index)
+        assert concepts == []
+
+    def test_concept_index_attributes_come_from_the_rule(self):
+        products = [make_product(id="FL_1", title="Jazmínová ryža X", product_type="Jazmínová ryža > Ryža")]
+        index = build_taxonomy_index(products)
+        concepts = build_concept_index(index)
+        jasmine = next(c for c in concepts if c["concept_id"] == "jasmine_rice")
+        assert jasmine["attributes"] == {"variety": "jasmine"}
+        assert jasmine["family"] == "rice"
+        assert jasmine["subfamily"] == "plain_rice"

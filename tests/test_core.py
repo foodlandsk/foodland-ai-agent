@@ -1376,6 +1376,97 @@ class TestSearchProducts:
         assert "jongga" in nrm(first_product.get("brand", "") + " " + first_product["label"])
 
 
+class TestTaxonomyAwareAutocomplete:
+    """Sprint V2.2: taxonomy-grounded category/question suggestions wired
+    into main.search_autocomplete(), against the real committed catalog
+    (data/products.json) via the `products`/`knowledge` fixtures - same
+    fixtures TestSearchProducts uses above."""
+
+    def test_broad_rice_query_returns_taxonomy_category_suggestions(self, products, knowledge):
+        suggestions = main.search_autocomplete(products, knowledge, "ryza", 8, {})
+        category_labels = {s["label"] for s in suggestions if s["type"] == "taxonomy_category"}
+        assert category_labels
+        assert category_labels <= {"Ryža", "Jazmínová ryža", "Basmati ryža", "Ryža na sushi", "Lepkavá ryža"}
+
+    def test_rice_collision_families_excluded_from_broad_rice_query(self, products, knowledge):
+        # Section 13/36 invariant, at the wired search_autocomplete() level:
+        # "ryza" must never surface rice noodles/vinegar/paper/cooker as a
+        # taxonomy_category suggestion.
+        suggestions = main.search_autocomplete(products, knowledge, "ryza", 8, {})
+        category_labels = {s["label"] for s in suggestions if s["type"] == "taxonomy_category"}
+        assert not category_labels & {"Ryžové rezance", "Ryžový ocot", "Ryžový papier", "Ryžovar"}
+
+    def test_ryzov_prefix_surfaces_collision_concepts_not_plain_rice(self, products, knowledge):
+        suggestions = main.search_autocomplete(products, knowledge, "ryzov", 8, {})
+        category_labels = {s["label"] for s in suggestions if s["type"] == "taxonomy_category"}
+        assert category_labels & {"Ryžové rezance", "Ryžový ocot", "Ryžový papier", "Ryžovar"}
+        assert "Ryža" not in category_labels
+        assert "Jazmínová ryža" not in category_labels
+
+    def test_comparison_question_for_rozdiel_query(self, products, knowledge):
+        suggestions = main.search_autocomplete(products, knowledge, "rozdiel jazminova basmati", 8, {})
+        comparisons = [s for s in suggestions if s["type"] == "comparison"]
+        assert comparisons
+        assert comparisons[0]["label"] == "Aký je rozdiel medzi jazmínovou a basmati ryžou?"
+        assert comparisons[0]["action"] == "ASK_QUESTION"
+
+    def test_grounded_question_for_aku_ryzu_query(self, products, knowledge):
+        suggestions = main.search_autocomplete(products, knowledge, "aku ryzu", 8, {})
+        questions = [s["label"] for s in suggestions if s["type"] == "question"]
+        assert "Akú ryžu použiť na sushi?" in questions
+
+    def test_unknown_taxonomy_product_still_discoverable(self, products, knowledge):
+        # Mandatory fallback (Section 9/61/77): "Kimchi základ KIKKOMAN" is
+        # taxonomy UNKNOWN (no rice/noodles/etc rule matches it) but must
+        # still surface as a normal product suggestion via legacy search.
+        suggestions = main.search_autocomplete(products, knowledge, "kikko", 8, {})
+        product_labels = [s["label"] for s in suggestions if s["type"] == "product"]
+        assert any("kikkoman" in nrm(label) for label in product_labels)
+        tax = main.product_taxonomy_index.get(
+            next(p.id for p in products if "kimchi" in nrm(p.title) and "kikkoman" in nrm(p.brand or ""))
+        )
+        assert tax is not None
+        assert tax.canonical_family is None
+        assert tax.confidence == "UNKNOWN"
+
+    def test_structured_suggestions_have_action_and_query(self, products, knowledge):
+        suggestions = main.search_autocomplete(products, knowledge, "jazm", 8, {})
+        taxonomy_items = [s for s in suggestions if s["type"] == "taxonomy_category"]
+        assert taxonomy_items
+        for item in taxonomy_items:
+            assert item["action"] == "APPLY_CONSTRAINTS"
+            assert item["constraints"]["family"]
+            assert item["query"]
+
+    def test_personalization_does_not_inject_taxonomy_suggestions(self, products, knowledge):
+        # Section 11/26: personalization may reorder valid candidates, but
+        # must never inject a category/question suggestion that a neutral
+        # profile wouldn't already get for the same query.
+        neutral = main.search_autocomplete(products, knowledge, "kikko", 8, {})
+        profile = {"product_brands": {"JONGGA": 5}, "cuisines": {}, "subjects": {}, "diet_terms": {}, "product_titles": {}}
+        personalized = main.search_autocomplete(products, knowledge, "kikko", 8, profile)
+        assert not any(s["type"] in ("taxonomy_category", "question", "comparison") for s in neutral)
+        assert not any(s["type"] in ("taxonomy_category", "question", "comparison") for s in personalized)
+
+    def test_personalization_does_not_override_explicit_typed_constraints(self, products, knowledge):
+        # A JONGGA-favorite profile must not turn a "basmati" query into a
+        # JONGGA (kimchi brand) suggestion - favorite brand cannot create
+        # an invalid suggestion (Section 11).
+        profile = {"product_brands": {"JONGGA": 5}, "cuisines": {}, "subjects": {}, "diet_terms": {}, "product_titles": {}}
+        suggestions = main.search_autocomplete(products, knowledge, "basmati", 8, profile)
+        assert not any("jongga" in nrm(s.get("label", "")) for s in suggestions)
+        category_labels = {s["label"] for s in suggestions if s["type"] == "taxonomy_category"}
+        assert "Basmati ryža" in category_labels
+
+    def test_specific_package_size_query_ranks_matching_size_first(self, products, knowledge):
+        # Section 53/64: an existing, already-correct behavior - kept here
+        # as a regression guard since V2.2 reorders suggestion sources.
+        suggestions = main.search_autocomplete(products, knowledge, "jazminova 5 kg", 6, {})
+        first_product = next((s for s in suggestions if s["type"] == "product"), None)
+        assert first_product is not None
+        assert "5 kg" in first_product["label"].lower() or "5kg" in nrm(first_product["label"])
+
+
 class TestIntentDetection:
     def test_allergen_arasidy(self):
         assert main.detect_allergen_intent("alergia na arasidy, co mozem kupit?") is not None
@@ -2775,6 +2866,37 @@ class TestSessionMemory:
             main.products = original_products
             main.product_snapshot = original_snapshot
             main.last_feed_refresh_error = None
+
+    def test_refresh_feed_rebuilds_taxonomy_concept_index(self, products, monkeypatch):
+        # V2.2: autocomplete's taxonomy_concept_index must never go stale
+        # after a feed refresh (Section 37) - a product removed from the
+        # new feed must disappear from the concept counts too.
+        basmati_products = [p for p in products if "basmati" in main.normalize(p.title)]
+        assert basmati_products, "fixture must contain at least one basmati rice product"
+        reduced_products = [p for p in products if p.id != basmati_products[0].id]
+
+        original = {
+            name: getattr(main, name)
+            for name in ("products", "product_snapshot", "translation_index",
+                         "product_taxonomy_index", "taxonomy_concept_index",
+                         "last_feed_refresh_at", "last_feed_refresh_error")
+        }
+        try:
+            monkeypatch.setattr(main, "load_multilang_feeds", lambda: {"sk": reduced_products})
+            main.refresh_feed()
+
+            basmati_concept = next(
+                (c for c in main.taxonomy_concept_index if c["concept_id"] == "basmati_rice"), None
+            )
+            original_basmati_concept = next(
+                (c for c in original["taxonomy_concept_index"] if c["concept_id"] == "basmati_rice"), None
+            )
+            assert original_basmati_concept is not None
+            if basmati_concept is not None:
+                assert basmati_concept["product_count"] < original_basmati_concept["product_count"]
+        finally:
+            for name, value in original.items():
+                setattr(main, name, value)
 
     def test_static_files_serve_known_binary_assets(self):
         # app/mei-avatar.png, app/foodland-symbol.png and
