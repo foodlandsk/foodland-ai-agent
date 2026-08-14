@@ -993,3 +993,25 @@ Tieto tri zistenia sú reálnym kandidátom na V2.2/V2.3 (product search routing
 **Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy.
 
 **Poučenie pre ďalšie V2 iterácie:** Každá nová "bezpečná" množina slov (ako `BARE_ALLERGEN_QUESTION_TERMS`) musí byť pred nasadením otestovaná nielen proti známym kontrolným prípadom z danej opravy, ale aj proti **širšiemu synthetic QA vzorku** naprieč inými kategóriami produktov – práve preto V2 loop krok "Measure" beží pred každou diagnózou, nie len raz na začiatku.
+
+---
+
+### Sprint V2.1.5 – Oprava kontaminácie session pamäte porovnávacou otázkou ("pikantnejšie")
+
+**Ako bola nájdená:** Krok "Measure" tejto iterácie spustil širší synthetic QA beh (25 scenárov v jednej konverzácii/session – presne postup, ktorý minule odhalil regresiu so sójovou omáčkou). Tri dopyty neskoro v sekvencii vrátili prázdnu odpoveď bez produktov napriek tomu, že v izolácii fungovali správne: preklep značky (`"mate sojovu omacku kikoman"`), preklep produktu (`"gochuujang"`) a holá značka (`"kikkoman produkty"`) – všetky tri spadli do `intent: related_products` s 0 produktmi namiesto správneho `product_search` s reálnymi výsledkami.
+
+**Príčina – kontaminácia cez session pamäť, nie chyba vo vyhľadávaní samotnom:** Bisekciou (postupné pridávanie predošlých správ do tej istej session) sa zistilo, že stačí JEDNA predošlá správa: `"gochujang vs sriracha, co je pikantnejsie?"` (porovnávacia otázka "ktoré je pikantnejšie"). `detect_diet_terms()` zachytáva holý podreťazec `"pikant"` – ten sa nachádza aj v porovnávacom tvare `"pikantnejsie"` ("pikantnejšie" bez diakritiky), takže táto porovnávacia OTÁZKA sa nesprávne zaznamenala ako trvalá stravovacia preferencia `"pikantne"` do `memory["diet_terms"]`. `contextualize_message()` potom **bezpodmienečne** (nie len pri follow-up otázkach) pripája posledné 2 `diet_terms` na koniec KAŽDEJ nasledujúcej správy v session, ak tam ešte nie sú. Výsledok: `"aku kategoriu produktov mate?"` sa interne zmenilo na `"aku kategoriu produktov mate? pikantne"`, čo `detect_related_subject()` vyhodnotilo ako tému `"medium_spicy"` (s nulovými reálnymi produktovými zhodami), a rovnaký mechanizmus poškodil aj neskoršie dopyty na Kikkoman/gochujang v tej istej konverzácii.
+
+**Oprava:** Vylúčený porovnávací kmeň `"pikantnej"` (spoločný pre pikantnejší/pikantnejšia/pikantnejšie vo všetkých rodoch) z `detect_diet_terms()` detekcie – zostáva `"paliv"`/`"pikant"`/`"chilli"`/`"chili"` pre skutočné vyjadrenia preferencie (`"mam rad pikantne kimchi"`, existujúci a naďalej platný test `test_user_memory_persists_culinary_preferences`).
+
+**Migrované správanie:** Porovnávacie otázky o pikantnosti už nezanechávajú stopu v `diet_terms`. Neskoršie, úplne nesúvisiace dopyty v tej istej konverzácii (preklepy značiek, holé značky, všeobecné kategóriové otázky) sa už nekontaminujú a vrátia reálne, relevantné produkty namiesto prázdnej odpovede.
+
+**Zostávajúce, zámerne NEriešené v tejto iterácii:** `"aku kategoriu produktov mate?"` zostáva slabá odpoveď aj úplne izolovane (bez kontaminácie) – `category_discovery` nemá vlastný detektor vôbec, čo je už zdokumentovaná, samostatná medzera vo `V2.4` v `docs/advisor-v2-architecture.md`, nie súčasť tejto opravy.
+
+**Regresné testy:** `test_diet_terms_does_not_treat_comparison_questions_as_preference` (3 porovnávacie tvary musia byť `[]`, 3 skutočné preferencie musia zostať `["pikantne"]`) + `test_comparison_question_does_not_contaminate_later_unrelated_messages` (end-to-end cez `contextualize_message()` – overuje, že kontaminácia reálne zmizla, nie len že `detect_diet_terms()` vracia iný výsledok v izolácii).
+
+**Testy – plný beh:** 376/376 (374 z predošlého behu + 2 nové), 0 regresií. `scripts/consistency_audit.py --collisions` čisté. `scripts/trust_audit.py` (empty-alternatives aj pii-leak) čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy (proxy 403 tohto vykonávacieho prostredia).
+
+**Architektonické pozorovanie pre V2.6:** Táto oprava rieši jeden konkrétny falošný pozitívny prípad, nie samotný mechanizmus. `contextualize_message()` bezpodmienečne vkladá `diet_terms` do každej nasledujúcej správy bez kontroly relevancie (na rozdiel od `last_top_product_title`, ktorý sa pripája len pri `is_context_followup()`). Akékoľvek budúce falošné pozitívum v `detect_diet_terms()` alebo `detect_memory_subjects()` bude mať rovnaký rozsah škody – kontaminuje celý zvyšok konverzácie, nie len jednu odpoveď. Skutočná V2.6 štrukturálna oprava (aplikovať pamäť až po vyhodnotení explicitného zámeru, nie pred ním, podľa V2 sekcie 12) by toto riziko odstránila systematicky.
