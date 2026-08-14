@@ -24,8 +24,19 @@ jobs:
       - name: Compile check (catches syntax/encoding errors early)
         run: python -m compileall app scripts
 
+      # Deliberately no -k filter here. Local Windows dev runs sometimes
+      # exclude a handful of tests (TestMerchandising, TestEmbeddings,
+      # TestBehavioralRanking, TestFbt, TestUserMemory, TestAdminAnalytics,
+      # test_endpoint_unaffected_without_profile...) because of a
+      # dev-machine-only issue: a broken-ACL pytest tmp dir and a stale
+      # local user_memory.json left over from repeated local runs. Neither
+      # exists on a fresh GitHub Actions checkout, so the full suite is
+      # expected to pass here without any workaround. If a test in this
+      # list ever fails in CI specifically, that is real signal - it means
+      # the issue is NOT actually environment-specific and needs a real
+      # fix, not a new exclusion.
       - name: Full test suite
-        run: pytest tests/test_core.py -q
+        run: pytest tests/ -q
 
       - name: Consistency audit (marker/alias collisions)
         run: python scripts/consistency_audit.py --collisions

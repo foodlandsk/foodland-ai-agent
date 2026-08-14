@@ -18,21 +18,50 @@ Backend vie:
 
 ```text
 app/
-  feed.py           Parser Google Merchant XML feedu
-  search.py         Lokalne produktove vyhladavanie
-  knowledge.py      Knowledge vyhladavanie
-  main.py           FastAPI backend
-  import_feed.py    Import XML feedu do JSON
-  widget.js         Embeddable chat widget
-  widget.html       Demo stranka widgetu
+  main.py               FastAPI backend - /chat routing kaskada, vsetky endpointy
+  feed.py               Parser Google Merchant XML feedu
+  search.py             Lokalne produktove vyhladavanie a ranking
+  knowledge.py          Knowledge vyhladavanie (FAQ, recepty, Products_AI...)
+  grounding.py          Post-hoc kontrola odpovede (URL/ceny) - zapojene do /chat
+  behavioral.py         CTR-based reranking z realnych udalosti (cold-start safe)
+  merchandising.py      Pin/hide/boost/campaign multiplikatory (config zatial prazdny)
+  embeddings.py         Lokalne semanticke vyhladavanie (/search/semantic)
+  autocomplete.py       Napoveda pre /search/autocomplete
+  fbt.py                "Frequently bought together" z realnych kosikov
+  knowledge_builder.py  Zostavenie knowledge.json zo zdrojovych dat
+  workflows.py          Deklaratívna workflow vrstva (detect_workflow/WORKFLOW_CONTRACTS)
+                         - NIE JE zapojena do /chat, pozri docs/workflow-migration-audit.md
+  intent.py             CustomerIntent - V2 kanonicka schema, len pre analytiku (aditivne)
+  taxonomy.py           V2 katalogovo-riadena klasifikacia (zatial shadow-mode, rodina "ryza")
+  import_feed.py        Import XML feedu do JSON
+  widget.js             Embeddable chat widget
+  widget.html           Demo stranka widgetu
 data/
   products.json     Produktovy export
   knowledge.json    Foodland knowledge export
 docs/
   deployment-checklist.md
+  roadmap-features.md          Chronologicky log kazdeho sprintu/opravy
+  workflow-migration-audit.md  Mapa workflows.py -> skutocny /chat
+  advisor-v2-architecture.md   V2 CustomerIntent architektura
+  product-taxonomy-audit.md    V2 taxonomy audit
 scripts/
-  check_deployment.py
+  check_deployment.py     Pred-deploy kontrola (chybajuce subory, mojibake)
+  consistency_audit.py    Kolizie marker/alias skratiek naprie routovacimi tabulkami
+  trust_audit.py          Prazdne alternativy, PII leaky v redakcii
+  taxonomy_audit.py       V2 katalogovo-riadeny audit taxonomie
+tests/
+  test_core.py         Hlavna sada (search, knowledge, grounding, main.py routing)
+  test_integration.py  End-to-end /chat cez mock OpenAI
+  test_intent.py        CustomerIntent/LEGACY_INTENT_MAP
+  test_taxonomy.py      V2 taxonomy klasifikacia
 ```
+
+Poznamka k testom: lokalne (Windows) niektore testy (`TestMerchandising`, `TestEmbeddings`,
+`TestBehavioralRanking`, `TestFbt`, `TestUserMemory`, `TestAdminAnalytics` a pod.) zlyhavaju s
+`PermissionError` na `pytest`-ovom docasnom priecinku - je to specificke pre tento vyvojarsky
+stroj (poskodene opravnenia v `%TEMP%\pytest-of-<user>`), nie realny bug. GitHub Actions CI
+(cisty checkout na kazdy beh) tento problem nema a spusta plnu sadu bez akehokolvek filtra.
 
 ## Lokalne spustenie
 
@@ -264,6 +293,13 @@ python -m compileall app scripts
 ```
 
 Kontrola overi, ze v baliku nie su zle pomenovane root subory, ze existuju deployment subory a ze textove subory neobsahuju typicke mojibake znaky.
+
+## CI
+
+`.github/workflows/ci.yml` bezi na kazdy push/PR do `main`: `compileall`, plna testovacia
+sada (`pytest tests/`), `consistency_audit.py --collisions`, `trust_audit.py` a
+`check_deployment.py`. Bezi bez `-k` filtra - ziadne testy sa v CI nevynechavaju kvoli
+lokalnym problemom tohto vyvojarskeho stroja (pozri poznamku vyssie v sekcii Struktura).
 
 ## Admin reload feedu
 
