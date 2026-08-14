@@ -2535,6 +2535,39 @@ class TestSessionMemory:
 
         assert "bezlepkove" in main.normalize(contextual)
 
+    def test_diet_terms_does_not_treat_comparison_questions_as_preference(self):
+        assert main.detect_diet_terms("gochujang vs sriracha, co je pikantnejsie?") == []
+        assert main.detect_diet_terms("ktora omacka je pikantnejsia?") == []
+        assert main.detect_diet_terms("ktory je pikantnejsi, gochujang alebo sriracha?") == []
+        # Genuine preference statements are unaffected.
+        assert main.detect_diet_terms("mam rad korejske pikantne kimchi") == ["pikantne"]
+        assert main.detect_diet_terms("chcem nieco pikantne") == ["pikantne"]
+        assert main.detect_diet_terms("je to velmi paliv?") == ["pikantne"]
+
+    def test_comparison_question_does_not_contaminate_later_unrelated_messages(self):
+        # Real regression: "gochujang vs sriracha, co je pikantnejsie?" is a
+        # comparison QUESTION, not a stated dietary preference, but
+        # detect_diet_terms() used to match the bare substring "pikant"
+        # inside the comparative "pikantnejsie" and record a "pikantne"
+        # diet term. contextualize_message() then silently injected that
+        # stale term into every later message in the session regardless of
+        # topic, which broke completely unrelated follow-ups: "aku
+        # kategoriu produktov mate?" became "...  pikantne" and matched
+        # detect_related_subject() as "medium_spicy" (zero real products),
+        # and typo/brand lookups like "mate sojovu omacku kikoman" /
+        # "gochuujang" / "kikkoman produkty" lost their real product
+        # matches the same way further into the same session.
+        main.session_memories.clear()
+        key = main.session_memory_key("memory-test-spicy-contamination", "127.0.0.1")
+        memory = main.get_session_memory(key)
+        main.update_session_memory(
+            key, "gochujang vs sriracha, co je pikantnejsie?", "product_advice", [], [], {},
+        )
+
+        assert list(memory["diet_terms"]) == []
+        contextual = main.contextualize_message("mate sojovu omacku kikoman", memory)
+        assert "pikantne" not in main.normalize(contextual)
+
     def test_memory_redacts_contact_details(self):
         redacted = main.redact_memory_text("Moj email je test@example.com a telefon +421 900 123 456")
 

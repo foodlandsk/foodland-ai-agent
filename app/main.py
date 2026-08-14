@@ -3464,7 +3464,16 @@ def detect_diet_terms(text: str) -> list[str]:
         terms.append("vegetarianske")
     if any(marker in normalized_text for marker in ("nepaliv", "jemne", "menej paliv", "nie paliv")):
         terms.append("jemne")
-    if any(marker in normalized_text for marker in ("paliv", "pikant", "chilli", "chili")):
+    # Real regression: "pikant" also matches inside the comparative
+    # form "pikantnejsie/pikantnejsi/pikantnejsia" ("spicier"), which
+    # shows up in comparison QUESTIONS ("gochujang vs sriracha, co je
+    # pikantnejsie?") - not a stated preference. This wrongly-detected
+    # diet term then got silently injected into every later message in
+    # the session via contextualize_message(), corrupting completely
+    # unrelated follow-up queries. Excluded via the shared "pikantnej"
+    # comparative stem; genuine preference statements like "pikantne"
+    # (positive form, e.g. "mam rad pikantne kimchi") are unaffected.
+    if any(marker in normalized_text for marker in ("paliv", "pikant", "chilli", "chili")) and "pikantnej" not in normalized_text:
         terms.append("pikantne")
     return terms
 
