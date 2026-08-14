@@ -1332,6 +1332,50 @@ class TestIntentDetection:
         term = main.detect_allergen_intent("mam celiakiu, bezlepkove produkty")
         assert term == "lepok"
 
+    def test_bare_allergen_question_without_safety_framing_word(self):
+        # Real user report: "ma to lepok?" names a real allergen term
+        # (already correctly in ALLERGEN_TERMS) but uses "ma" instead of
+        # any of the explicit safety-framing words in
+        # ALLERGEN_INTENT_MARKERS (alerg/intoler/celiak/obsahuje/vhodn/...)
+        # - it fell through the gate entirely and never reached the
+        # ALLERGEN_TERMS lookup. Fixed via BARE_ALLERGEN_QUESTION_TERMS.
+        assert main.detect_allergen_intent("ma to lepok?") == "lepok"
+        assert main.detect_allergen_intent("je v tom lepok?") == "lepok"
+        assert main.detect_allergen_intent("ma to arasidy?") == "arašidy"
+        assert main.detect_allergen_intent("ma to sezam?") == "sezam"
+
+    def test_bare_allergen_question_control_cases_stay_unaffected(self):
+        # Control cases (roadmap section 27): the bare-question fix above
+        # is deliberately scoped to BARE_ALLERGEN_QUESTION_TERMS, not all of
+        # ALLERGEN_TERMS - "mlieko"/"ryb"/"vajc"/"orech" are also plain
+        # grocery nouns, so a generic product question that happens to
+        # name one of them must not become an allergen-safety answer.
+        assert main.detect_allergen_intent("aku ma chut toto mlieko") is None
+        assert main.detect_allergen_intent("kolko ma gramov toto mlieko") is None
+        assert main.detect_allergen_intent("mate mlieko?") is None
+        assert main.detect_allergen_intent("ma tento produkt orechy?") is None
+        assert main.detect_allergen_intent("chcem kupit orechy") is None
+
+    def test_bare_allergen_question_does_not_hijack_soy_sauce_questions(self):
+        # Real regression: "soja"/"soj" were originally included in
+        # BARE_ALLERGEN_QUESTION_TERMS as supposedly unambiguous allergen
+        # vocabulary, but "sojova omacka" (soy sauce) is one of the store's
+        # flagship product categories, and the extremely common word "je"
+        # ("is") co-occurs with it constantly - so ordinary comparison/price
+        # questions about soy sauce were wrongly answered with a soy allergy
+        # warning instead of the actual answer. Removed from the bare-verb
+        # bypass set entirely (same treatment as mlieko/orech/ryb/vajc).
+        assert main.detect_allergen_intent("co je lepsie svetla alebo tmava sojova omacka?") is None
+        assert main.detect_allergen_intent("aka je cena kikkoman sojovej omacky?") is None
+        assert main.detect_allergen_intent("aka sojova omacka je najlepsia?") is None
+        assert main.detect_allergen_intent("preco je sojova omacka tmava") is None
+        # Explicit allergen-avoidance phrasing for soy must still work -
+        # unaffected, since it goes through the pre-existing
+        # ALLERGEN_INTENT_MARKERS "bez soj"/"bez soja" markers, not the
+        # bare-question bypass this test is about.
+        assert main.detect_allergen_intent("bez soje, co mate?") == "sóju"
+        assert main.detect_allergen_intent("alergia na soju, co mozem kupit?") == "sóju"
+
     def test_allergen_NOT_triggered_for_product_search(self):
         term = main.detect_allergen_intent("mate bezlepkovu sojovu omacku?")
         assert term is None, f"False allergen trigger: {term}"
@@ -1562,6 +1606,58 @@ class TestIntentDetection:
         assert "kimchi" in ramen_titles
         assert "ryzova muka" not in ramen_titles
 
+    def test_tom_kha_shopping_list_reaches_recipe_to_products_without_recept_word(self):
+        # Real user report: "co potrebujem na tom kha gai" is a shopping-list
+        # style question with no "recept"/how-to wording at all (unlike the
+        # pho/kimchi ramen cases above, which both contain "k receptu").
+        # is_recipe_intent() only fired on RECIPE_INTENT_MARKERS or a bare
+        # "recept*" token, so this fell through entirely into the generic
+        # cross-sell branch (intent "related_products") instead of the
+        # recipe_to_products workflow - even though Tom Kha Gai has a real
+        # Foodland recipe card and missing-ingredient mapping. Fixed by
+        # adding "tom kha" to RECIPE_INTENT_MARKERS (same pattern as the
+        # existing vindaloo/karaage entries).
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+
+        for query in ("co potrebujem na tom kha gai", "co kupit na tom kha gai", "tom kha gai"):
+            assert main.is_recipe_intent(main.normalize(query)), query
+            assert main.detect_recipe_subject(query) == "tom_kha", query
+
+        result = main.chat(main.ChatRequest(message="co potrebujem na tom kha gai", limit=8), request)
+        titles = nrm(" | ".join(product.get("title", "") for product in result.get("products", [])))
+
+        assert result.get("intent") == "recipe_to_products"
+        assert any(recipe.get("title", "") == "Tom Kha Gai" for recipe in result.get("recipes", []))
+        assert "kokosove mlieko" in titles
+        assert "galangal" in titles
+
+    def test_tom_kha_fix_does_not_change_neighboring_shopping_list_subjects(self):
+        # Control cases (roadmap section 27): the tom_kha fix above must not
+        # sweep up lookalike dishes that intentionally keep their existing
+        # related_products/cross-sell routing for shopping-list phrasing
+        # without "recept" (tom_yum and kimchi_ramen have their own tuned
+        # *_shopping_core_products() cross-sell functions and are covered by
+        # dedicated tests elsewhere asserting intent == "related_products";
+        # sushi/pho/ramen/kimchi have no dedicated recipe-title marker for
+        # this bare phrasing at all).
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        for query in (
+            "co potrebujem na sushi",
+            "co potrebujem na pho",
+            "co potrebujem na ramen",
+            "co potrebujem na kimchi",
+            "nakupny zoznam na tom yum",
+            "nakupny zoznam na kimchi ramen",
+        ):
+            assert not main.is_recipe_intent(main.normalize(query)), query
+            assert main.detect_recipe_subject(query) is None, query
+
+        tom_yum_result = main.chat(main.ChatRequest(message="nakupny zoznam na tom yum", limit=8), request)
+        assert tom_yum_result.get("intent") == "related_products"
+
+        kimchi_ramen_result = main.chat(main.ChatRequest(message="nakupny zoznam na kimchi ramen", limit=8), request)
+        assert kimchi_ramen_result.get("intent") == "related_products"
+
     def test_related_shopping_list_intent_detected(self):
         assert main.wants_shopping_list("nákupný zoznam na sushi")
         assert main.missing_ingredients_for_subject("sushi", [])
@@ -1760,6 +1856,90 @@ class TestIntentDetection:
 
     def test_NOT_out_of_domain_for_food(self):
         assert not main.detect_out_of_domain("gochujang pasta 500g")
+
+    def test_out_of_domain_entertainment_trivia_and_school(self):
+        # Real user report: "aky je najlepsi film?" (general entertainment
+        # trivia, unrelated to Foodland) got answered with a confident but
+        # nonsensical product search instead of the refusal message.
+        for query in (
+            "aky je najlepsi film?",
+            "aky je najlepsi serial?",
+            "kto je prezident slovenska?",
+            "aka je hlavne mesto francuzska",
+            "pomozes mi s domacou ulohou z matematiky?",
+        ):
+            assert main.detect_out_of_domain(query), query
+
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="aky je najlepsi film?", limit=8), request)
+        assert result.get("intent") == "unknown"
+        assert not result.get("products")
+
+    def test_out_of_domain_fix_does_not_break_asian_snack_cross_sell(self):
+        # Control case (roadmap section 27): the new entertainment markers
+        # are deliberately specific multi-word phrases ("najlepsi film",
+        # not bare "film"/"serial") because those bare words are substrings
+        # of the existing asian_snack cross-sell aliases ("na film",
+        # "k filmu", "na serial", "k serialu") - a real snack request for
+        # movie/series night must keep working.
+        for query in ("co si dat na film", "co si dat k filmu", "nieco na serial"):
+            assert not main.detect_out_of_domain(query), query
+            assert main.detect_related_subject(query) == "asian_snack", query
+
+    def test_category_discovery_detects_generic_inventory_questions(self):
+        # Real user report: "aku kategoriu produktov mate?" (a generic
+        # "what do you sell" question, no specific product/subject named)
+        # either dead-ended with an unhelpful empty answer or, worse,
+        # confidently presented RANDOM irrelevant products as "most
+        # relevant" (plain keyword search always finds *something*).
+        # category_discovery is a canonical V2 intent that had no detector
+        # at all.
+        for query in (
+            "aku kategoriu produktov mate?",
+            "ake kategorie produktov mate?",
+            "co vsetko predavate?",
+            "aky sortiment mate?",
+            "ake znacky predavate?",
+            "aky tovar mate?",
+        ):
+            assert main.is_category_discovery_query(query), query
+
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="aku kategoriu produktov mate?", limit=8), request)
+        assert result.get("intent") == "category_discovery"
+        assert not result.get("products")
+        answer = result.get("answer", "")
+        assert "foodland.sk" in main.normalize(answer)
+        # Grounded in real product_type data, not invented category names.
+        real_categories = set(main.top_product_categories(main.products, 20))
+        assert any(nrm(cat) in nrm(answer) for cat in real_categories)
+
+    def test_category_discovery_does_not_hijack_specific_product_questions(self):
+        # Control cases (roadmap section 27): the detector requires an
+        # EXACT message match (not substring), specifically so a longer,
+        # specific query naming a real product/cuisine is never swept into
+        # the generic category-discovery answer.
+        for query in (
+            "aky tovar mate na sushi?",
+            "co mate v ponuke na sushi",
+            "co vsetko mate na thajsku kuchynu?",
+            "aku ryzu mate",
+            "ake znacky sojovej omacky mate?",
+            "mate ryzu?",
+        ):
+            assert not main.is_category_discovery_query(query), query
+
+    def test_top_product_categories_excludes_dietary_marketing_noise(self):
+        # Cross-cutting attribute tags like "Vegánske potraviny"/"Zdravé
+        # potraviny" are real product_type breadcrumb segments but are not
+        # useful as a "what departments do you have" answer - they should
+        # not appear in the curated category list.
+        categories = main.top_product_categories(main.products, 30)
+        normalized_categories = {nrm(c) for c in categories}
+        assert "veganske potraviny" not in normalized_categories
+        assert "zdrave potraviny" not in normalized_categories
+        assert "bio potraviny" not in normalized_categories
+        assert categories
 
     def test_related_subject_sushi(self):
         subj = main.detect_related_subject("co potrebujem na sushi?")
@@ -2409,6 +2589,79 @@ class TestSessionMemory:
         contextual = main.contextualize_message("ake omacky odporucas?", memory)
 
         assert "bezlepkove" in main.normalize(contextual)
+
+    def test_diet_terms_does_not_treat_comparison_questions_as_preference(self):
+        assert main.detect_diet_terms("gochujang vs sriracha, co je pikantnejsie?") == []
+        assert main.detect_diet_terms("ktora omacka je pikantnejsia?") == []
+        assert main.detect_diet_terms("ktory je pikantnejsi, gochujang alebo sriracha?") == []
+        # Genuine preference statements are unaffected.
+        assert main.detect_diet_terms("mam rad korejske pikantne kimchi") == ["pikantne"]
+        assert main.detect_diet_terms("chcem nieco pikantne") == ["pikantne"]
+        assert main.detect_diet_terms("je to velmi paliv?") == ["pikantne"]
+
+    def test_comparison_question_does_not_contaminate_later_unrelated_messages(self):
+        # Real regression: "gochujang vs sriracha, co je pikantnejsie?" is a
+        # comparison QUESTION, not a stated dietary preference, but
+        # detect_diet_terms() used to match the bare substring "pikant"
+        # inside the comparative "pikantnejsie" and record a "pikantne"
+        # diet term. contextualize_message() then silently injected that
+        # stale term into every later message in the session regardless of
+        # topic, which broke completely unrelated follow-ups: "aku
+        # kategoriu produktov mate?" became "...  pikantne" and matched
+        # detect_related_subject() as "medium_spicy" (zero real products),
+        # and typo/brand lookups like "mate sojovu omacku kikoman" /
+        # "gochuujang" / "kikkoman produkty" lost their real product
+        # matches the same way further into the same session.
+        main.session_memories.clear()
+        key = main.session_memory_key("memory-test-spicy-contamination", "127.0.0.1")
+        memory = main.get_session_memory(key)
+        main.update_session_memory(
+            key, "gochujang vs sriracha, co je pikantnejsie?", "product_advice", [], [], {},
+        )
+
+        assert list(memory["diet_terms"]) == []
+        contextual = main.contextualize_message("mate sojovu omacku kikoman", memory)
+        assert "pikantne" not in main.normalize(contextual)
+
+    def test_diet_terms_does_not_invert_negated_statements(self):
+        # Real regression, second occurrence of the same root-cause class:
+        # "nechcem nic pikantne" ("I don't want anything spicy") was
+        # recorded as a POSITIVE "pikantne" preference - the opposite of
+        # what the customer said. detect_diet_terms() had no negation
+        # awareness at all (not just for the comparative form fixed
+        # earlier). Same risk applies to vegan/vegetarian/bezlepkove: "nie
+        # som vegan" / "nechcem vegansky produkt" must not be recorded as
+        # a vegan preference either.
+        assert main.detect_diet_terms("nechcem nic pikantne") == []
+        assert main.detect_diet_terms("nemam rad pikantne jedla") == []
+        assert main.detect_diet_terms("neznasam pikantne") == []
+        assert main.detect_diet_terms("nechcem vegansky produkt") == []
+        assert main.detect_diet_terms("nie som vegan") == []
+        assert main.detect_diet_terms("nemam rad kokos") == []
+        # Genuine preference statements are unaffected.
+        assert main.detect_diet_terms("mam rad korejske pikantne kimchi") == ["pikantne"]
+        assert main.detect_diet_terms("som vegan") == ["veganske"]
+        assert main.detect_diet_terms("hladam bezlepkove produkty") == ["bezlepkove"]
+
+    def test_negated_spice_statement_does_not_corrupt_later_unrelated_answer(self):
+        # Real regression found via a multi-turn synthetic QA session:
+        # "nechcem nic pikantne" got wrongly recorded as a "pikantne" diet
+        # term, which contextualize_message() then silently injected into
+        # a much later, completely unrelated comparison question ("aky je
+        # rozdiel medzi mirin a rizovym octom?" - what's the difference
+        # between mirin and rice vinegar), corrupting its Products_AI
+        # knowledge lookup into an unrelated, broken answer fragment about
+        # a different product's flavor profile.
+        main.session_memories.clear()
+        key = main.session_memory_key("memory-test-negation-contamination", "127.0.0.1")
+        memory = main.get_session_memory(key)
+        main.update_session_memory(key, "nechcem nic pikantne", "related_products", [], [], {})
+
+        assert list(memory["diet_terms"]) == []
+        contextual = main.contextualize_message(
+            "aky je rozdiel medzi mirin a rizovym octom?", memory,
+        )
+        assert "pikantne" not in main.normalize(contextual)
 
     def test_memory_redacts_contact_details(self):
         redacted = main.redact_memory_text("Moj email je test@example.com a telefon +421 900 123 456")

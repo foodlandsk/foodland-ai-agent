@@ -902,3 +902,213 @@ Codebase je solídna produkčná báza. Najväčšje okamžité príležitosti:
 (. **Synonymický slovníj** – nahradí 20 hardcoded if-blokov
 
 Luigi's Box paritu je realistické dosiahnuť v **3 mesiacoch** pri sústredenom vývoji.
+
+---
+
+### Sprint V2.1 – Foodland AI Advisor V2: CustomerIntent foundation
+
+**Zákaznícky problém / architektonická príčina:** `/chat` v `app/main.py` je jeden ~500-riadkový kaskádový if-blok, ktorý postupne počíta desiatky nezávislých booleovských signálov (`allergen_term`, `is_faq_query`, `recipe_subject`, `already_have_subject`, `special_subject`, `replacement_subject`, `related_subject`, `article_product_subject`, `cross_sell_matches`, `product_advice_context`...) a až na konci z nich odvodí jeden legacy `intent` string. `app/workflows.py` (Sprint 1, staršia analýza) už obsahuje `detect_workflow()`/`WorkflowResult`/`get_contract()` presne pre tento účel, ale nikdy nebol zapojený do `/chat` – reálne sa importuje iba `products_to_cart_candidates()`. Každá nová trieda chýb (Sprint V–Z.6 vyššie) sa doteraz opravovala pridaním ďalšej vetvy/výnimky do tejto kaskády – presne ten vzor "regression-driven spaghetti", ktorému má V2 architektúra zabrániť.
+
+**V2 vylepšenie:** Pridaný `app/intent.py` – nová, samostatná (bez FastAPI/OpenAI závislostí) foundation vrstva:
+- `CustomerIntent` dataclass s kanonickou schémou z V2 architektúry (`primary_intent`, `subject`, `brand`, `category`, `recipe`, `cuisine`, `use_case`, `dietary_constraints`, `allergen_constraints`, `customer_has`, `requested_output`, `language`, `confidence`, `original_message`).
+- `PRIMARY_INTENTS` – 15 kanonických zámerov z V2 návrhu (`product_search`, `product_advice`, `product_comparison`, `category_discovery`, `recipe_only`, `recipe_to_products`, `replacement`, `cross_sell`, `product_information`, `allergen_safety`, `faq`, `availability_or_price`, `conversation_followup`, `general_culinary`, `out_of_domain`).
+- `LEGACY_INTENT_MAP` + `map_legacy_intent()` – **compatibility adapter**, ktorý mapuje všetkých 11 legacy intent stringov, ktoré `/chat` reálne produkuje (`missing_composition→faq`, `allergen_safety→allergen_safety`, `faq→faq`, `recipe→recipe_only`, `recipe_to_products→recipe_to_products`, `unknown→out_of_domain`, `article_products→product_information`, `replacement_products→replacement`, `product_advice→product_advice`, `related_products→cross_sell`, `product_search→product_search`), s bezpečným fallbackom na `product_search` pre čokoľvek nezmapované.
+- `build_customer_intent()` – čistá funkcia, ktorá poskladá `CustomerIntent` z **už vypočítaných** legacy signálov (nepridáva žiadnu novú NLU logiku, iba prenáša to, čo kaskáda už zistila).
+
+**Migrované správanie:** `/chat` teraz na 7 miestach (všetky `log_question()` volania – missing_composition, allergen_safety, faq, random recipe, recipe_subject vetva, out_of_domain, hlavná product-search vetva) postaví `CustomerIntent` a zaloguje jeho `primary_intent`/`subject` do `question_analytics.jsonl` (nové, voliteľné polia s defaultom `""` – existujúci čitatelia logu nie sú ovplyvnení). **Žiadna existujúca routovacia vetva, odpoveď ani JSON kontrakt `/chat` sa nemenili** – ide o čisto aditívnu zmenu (nový import, nový parameter v `log_question()` s defaultom, nové kľúče v logovanom zázname). Toto je základ (V2.1), na ktorom V2.2 (product search routing) a V2.3 (recipe routing) postavia skutočné presmerovanie rozhodnutí cez `CustomerIntent`.
+
+**Regresné testy:** nový `tests/test_intent.py` (29 testov) – kompletné pokrytie `LEGACY_INTENT_MAP` (všetkých 11 legacy hodnôt), fallback správanie `map_legacy_intent()`, `CustomerIntent` defaulty a immutabilita mutable-default polí naprieč inštanciami, `build_customer_intent()` pre reprezentatívne scenáre (product_search, cross_sell, replacement, allergen_safety, recipe_to_products).
+
+**Testy – plný beh:** `tests/test_core.py` (312/312 pri repo štandardnom `-k` filtri), `tests/test_integration.py` (26/26, end-to-end `chat()` cez mock OpenAI), `tests/test_intent.py` (29/29 nové) → **367/367 spolu, 0 regresií**. `scripts/trust_audit.py` (empty-alternatives aj pii-leak) čisté. `scripts/consistency_audit.py` nezmenené voči predchádzajúcemu stavu (žiadne nové kolízie markerov, existujúce skloňovacie kandidáty sú nezmenené, nesúvisia s touto zmenou).
+
+**Synthetic QA (before/after):** 13 reprezentatívnych scenárov naprieč rodinami z V2 sekcie 17 (ryža, sushi ryža vs. ryžovar, značka Kikkoman, replacement, recipe-to-products, recipe-only, product-information, cross-sell/customer_has, kuchynský riad, FAQ, alergén, out-of-domain) spustených priamo cez `chat()` pred aj po zmene – legacy `intent` pole identické pred/po (0 zmien v správaní). Po zmene navyše `primary_intent`/`subject` správne zachytené vo všetkých 13 prípadoch.
+
+**Naživo overené:** Railway produkcia (`foodland-ai-agent-production.up.railway.app`) nebola v tomto behu dosiahnuteľná – sieťová politika tohto agentného prostredia zamietla `CONNECT` na tento hostiteľ (`403`, `gateway answered 403 to CONNECT (policy denial or upstream failure)`), podľa vlastných pravidiel proxy nemá zmysel to obchádzať. Zmena je zlúčená do `main` a nasadená cez Railway auto-deploy; **finálne overenie na produkcii treba spustiť zo session/prostredia, ktoré má prístup k `foodland-ai-agent-production.up.railway.app`**.
+
+**Zostávajúca najvyššia priorita pre ďalšiu V2 iteráciu (zistené touto session zo synthetic QA, nie hypotéza):**
+- `"co potrebujem na tom kha gai"` padá do `related_products` (cross_sell) namiesto `recipe_to_products` – `detect_recipe_subject()` nerozpoznáva "tom kha gai" skôr, než sa vyhodnotí cross-sell vetva.
+- `"ma to lepok?"` (bez konkrétneho produktu) nie je zachytené ako `allergen_safety` – padá do `product_search`.
+- `"aky je najlepsi film?"` (mimo-doménová otázka) nie je zachytené `detect_out_of_domain()` – padá do `product_search` namiesto refusal správy.
+
+Tieto tri zistenia sú reálnym kandidátom na V2.2/V2.3 (product search routing / recipe routing) – práve typ systematickej slabiny, ktorú štandardizovaná `CustomerIntent` vrstva má postupne odstrániť namiesto ďalšej vetvy v kaskáde.
+
+---
+
+### Sprint V2.1.1 – Oprava "čo potrebujem na tom kha gai" (recipe_to_products routing gap)
+
+**Zákaznícky problém:** `"co potrebujem na tom kha gai"` (nákupný zoznam bez slova "recept") dostal odpoveď z cross-sell vetvy (`intent: related_products`) namiesto `recipe_to_products`, hoci Tom Kha Gai má v `knowledge.json` reálnu, overenú Foodland receptovú kartu aj mapovanie chýbajúcich surovín (`MISSING_INGREDIENTS_BY_SUBJECT["tom_kha"]`).
+
+**Architektonická príčina:** `is_recipe_intent()` (brána pred `detect_recipe_subject()`) vracia `True` iba pri slovách typu "recept"/"návod"/"ako pripravím"/"how to make" (`RECIPE_INTENT_MARKERS`) alebo pri holom tokene začínajúcom na "recept". Nákupno-zoznamová formulácia ("čo potrebujem na X"/"čo kúpiť na X") sa rozpoznáva úplne inou, samostatnou funkciou (`wants_recipe_products()`), ktorá sa ale používa AŽ POTOM, čo je `recipe_subject` už nájdený – nikdy nie ako vstupná brána. Bez slova "recept" tak správa nikdy nedosiahne `detect_recipe_subject()` a spadne až do neskoršej cross-sell vetvy, kde `tom_kha` je mimochodom tiež definovaný ako `RELATED_SUBJECT_ALIASES` téma – takže zákazník dostane produkty, ale bez receptovej karty, `missing_ingredients` a `shopping_list` polí, ktoré `recipe_to_products` workflow poskytuje.
+
+**Zvažovaná, ale zamietnutá širšia oprava:** Prvý pokus rozšíril `is_recipe_intent()` štrukturálne – aby nákupno-zoznamová formulácia platila pre KAŽDÝ subjekt s reálnym overeným receptom (nie len tom_kha), overené cez nový `_SUBJECTS_WITH_VERIFIED_RECIPE` frozenset postavený nad `knowledge.json["Recipes"]`. Toto síce správne vylúčilo `kimchi`/`kimchi_ramen`/`sushi` (nemajú vlastný receptový záznam), ale **rozbilo 2 existujúce, zámerné testy**: `"nakupny zoznam na tom yum"` a `"nakupny zoznam na kimchi ramen"` už majú vlastné, starostlivo doladené cross-sell funkcie (`tom_yum_shopping_core_products()`, `kimchi_ramen_shopping_core_products()`) s vlastným poradím/vylúčeniami produktov, overenými existujúcimi testami – aj keď majú reálny recept (Tom Yum áno), zámerne zostávajú na `related_products` pre túto formuláciu. Široká oprava by tak menila správanie, ktoré nikto nežiadal opraviť, a vyžadovala by prehodnotenie ladenia týchto funkcií. Podľa V2 sekcie 27 (kontrolné prípady) bola táto oprava zamietnutá v prospech užšej.
+
+**V2 vylepšenie (implementované):** Pridané `"tom kha"` do `RECIPE_INTENT_MARKERS` – rovnaký, už zavedený vzor ako existujúce položky `"vindaloo"`/`"karaage"` (Sprint V.6/Z, presne tá istá trieda chyby: holé meno jedla bez slova "recept" musí tiež spustiť recipe workflow). Minimálny, presne ohraničený zásah – žiadny iný subjekt (sushi, pho, ramen, kimchi, tom_yum, kimchi_ramen) nie je zmenou dotknutý.
+
+**Migrované správanie:** `"co potrebujem na tom kha gai"`, `"co kupit na tom kha gai"` aj holé `"tom kha gai"` teraz vracajú `intent: recipe_to_products` s reálnou receptovou kartou ("Tom Kha Gai"), zoradenými produktmi (kokosové mlieko, galangal, citrónová tráva, kaffirové listy, rybacia omáčka, Tom Kha pasta) a `missing_ingredients`.
+
+**Regresné testy:** `test_tom_kha_shopping_list_reaches_recipe_to_products_without_recept_word` (overuje `is_recipe_intent`/`detect_recipe_subject`/plný `chat()` beh vrátane receptovej karty) + kontrolný test `test_tom_kha_fix_does_not_change_neighboring_shopping_list_subjects` (sushi/pho/ramen/kimchi/tom_yum/kimchi_ramen zostávajú nezmenené – presne tie 2 prípady, ktoré odhalili prečo bola širšia oprava zlá).
+
+**Testy – plný beh:** 369/369 (367 z predošlého behu + 2 nové), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` čisté.
+
+**Naživo overené:** rovnaké obmedzenie ako Sprint V2.1 – Railway (`foodland-ai-agent-production.up.railway.app`) nedosiahnuteľné z tohto prostredia (proxy 403 policy denial). Treba overiť zo session s prístupom po merge.
+
+---
+
+### Sprint V2.1.2 – Oprava holej alergénovej otázky ("ma to lepok?")
+
+**Zákaznícky problém:** `"ma to lepok?"` (bez pomenovaného produktu, bez slova "alergia"/"obsahuje"/"vhodné") spadlo cez `detect_allergen_intent()` úplne bez odpovede na alergén – namiesto bezpečnostnej odpovede dostal zákazník obyčajné produktové vyhľadávanie.
+
+**Architektonická príčina:** `ALLERGEN_INTENT_MARKERS` (vstupná brána pred vyhľadaním konkrétneho alergénu v `ALLERGEN_TERMS`) vyžaduje explicitné bezpečnostné slovo (alerg/intoler/celiak/obsahuje/vhodn/zlozen/bezlepk/lakto...). Prirodzená otázka v tvare "má/je v tom/sú tam [alergén]?" toto slovo neobsahuje – hoci `ALLERGEN_TERMS` už správne obsahuje `"lepok": "lepok"` (aj ďalšie), vyhľadávací cyklus, ktorý by ho našiel, sa vôbec nespustí, lebo brána ho zastaví skôr.
+
+**Zvažovaná širšia verzia:** Prvý pokus obišiel bránu pre AKÝKOĽVEK termín z `ALLERGEN_TERMS` v kombinácii so slovesom "má/je/sú". Testovanie ale odhalilo falošné pozitíva na generických produktových otázkach, ktoré náhodou obsahujú potravinové podstatné meno zhodné s alergénom: `"aku ma chut toto mlieko"` (aká chuť má toto mlieko - otázka o chuti) a `"kolko ma gramov toto mlieko"` (koľko má gramov - otázka o množstve) sa oba nesprávne zmenili na alergénovú odpoveď namiesto skutočnej odpovede na otázku. Príčina: "mlieko"/"ryby"/"vajcia"/"orechy" sú v `ALLERGEN_TERMS` aj bežné produktové slová, nie len alergény.
+
+**V2 vylepšenie (implementované):** Nová `BARE_ALLERGEN_QUESTION_TERMS` – užšia podmnožina `ALLERGEN_TERMS` obmedzená na jednoznačné alergénové slová bez bežného produktového dvojvýznamu (lepok, gluten, arašidy, sezam, mäkkýše, krevety, sója). Kombinácia (sloveso "má/je/sú" AKO CELÉ SLOVO + termín z tejto užšej množiny) obchádza `ALLERGEN_INTENT_MARKERS` bránu; samotné vyhľadanie labelu naďalej používa plný `ALLERGEN_TERMS` slovník bez zmeny.
+
+**Migrované správanie:** `"ma to lepok?"`, `"je v tom lepok?"`, `"ma to arasidy?"`, `"ma to sezam?"` teraz vracajú `intent: allergen_safety` s bezpečnou odpoveďou ("neodporúčam produkt len podľa názvu, overte zloženie na detaile produktu"), bez produktov. `"mate mlieko?"`, `"chcem kupit orechy"`, `"aku ma chut toto mlieko"`, `"kolko ma gramov toto mlieko"` zostávajú nezmenené (product_search).
+
+**Regresné testy:** rozšírené `TestAllergenSafety` v `tests/test_core.py` o pozitívne prípady (lepok/arašidy/sezam s viacerými slovesami) aj kontrolné prípady (mlieko/ryby/orechy s rovnakým slovesným vzorom musia zostať `None`/`product_search`).
+
+**Testy – plný beh:** 369/369, 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – prístup na `foodland-ai-agent-production.up.railway.app` zamietnutý sieťovou politikou tohto vykonávacieho prostredia (proxy 403, nie chyba Foodland backendu ani Railway deploymentu). GitHub merge overený priamo (commit SHA v tomto behu). Treba dobehnúť zo session/prostredia s priamym prístupom na produkciu.
+
+---
+
+### Sprint V2.1.3 – Oprava mimo-doménovej otázky ("aky je najlepsi film?")
+
+**Zákaznícky problém:** `"aky je najlepsi film?"` (a podobné všeobecné mimo-doménové otázky – politika, všeobecné znalosti, domáce úlohy) nedostali refusal odpoveď, ale **sebavedomo znejúcu, no nezmyselnú produktovú odpoveď**. Priamo otestované: `"kto je prezident slovenska?"` vrátilo *"Našla som tieto najrelevantnejšie produkty: Kľučenka good luck mačka, Tom Yum pasta, Collon sušienky..."* – toto je vážnejší problém, než pôvodne predpokladaný "chýbajúci refusal", pretože prezentuje náhodné produkty ako "najrelevantnejšie".
+
+**Architektonická príčina:** `detect_out_of_domain()` je čisto negatívny, enumeratívny zoznam (`OUT_OF_DOMAIN_MARKERS`) konkrétnych mimo-doménových kategórií (bicykle, elektronika, oblečenie, nábytok, financie, cestovanie...). Takýto zoznam princípovo nemôže pokryť všetky témy, ktoré NIE sú o Foodland – chýbala napr. celá kategória zábava/médiá (filmy, seriály), všeobecné znalosti/politika a školské domáce úlohy.
+
+**Reálna kolízia nájdená pred nasadením:** Prvý návrh použiť bare slová `"film"`/`"serial"` ako markery by **rozbil existujúcu funkciu** – `RELATED_SUBJECT_ALIASES["asian_snack"]` už obsahuje frázy `"na film"`, `"k filmu"`, `"na serial"`, `"k serialu"` (legitímna žiadosť o snack na filmový/seriálový večer). Overené automatickým kolíznym skriptom aj `scripts/consistency_audit.py --collisions` a naživo cez `chat()`: `"co si dat na film"` musí naďalej fungovať ako cross-sell na snacky, nie ako refusal.
+
+**V2 vylepšenie (implementované):** Doplnené viacslovné, kolízne overené frázy do `OUT_OF_DOMAIN_MARKERS` v troch kategóriách: zábava/médiá (`"najlepsi film"`, `"najlepsi serial"`, `"aky film mi"`, `"dobry film odporuc"`, `"filmovu recenziu"`, `"herec vo filme"`), všeobecné znalosti/politika (`"kto je prezident"`, `"hlavne mesto"`, `"kto vyhral volby"`, `"politicku stranu"`) a domáce úlohy/škola (`"domacu ulohu"`, `"domaca uloha"`, `"domacou ulohou"`, `"domacej ulohy"`, `"referat na tema"` – viacero skloňovaných tvarov, keďže "domacou ulohou" bez tejto formy zostávalo nezachytené).
+
+**Explicitne priznané obmedzenie (nie je to skryté):** Toto **NIE JE štrukturálna oprava** celej triedy chýb – zoznam zostáva principiálne neúplný (napr. "čo si myslíš o politike?", "odporúčaš mi dobrú knihu?" zostávajú nepokryté, zámerne nechané mimo rozsahu tejto opravy, aby sa predišlo riziku blokovania legitímnych produktových otázok generickými frázami ako "čo si myslíš o..."). Skutočná štrukturálna oprava (pozitívny signál "je toto o Foodland doméne" namiesto rastúceho negatívneho zoznamu) je zdokumentovaná v `docs/advisor-v2-architecture.md` ako kandidát na budúcu iteráciu.
+
+**Regresné testy:** `test_out_of_domain_entertainment_trivia_and_school` (5 pozitívnych prípadov + plný `chat()` beh s overením `intent: unknown` a bez produktov) + kritický kontrolný test `test_out_of_domain_fix_does_not_break_asian_snack_cross_sell` (overuje, že `"co si dat na film"`/`"co si dat k filmu"`/`"nieco na serial"` naďalej správne vracajú `asian_snack` cross-sell, nie refusal).
+
+**Testy – plný beh:** 373/373 (371 z predošlého behu + 2 nové), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé dve opravy (proxy 403 tohto vykonávacieho prostredia, nie chyba Foodland backendu/Railway deploymentu). GitHub merge treba overiť priamo cez commit SHA po zlúčení; finálne naživo overenie treba spustiť zo session s priamym prístupom na produkciu.
+
+---
+
+### Sprint V2.1.4 – Oprava vlastnej regresie: sójová omáčka nesprávne padala do alergénovej odpovede
+
+**Zákaznícky problém, zistený širším synthetic QA behom (25 scenárov naprieč porovnaním, cenou, dostupnosťou, kuchynským riadom, dietetickými požiadavkami):** `"co je lepsie svetla alebo tmava sojova omacka?"` (porovnanie svetlej a tmavej sójovej omáčky) a `"aka je cena kikkoman sojovej omacky?"` (cena Kikkoman sójovej omáčky) obe vrátili **alergénovú bezpečnostnú odpoveď o sóji** namiesto skutočnej odpovede na otázku – dve úplne bežné, vysokoobjemové otázky o vlajkovej produktovej kategórii obchodu.
+
+**Príčina – vlastná regresia z minulého Sprintu (V2.1.2):** Pri oprave "ma to lepok?" (predošlý sprint) som do `BARE_ALLERGEN_QUESTION_TERMS` zahrnul aj `"soja"`/`"soj"` ako údajne jednoznačné alergénové slová. To bola chyba rovnakého druhu, akej som sa vtedy vedome vyhol pri `"mlieko"`/`"orech"`/`"ryb"`/`"vajc"` – **"sójová omáčka" je jedna z najpredávanejších kategórií tohto obchodu** (Kikkoman, Yamasa, Healthy Boy, Lee Kum Kee a ďalšie – téma desiatok predošlých Sprintov v tejto roadmape), nie len alergén. Keďže moja oprava obchádza bránu pri kombinácii slovesa "má/je/sú" + akéhokoľvek slova z `BARE_ALLERGEN_QUESTION_TERMS`, a slovo "je" je v slovenčine extrémne bežné, prakticky KAŽDÁ veta o sójovej omáčke obsahujúca "je" ("čo JE lepšie...", "aká JE cena...") sa nesprávne zmenila na alergénovú odpoveď.
+
+**Ako bola nájdená:** Nie ručným hľadaním konkrétnej chyby, ale širším synthetic QA behom (25 scenárov naprieč porovnaním, cenou/dostupnosťou, kuchynským riadom, typmi/preklepmi, dietetickými požiadavkami, no-result prípadmi) spusteným ako súčasť pravidelného V2 loop postupu (krok "Measure" pred diagnostikou ďalšej slabiny) – presne postup, ktorý má tento typ regresie odhaliť skôr, než sa dostane do produkcie.
+
+**Oprava:** Odstránené `"soja"`/`"soj"` z `BARE_ALLERGEN_QUESTION_TERMS` – rovnaké zaobchádzanie ako pri `"mlieko"`/`"orech"`. Zostávajúca množina (lepok, gluten, arašidy, sezam, mäkkýše, krevety) neobsahuje žiadne bežné produktové/kategóriové slovo z katalógu. Explicitná žiadosť o vyhnutie sa sóji ("bez sóje", "alergia na sóju") zostáva nezmenená – tá ide cez pôvodnú, staršiu `ALLERGEN_INTENT_MARKERS` bránu (`"bez soj"`/`"bez soja"`), nie cez bránu opravovanú touto ani predošlou opravou.
+
+**Migrované správanie:** `"co je lepsie svetla alebo tmava sojova omacka?"` teraz vracia `intent: product_advice` s relevantnými produktmi; `"aka je cena kikkoman sojovej omacky?"` vracia `intent: product_search` s Kikkoman sójovými omáčkami. `"ma to lepok?"`, `"bez soje, co mate?"`, `"alergia na soju"` zostávajú nezmenené (alergénová odpoveď tam, kde je to správne).
+
+**Regresné testy:** nový `test_bare_allergen_question_does_not_hijack_soy_sauce_questions` – 4 prípady sójovej omáčky musia byť `None` (nie alergén), 2 explicitné alergénové žiadosti o sóju musia zostať `"sóju"` (cez starú bránu, aby budúca zmena tejto brány neomylom "opravila" aj tento prípad naspäť).
+
+**Testy – plný beh:** 374/374 (373 z predošlého behu + 1 nový), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` (empty-alternatives aj pii-leak) čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy.
+
+**Poučenie pre ďalšie V2 iterácie:** Každá nová "bezpečná" množina slov (ako `BARE_ALLERGEN_QUESTION_TERMS`) musí byť pred nasadením otestovaná nielen proti známym kontrolným prípadom z danej opravy, ale aj proti **širšiemu synthetic QA vzorku** naprieč inými kategóriami produktov – práve preto V2 loop krok "Measure" beží pred každou diagnózou, nie len raz na začiatku.
+
+---
+
+### Sprint V2.1.5 – Oprava kontaminácie session pamäte porovnávacou otázkou ("pikantnejšie")
+
+**Ako bola nájdená:** Krok "Measure" tejto iterácie spustil širší synthetic QA beh (25 scenárov v jednej konverzácii/session – presne postup, ktorý minule odhalil regresiu so sójovou omáčkou). Tri dopyty neskoro v sekvencii vrátili prázdnu odpoveď bez produktov napriek tomu, že v izolácii fungovali správne: preklep značky (`"mate sojovu omacku kikoman"`), preklep produktu (`"gochuujang"`) a holá značka (`"kikkoman produkty"`) – všetky tri spadli do `intent: related_products` s 0 produktmi namiesto správneho `product_search` s reálnymi výsledkami.
+
+**Príčina – kontaminácia cez session pamäť, nie chyba vo vyhľadávaní samotnom:** Bisekciou (postupné pridávanie predošlých správ do tej istej session) sa zistilo, že stačí JEDNA predošlá správa: `"gochujang vs sriracha, co je pikantnejsie?"` (porovnávacia otázka "ktoré je pikantnejšie"). `detect_diet_terms()` zachytáva holý podreťazec `"pikant"` – ten sa nachádza aj v porovnávacom tvare `"pikantnejsie"` ("pikantnejšie" bez diakritiky), takže táto porovnávacia OTÁZKA sa nesprávne zaznamenala ako trvalá stravovacia preferencia `"pikantne"` do `memory["diet_terms"]`. `contextualize_message()` potom **bezpodmienečne** (nie len pri follow-up otázkach) pripája posledné 2 `diet_terms` na koniec KAŽDEJ nasledujúcej správy v session, ak tam ešte nie sú. Výsledok: `"aku kategoriu produktov mate?"` sa interne zmenilo na `"aku kategoriu produktov mate? pikantne"`, čo `detect_related_subject()` vyhodnotilo ako tému `"medium_spicy"` (s nulovými reálnymi produktovými zhodami), a rovnaký mechanizmus poškodil aj neskoršie dopyty na Kikkoman/gochujang v tej istej konverzácii.
+
+**Oprava:** Vylúčený porovnávací kmeň `"pikantnej"` (spoločný pre pikantnejší/pikantnejšia/pikantnejšie vo všetkých rodoch) z `detect_diet_terms()` detekcie – zostáva `"paliv"`/`"pikant"`/`"chilli"`/`"chili"` pre skutočné vyjadrenia preferencie (`"mam rad pikantne kimchi"`, existujúci a naďalej platný test `test_user_memory_persists_culinary_preferences`).
+
+**Migrované správanie:** Porovnávacie otázky o pikantnosti už nezanechávajú stopu v `diet_terms`. Neskoršie, úplne nesúvisiace dopyty v tej istej konverzácii (preklepy značiek, holé značky, všeobecné kategóriové otázky) sa už nekontaminujú a vrátia reálne, relevantné produkty namiesto prázdnej odpovede.
+
+**Zostávajúce, zámerne NEriešené v tejto iterácii:** `"aku kategoriu produktov mate?"` zostáva slabá odpoveď aj úplne izolovane (bez kontaminácie) – `category_discovery` nemá vlastný detektor vôbec, čo je už zdokumentovaná, samostatná medzera vo `V2.4` v `docs/advisor-v2-architecture.md`, nie súčasť tejto opravy.
+
+**Regresné testy:** `test_diet_terms_does_not_treat_comparison_questions_as_preference` (3 porovnávacie tvary musia byť `[]`, 3 skutočné preferencie musia zostať `["pikantne"]`) + `test_comparison_question_does_not_contaminate_later_unrelated_messages` (end-to-end cez `contextualize_message()` – overuje, že kontaminácia reálne zmizla, nie len že `detect_diet_terms()` vracia iný výsledok v izolácii).
+
+**Testy – plný beh:** 376/376 (374 z predošlého behu + 2 nové), 0 regresií. `scripts/consistency_audit.py --collisions` čisté. `scripts/trust_audit.py` (empty-alternatives aj pii-leak) čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy (proxy 403 tohto vykonávacieho prostredia).
+
+**Architektonické pozorovanie pre V2.6:** Táto oprava rieši jeden konkrétny falošný pozitívny prípad, nie samotný mechanizmus. `contextualize_message()` bezpodmienečne vkladá `diet_terms` do každej nasledujúcej správy bez kontroly relevancie (na rozdiel od `last_top_product_title`, ktorý sa pripája len pri `is_context_followup()`). Akékoľvek budúce falošné pozitívum v `detect_diet_terms()` alebo `detect_memory_subjects()` bude mať rovnaký rozsah škody – kontaminuje celý zvyšok konverzácie, nie len jednu odpoveď. Skutočná V2.6 štrukturálna oprava (aplikovať pamäť až po vyhodnotení explicitného zámeru, nie pred ním, podľa V2 sekcie 12) by toto riziko odstránila systematicky.
+
+---
+
+### Sprint V2.1.6 – Prvý detektor pre `category_discovery` ("aku kategoriu produktov mate?")
+
+**Zákaznícky problém:** Všeobecné otázky o sortimente ("aku kategoriu produktov mate?", "aky sortiment mate?", "ake znacky predavate?") nemali žiadny dedikovaný handler. V praxi to viedlo k dvom zlým výsledkom, oba overené priamo cez `chat()`: buď prázdna odpoveď `"Našla som súvisiace informácie vo Foodland poradkyni."` bez produktov (dead-end), alebo – horšie – `cached_search_products()` vždy nájde NEJAKÚ zhodu cez token/fuzzy matching aj pre výplňové slová, takže napr. "ake znacky predavate?" sebavedomo vrátilo Arašidy Tom Yum, Pocky tyčinky a Arašidy vo wasabi ako "najrelevantnejšie produkty" – rovnaká trieda dôveryhodnostného problému ako mimo-doménová otázka zo Sprintu V2.1.3.
+
+**Architektonická príčina:** `category_discovery` je kanonický V2 zámer (existuje v `app/intent.py` `PRIMARY_INTENTS` už od V2.1), ale v legacy `chat()` kaskáde nemal vôbec zodpovedajúci detektor – zdokumentovaná medzera vo fáze V2.4.
+
+**Zvažované, ale zamietnuté:** Naivná verzia by mohla generovať zoznam kategórií priamo z `product_type` breadcrumb dát bez filtrovania – overené, že to obsahuje 127 rôznych "top-level" segmentov vrátane prierezových dietetických/marketingových značiek ("Vegánske potraviny", "Zdravé potraviny", "Super potraviny", "Darčekové sety"...), ktoré by pôsobili ako nezmyselný zoznam, nie skutočný prehľad oddelení. Namiesto vymýšľania kurátorovaného zoznamu (riziko halucinácie/neoverenej domény) bol použitý **skutočný, dátami podložený** prístup: top 8 kategórií podľa počtu produktov, s odfiltrovanou malou, explicitne zdokumentovanou množinou prierezových značiek.
+
+**Reálna kolízia nájdená a vyriešená pred nasadením:** Substring-based marker (`"aky tovar mate"` ako `in` kontrola) by nesprávne zachytil dlhšie, konkrétne dopyty ako `"aky tovar mate na sushi?"` alebo `"co mate v ponuke na sushi"`. Namiesto substring zhody použitá **presná zhoda celej správy** (po normalizácii a odstránení koncovej interpunkcie) – overené kolízne testy aj `scripts/consistency_audit.py --collisions`.
+
+**V2 vylepšenie (implementované):** `is_category_discovery_query()` (presná zhoda 6 fráz), `top_product_categories()` (top-N reálnych kategórií z `product_type`, filtrované cez `CATEGORY_DISCOVERY_NOISE`), `category_discovery_answer()` (grounded odpoveď s reálnymi názvami kategórií). Zapojené do `chat()` ako nová vetva hneď za `out_of_domain` (rovnaký vzor), s `intent="category_discovery"` namapovaným priamo na kanonický zámer v `app/intent.py`.
+
+**Migrované správanie:** Všetkých 6 pokrytých fráz teraz vracia `intent: category_discovery` s odpoveďou typu *"Foodland.sk ponúka široký sortiment naprieč mnohými kategóriami, napríklad: Misy a misky, Vonné tyčinky, Nealkoholické nápoje... Napíšte mi, čo konkrétne hľadáte."* – žiadne vymyslené ani irelevantné produkty. Zámerne mimo rozsahu: `"co mate v ponuke?"` (príliš kolízne s "čo mate v ponuke na X"), `"co vsetko mate skladom?"` (existujúca `best_direct_faq_answer()` už dáva lepšiu, dostupnostne zameranú odpoveď pre túto konkrétnu formuláciu, keby bola volaná – zostáva ako budúci kandidát, nie súčasť tejto opravy).
+
+**Regresné testy:** `test_category_discovery_detects_generic_inventory_questions` (6 pozitívnych fráz + plný `chat()` beh overujúci `intent`, žiadne produkty, a že odpoveď skutočne obsahuje reálny názov kategórie z katalógu) + `test_category_discovery_does_not_hijack_specific_product_questions` (6 kontrolných prípadov – konkrétne produktové/kuchynné dopyty musia zostať nedotknuté) + `test_top_product_categories_excludes_dietary_marketing_noise` (prierezové značky nesmú byť v zozname).
+
+**Testy – plný beh:** 380/380 (377 z predošlého behu + 3 nové), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` (empty-alternatives aj pii-leak) čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy (proxy 403 tohto vykonávacieho prostredia, nie chyba Foodland backendu/Railway deploymentu).
+
+---
+
+### Sprint V2.1.7 – Negovaná preferencia sa zaznamenala ako opak toho, čo zákazník povedal
+
+**Ako bola nájdená:** Krok "Measure" tejto iterácie spustil nový synthetic QA vzorok (negácie, viac-kolové konverzácie, množstvo/cena, porovnania) namiesto priameho pokračovania na `product_comparison` feature (naplánovaný ako ďalší krok minule). Jeden z 18 scenárov – porovnávacia otázka o mirine a ryžovom occite – vrátila **polámanú, nezmyselnú odpoveď**: `"vyrazne umami, pikantne, fermentovane a slano-kysle podla typu produktu kimchi, bibimbap, marinady, polievky, ryzove misky a rychle korejske jedla"` namiesto zmysluplnej vety o mirine. V izolácii (bez predošlého kontextu) fungovala tá istá otázka správne – jasný signál na kontamináciu session pamäte, rovnaký vzor ako Sprint V2.1.5.
+
+**Príčina:** Bisekciou sa zistilo, že prvá správa v konverzácii, `"nechcem nic pikantne"` ("nechcem nič pikantné"), sa nesprávne zaznamenala do `memory["diet_terms"]` ako **pozitívna** preferencia `"pikantne"` – presný opak toho, čo zákazník povedal. `detect_diet_terms()` totiž kontrolovala iba holý podreťazec `"pikant"`/`"paliv"` bez akéhokoľvek povedomia o negácii ("nechcem", "nemám rád" pred slovom úplne menia význam, ale kód ich ignoroval). Táto falošná preferencia sa potom cez `contextualize_message()` (rovnaký bezpodmienečný injection mechanizmus ako v Sprinte V2.1.5) vložila do neskoršej, úplne nesúvisiacej otázky o mirine, čo zmiatlo vyhľadávanie v Products_AI znalostiach a vrátilo útržok textu patriaci inému produktu (pravdepodobne gochujang/kimchi, súdiac podľa spomienky "kimchi, bibimbap").
+
+**Toto je DRUHÝ výskyt rovnakej triedy chyby za dve po sebe idúce iterácie** (prvý bol porovnávací tvar "pikantnejšie" v Sprinte V2.1.5). Podľa V2 sekcie 20-21 (uprednostniť štrukturálnu opravu pred ďalšou jednorazovou výnimkou, keď sa rovnaká príčina opakuje) bola táto oprava navrhnutá všeobecnejšie než len ďalšie vylúčenie jedného konkrétneho tvaru.
+
+**V2 vylepšenie (implementované):** Nová `DIET_TERM_NEGATION_MARKERS` ("nechcem", "nemam rad", "nemam rada", "neznasam", "nie som") – ak správa obsahuje ktorýkoľvek z týchto markerov KDEKOĽVEK, `detect_diet_terms()` vráti prázdny zoznam namiesto pokusu o presné vyhodnotenie, ktorá časť vety je negovaná. Toto je **hrubší** prístup než presné negačné parsovanie (zložená veta typu "nechcem sladké, chcem pikantné" by stratila aj druhú, skutočnú preferenciu), ale bezpečnejší zlyhávací režim – nikdy nezaznamenať opačnú preferenciu je dôležitejšie než zachytiť každý okrajový prípad. Oprava je zámerne všeobecná naprieč VŠETKÝMI kategóriami `detect_diet_terms()` (pikantné, vegán, vegetariánske, bezlepkové), nie len pre "pikantne".
+
+**Migrované správanie:** `"nechcem nic pikantne"`, `"nemam rad pikantne jedla"`, `"neznasam pikantne"`, `"nechcem vegansky produkt"`, `"nie som vegan"`, `"nemam rad kokos"` už nezanechávajú žiadnu stopu v `diet_terms`. Skutočné preferencie (`"mam rad pikantne kimchi"`, `"som vegan"`, `"hladam bezlepkove produkty"`) zostávajú nezmenené. Porovnávacia otázka o mirine teraz naprieč celou konverzáciou vracia zmysluplnú odpoveď.
+
+**Regresné testy:** `test_diet_terms_does_not_invert_negated_statements` (6 negovaných tvarov musia byť `[]`, 3 skutočné preferencie musia zostať nezmenené naprieč všetkými kategóriami, nie len pikantné) + `test_negated_spice_statement_does_not_corrupt_later_unrelated_answer` (end-to-end cez `contextualize_message()` s presne tou reálnou kombináciou správ, ktorá spôsobila polámanú odpoveď).
+
+**Testy – plný beh:** 382/382 (380 z predošlého behu + 2 nové), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` (empty-alternatives aj pii-leak) čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy.
+
+**Architektonické odporúčanie:** Toto je už druhý nález presne tejto triedy chyby za dve iterácie. `docs/advisor-v2-architecture.md` (V2.6 riadok) teraz explicitne odporúča, aby ďalšia V2.6 iterácia riešila samotný `contextualize_message()` injection mechanizmus (aplikovať pamäť až po vyhodnotení explicitného zámeru, podľa V2 sekcie 12), nie ďalší jednotlivý detektor – tretí výskyt by mal byť signálom na túto väčšiu, štrukturálnu prácu namiesto ďalšej záplaty.
+
+---
+
+### Sprint V2.2.0 – Prvý katalógovo-riadený taxonomy beh: rodina "ryža" (Stage A, shadow mode)
+
+**Zadanie:** Namiesto ručného klasifikovania Foodland katalógu podľa príkladov z promptu (výslovne zakázané zadaním) – najprv preskúmať **aktuálny** katalóg programaticky, až potom navrhnúť taxonómiu.
+
+**Fáza 1-4 – profil katalógu (reálne čísla, nie odhady):** Nový `scripts/taxonomy_audit.py` (spustiteľný opakovane, žiadne hardcoded počty) vygeneroval z `data/products.json` a `data/knowledge.json`:
+
+```
+total_products = 2140
+unique_brands = 368
+unique_categories_top_level = 127
+unique_categories_all_levels = 166
+```
+
+Detailná inšpekcia koreňa `ryz` (`--family ryz`) potvrdila presne tú triedu chyby, ktorú Sprint Z.6 už raz opravil ručne: **7 odlišných produktových podrodín** zdieľa jeden jazykový koreň – samotná ryža (69 produktov), ryžové rezance (63), ryžový ocot (23), ryžová múka (3), ryžový papier, ryžovar (má vlastnú reálnu katalógovú kategóriu `Ryžovary`), ryžový nápoj (2, len MEDIUM confidence).
+
+**Fáza 9 – recepty/IntentMapping ako overený sémantický zdroj:** `data/knowledge.json["sections"]["IntentMapping"]` (318 záznamov) obsahuje kurátorovanú kategóriu `"Ryža / výber produktu"` (4 záznamy) s priamo použiteľným, overeným obsahom – napr. presne pre otázku "Aký je rozdiel medzi jazmínovou a basmati ryžou?" je poznámka "Porovnať arómu, zrnitosť, kuchyňu a použitie." Toto je grounded zdroj pre budúci `product_comparison` intent, nie vymyslený text.
+
+**Fáza 5-11 – kanonická taxonómia, `docs/product-taxonomy-audit.md`:** Navrhnutá rodina `rice` s 8 podrodinami (7× HIGH confidence z jasného katalógového/kategóriového dôkazu, 1× MEDIUM z `rice_drink` s iba 2 produktmi – podľa Fázy 11 pravidla MEDIUM nesmie tvoriť tvrdé retrieval obmedzenie, preto sa v tejto iterácii do klasifikátora vôbec nezapája).
+
+**V2 vylepšenie (implementované, Fáza 26 krok 11-13):** Nový `app/taxonomy.py` (`classify_rice_query()`) – frázovo založený klasifikátor bez akéhokoľvek ručne udržiavaného zoznamu SKU (Fáza 12: 2140 produktov sa neklasifikuje ručne, klasifikuje sa text dopytu/nazvu podľa opakovane použiteľných fráz). Poradie kontroly zámerne kopíruje existujúcu disciplínu z `RELATED_SUBJECT_ALIASES` (najšpecifickejšie frázy najprv – `"ryzovy ocot"` pred holým `"ryza"`), plus špeciálne pravidlo: `"aku ryzu odporucas na sushi?"` (ryža a sushi ako samostatné slová, nie zložená fráza) sa vyhodnotí rovnako ako `"sushi ryza"` – presne podľa overeného `IntentMapping` záznamu.
+
+**Rollout Stage A (Fáza 16 – shadow/observation mode, zámerne, nie plné nasadenie):** `classify_rice_query()` je zapojené do `/chat` **výhradne na účely logovania** cez nový `log_taxonomy_shadow()` – zapisuje do `taxonomy_shadow.jsonl`, ale **nemení žiadne routovacie rozhodnutie, produkty ani text odpovede**. Overené priamo: identická štruktúra a obsah `/chat` odpovede pred aj po zmene pre viacero ryžových aj neryžových dopytov. Existujúca legacy rice logika (`SPECIAL_PRODUCT_QUERIES["plain_rice"/"sushi_rice"/"rice_vinegar"/"rice_cooker"/"rice_seasoning"/"rice_side"]` zo Sprintu Z.6) zostáva plne funkčná a nedotknutá – Stage B (skutočné nahradenie) je zámerne mimo rozsahu tejto iterácie a vyžaduje najprv porovnanie shadow logov s reálnymi dátami.
+
+**Regresné a kolízne testy (Fáza 21-22):** nový `tests/test_taxonomy.py` (21 testov) – klasifikácia podľa reálnych zákazníckych fráz aj podľa **skutočných názvov produktov** vytiahnutých z `data/products.json` (nie vymyslené príklady), explicitný kolízny test (`test_collision_family_generates_distinct_subfamilies` – všetkých 6 členov kolíznej skupiny musí dostať RÔZNE podrodiny), špecifickosťový test (`ryzovar` musí vyhrať nad `plain_rice` aj v prítomnosti `"sushi ryzu"` v tej istej vete) a `TestShadowModeIntegrity` (čistá funkcia, žiadny vedľajší efekt na `/chat` odpoveď).
+
+**Testy – plný beh:** 403/403 (382 z predošlého behu + 21 nových), 0 regresií. `scripts/consistency_audit.py --collisions` aj `scripts/trust_audit.py` čisté.
+
+**Naživo overené:** `LIVE_VERIFICATION_BLOCKED_BY_EXECUTION_ENVIRONMENT` – rovnaké obmedzenie ako predošlé opravy (proxy 403 tohto vykonávacieho prostredia).
+
+**Ďalší krok (mimo rozsahu tejto iterácie):** Po nazbieraní shadow dát z produkcie (keď bude dostupný prístup) porovnať `taxonomy_shadow.jsonl` voči skutočným `SPECIAL_PRODUCT_QUERIES` rozhodnutiam a `/admin/analytics/no-results`, rozhodnúť o Stage B pre `rice`, a až potom zvážiť druhú rodinu (`rezance`/nudle majú tiež silný katalógový aj `IntentMapping` dôkaz podľa `docs/product-taxonomy-audit.md`).

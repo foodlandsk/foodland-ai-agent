@@ -79,6 +79,8 @@ from app.search import (
     tokenize,
 )
 from app.workflows import products_to_cart_candidates
+from app.intent import build_customer_intent
+from app.taxonomy import classify_rice_query
 
 
 logging.basicConfig(
@@ -2379,6 +2381,15 @@ RECIPE_INTENT_MARKERS = (
     "jak uvarim",
     "vindaloo",
     "karaage",
+    # Real user report: "co potrebujem na tom kha gai" (a shopping-list
+    # style question, no "recept"/how-to wording at all) fell through
+    # is_recipe_intent() entirely and got misrouted into the generic
+    # cross-sell branch instead of the recipe_to_products workflow that
+    # already has a real Tom Kha Gai recipe card and missing-ingredient
+    # mapping. Same fix pattern as vindaloo/karaage above: a bare dish
+    # marker so the recipe workflow is reachable without the word
+    # "recept".
+    "tom kha",
 )
 
 RANDOM_RECIPE_INTENT_MARKERS = (
@@ -2547,6 +2558,21 @@ ALLERGEN_TERMS = {
     "krev": "krevety",
 }
 
+# Subset of ALLERGEN_TERMS that is unambiguous allergen vocabulary on
+# its own - unlike "mlieko"/"ryb"/"vajc"/"orech", which are also just
+# plain grocery nouns. Used to safely widen bare "ma/je/su X?" allergen
+# questions without misrouting generic product questions that happen to
+# name a food (e.g. "aku ma chut toto mlieko").
+# NOTE: "soja"/"soj" were removed after a real regression - "sojova
+# omacka" (soy sauce) is one of the store's flagship product
+# categories, and the extremely common word "je" ("is") co-occurs with
+# it constantly ("co je lepsie svetla alebo tmava sojova omacka?",
+# "aka je cena kikkoman sojovej omacky?") - both got misrouted into an
+# allergy warning instead of answering the actual question. "soja"/
+# "soj" turned out to be exactly the kind of ambiguous grocery noun
+# this list was designed to exclude, same as "mlieko"/"orech".
+BARE_ALLERGEN_QUESTION_TERMS = ("lepok", "gluten", "arasid", "sezam", "makky", "krev")
+
 OUT_OF_DOMAIN_MARKERS = (
     # --- potravinovy obchod: existujuce markery ---
     "bicyk",
@@ -2644,7 +2670,71 @@ OUT_OF_DOMAIN_MARKERS = (
     # --- cestovanie ---
     "hotelovu rezervaci",
     "dovolenk",
+    # --- zabava a media ---
+    # Real user report: "aky je najlepsi film?" (general entertainment
+    # trivia, not a Foodland question) fell through detect_out_of_domain()
+    # entirely and got answered with a confident-sounding but nonsensical
+    # product search. Deliberately NOT the bare words "film"/"serial" -
+    # those are substrings of the existing "asian_snack" cross-sell
+    # aliases ("na film", "k filmu", "na serial", "k serialu" - "co si
+    # dat na film" is a legitimate snack request), so only specific
+    # multi-word phrases are used here to avoid that collision.
+    "najlepsi film",
+    "najlepsi serial",
+    "aky film mi",
+    "dobry film odporuc",
+    "filmovu recenziu",
+    "herec vo filme",
+    # --- vseobecne znalosti a politika ---
+    "kto je prezident",
+    "hlavne mesto",
+    "kto vyhral volby",
+    "politicku stranu",
+    # --- domace ulohy a skola ---
+    "domacu ulohu",
+    "domaca uloha",
+    "domacou ulohou",
+    "domacej ulohy",
+    "referat na tema",
 )
+
+# Real user report: "aku kategoriu produktov mate?" and similar generic
+# inventory questions either dead-ended with an unhelpful empty answer
+# or, worse, confidently presented RANDOM irrelevant products as "most
+# relevant" (cached_search_products() always finds *something* via
+# token/fuzzy matching, even for filler words). category_discovery is a
+# canonical V2 primary intent (see app/intent.py) with no detector at
+# all in the legacy cascade. Exact-message match (not substring) so a
+# longer, specific query like "aky tovar mate na sushi?" is never swept
+# in - only bare "what do you sell" style questions with nothing else
+# in them.
+CATEGORY_DISCOVERY_MARKERS = frozenset((
+    "aku kategoriu produktov mate",
+    "ake kategorie produktov mate",
+    "co vsetko predavate",
+    "aky sortiment mate",
+    "ake znacky predavate",
+    "aky tovar mate",
+))
+
+# product_type breadcrumb segments that are cross-cutting dietary/
+# marketing tags, not real navigational categories - excluded from the
+# category-discovery answer so it reads like an actual department list
+# ("Sojove omacky, Korenie, Cajove prislusenstvo...") rather than a mix
+# of attribute tags ("Vegan", "Zdrave potraviny", "Darcekove sety"...).
+CATEGORY_DISCOVERY_NOISE = frozenset((
+    "veganske potraviny",
+    "vegetarianske potraviny",
+    "zdrave potraviny",
+    "super potraviny",
+    "bezlepkove potraviny",
+    "susene produkty",
+    "darcekove sety",
+    "darcekove poukazy",
+    "bio potraviny",
+    "horeca - pre hotely, restauracie, catering",
+    "box asia to go",
+))
 
 # BUG-03 fix: OpenAI client singleton – nevytvara novy connection pool pri kazdom requeste
 _openai_client: OpenAI | None = None
@@ -3402,8 +3492,25 @@ def detect_cuisines_from_text(text: str) -> list[str]:
     return cuisines[:4]
 
 
+# Real regression, second occurrence of the same root-cause class as
+# the "pikantnejsie" comparative-form fix: detect_diet_terms() matched
+# bare substrings with no negation awareness at all, so "nechcem nic
+# pikantne" ("I don't want anything spicy") got recorded as a POSITIVE
+# "pikantne" preference - the opposite of what the customer said. That
+# silently-injected (via contextualize_message()) inverted preference
+# then corrupted a later, unrelated question into a broken answer
+# built from an unrelated product's knowledge text. A blanket guard is
+# coarser than real negation-scoped parsing (a compound sentence like
+# "nechcem sladke, chcem pikantne" would lose the genuine second half),
+# but never recording an inverted preference is the safer failure mode
+# for a signal that persists silently across an entire conversation.
+DIET_TERM_NEGATION_MARKERS = ("nechcem", "nemam rad", "nemam rada", "neznasam", "nie som")
+
+
 def detect_diet_terms(text: str) -> list[str]:
     normalized_text = normalize(text)
+    if any(marker in normalized_text for marker in DIET_TERM_NEGATION_MARKERS):
+        return []
     terms: list[str] = []
     if any(marker in normalized_text for marker in ("bezlepk", "celiak", "bez lepku")):
         terms.append("bezlepkove")
@@ -3413,7 +3520,16 @@ def detect_diet_terms(text: str) -> list[str]:
         terms.append("vegetarianske")
     if any(marker in normalized_text for marker in ("nepaliv", "jemne", "menej paliv", "nie paliv")):
         terms.append("jemne")
-    if any(marker in normalized_text for marker in ("paliv", "pikant", "chilli", "chili")):
+    # Real regression: "pikant" also matches inside the comparative
+    # form "pikantnejsie/pikantnejsi/pikantnejsia" ("spicier"), which
+    # shows up in comparison QUESTIONS ("gochujang vs sriracha, co je
+    # pikantnejsie?") - not a stated preference. This wrongly-detected
+    # diet term then got silently injected into every later message in
+    # the session via contextualize_message(), corrupting completely
+    # unrelated follow-up queries. Excluded via the shared "pikantnej"
+    # comparative stem; genuine preference statements like "pikantne"
+    # (positive form, e.g. "mam rad pikantne kimchi") are unaffected.
+    if any(marker in normalized_text for marker in ("paliv", "pikant", "chilli", "chili")) and "pikantnej" not in normalized_text:
         terms.append("pikantne")
     return terms
 
@@ -3515,6 +3631,7 @@ def detect_query_language(message: str) -> str:
 def chat(chat_request: ChatRequest, request: Request) -> dict:
     client_key = get_client_key(request)
     enforce_rate_limit(client_key)
+    log_taxonomy_shadow(chat_request.message, client_key, classify_rice_query(chat_request.message, normalize))
 
     session_id = getattr(chat_request, "session_id", "") or ""
     memory_key = session_memory_key(session_id, client_key)
@@ -3549,7 +3666,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if is_missing_composition_complaint(chat_request.message):
         update_session_memory(memory_key, chat_request.message, "missing_composition", [], [], knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, "missing_composition", [], [])
-        log_question(chat_request.message, client_key, 0, intent="missing_composition", session_id=session_id)
+        _ci = build_customer_intent(chat_request.message, "missing_composition", language=query_language)
+        log_question(chat_request.message, client_key, 0, intent="missing_composition", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
         return {
             "answer": missing_composition_answer(query_language),
             "products": [],
@@ -3564,7 +3682,12 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         allergen_matches = personalize_products(allergen_matches, user_profile)
         update_session_memory(memory_key, chat_request.message, "allergen_safety", allergen_matches, [], knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, "allergen_safety", allergen_matches, [])
-        log_question(chat_request.message, client_key, len(allergen_matches), intent="allergen_safety", session_id=session_id)
+        _ci = build_customer_intent(
+            chat_request.message, "allergen_safety",
+            allergen_constraints=[allergen_term] if allergen_term else None,
+            language=query_language,
+        )
+        log_question(chat_request.message, client_key, len(allergen_matches), intent="allergen_safety", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
         return {
             "answer": allergen_safety_answer(allergen_term, query_language),
             "products": allergen_matches,
@@ -3580,7 +3703,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if faq_answer and is_faq_query:
         update_session_memory(memory_key, chat_request.message, "faq", [], [], knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, "faq", [], [])
-        log_question(chat_request.message, client_key, 0, intent="faq", session_id=session_id)
+        _ci = build_customer_intent(chat_request.message, "faq", language=query_language)
+        log_question(chat_request.message, client_key, 0, intent="faq", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
         return {
             "answer": faq_answer,
             "products": [],
@@ -3595,7 +3719,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         random_recipes = personalize_recipes(random_recipes, user_profile)
         update_session_memory(memory_key, chat_request.message, "recipe", [], random_recipes, knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, "recipe", [], random_recipes)
-        log_question(chat_request.message, client_key, 0, intent="recipe", session_id=session_id)
+        _ci = build_customer_intent(chat_request.message, "recipe", language=query_language)
+        log_question(chat_request.message, client_key, 0, intent="recipe", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
         return {
             "answer": random_recipes_answer(random_recipes, query_language),
             "recipes": random_recipes,
@@ -3643,7 +3768,13 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         shopping_list = shopping_list_for_response(recipe_cart_candidates, missing_ingredients) if recipe_products else {}
         update_session_memory(memory_key, chat_request.message, intent, recipe_products, recipes, knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, intent, recipe_products, recipes)
-        log_question(chat_request.message, client_key, 0, intent=intent, session_id=session_id)
+        _ci = build_customer_intent(
+            chat_request.message, intent,
+            subject=recipe_subject, recipe=recipe_subject,
+            use_case=recipe_product_subject or None,
+            language=query_language,
+        )
+        log_question(chat_request.message, client_key, 0, intent=intent, session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
         if recipe_products:
             recipe_answer_text = recipe_products_answer(recipe_product_subject, recipes, query_language)
         elif recipes:
@@ -3668,7 +3799,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if detect_out_of_domain(chat_request.message):
         update_session_memory(memory_key, chat_request.message, "unknown", [], [], knowledge_matches)
         updated_profile = update_user_memory(profile_key, chat_request.message, "unknown", [], [])
-        log_question(chat_request.message, client_key, 0, intent="unknown", session_id=session_id)
+        _ci = build_customer_intent(chat_request.message, "unknown", language=query_language)
+        log_question(chat_request.message, client_key, 0, intent="unknown", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
         return {
             "answer": (
                 "I can't reliably answer that as the Foodland assistant. Try asking about products, "
@@ -3680,6 +3812,19 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "knowledge": knowledge_summary(knowledge_matches),
             "memory": public_user_memory_summary(updated_profile),
             "intent": "unknown",
+        }
+
+    if is_category_discovery_query(chat_request.message):
+        update_session_memory(memory_key, chat_request.message, "category_discovery", [], [], knowledge_matches)
+        updated_profile = update_user_memory(profile_key, chat_request.message, "category_discovery", [], [])
+        _ci = build_customer_intent(chat_request.message, "category_discovery", language=query_language)
+        log_question(chat_request.message, client_key, 0, intent="category_discovery", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
+        return {
+            "answer": category_discovery_answer(products, query_language),
+            "products": [],
+            "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": "category_discovery",
         }
 
     already_have_subject = detect_already_have_subject(contextual_message)
@@ -3836,7 +3981,12 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     fallback_related_subject = None if replacement_subject else related_subject
     update_session_memory(memory_key, chat_request.message, intent, matches, [], knowledge_matches)
     updated_profile = update_user_memory(profile_key, chat_request.message, intent, matches, [])
-    log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id)
+    _ci = build_customer_intent(
+        chat_request.message, intent,
+        subject=related_subject or article_product_subject or special_subject or replacement_subject or already_have_subject,
+        language=query_language,
+    )
+    log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
 
     if not matches and not knowledge_matches and not needs_knowledge:
         fallback_sections = (
@@ -5286,7 +5436,15 @@ def enforce_semantic_search_rate_limit(client_key: str) -> None:
     events.append(now)
 
 
-def log_question(message: str, client_key: str, matches_count: int, intent: str = "", session_id: str = "") -> None:
+def log_question(
+    message: str,
+    client_key: str,
+    matches_count: int,
+    intent: str = "",
+    session_id: str = "",
+    primary_intent: str = "",
+    subject: str = "",
+) -> None:
     path = Path(os.getenv("ANALYTICS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "question_analytics.jsonl")))
     salt = os.getenv("ANALYTICS_SALT", "")
     record = {
@@ -5296,6 +5454,10 @@ def log_question(message: str, client_key: str, matches_count: int, intent: str 
         "matches_count": matches_count,
         "intent": intent,
         "session_id": session_id,
+        # V2.1: canonical CustomerIntent fields, additive and optional so
+        # existing readers of this JSONL file are unaffected.
+        "primary_intent": primary_intent,
+        "subject": subject,
     }
     if os.getenv("ANALYTICS_INCLUDE_IP", "false").lower() == "true":
         record["ip"] = client_key
@@ -5305,6 +5467,32 @@ def log_question(message: str, client_key: str, matches_count: int, intent: str 
             file.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception as exc:
         logger.error("Failed to log question: %s", exc, exc_info=True)
+
+
+def log_taxonomy_shadow(message: str, client_key: str, match) -> None:
+    # V2 catalog-first taxonomy, Stage A (shadow/observation mode -
+    # see docs/product-taxonomy-audit.md). Logs the rice-family
+    # classification for later comparison against legacy routing;
+    # does not affect routing, products, or answer text in any way.
+    if match.subfamily is None:
+        return
+    path = Path(os.getenv("TAXONOMY_SHADOW_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "taxonomy_shadow.jsonl")))
+    salt = os.getenv("ANALYTICS_SALT", "")
+    record = {
+        "ts": int(time.time()),
+        "client_hash": hashlib.sha256(f"{salt}:{client_key}".encode("utf-8")).hexdigest()[:24],
+        "message": redact_pii(message)[:500],
+        "family": match.family,
+        "subfamily": match.subfamily,
+        "confidence": match.confidence,
+        "matched_phrase": match.matched_phrase,
+    }
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as file:
+            file.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as exc:
+        logger.error("Failed to log taxonomy shadow: %s", exc, exc_info=True)
 
 
 def log_backend_error(event: str, detail: str) -> None:
@@ -7675,7 +7863,19 @@ def detect_allergen_intent(message: str) -> str | None:
     if "bezlepk" in normalized_message:
         return "lepok"
 
-    if not any(marker in normalized_message for marker in ALLERGEN_INTENT_MARKERS):
+    # Real user report: "ma to lepok?" (bare "has X allergen" question
+    # using "ma/je/su" instead of "obsahuje"/"vhodn"/"alerg"...) fell
+    # through the marker gate below entirely - ALLERGEN_INTENT_MARKERS
+    # only recognizes explicit safety-framing words, not a plain named
+    # allergen term paired with a "has" verb. Bypass the gate when both
+    # are present, but only for unambiguous allergen vocabulary - not
+    # generic grocery nouns from ALLERGEN_TERMS like "mlieko"/"ryb"/
+    # "vajc"/"orech" that are also just plain product words ("aku ma
+    # chut toto mlieko" is a taste question, not an allergen question).
+    allergen_question_verb = re.search(r"\b(ma|maju|je|su)\b", normalized_message) is not None
+    if not any(marker in normalized_message for marker in ALLERGEN_INTENT_MARKERS) and not (
+        allergen_question_verb and any(term in normalized_message for term in BARE_ALLERGEN_QUESTION_TERMS)
+    ):
         return None
 
     for term, label in ALLERGEN_TERMS.items():
@@ -7694,6 +7894,37 @@ def detect_allergen_intent(message: str) -> str | None:
 def detect_out_of_domain(message: str) -> bool:
     normalized_message = normalize(message)
     return any(marker in normalized_message for marker in OUT_OF_DOMAIN_MARKERS)
+
+
+def is_category_discovery_query(message: str) -> bool:
+    normalized_message = normalize(message).strip().rstrip("?!.")
+    return normalized_message in CATEGORY_DISCOVERY_MARKERS
+
+
+def top_product_categories(products_list: list[Product] | list[dict], limit: int = 8) -> list[str]:
+    counts: Counter = Counter()
+    for product in products_list:
+        raw_type = product_field(product, "product_type", "")
+        first_segment = raw_type.split(">")[0].strip() if raw_type else ""
+        if first_segment and normalize(first_segment) not in CATEGORY_DISCOVERY_NOISE:
+            counts[first_segment] += 1
+    return [name for name, _ in counts.most_common(limit)]
+
+
+def category_discovery_answer(products_list: list[Product] | list[dict], lang: str = "sk") -> str:
+    categories = top_product_categories(products_list, 8)
+    if not categories:
+        return (
+            "Foodland.sk offers a wide range of Asian and international groceries. "
+            "Tell me what you are looking for, or browse the full catalog on Foodland.sk."
+            if lang == "en"
+            else "Foodland.sk ponúka široký sortiment ázijských a svetových potravín. "
+            "Napíšte mi, čo konkrétne hľadáte, alebo si prezrite celý katalóg na Foodland.sk."
+        )
+    listed = ", ".join(categories)
+    if lang == "en":
+        return f"Foodland.sk carries many categories, for example: {listed} and more. Tell me what you are looking for and I will suggest specific products."
+    return f"Foodland.sk ponúka široký sortiment naprieč mnohými kategóriami, napríklad: {listed} a ďalšie. Napíšte mi, čo konkrétne hľadáte, a poradím vám konkrétne produkty."
 
 
 def allergen_product_matches(message: str, limit: int) -> list[dict]:
