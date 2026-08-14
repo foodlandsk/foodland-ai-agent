@@ -3094,6 +3094,32 @@ def admin_rebuild_embeddings(x_admin_token: str | None = Header(default=None)) -
     return {"products_embedded": len(new_embeddings)}
 
 
+@app.post("/admin/feed/refresh")
+def admin_refresh_feed(x_admin_token: str | None = Header(default=None)) -> dict:
+    """Manual on-demand refresh_feed() trigger (V2.1) - the scheduled
+    feed_refresh_loop() only runs every FEED_REFRESH_MINUTES and waits a
+    full interval before its first run, so this exists to verify the
+    feed/normalization/taxonomy pipeline against live data without
+    waiting. Deliberately does NOT call rebuild_knowledge_from_feed() -
+    that triggers OpenAI enrichment calls, out of scope for a pipeline
+    smoke check."""
+    require_admin_token(x_admin_token)
+
+    started_at = time.time()
+    refresh_feed()
+    duration = time.time() - started_at
+
+    if last_feed_refresh_error:
+        raise HTTPException(status_code=502, detail=last_feed_refresh_error)
+
+    return {
+        "products": len(products),
+        "taxonomy": taxonomy_coverage(product_taxonomy_index),
+        "duration_seconds": round(duration, 2),
+        "last_feed_refresh_at": last_feed_refresh_at,
+    }
+
+
 @app.get("/admin/analytics/behavioral-rankings")
 def admin_behavioral_rankings(
     limit: int = 20,

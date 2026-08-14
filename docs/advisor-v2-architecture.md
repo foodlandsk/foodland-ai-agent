@@ -43,6 +43,14 @@ customer-facing code path** in this sprint - it exists so V2.2 retrieval
 can later query `find_by_family()`/`find_by_attributes()` instead of
 re-tokenizing `product_type` per request.
 
+`refresh_feed()` normally only runs from `feed_refresh_loop()`, which
+waits a full `FEED_REFRESH_MINUTES` interval before its first run - so a
+fresh deploy serves the bundled `data/products.json` snapshot until that
+interval elapses. `POST /admin/feed/refresh` (admin-token gated, same
+pattern as `/admin/embeddings/rebuild`) triggers `refresh_feed()` on
+demand for operational verification, without waiting and without the
+OpenAI-based `rebuild_knowledge_from_feed()` side effect.
+
 ## Fázy
 
 | Fáza | Stav | Poznámka |

@@ -968,6 +968,58 @@ class TestSemanticSearchEndpoint:
         reloaded = load_embeddings(str(path))
         assert len(reloaded) == 2
 
+    def test_admin_refresh_feed_requires_token(self, monkeypatch):
+        monkeypatch.delenv("ADMIN_ANALYTICS_TOKEN", raising=False)
+        monkeypatch.delenv("ADMIN_RELOAD_TOKEN", raising=False)
+
+        with pytest.raises(main.HTTPException):
+            main.admin_refresh_feed(x_admin_token=None)
+
+    def test_admin_refresh_feed_runs_v21_pipeline_and_reports_taxonomy(self, products, monkeypatch):
+        # V2.1: manual on-demand trigger for refresh_feed() so the feed/
+        # normalization/taxonomy pipeline can be verified without waiting
+        # for the scheduled feed_refresh_loop() interval. Mocks the network
+        # fetch only - refresh_feed() itself, including build_taxonomy_index(),
+        # runs for real, so it reassigns several main.* globals (same as
+        # test_refresh_feed_keeps_old_catalog_when_new_feed_is_empty below) -
+        # save/restore them so this test does not leak state into others.
+        original = {
+            name: getattr(main, name)
+            for name in ("products", "product_snapshot", "translation_index",
+                         "product_taxonomy_index", "last_feed_refresh_at", "last_feed_refresh_error")
+        }
+        try:
+            monkeypatch.setenv("ADMIN_ANALYTICS_TOKEN", "test-token")
+            monkeypatch.setattr(main, "load_multilang_feeds", lambda: {"sk": products})
+
+            result = main.admin_refresh_feed(x_admin_token="test-token")
+
+            assert result["products"] == len(products)
+            assert result["taxonomy"]["total_products"] == len(products)
+            assert set(result["taxonomy"]["confidence_counts"]) == {"HIGH", "MEDIUM", "LOW", "UNKNOWN"}
+            assert result["duration_seconds"] >= 0
+            assert result["last_feed_refresh_at"] is not None
+        finally:
+            for name, value in original.items():
+                setattr(main, name, value)
+
+    def test_admin_refresh_feed_raises_on_empty_sk_feed(self, monkeypatch):
+        # refresh_feed() keeps the previous catalog and sets
+        # last_feed_refresh_error instead of wiping products to [] - the
+        # endpoint must surface that as an error, not a fake 200 success.
+        # (Not asserting .status_code here: the offline fastapi stub in
+        # _install_stubs() above discards constructor args, same as every
+        # other pytest.raises(main.HTTPException) test in this file.)
+        original_error = main.last_feed_refresh_error
+        try:
+            monkeypatch.setenv("ADMIN_ANALYTICS_TOKEN", "test-token")
+            monkeypatch.setattr(main, "load_multilang_feeds", lambda: {"sk": []})
+
+            with pytest.raises(main.HTTPException):
+                main.admin_refresh_feed(x_admin_token="test-token")
+        finally:
+            main.last_feed_refresh_error = original_error
+
 
 class TestSearchProducts:
     def test_sushi_rice_not_vinegar(self, products):
