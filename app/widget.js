@@ -1656,7 +1656,7 @@
     updateSiteCartDisplay(after);
   }
 
-  function addProducts(products, query) {
+  function addProducts(products, query, hasServerMore) {
     if (!Array.isArray(products) || products.length === 0) return;
 
     const INITIAL = 3;
@@ -1730,25 +1730,40 @@
       wrap.appendChild(renderCard(product, index));
     });
 
-    if (products.length > INITIAL) {
+    if (products.length > INITIAL || hasServerMore) {
       let shown = INITIAL;
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "fl-ai-show-more";
       function updateShowMoreLabel() {
-        btn.textContent = `Zobraziť viac (${products.length - shown})`;
+        btn.textContent = shown < products.length
+          ? `Zobraziť viac (${products.length - shown})`
+          : "Zobraziť všetky";
       }
       updateShowMoreLabel();
       btn.addEventListener("click", function () {
-        const nextBatch = products.slice(shown, shown + INITIAL);
-        nextBatch.forEach(function (p, i) { wrap.insertBefore(renderCard(p, shown + i), btn); });
-        shown += nextBatch.length;
-        if (shown >= products.length) {
-          btn.remove();
-        } else {
-          updateShowMoreLabel();
+        if (shown < products.length) {
+          const nextBatch = products.slice(shown, shown + INITIAL);
+          nextBatch.forEach(function (p, i) { wrap.insertBefore(renderCard(p, shown + i), btn); });
+          shown += nextBatch.length;
+          if (shown >= products.length && !hasServerMore) {
+            btn.remove();
+          } else {
+            updateShowMoreLabel();
+          }
+          scrollToBottom();
+          return;
         }
-        scrollToBottom();
+        // V2.5: local batch (already sent by the backend) is exhausted -
+        // has_more means the server-side ResultSet has more (Section 8),
+        // so continue via the same /chat flow with the canonical phrase
+        // (Section 39/40 - action stays semantic, this is just SK text).
+        if (hasServerMore && !btn.disabled) {
+          btn.disabled = true;
+          btn.textContent = "Načítavam...";
+          input.value = "zobraz vsetky";
+          form.requestSubmit();
+        }
       });
       wrap.appendChild(btn);
     }
@@ -1991,7 +2006,7 @@
       addRecipes(data.recipes);
       addArticles(data.articles);
       if (data.intent !== "recipe") {
-        addProducts(data.products, text);
+        addProducts(data.products, text, Boolean(data.has_more));
         if (Array.isArray(data.products) && data.products.length > 0) {
           fireEvent({
             event_type: "impression",

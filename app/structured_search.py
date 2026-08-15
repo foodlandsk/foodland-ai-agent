@@ -26,9 +26,11 @@ import logging
 from typing import Callable
 
 from app.feed import Product
+from app.presentation import build_result_set
 from app.product_normalizer import NormalizedProduct
-from app.query_constraints import StructuredProductQuery, parse_structured_query
+from app.query_constraints import StructuredProductQuery, merge_constraints, parse_structured_query
 from app.ranking import rank_candidates
+from app.result_sets import ResultSet
 from app.retrieval import (
     LEGACY_FALLBACK,
     RetrievalResult,
@@ -101,6 +103,79 @@ def hybrid_search_products(
     except Exception:
         logger.warning("Structured retrieval failed for query %r, falling back to legacy search.", query_text[:80], exc_info=True)
         return legacy_search_fn(products, query_text, limit)
+
+
+def build_structured_result_set(
+    query_text: str,
+    products: list[Product],
+    taxonomy_index: dict[str, ProductTaxonomy],
+    normalized_index: dict[str, NormalizedProduct],
+    *,
+    catalog_version: int,
+    taxonomy_version: int,
+    now: float,
+    base_query: StructuredProductQuery | None = None,
+    behavioral_rankings: dict | None = None,
+    merchandising_rules: dict | None = None,
+    personalization_scores: dict[str, float] | None = None,
+) -> ResultSet | None:
+    """V2.5 entry point: builds a full, pageable ResultSet, or None when
+    structured retrieval cannot confidently answer this query (caller
+    should fall back to the existing legacy chat answer path - Section 39/82).
+
+    `base_query` is the previous turn's StructuredProductQuery (from an
+    active session ResultSet) - if the NEW message parses with no family
+    of its own but DOES carry a brand/size/dietary constraint, it is
+    treated as a narrowing follow-up (Section 13) rather than a fresh,
+    unrelated search.
+    """
+    try:
+        index = get_structured_index(products, taxonomy_index, normalized_index)
+        parsed = parse_structured_query(query_text, known_brands=index.known_brands)
+        if base_query is not None and parsed.family is None and (parsed.brand or parsed.package_size or parsed.dietary_facets):
+            query = merge_constraints(base_query, parsed)
+        else:
+            query = parsed
+
+        result = retrieve_products(query, index)
+        if result.retrieval_mode == LEGACY_FALLBACK or not (result.valid_match_ids or result.nearest_match_ids):
+            _log_shadow(result, legacy_fallback_used=True)
+            return None
+
+        primary_ids = result.exact_match_ids or result.nearest_match_ids or result.valid_match_ids
+        products_by_id = {product.id: product for product in products}
+        ranked_ids = rank_candidates(
+            primary_ids,
+            query,
+            products_by_id,
+            index,
+            normalized_index,
+            behavioral_rankings=behavioral_rankings,
+            merchandising_rules=merchandising_rules,
+            personalization_scores=personalization_scores,
+        )
+        _log_shadow(result, legacy_fallback_used=False)
+        return build_result_set(
+            query_text,
+            query,
+            result,
+            ranked_ids,
+            taxonomy_index,
+            catalog_version=catalog_version,
+            taxonomy_version=taxonomy_version,
+            now=now,
+        )
+    except Exception:
+        logger.warning("Structured presentation failed for query %r, caller should fall back.", query_text[:80], exc_info=True)
+        return None
+
+
+def format_result_set_products(products: list[Product], product_ids: list[str]) -> list[dict]:
+    """Formats a slice of a ResultSet's ranked_product_ids into the same
+    dict shape app.search.format_product() already produces everywhere
+    else - drop-in compatible with the existing `products` response field."""
+    products_by_id = {product.id: product for product in products}
+    return [format_product(products_by_id[pid]) for pid in product_ids if pid in products_by_id]
 
 
 def _log_shadow(result: RetrievalResult, *, legacy_fallback_used: bool) -> None:

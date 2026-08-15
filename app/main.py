@@ -84,9 +84,16 @@ from app.search import (
 )
 from app.workflows import products_to_cart_candidates
 from app.intent import build_customer_intent
-from app.taxonomy import classify_rice_query, build_taxonomy_index, taxonomy_coverage, build_concept_index
+from app.taxonomy import classify_rice_query, build_taxonomy_index, taxonomy_coverage, build_concept_index, TAXONOMY_VERSION
 from app.product_normalizer import normalize_catalog
 from app.structured_search import hybrid_search_products as _hybrid_search_products
+from app.structured_search import build_structured_result_set as _build_structured_result_set
+from app.structured_search import format_result_set_products as _format_result_set_products
+from app.answer_composer import compose_answer as _compose_answer
+from app.answer_composer import compose_continuation_answer as _compose_continuation_answer
+from app.result_sets import get_result_set as _get_result_set
+from app.result_sets import advance_displayed_count as _advance_displayed_count
+from app.result_sets import show_all as _show_all_result_set
 
 
 logging.basicConfig(
@@ -3415,6 +3422,7 @@ def get_session_memory(memory_key: str) -> dict:
             "recipe_titles": deque(maxlen=5),
             "last_top_product_title": "",
             "last_intent": "",
+            "active_result_set_id": "",
             "updated_at": now,
         }
         session_memories[memory_key] = memory
@@ -3482,6 +3490,21 @@ def is_context_followup(message: str) -> bool:
         "co chyba",
         "co mi chyba",
     }
+
+
+# V2.5 Show More / Show All (Section 14) - exact-phrase detection so a
+# customer follow-up like "zobraz vsetky" acts on the ACTIVE ResultSet
+# instead of triggering a brand-new broad search from that short text.
+SHOW_MORE_PHRASES = ("zobraz viac", "zobrazit viac", "ukaz viac", "ukaz este", "dalsie produkty", "show more")
+SHOW_ALL_PHRASES = ("zobraz vsetky", "zobrazit vsetky", "ukaz vsetky", "vsetky produkty", "show all", "zobraz vsetkych", "ukaz vsetkych", "zobrazit vsetkych")
+
+
+def is_show_all_query(normalized_message: str) -> bool:
+    return any(phrase in normalized_message for phrase in SHOW_ALL_PHRASES)
+
+
+def is_show_more_query(normalized_message: str) -> bool:
+    return any(phrase in normalized_message for phrase in SHOW_MORE_PHRASES)
 
 
 def best_memory_subject(memory: dict | None) -> str | None:
@@ -3700,6 +3723,40 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     memory = get_session_memory(memory_key)
     profile_key = user_memory_key(getattr(chat_request, "client_id", ""), client_key)
     user_profile = get_user_memory(profile_key) if USER_MEMORY_ENABLED else {}
+
+    # V2.5 Show More / Show All (Section 9/14/46): a pure continuation of
+    # the ACTIVE ResultSet, never a new search - product membership and
+    # order come entirely from the stored ResultSet, never re-derived
+    # from this short message.
+    active_result_set_id = memory.get("active_result_set_id", "")
+    if active_result_set_id:
+        normalized_continuation_message = normalize(chat_request.message)
+        wants_show_all = is_show_all_query(normalized_continuation_message)
+        wants_show_more = not wants_show_all and is_show_more_query(normalized_continuation_message)
+        if wants_show_all or wants_show_more:
+            active_result_set = _get_result_set(active_result_set_id, time.time())
+            if active_result_set is not None and active_result_set.catalog_version == id(products):
+                revealed_ids = active_result_set.remaining_ids() if wants_show_all else active_result_set.next_page_ids()
+                if wants_show_all:
+                    _show_all_result_set(active_result_set)
+                else:
+                    _advance_displayed_count(active_result_set, active_result_set.page_size)
+                revealed_products = _format_result_set_products(products, revealed_ids)
+                revealed_products = personalize_products(revealed_products, user_profile)
+                update_session_memory(memory_key, chat_request.message, "product_search", revealed_products, [], {})
+                updated_profile = update_user_memory(profile_key, chat_request.message, "product_search", revealed_products, [])
+                return {
+                    "answer": _compose_continuation_answer(active_result_set, len(revealed_products)),
+                    "products": revealed_products,
+                    "matching_total": active_result_set.matching_total,
+                    "displayed_count": active_result_set.displayed_count,
+                    "has_more": active_result_set.has_more,
+                    "result_set_id": active_result_set.result_set_id,
+                    "answer_strategy": active_result_set.answer_strategy,
+                    "memory": public_user_memory_summary(updated_profile),
+                    "intent": "product_search",
+                    "response_mode": "result_set_continuation",
+                }
     contextual_message = contextualize_message(chat_request.message, memory)
     memory_subject = best_memory_subject(memory)
 
@@ -3953,8 +4010,34 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         # detect_related_subject() above on its own).
         related_subject = memory_subject
     needs_composition_caution = is_composition_caution_search(contextual_message)
+    structured_presentation = None
     if already_have_subject:
         matches = complement_products_for_subject(products, already_have_subject, chat_request.limit)
+    elif special_subject == "plain_rice" and V2_STRUCTURED_RETRIEVAL_ENABLED and (
+        structured_presentation := _build_structured_result_set(
+            contextual_message,
+            products,
+            product_taxonomy_index,
+            normalized_product_index,
+            catalog_version=id(products),
+            taxonomy_version=TAXONOMY_VERSION,
+            now=time.time(),
+            base_query=(
+                _bq.structured_query
+                if (_bq := _get_result_set(memory.get("active_result_set_id", ""), time.time())) is not None
+                and _bq.catalog_version == id(products)
+                else None
+            ),
+            behavioral_rankings=get_behavioral_rankings(),
+            merchandising_rules=get_merchandising_rules(),
+        )
+    ) is not None:
+        # V2.4/V2.5 supersede the legacy "plain_rice" bare-"ryz" special-
+        # subject detector (a broad catch-all predating the taxonomy
+        # engine) with precise family/variety-aware structured retrieval
+        # and pagination - every OTHER special_subject entry (mild/hot/
+        # kids_snack/rice_cooker/sushi_rice/...) is untouched.
+        matches = _format_result_set_products(products, structured_presentation.initial_page_ids())
     elif special_subject:
         matches = special_products_for_subject(products, special_subject, chat_request.limit)
     elif replacement_subject:
@@ -3969,9 +4052,32 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     elif related_subject:
         matches = related_products_for_subject(products, knowledge, related_subject, chat_request.limit)
     else:
-        matches = hybrid_cached_search_products(contextual_message, chat_request.limit)
+        base_result_set = _get_result_set(memory.get("active_result_set_id", ""), time.time())
+        base_query = (
+            base_result_set.structured_query
+            if base_result_set is not None and base_result_set.catalog_version == id(products)
+            else None
+        )
+        structured_presentation = _build_structured_result_set(
+            contextual_message,
+            products,
+            product_taxonomy_index,
+            normalized_product_index,
+            catalog_version=id(products),
+            taxonomy_version=TAXONOMY_VERSION,
+            now=time.time(),
+            base_query=base_query,
+            behavioral_rankings=get_behavioral_rankings(),
+            merchandising_rules=get_merchandising_rules(),
+        ) if V2_STRUCTURED_RETRIEVAL_ENABLED else None
+        if structured_presentation is not None:
+            matches = _format_result_set_products(products, structured_presentation.initial_page_ids())
+        else:
+            matches = hybrid_cached_search_products(contextual_message, chat_request.limit)
     is_shopping_list_request = wants_shopping_list(contextual_message)
-    matches = personalize_products(matches, user_profile)
+    if structured_presentation is None:
+        matches = personalize_products(matches, user_profile)
+    memory["active_result_set_id"] = structured_presentation.result_set_id if structured_presentation is not None else ""
     if is_shopping_list_request and related_subject == "sushi":
         matches = sushi_shopping_core_products(products, matches, chat_request.limit)
     if is_shopping_list_request and related_subject == "tom_yum":
@@ -4049,6 +4155,29 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         language=query_language,
     )
     log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
+
+    if structured_presentation is not None:
+        # V2.5 Result Presentation (Section 24/50): deterministic, template-
+        # based answer over the already-decided ResultSet - no OpenAI call,
+        # no LLM re-selection of products/counts/pagination state.
+        return {
+            "answer": _compose_answer(structured_presentation),
+            "products": matches,
+            "articles": articles,
+            "cart_candidates": cart_candidates,
+            "missing_ingredients": missing_ingredients,
+            "shopping_list": shopping_list,
+            "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": intent,
+            "response_mode": "result_set",
+            "matching_total": structured_presentation.matching_total,
+            "displayed_count": structured_presentation.displayed_count,
+            "has_more": structured_presentation.has_more,
+            "result_set_id": structured_presentation.result_set_id,
+            "answer_strategy": structured_presentation.answer_strategy,
+            "groups": structured_presentation.groups,
+        }
 
     if not matches and not knowledge_matches and not needs_knowledge:
         fallback_sections = (

@@ -253,3 +253,27 @@ def query_from_constraints(
         query.constraint_sources["subfamily"] = EXPLICIT
     query.confidence = "HIGH"
     return query
+
+
+def merge_constraints(base: StructuredProductQuery, addition: StructuredProductQuery) -> StructuredProductQuery:
+    """V2.5 follow-up narrowing (Section 13): "jazmínová ryža" then "len 5
+    kg" must keep family=rice/variety=jasmine and only ADD package_size,
+    never restart interpretation from the short follow-up message alone.
+
+    Caller is responsible for only merging when `addition` genuinely has
+    no family of its own (a follow-up that DOES name a new family/concept
+    is a fresh query, not a narrowing - see app.structured_search)."""
+    merged = StructuredProductQuery(
+        raw_query=f"{base.raw_query} {addition.raw_query}".strip(),
+        family=base.family,
+        subfamily=base.subfamily,
+        attributes=dict(base.attributes),
+        concept_id=base.concept_id,
+        brand=addition.brand or base.brand,
+        package_size=addition.package_size or base.package_size,
+        dietary_facets=list(dict.fromkeys([*base.dietary_facets, *addition.dietary_facets])),
+        confidence=base.confidence,
+    )
+    merged.explicit_constraints = set(base.explicit_constraints) | set(addition.explicit_constraints)
+    merged.constraint_sources = {**base.constraint_sources, **addition.constraint_sources}
+    return merged

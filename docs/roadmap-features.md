@@ -1270,3 +1270,30 @@ Committed fixture (2 140 produktov, pinned test suite): `classified=720`, `cover
 **Riziká/obmedzenia (úprimne):** `tea` rodina má v committed fixture 0 HIGH/MEDIUM produktov (fixture drift oproti živému feedu, rovnaký typ rozdielu ako V2.3 dokumentoval). Relaxácia je 3-stupňová, nie plný combinatorický prehľadávač – dostatočné pre V2.4 rozsah (Section 17: "Full presentation of this distinction belongs to V2.5"). Personalizácia nie je priamo zapojená do `hybrid_cached_search_products()` volania (`personalization_scores=None`) – existujúci `personalize_products()` postprocessing krok v `chat()` beží aj nad štruktúrovanými výsledkami (agnostický k pôvodu zoznamu), takže Section 35 je splnená end-to-end, ale priama `app.ranking` L6 vrstva je zatiaľ nevyužitá v produkčnej ceste. Detail: `docs/structured-retrieval-audit.md`.
 
 **Ďalší krok (mimo rozsahu tejto iterácie):** V2.5 — Result Presentation Layer & Answer Composer.
+
+### Sprint V2.5 – Result Presentation Layer, Show More/Show All & Answer Composer
+
+**Zadanie:** premeniť V2.4 štruktúrovaný retrieval na skutočnú zákaznícku skúsenosť – zobraziť rozumnú počiatočnú podmnožinu, umožniť "Zobraziť viac"/"Zobraziť všetky" nad TOU ISTOU množinou (žiadne nové vyhľadávanie), skupinovať široké dopyty podľa reálnych kategórií, a vysvetliť výsledok prirodzeným jazykom bez LLM rozhodujúceho o produktoch/počtoch.
+
+**Implementované:** `app/result_sets.py` (`ResultSet` – stabilný, id-only záznam s TTL store, `initial_page_ids()`/`next_page_ids()`/`remaining_ids()`), `app/presentation.py` (`build_result_set()` – 4 automaticky vyberané stratégie: `EXACT_MATCH` (≤3 exact zhody), `FILTERED_PRODUCT_LIST` (konkrétna varieta/subfamily), `GROUPED_DISCOVERY` (holá rodina, ≥2 koncepty), `NO_EXACT_MATCH` (0 exact, nearest > 0); `build_groups()` – zoskupenie podľa `ProductTaxonomy.concept_id`, reálne počty z aktuálnej validnej množiny, nikdy nevymyslené), `app/answer_composer.py` (deterministický, template-based text – **žiadne LLM volanie**, Section 24/50 zadania). `app/structured_search.py` rozšírené o `build_structured_result_set()` (orchestruje parse→retrieve→rank→present, podporuje follow-up merge cez `app.query_constraints.merge_constraints()`).
+
+**Zapojenie do `app/main.py`:** nová najvyššou-prioritou vetva v `chat()` pre SHOW_MORE/SHOW_ALL frázy ("zobraz viac"/"zobraz vsetky"/"show more"/"show all"), aktivuje sa len keď existuje `active_result_set_id` v session memory – číta ULOŽENÝ `ResultSet`, žiadne nové vyhľadávanie, žiadne re-parsovanie krátkej frázy ako broad dopytu. Nový early-return pre `structured_presentation`, s vyššou prioritou než existujúci `should_use_fast_chat_answer()` – keď sa aplikuje, úplne obchádza OpenAI volanie.
+
+**Kritický nález (self-audit pred nasadením):** pred-V2.1 `detect_special_product_subject()` obsahuje bare catch-all pravidlo `if "ryz" in normalized_message and not any(exclusion markers): return "plain_rice"`, ktoré zachytávalo presne mandátne V2.5 testovacie dopyty ("jazmínová ryža", "basmati ryža") skôr, než sa vôbec dostali do novej štruktúrovanej vetvy (`elif special_subject:` beží pred plain product_search `else:` vetvou). Opravené chirurgicky: keď `special_subject == "plain_rice"`, štruktúrovaný retrieval sa skúsi PRVÝ; ak vráti `None`, pôvodný `special_products_for_subject()` beží ako safety-net fallback presne ako predtým. Ostatných ~25 `special_subject` záznamov (mild/hot/kids_snack/rice_cooker/sushi_rice/vegan_asian/...) zostáva úplne nedotknutých – migrovaný je len ten jeden záznam, ktorý V2.3/V2.4 taxonómia genuinely nahrádza presnejším a stránkovateľným výsledkom.
+
+**Overené naživo cez `app.main.chat()` (nie len izolované moduly):**
+```
+"jazminova ryza"        -> FILTERED_PRODUCT_LIST, matching_total=14, 4 zobrazené, has_more=true
+"zobraz vsetky"         -> response_mode=result_set_continuation, 10 NOVÝCH produktov (4+10=14 presne), has_more=false
+"ryza" (holý dopyt)     -> GROUPED_DISCOVERY, 78 produktov v 5 kategóriách (Basmati 20, Ryža 19, Jazmínová 14, Lepkavá 13, Sushi 12)
+"jazminova ryza" -> "len 5 kg" -> merge zachoval family=rice/variety=jasmine, pridal package_size=5kg -> EXACT_MATCH, 1 produkt
+"FOODLAND jazminova ryza 2 kg" -> NO_EXACT_MATCH, matching_total=0, 3 nearest (správna značka, iná veľkosť)
+```
+
+**Widget (`app/widget.js`, prírastková zmena, nie redesign):** existujúce klientske tlačidlo "Zobraziť viac" (ktoré doteraz len stránkovalo nad tým, čo už bolo poslané v `products[]`) teraz prijíma `hasServerMore` z `data.has_more`. Po vyčerpaní lokálneho batchu, ak server signalizuje viac, tlačidlo sa zmení na "Zobraziť všetky" a po kliku prepošle existujúci `/chat` formulár s kanonickou frázou "zobraz vsetky" – žiadny nový endpoint, žiadna nová fetch logika.
+
+**Testy:** nový `tests/test_result_presentation.py` (22 testov – pagination completeness, Show All union bez prekryvu, related contamination naprieč všetkými stránkami, grouped discovery s reálnymi počtami, špecifická-vs-broad stratégia, follow-up constraint persistence vrátane "bez aktívneho ResultSetu sa nič nevymyslí", no-exact-match rozlíšenie, answer wording pravidlá, ranking stability, TTL store). **Plný beh: 731/731** (709 pred V2.5 + 22 nových), 0 regresií.
+
+**Riziká/obmedzenia (úprimne):** `COMPARISON`/`USE_CASE_ADVICE`/`RECOMMENDATION`/`REPLACEMENT`/`RECIPE_SHOPPING` stratégie sú definované ako konštanty, ale zatiaľ sa automaticky nevyberajú – tieto zákaznícke zámery bežia naďalej cez existujúce, samostatne testované legacy cesty. Personalizácia sa pre štruktúrované odpovede teraz explicitne VYNECHÁVA (namiesto post-hoc aplikácie), aby stránkovanie ResultSetu zostalo stabilné naprieč viacerými "Zobraziť viac" kolami (Section 44 zadania). Detail: `docs/result-presentation-audit.md`.
+
+**Ďalší krok (mimo rozsahu tejto iterácie):** V2.6 — Contextual Cross-Sell & Basket Intelligence.
