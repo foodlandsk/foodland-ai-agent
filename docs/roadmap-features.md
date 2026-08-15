@@ -1329,3 +1329,38 @@ Committed fixture (2 140 produktov, pinned test suite): `classified=720`, `cover
 **Riziká/obmedzenia (úprimne):** rozlíšenie SAMOTNEJ štruktúrovanej otázky ("akú ryžu?" má vedieť, že ide o sushi ryžu) je oddelený problém a stále závisí od pred-existujúceho `is_context_followup()` heuristického detektora (V2.1) — V2.6 ho zámerne nerozširuje (Section 34). Cross-sell recipe-kontext túto limitáciu už nemá (viď oprava vyššie). `BasketContext` je zámerne minimálny (žiadny reálny cart API v aktuálnej architektúre widgetu). Detail: `docs/cross-sell-audit.md`.
 
 **Ďalší krok (mimo rozsahu tejto iterácie):** V2.7 — Workflow & Orchestration Migration.
+
+### Sprint V2.7 – Workflow & Orchestration Migration
+
+**Zadanie:** presunúť routovanie z ad-hoc `if/elif` kaskády v `app/main.py` smerom k čistej, testovateľnej orchestrácii — bez jednorazového prepisu, migrovať workflow po workflow, zachovať bezpečný legacy fallback.
+
+**Kľúčový poznatok pred implementáciou:** `chat()`'s posledná `else:` vetva (post-V2.6) UŽ JE presne ten target flow, ktorý zadanie žiada — štruktúrovaný dopyt (V2.4) → retrieval (V2.4) → ranking (V2.4) → prezentácia (V2.5) → cross-sell eligibility (V2.6) → answer composer (V2.5). V2.7 túto cestu preto neprepisuje, ale **formalizuje** — pridáva explicitný, testovateľný label nad už prebehnutým rozhodnutím, presne v duchu Section 4/80 zadania ("Do not reimplement... Do NOT rewrite the entire system in one pass").
+
+**Implementované:** nový modul `app/workflow_registry.py` — 11 stabilných `workflow_id` (`PRODUCT_LOOKUP`, `CATEGORY_BROWSE`, `ATTRIBUTE_SEARCH`, `USE_CASE_ADVICE`, `COMPARISON`, `REPLACEMENT`, `RECIPE_SHOPPING`, `FAQ_INFORMATIONAL`, `ORDER_TRACKING`, `SUPPORT_ESCALATION`, `LEGACY_FALLBACK`), `WorkflowContract` registry (`WORKFLOWS` dict — retrieval/presentation/cross_sell_policy/grounding/fallback per workflow), deterministický `select_workflow(RoutingSignals) -> WorkflowSelection`. Precedencia je 1:1 odvodená z REÁLNEHO poradia `if/elif` vetiev v `chat()` (Section 49), nie vymyslená — zdokumentovaná ako "interná routovacia mapa" v `docs/workflow-migration-audit.md`.
+
+**Migračný stav (úprimný, nie ambiciózny):**
+- **MIGRATED**: `PRODUCT_LOOKUP`, `CATEGORY_BROWSE`, `ATTRIBUTE_SEARCH` — tieto tri už bežia cez V2.4-V2.6 pipeline; V2.7 pridal live `workflow_id`/`workflow_confidence` do odpovede + analytický log, **bez zmeny existujúcej odpovede** (shadow-safe by construction, Section 20).
+- **SHADOW**: `USE_CASE_ADVICE` (mimo V2.4 cesty), `COMPARISON`, `REPLACEMENT`, `RECIPE_SHOPPING`, `FAQ_INFORMATIONAL` — `select_workflow()` ich správne rozpozná a otestuje (viď mandátne scenáre nižšie), ale live zapojenie do `chat()` pre ich 8 samostatných early-return bodov je explicitne mimo rozsahu tejto iterácie (Section 5: migrovať postupne).
+- **LEGACY**: `ORDER_TRACKING`, `SUPPORT_ESCALATION` — Foodland tieto funkcie vôbec nemá implementované; registry ich uvádza len pre úplnosť schémy (Section 6), nikdy sa neaktivujú (Section 80).
+
+**Mandátne scenáre (Section 44, všetky overené):**
+```
+"jazmínová ryža"              -> ATTRIBUTE_SEARCH
+"akú ryžu na sushi?"          -> USE_CASE_ADVICE
+"jazmínová alebo basmati?"    -> COMPARISON
+"alternatíva Kikkoman"        -> REPLACEMENT
+"čo potrebujem na Pad Thai?"  -> RECIPE_SHOPPING
+"čo je miso?"                 -> FAQ_INFORMATIONAL
+"ukáž všetky"                 -> žiadny workflow_id (bypass, pure continuation)
+"len 5 kg"                    -> follow-up refinement cez existujúci merge_constraints()
+```
+
+**Routing conflict (Section 48):** *"akú alternatívu ku Kikkoman na sushi?"* nesie zároveň `replacement_subject` aj sushi/use-case kontext. Keďže `replacement_subject` sa v reálnej kaskáde kontroluje skôr než štruktúrovaná cesta, `select_workflow()` správne vráti `REPLACEMENT` — overené testom.
+
+**Kontext:** follow-up ("len 5 kg") a context switch (sushi → "kikkoman sójová omáčka") už fungujú cez existujúci V2.5/V2.6 mechanizmus (`memory_subject`, `merge_constraints()`) — V2.7 tento mechanizmus nemení, len ho pozoruje. Overené naživo: sushi kontext (`USE_CASE_ADVICE`) sa nepreleje do nasledujúceho nesúvisiaceho `PRODUCT_LOOKUP` dopytu v tej istej session.
+
+**Testy:** nový `tests/test_workflow_registry.py` (27 testov — mandátne scenáre, fallback, precedencia/routing conflict, determinizmus, order/support cross-sell disabled, workflow contract integrity, end-to-end cez skutočný `chat()`). **Plný beh: 779/779** (752 pred V2.7 + 27 nových), 0 regresií.
+
+**Riziká/obmedzenia (úprimne):** 5 SHADOW workflow nemá live `workflow_id` v `chat()` odpovedi — skutočné zapojenie live logovania pre ich early-return body je kandidát na ďalšiu fázu, nie zabudnutá práca. `main.py` routovacia kaskáda sa v tejto iterácii štrukturálne nezjednodušila (to by vyžadovalo prepísať 5+ samostatne testovaných legacy vetiev naraz) — `WORKFLOWS` registry je teraz jediný zdroj pravdy pre budúce postupné migrácie. Detail: `docs/workflow-migration-audit.md`.
+
+**Ďalší krok (mimo rozsahu tejto iterácie):** V2.8 — Recipe/Product Knowledge Graph & Ingredient Intelligence.

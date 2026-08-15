@@ -96,6 +96,8 @@ from app.result_sets import advance_displayed_count as _advance_displayed_count
 from app.result_sets import show_all as _show_all_result_set
 from app import cross_sell as _cross_sell
 from app.answer_composer import compose_cross_sell_intro as _compose_cross_sell_intro
+from app.workflow_registry import select_workflow as _select_workflow
+from app.workflow_registry import RoutingSignals as _RoutingSignals
 
 
 logging.basicConfig(
@@ -4191,6 +4193,30 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             knowledge=knowledge,
             fbt_data=get_fbt_data(),
         )
+        # V2.7 workflow labeling (Section 40): a pure analytics label
+        # over signals already computed above - selection here never
+        # changes which branch produced `matches`/`_cross_sell_products`
+        # (shadow-safe, Section 20). Every early-return branch above
+        # this point guarantees its own signal is falsy by the time
+        # execution reaches here, so only the later-computed cascade
+        # variables need to be passed explicitly.
+        _workflow_selection = _select_workflow(_RoutingSignals(
+            message=chat_request.message,
+            already_have_subject=already_have_subject,
+            special_subject=special_subject,
+            replacement_subject=replacement_subject,
+            article_product_subject=article_product_subject,
+            cross_sell_matches_found=bool(cross_sell_matches),
+            related_subject=related_subject,
+            structured_answer_strategy=structured_presentation.answer_strategy,
+            structured_has_explicit_attributes=bool(structured_presentation.structured_query.attributes),
+            cross_sell_context_type=_cross_sell_decision.context_type or None,
+        ))
+        logger.info(
+            "workflow_selected id=%s confidence=%.2f reason=%s fallback=%s",
+            _workflow_selection.workflow_id, _workflow_selection.confidence,
+            _workflow_selection.reason, _workflow_selection.fallback_workflow,
+        )
         return {
             "answer": _compose_answer(structured_presentation),
             "products": matches,
@@ -4212,6 +4238,8 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "cross_sell_eligible": _cross_sell_decision.eligible,
             "cross_sell_context_type": _cross_sell_decision.context_type,
             "cross_sell_intro": _compose_cross_sell_intro(_cross_sell_decision.context_type) if _cross_sell_decision.eligible else "",
+            "workflow_id": _workflow_selection.workflow_id,
+            "workflow_confidence": _workflow_selection.confidence,
         }
 
     if not matches and not knowledge_matches and not needs_knowledge:
