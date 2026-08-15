@@ -73,6 +73,7 @@ from app.search import (
     format_product,
     fuzzy_hits,
     get_behavioral_rankings,
+    get_merchandising_rules,
     normalize,
     products_context,
     raw_tokens,
@@ -84,6 +85,8 @@ from app.search import (
 from app.workflows import products_to_cart_candidates
 from app.intent import build_customer_intent
 from app.taxonomy import classify_rice_query, build_taxonomy_index, taxonomy_coverage, build_concept_index
+from app.product_normalizer import normalize_catalog
+from app.structured_search import hybrid_search_products as _hybrid_search_products
 
 
 logging.basicConfig(
@@ -222,6 +225,10 @@ translation_index: dict[str, dict[str, "Product"]] = {}
 # Rebuilt in lockstep with `products` on every refresh_feed() call.
 product_taxonomy_index = build_taxonomy_index(products)
 taxonomy_concept_index = build_concept_index(product_taxonomy_index)
+# V2.4 structured retrieval (Section 54/55) - rebuilt in lockstep with
+# `products`/`product_taxonomy_index` on every refresh_feed() call.
+normalized_product_index = normalize_catalog(products)
+V2_STRUCTURED_RETRIEVAL_ENABLED = os.getenv("V2_STRUCTURED_RETRIEVAL_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
 warm_search_indexes(products)
 rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 event_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
@@ -271,6 +278,27 @@ def cached_search_products(products_list: list[Product] | list[dict], query: str
         product_search_cache.pop(next(iter(product_search_cache)))
     product_search_cache[cache_key] = [dict(product) for product in results]
     return [dict(product) for product in results]
+
+
+def hybrid_cached_search_products(query: str, limit: int = 8) -> list[dict]:
+    """V2.4 Structured Retrieval & Category-Aware Ranking: uses the V2.3
+    taxonomy for families/queries it confidently recognizes, falls back to
+    legacy cached_search_products() otherwise or on any internal error
+    (Section 39/41/82 - hybrid by construction, never a single point of
+    failure). Feature-switchable via V2_STRUCTURED_RETRIEVAL_ENABLED for
+    rollback safety (Section 42)."""
+    if not V2_STRUCTURED_RETRIEVAL_ENABLED:
+        return cached_search_products(products, query, limit)
+    return _hybrid_search_products(
+        products,
+        product_taxonomy_index,
+        normalized_product_index,
+        query,
+        limit,
+        legacy_search_fn=cached_search_products,
+        behavioral_rankings=get_behavioral_rankings(),
+        merchandising_rules=get_merchandising_rules(),
+    )
 
 
 def cached_product_embeddings() -> dict[str, list[float]]:
@@ -2813,7 +2841,7 @@ def health() -> dict:
 
 @app.post("/products/search")
 def product_search(request: ProductSearchRequest) -> dict:
-    return {"products": cached_search_products(products, request.query, request.limit)}
+    return {"products": hybrid_cached_search_products(request.query, request.limit)}
 
 
 @app.post("/products/suggest")
@@ -3941,7 +3969,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     elif related_subject:
         matches = related_products_for_subject(products, knowledge, related_subject, chat_request.limit)
     else:
-        matches = cached_search_products(products, contextual_message, chat_request.limit)
+        matches = hybrid_cached_search_products(contextual_message, chat_request.limit)
     is_shopping_list_request = wants_shopping_list(contextual_message)
     matches = personalize_products(matches, user_profile)
     if is_shopping_list_request and related_subject == "sushi":
@@ -8502,7 +8530,7 @@ async def feed_refresh_loop(refresh_minutes: int) -> None:
 
 def refresh_feed() -> None:
     """Nacita produkty zo vsetkych jazykovych mutacii feedu (SK/CZ/DE/EN/HU/PL)."""
-    global products, product_snapshot, translation_index, product_taxonomy_index, taxonomy_concept_index
+    global products, product_snapshot, translation_index, product_taxonomy_index, taxonomy_concept_index, normalized_product_index
     global last_feed_refresh_at, last_feed_refresh_error
 
     lang_feeds = load_multilang_feeds()
@@ -8528,6 +8556,7 @@ def refresh_feed() -> None:
     translation_index = new_translation_index
     product_taxonomy_index = new_taxonomy_index
     taxonomy_concept_index = build_concept_index(new_taxonomy_index)
+    normalized_product_index = normalize_catalog(new_products)
     warm_search_indexes(new_products)
     clear_product_search_cache()
     last_feed_refresh_at = int(time.time())
