@@ -188,6 +188,24 @@ malých invertovaných indexov, nie sken celého katalógu). Pamäť:
 (žiadna duplicitná `Product` dáta, Section 92) — pre 712 indexovaných
 produktov rádovo desiatky KB.
 
+## Nález pri produkčnej live verifikácii (Section 96), opravený pred dokončením
+
+Live overenie na produkcii (`kikkoman sojova omacka` a `sojova omacka` proti
+skutočnému katalógu) odhalilo, že V2.3-era pravidlá `soy_sauce`/
+`dark_soy_sauce`/`light_soy_sauce` (title-only, bez `category_terms`) chytali
+akýkoľvek produkt, ktorého titulok len SPOMÍNA "sójová omáčka" ako príchuťový
+popis – napr. `"Instantné rezance NISSIN Demae Ramen Sójová omáčka 100 g"`
+(instantné rezance, nie fľaša sójovej omáčky). V shadow-mode V2.3 bola táto
+nesprávna klasifikácia neviditeľná; s aktívnym V2.4 retrievalom sa stala
+priamo zákazníkovi viditeľným nesprávnym výsledkom pre dopyt "sójová
+omáčka". Opravené pridaním `exclude_title_phrases=("instantna",
+"instantne")` na všetky 3 pravidlá – rovnaký guard, aký už mala
+`teriyaki_sauce` pre identickú kolíznu triedu z V2.3. Po oprave:
+`HIGH=513 MEDIUM=199` (predtým 512/200), 709/709 testov, overené aj priamo
+na produkcii po redeployi. Toto je presne ten typ nálezu, pre ktorý Section
+96 ("does every primary returned product satisfy the interpreted query?")
+existuje – nie zlyhanie, ale dôkaz, že kontrola funguje.
+
 ## Zostávajúce riziká (úprimne, nie vyhladené)
 
 - `tea` rodina má v aktuálnej fixture 0 HIGH/MEDIUM produktov (hoci V2.3
