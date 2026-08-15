@@ -303,7 +303,7 @@ class TestConfidenceLevels:
 
 class TestUnknownProducts:
     def test_unrelated_product_is_unknown_not_dropped(self):
-        p = make_product(title="Gochujang pasta 500g", product_type="Kórejské > Pasty")
+        p = make_product(title="Kimchi základ KIKKOMAN 1180g", product_type="Kórejské > Pasty")
         tax = classify_product(p)
         assert tax.canonical_family is None
         assert tax.confidence == "UNKNOWN"
@@ -311,7 +311,7 @@ class TestUnknownProducts:
 
     def test_unknown_product_still_gets_dietary_facets(self):
         p = make_product(
-            title="Gochujang pasta 500g",
+            title="Kimchi základ KIKKOMAN 1180g",
             product_type="Vegánske potraviny > Kórejské > Pasty",
         )
         tax = classify_product(p)
@@ -323,7 +323,7 @@ class TestBuildTaxonomyIndex:
     def test_indexes_every_product_by_id(self):
         products = [
             make_product(id="FL_1", title="Basmati ryža", product_type="Ryža"),
-            make_product(id="FL_2", title="Gochujang pasta 500g", product_type=""),
+            make_product(id="FL_2", title="Kimchi základ KIKKOMAN 1180g", product_type=""),
         ]
         index = build_taxonomy_index(products)
         assert set(index.keys()) == {"FL_1", "FL_2"}
@@ -378,7 +378,7 @@ class TestTaxonomyCoverage:
     def test_coverage_stats_computed_from_index(self):
         index = build_taxonomy_index([
             make_product(id="FL_1", title="Basmati ryža", product_type="Basmati ryža > Ryža"),
-            make_product(id="FL_2", title="Gochujang pasta 500g", product_type=""),
+            make_product(id="FL_2", title="Kimchi základ KIKKOMAN 1180g", product_type=""),
         ])
         stats = taxonomy_coverage(index)
         assert stats["total_products"] == 2
@@ -400,7 +400,7 @@ class TestConceptIndex:
         assert tax.concept_id == "basmati_rice"
 
     def test_classify_product_leaves_concept_id_empty_on_unknown(self):
-        p = make_product(title="Gochujang pasta 500g", product_type="")
+        p = make_product(title="Kimchi základ KIKKOMAN 1180g", product_type="")
         tax = classify_product(p)
         assert tax.concept_id == ""
 
@@ -427,7 +427,7 @@ class TestConceptIndex:
         assert not any(c["concept_id"] == "rice_drink" for c in concepts)
 
     def test_concept_index_excludes_unknown_products(self):
-        products = [make_product(id="FL_1", title="Gochujang pasta 500g", product_type="")]
+        products = [make_product(id="FL_1", title="Kimchi základ KIKKOMAN 1180g", product_type="")]
         index = build_taxonomy_index(products)
         concepts = build_concept_index(index)
         assert concepts == []

@@ -378,3 +378,124 @@ katalógu nie je úloha AI advisora).
   Ranking — napojiť `find_by_family()`/`find_by_attributes()` na
   retrieval plan namiesto re-tokenizácie `product_type` per request, pod
   kontrolovaným rollout (rovnaký Stage A→B vzor ako `classify_rice_query()`).
+
+---
+
+# Sprint V2.3 — Taxonomy Expansion Across the Foodland Catalog
+
+Dátum tohto behu: 2026-08-15. Zdroj: aktuálny živý feed (2 319 produktov,
+overené priamo z tohto prostredia) + committed `data/products.json`
+(2 140 produktov, rovnaká fixture ako pinned test suite).
+
+## Nové rodiny (16 celkovo, +9 oproti V2.1 pilotu)
+
+Každé pravidlo podložené reálnym dôkazom zo živého feedu (kategórie +
+tituly), nie vymyslenými príkladmi — pozri `app/taxonomy.py:
+FAMILY_DEFINITIONS` pre presné pravidlá.
+
+| family | subfamily-y | dôkaz (kategória) |
+|---|---|---|
+| `sauce` | soy_sauce(+dark/light), oyster_sauce, fish_sauce, hoisin_sauce, teriyaki_sauce, black_bean, chili_sauce(+sriracha/sweet/garlic) | Sójové omáčky, Ustricové omáčky, Rybacie omáčky, Hoisin omáčky, Teriyaki omáčky, Čili omáčky (+ 3 dedikované sub-kategórie) |
+| `curry_paste` | (attributes.variety: red/green/massaman/panang) | Kari pasty (čistá, dedikovaná kategória) |
+| `paste` | miso, gochujang, black_bean | Pasty korenia (titulkovo gated — kategória je príliš zmiešaná) |
+| `coconut_product` | coconut_milk, coconut_water | Kokosové mlieko a krémy (čistá); Kokosový nápoj (titulkovo gated) |
+| `oil` | sesame_oil | Sezamový olej (čistá, dedikovaná) |
+| `noodles` (rozšírené) | +wheat_noodles, +soba | Pšeničné rezance, Pohánkové rezance |
+| `instant_food` | instant_noodles, instant_soup | Instantné polievky (titulkovo rozlíšené: "rezance/ramyeon/ramen" vs "polievka") |
+| `tea` | — | Čaj (čistá, dedikovaná) |
+| `seaweed` | nori, wakame | Morské riasy (titulkovo gated — kategória mixuje nori/wakame/kelp) |
+| `frozen_food` | dumplings | (bez category_terms — "Mrazené potraviny" pokrýva všetko mrazené) |
+
+## Kritický nález počas implementácie: "category OR title", nie AND
+
+Motor `classify_product()` prijíma pravidlo, ak sedí KATEGÓRIA **alebo**
+TITULOK (nie nutne oboje). Toto je bezpečné, keď je kategória naozaj
+čistá (napr. `Sezamový olej`), ale **nebezpečné**, keď viacero pravidiel
+zdieľa tú istú širokú/nečistú kategóriu — prvé pravidlo v poradí vyhrá
+len na základe kategórie, bez ohľadu na titulok.
+
+Zachytené manuálnym family purity auditom (Section 53/58 zadania), nie
+testami vopred — presne preto bol purity audit povinný krok:
+
+1. **`gyoza`** pôvodne malo `category_terms=("mrazene potraviny",)` →
+   zachytilo 70 nesúvisiacich produktov (kalamáre, mochi zmrzlina,
+   edamame, citrónová tráva) namiesto len knedličiek. Opravené na
+   title-only `"gyoza"`.
+2. **`soy_sauce`/`dark_soy_sauce`/`light_soy_sauce`** mali
+   `category_terms=("sojove omacky",)` → kategória obsahuje aj čiernu
+   fazuľu omáčku, poke omáčku, unagi omáčku, dumpling omáčku. Opravené
+   na title-only.
+3. **`coconut_water`** malo `category_terms=("kokosovy napoj",)` →
+   kategória obsahuje aj kokosové želé dezerty. Opravené na title-only.
+4. **`nori`/`wakame`** mali `category_terms=("morske riasy",)` →
+   kategória obsahuje nori AJ wakame AJ kelp/kombu spolu. Opravené na
+   title-only (aj odstránené `"susena zelenina"` z wakame, ktoré
+   zachytilo sušenú cibuľu).
+5. **`massaman_curry_paste`/`panang`/`red`/`green` curry pasty** —
+   všetky 4 zdieľali `category_terms=("kari pasty",)` → PRVÉ pravidlo v
+   poradí (`massaman`) vyhrávalo pre KAŽDÝ produkt v tejto kategórii bez
+   ohľadu na titulok (červená kari pasta bola klasifikovaná ako
+   massaman!). Opravené na title-only pre všetky 4 variety pravidlá,
+   generický `curry_paste` fallback si kategóriu ponechal.
+6. **`soba_noodles`** — bare `"soba"` titulok chytal aj `"yakisoba"`
+   (iný, pšeničný pokrm), instantnú soba POLIEVKU, a keramickú misku s
+   produktovou radou "Soba". Opravené `exclude_title_phrases`.
+7. **`teriyaki_sauce`** — bare `"teriyaki"` chytal instantné
+   teriyaki-príchute polievky/rezance. Opravené `exclude_title_phrases`.
+
+**Zovšeobecnené pravidlo pre budúce iterácie:** ak viac ako jedno
+pravidlo v `FAMILY_DEFINITIONS` zdieľa presne ten istý `category_terms`
+reťazec, VŽDY over, či je tá kategória naozaj sémanticky čistá (family
+purity check, Section 53) — ak nie, alebo ak zdieľanú kategóriu používa
+viac než jedno pravidlo naraz, jednotlivé (špecifickejšie) pravidlá
+musia byť title-gated, kategória smie zostať len na generickom fallbacku.
+
+## Pokrytie (živý feed, 2 319 produktov)
+
+```
+classified_products = 766 / 2319   (taxonomy_coverage = 33.03 %, pred V2.3 = 7.14 %)
+confidence_counts = HIGH=538  MEDIUM=218  LOW=10  UNKNOWN=1553   (pred V2.3 UNKNOWN=2159)
+canonical_family_count = 16   (pred V2.3 = 7)
+canonical_subfamily_count = 27   (pred V2.3 = 8)
+
+families: instant_food=212  sauce=177  noodles=86  rice=79  tea=77
+          curry_paste=31  coconut_product=22  seaweed=16  paste=12
+          vinegar=12  beverages=10  oil=9  kitchenware=7  rice_paper=7
+          frozen_food=5  flour=4
+```
+
+Committed fixture (2 140 produktov, rovnaký ako pinned testy):
+`classified=720`, `coverage=33.64 %`, `HIGH=512 MEDIUM=200 LOW=8
+UNKNOWN=1420` — proporčne zhodné so živým feedom.
+
+## Vedomé rozhodnutia NEklasifikovať (Section 96 — pozitívny výsledok, nie zlyhanie)
+
+- **`tofu`** — nekonzistentné dôkazy (dedikovaná kategória neexistuje,
+  väčšina "tofu" titulkov je o gyoza plnke/čili paste s tofu kúskami/
+  miso polievke s tofu, nie o samotnom tofu produkte). Radšej UNKNOWN
+  než hádanie.
+- **`wasabi`** — titulkové zhody boli prevažne wasabi-PRÍCHUŤOVÉ
+  snacky (arašidy, edamame, krekry) a keramický riad s produktovou
+  radou "Wasabi" (farba/dizajn, nie ingrediencia), nie samotný wasabi
+  kondiment. Title/category sa nezhodovali (Section 40) → UNKNOWN.
+- **`knives`/`chopsticks`/`pickled_ginger`** — nulový výskyt presných
+  hľadaných termínov v živom feede pri tomto behu — žiadne dáta na
+  podloženie pravidla, nič nevymyslené.
+- **`bowls`/tableware rozšírenie** — kategória `Misy a misky`/`Stolový
+  riad` mixuje gastro obalové misky (takeaway) a keramický japonský
+  riad bez čistého rozlíšenia — mimo rozsahu tejto iterácie.
+
+## Zostávajúce top UNKNOWN oblasti (vstup pre ďalšiu iteráciu)
+
+Najväčšie zostávajúce kategórie bez rodiny (z pôvodného profilu, Fáza 1):
+`Kuchynské potreby` (343 leaf, len rice_cooker pokrytý), `Sladkosti a
+občerstvenie` (282, snacky/sušienky/cukríky nepokryté), `Dekorácie a
+darčeky` (67), `Vonné tyčinky` (40, nie potravina), `Konzervované
+produkty` (51, generická konzervovaná kategória).
+
+## Ako znovu overiť
+
+```bash
+python3 scripts/taxonomy_audit.py --taxonomy-engine
+python3 scripts/taxonomy_audit.py --shadow-interpretation
+```

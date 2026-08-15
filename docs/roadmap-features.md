@@ -1201,3 +1201,47 @@ edit_distance volania (1 dopyt)  ~286 000   ~10 000-30 000
 **Testy:** nový `tests/test_search_performance.py` (18 testov – ekvivalencia fuzzy cache, typo tolerancia, cache invalidation podľa `products` identity, `warm_search_indexes()`), rozšírený `tests/test_core.py` o `test_refresh_feed_rebuilds_search_performance_indexes`. **Plný beh: 624/624**, 0 regresií (bežal aj 286,95s namiesto pôvodných ~460-560s – vedľajší efekt: existujúce testy nad `search_autocomplete()`/`search_products()` sú teraz tiež rýchlejšie).
 
 **Ďalší krok (mimo rozsahu tejto iterácie):** V2.3 – Structured Retrieval & Category-Aware Ranking (napojiť `find_by_family()`/`find_by_attributes()` na retrieval namiesto re-tokenizácie `product_type`), teraz bez performance prekážky z tejto iterácie.
+
+### Sprint V2.3 – Taxonomy Expansion Across the Foodland Catalog
+
+**Zadanie:** rozšíriť V2.1 rice-pilot taxonómiu na širokú, produkčne pripravenú taxonómiu naprieč hlavnými Foodland produktovými rodinami, s cieľom materiálne zvýšiť HIGH/MEDIUM pokrytie a zachovať sémantickú čistotu (žiadna "za každú cenu" 100 % klasifikácia).
+
+**Discovery (živý feed, 2 319 produktov):** profil kategórií a titulkov identifikoval 9 nových vysoko-dôveryhodných kandidátnych rodín na základe reálnych dedikovaných kategórií (`Sójové omáčky` 97×, `Kari pasty` 31×, `Sezamový olej` 9×, `Čaj` 78×, `Kokosové mlieko a krémy`, `Pšeničné rezance` 45×, `Hoisin omáčky`, `Ustricové omáčky`, `Rybacie omáčky`, `Teriyaki omáčky`, `Instantné polievky` 179×, `Morské riasy` – nori/wakame/kelp). Zámerne VYNECHANÉ (nekonzistentné dôkazy, Section 96): `tofu` (žiadna dedikovaná kategória, väčšina "tofu" titulkov je o inom produkte s tofu prísadou), `wasabi` (titulkové zhody boli prevažne wasabi-príchuťové snacky a farba riadu, nie kondiment), `knives`/`chopsticks`/`pickled_ginger` (nulový výskyt presných termínov v tomto behu feedu).
+
+**Implementované (`app/taxonomy.py`):** 9 nových kanonických rodín (`sauce`, `curry_paste`, `paste`, `coconut_product`, `oil`, `tea`, `seaweed`, `instant_food`, `frozen_food`) + rozšírenie existujúceho `noodles` (wheat_noodles, soba). Nové engine pole `exclude_title_phrases` na `FamilyRule` (collision guard, Section 45 zadania) – prvý reálny use case pre negatívne pravidlá popri existujúcich pozitívnych `category_terms`/`title_phrases`.
+
+**Kritický nález a oprava (family purity audit, Section 53/58):** motor `classify_product()` prijíma zhodu KATEGÓRIE **alebo** TITULKU (nie AND). Toto je bezpečné len keď je kategória naozaj čistá. Manuálny purity audit (nie testy vopred – presne preto bol povinný) odhalil 7 pravidiel, kde zdieľaná/nečistá kategória spôsobovala nesprávnu klasifikáciu cez kategóriu samotnú, bez ohľadu na titulok:
+
+```
+gyoza                          – "Mrazené potraviny" chytilo 70 nesúvisiacich produktov (kalamáre, mochi zmrzlina, edamame)
+soy_sauce/dark/light            – "Sójové omáčky" obsahuje aj čiernu fazuľu/poke/unagi/dumpling omáčky
+coconut_water                   – "Kokosový nápoj" obsahuje aj kokosové želé dezerty
+nori/wakame                     – "Morské riasy" mixuje nori+wakame+kelp/kombu spolu
+massaman/panang/red/green curry – všetky 4 zdieľali "Kari pasty" → PRVÉ pravidlo (massaman) vyhrávalo pre KAŽDÝ produkt v kategórii (červená kari pasta klasifikovaná ako massaman!)
+soba_noodles                    – bare "soba" chytal aj "yakisoba" (iný pokrm), instantnú soba polievku, keramický riad
+teriyaki_sauce                  – bare "teriyaki" chytal instantné teriyaki-príchute polievky/rezance
+```
+
+Všetkých 7 opravených na title-only gating alebo `exclude_title_phrases`, s testami pokrývajúcimi presne tieto kolízne prípady (`tests/test_taxonomy_v23.py`).
+
+**Pokrytie (živý feed, 2 319 produktov):**
+
+```
+                    PRED V2.3    PO V2.3
+taxonomy_coverage    7.14 %       33.03 %
+classified            166          766
+HIGH                   111          538
+MEDIUM                  45          218
+LOW                     10           10
+UNKNOWN               2159         1553
+canonical_family_count   7           16
+canonical_subfamily_count 8          27
+```
+
+Committed fixture (2 140 produktov, pinned test suite): `classified=720`, `coverage=33.64 %`, `HIGH=512 MEDIUM=200 LOW=8` — proporčne zhodné so živým feedom, potvrdzuje stabilitu naprieč feed verziami.
+
+**V2.2 autocomplete kompatibilita (Section 47 zadania):** žiadna manuálna zmena v `app/autocomplete.py` potrebná – `taxonomy_category_suggestions()` beží nad `build_concept_index()`, ktorý je generický nad `FAMILY_DEFINITIONS`, takže všetkých 9 nových rodín sa automaticky objavilo v autocomplete konceptoch (napr. `"sojova"` teraz ponúkne `taxonomy_category: Sójová omáčka`).
+
+**Testy:** nový `tests/test_taxonomy_v23.py` (40 testov – classification per rodina, kolízne testy pre všetky zdieľané-kategórie prípady vyššie, negatívne testy pre `tofu`/`wasabi` zostávajúce UNKNOWN). Aktualizovaný `tests/test_taxonomy.py` (6 testov zmenilo fixture z `"Gochujang pasta 500g"` – teraz legitímne klasifikované ako `paste/gochujang` – na `"Kimchi základ KIKKOMAN"`, overené ako stále genuinely UNKNOWN). **Plný beh: 665/665**, 0 regresií.
+
+**Ďalší krok (mimo rozsahu tejto iterácie):** V2.4 — Structured Retrieval & Category-Aware Ranking.

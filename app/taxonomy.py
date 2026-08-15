@@ -196,6 +196,7 @@ class FamilyRule:
     confidence: str  # applied when matched via category evidence
     category_terms: tuple[str, ...] = ()  # normalized; matched against category_memberships (+ aliases)
     title_phrases: tuple[str, ...] = ()  # normalized; matched as substrings of the normalized title
+    exclude_title_phrases: tuple[str, ...] = ()  # V2.3 collision guard: any hit here disqualifies this rule
     attributes: tuple[tuple[str, str], ...] = ()
     display_label: str = ""  # Slovak concept name (V2.2 autocomplete), e.g. "Jazmínová ryža"
 
@@ -321,6 +322,328 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
     ),
 ]
 
+# Sprint V2.3 taxonomy expansion - every rule grounded in real live-feed
+# category paths and titles (see docs/product-taxonomy-audit.md for the
+# evidence), same collision discipline as the rice pilot above: most
+# specific first, generic fallback last, exclude_title_phrases where a
+# shared category cross-lists genuinely different product identities
+# (e.g. "Čili omáčky" also contains chili PASTE and chili-oil products).
+FAMILY_DEFINITIONS += [
+    # --- sauces ---------------------------------------------------------
+    FamilyRule(
+        rule_id="dark_soy_sauce",
+        family="sauce",
+        subfamily="soy_sauce",
+        confidence="HIGH",
+        # No category_terms: "Sójové omáčky" also cross-lists black bean
+        # sauce, poke sauce, unagi sauce, dumpling sauce, teriyaki - not
+        # pure soy-sauce identity on its own (Section 53/58 purity gate).
+        title_phrases=("tmava sojova omacka",),
+        attributes=(("style", "dark"),),
+        display_label="Tmavá sójová omáčka",
+    ),
+    FamilyRule(
+        rule_id="light_soy_sauce",
+        family="sauce",
+        subfamily="soy_sauce",
+        confidence="HIGH",
+        title_phrases=("svetla sojova omacka",),
+        attributes=(("style", "light"),),
+        display_label="Svetlá sójová omáčka",
+    ),
+    FamilyRule(
+        rule_id="soy_sauce",
+        family="sauce",
+        subfamily="soy_sauce",
+        confidence="HIGH",
+        title_phrases=("sojova omacka",),
+        display_label="Sójová omáčka",
+    ),
+    FamilyRule(
+        rule_id="oyster_sauce",
+        family="sauce",
+        subfamily="oyster_sauce",
+        confidence="HIGH",
+        category_terms=("ustricove omacky",),
+        title_phrases=("ustricova omacka",),
+        display_label="Ustricová omáčka",
+    ),
+    FamilyRule(
+        rule_id="fish_sauce",
+        family="sauce",
+        subfamily="fish_sauce",
+        confidence="HIGH",
+        category_terms=("rybacie omacky",),
+        title_phrases=("rybacia omacka",),
+        display_label="Rybacia omáčka",
+    ),
+    FamilyRule(
+        rule_id="hoisin_sauce",
+        family="sauce",
+        subfamily="hoisin_sauce",
+        confidence="HIGH",
+        category_terms=("hoisin omacky",),
+        title_phrases=("hoisin",),
+        display_label="Hoisin omáčka",
+    ),
+    FamilyRule(
+        rule_id="teriyaki_sauce",
+        family="sauce",
+        subfamily="teriyaki_sauce",
+        confidence="HIGH",
+        category_terms=("teriyaki omacky",),
+        title_phrases=("teriyaki",),
+        exclude_title_phrases=("instantna", "instantne"),
+        display_label="Teriyaki omáčka",
+    ),
+    FamilyRule(
+        rule_id="black_bean_sauce",
+        family="sauce",
+        subfamily="black_bean",
+        confidence="HIGH",
+        title_phrases=("cierna fazula omacka", "cierna fazula cesnak omacka"),
+        display_label="Čierna fazuľa omáčka",
+    ),
+    FamilyRule(
+        rule_id="black_bean_paste",
+        family="paste",
+        subfamily="black_bean",
+        confidence="HIGH",
+        title_phrases=("cierna fazula pasta",),
+        display_label="Čierna fazuľa pasta",
+    ),
+    FamilyRule(
+        rule_id="sriracha_sauce",
+        family="sauce",
+        subfamily="chili_sauce",
+        confidence="HIGH",
+        category_terms=("sriracha cili omacky",),
+        title_phrases=("sriracha",),
+        attributes=(("variety", "sriracha"),),
+        display_label="Sriracha omáčka",
+    ),
+    FamilyRule(
+        rule_id="sweet_chili_sauce",
+        family="sauce",
+        subfamily="chili_sauce",
+        confidence="HIGH",
+        category_terms=("sladke cili omacky",),
+        title_phrases=("sladka cili omacka", "cili omacka sladka", "cili limetkova omacka"),
+        attributes=(("variety", "sweet"),),
+        display_label="Sladká čili omáčka",
+    ),
+    FamilyRule(
+        rule_id="chili_garlic_sauce",
+        family="sauce",
+        subfamily="chili_sauce",
+        confidence="HIGH",
+        category_terms=("cili cesnak omacky",),
+        title_phrases=("cili cesnak omacka", "cili omacka cesnakova"),
+        attributes=(("variety", "garlic"),),
+        display_label="Čili cesnaková omáčka",
+    ),
+    FamilyRule(
+        rule_id="chili_sauce",
+        family="sauce",
+        subfamily="chili_sauce",
+        confidence="HIGH",
+        category_terms=("cili omacky",),
+        title_phrases=("cili omacka",),
+        exclude_title_phrases=("cili pasta", "oleji"),
+        display_label="Čili omáčka",
+    ),
+    # --- curry pastes -----------------------------------------------------
+    FamilyRule(
+        rule_id="massaman_curry_paste",
+        family="curry_paste",
+        subfamily=None,
+        confidence="HIGH",
+        # No category_terms here: every curry_paste variety rule below
+        # shares the exact same "Kari pasty" category, so a category-only
+        # match on the FIRST rule in this group would silently swallow
+        # every other variety regardless of title (Section 44/58 - caught
+        # by test_variety_extraction misclassifying a red curry paste as
+        # massaman). Variety identity comes from the title only; the
+        # shared category still backs the generic curry_paste fallback.
+        title_phrases=("massaman", "matsaman"),
+        attributes=(("variety", "massaman"),),
+        display_label="Massaman kari pasta",
+    ),
+    FamilyRule(
+        rule_id="panang_curry_paste",
+        family="curry_paste",
+        subfamily=None,
+        confidence="HIGH",
+        title_phrases=("panang",),
+        attributes=(("variety", "panang"),),
+        display_label="Panang kari pasta",
+    ),
+    FamilyRule(
+        rule_id="red_curry_paste",
+        family="curry_paste",
+        subfamily=None,
+        confidence="HIGH",
+        title_phrases=("cervena kari pasta", "cervena kari"),
+        attributes=(("variety", "red"),),
+        display_label="Červená kari pasta",
+    ),
+    FamilyRule(
+        rule_id="green_curry_paste",
+        family="curry_paste",
+        subfamily=None,
+        confidence="HIGH",
+        title_phrases=("zelena kari pasta", "zelena kari"),
+        attributes=(("variety", "green"),),
+        display_label="Zelená kari pasta",
+    ),
+    FamilyRule(
+        rule_id="curry_paste",
+        family="curry_paste",
+        subfamily=None,
+        confidence="HIGH",
+        category_terms=("kari pasty",),
+        display_label="Kari pasta",
+    ),
+    # --- fermented pastes -------------------------------------------------
+    FamilyRule(
+        rule_id="miso",
+        family="paste",
+        subfamily="miso",
+        confidence="HIGH",
+        title_phrases=("miso pasta", "biela miso", "cervena miso"),
+        exclude_title_phrases=("polievka", "miso soup", "miso tofu"),
+        display_label="Miso pasta",
+    ),
+    FamilyRule(
+        rule_id="gochujang",
+        family="paste",
+        subfamily="gochujang",
+        confidence="HIGH",
+        title_phrases=("gochujang",),
+        display_label="Gochujang",
+    ),
+    # --- coconut products ---------------------------------------------------
+    FamilyRule(
+        rule_id="coconut_milk",
+        family="coconut_product",
+        subfamily="coconut_milk",
+        confidence="HIGH",
+        category_terms=("kokosove mlieko a kremy",),
+        title_phrases=("kokosove mlieko",),
+        exclude_title_phrases=("zele", "dzus", "kokosovy napoj"),
+        display_label="Kokosové mlieko",
+    ),
+    FamilyRule(
+        rule_id="coconut_water",
+        family="coconut_product",
+        subfamily="coconut_water",
+        confidence="HIGH",
+        # No category_terms: "Kokosový nápoj" also cross-lists coconut
+        # jelly desserts and coconut-milk-with-jelly drinks (Section 58).
+        title_phrases=("kokosova voda",),
+        display_label="Kokosová voda",
+    ),
+    # --- oils ---------------------------------------------------------------
+    FamilyRule(
+        rule_id="sesame_oil",
+        family="oil",
+        subfamily="sesame_oil",
+        confidence="HIGH",
+        category_terms=("sezamovy olej",),
+        title_phrases=("sezamovy olej",),
+        display_label="Sezamový olej",
+    ),
+    # --- noodles expansion ----------------------------------------------
+    FamilyRule(
+        rule_id="soba_noodles",
+        family="noodles",
+        subfamily="soba",
+        confidence="HIGH",
+        category_terms=("pohankove rezance",),
+        title_phrases=("soba",),
+        # "soba" alone also false-matches "yakisoba" (a different, wheat-
+        # based fried-noodle dish - and its own sauce product), instant
+        # soba-flavoured SOUP, and a china bowl product line named "Soba"
+        # (Section 53/58 purity gate).
+        exclude_title_phrases=("yakisoba", "instantna", "instantne", "polievka", "miska"),
+        attributes=(("ingredient_base", "buckwheat"),),
+        display_label="Soba rezance",
+    ),
+    FamilyRule(
+        rule_id="wheat_noodles",
+        family="noodles",
+        subfamily="wheat_noodles",
+        confidence="HIGH",
+        category_terms=("psenicne rezance",),
+        exclude_title_phrases=("instantna", "instantne", "polievka"),
+        attributes=(("ingredient_base", "wheat"),),
+        display_label="Pšeničné rezance",
+    ),
+    # --- instant food -----------------------------------------------------
+    FamilyRule(
+        rule_id="instant_noodles",
+        family="instant_food",
+        subfamily="instant_noodles",
+        confidence="HIGH",
+        category_terms=("instantne polievky",),
+        title_phrases=("rezance", "ramyeon", "ramyun", "ramen"),
+        exclude_title_phrases=("polievka", "koreniaca pasta"),
+        display_label="Instantné rezance",
+    ),
+    FamilyRule(
+        rule_id="instant_soup",
+        family="instant_food",
+        subfamily="instant_soup",
+        confidence="HIGH",
+        category_terms=("instantne polievky",),
+        title_phrases=("polievka",),
+        display_label="Instantná polievka",
+    ),
+    # --- tea ------------------------------------------------------------
+    FamilyRule(
+        rule_id="tea",
+        family="tea",
+        subfamily=None,
+        confidence="HIGH",
+        category_terms=("caj",),
+        display_label="Čaj",
+    ),
+    # --- seaweed ----------------------------------------------------------
+    FamilyRule(
+        rule_id="nori",
+        family="seaweed",
+        subfamily="nori",
+        confidence="HIGH",
+        # No category_terms: "Morské riasy" covers nori, wakame AND kelp/
+        # kombu together - only the title distinguishes them (Section 58).
+        title_phrases=("nori",),
+        display_label="Nori riasy",
+    ),
+    FamilyRule(
+        rule_id="wakame",
+        family="seaweed",
+        subfamily="wakame",
+        confidence="HIGH",
+        title_phrases=("wakame",),
+        display_label="Wakame riasy",
+    ),
+    # --- frozen food --------------------------------------------------------
+    FamilyRule(
+        rule_id="gyoza",
+        family="frozen_food",
+        subfamily="dumplings",
+        confidence="HIGH",
+        # No category_terms: "Mrazené potraviny"/"Mrazené hotové jedlá" cover
+        # everything frozen (squid, mochi ice cream, edamame, lemongrass) -
+        # category alone is not identity evidence here, only the "gyoza"
+        # loanword in the title is (Section 53/58 family purity gate; a
+        # category+title version of this rule wrongly caught 70 unrelated
+        # frozen products during V2.3 development, caught by manual review).
+        title_phrases=("gyoza",),
+        display_label="Gyoza knedličky",
+    ),
+]
+
 FAMILY_DEFINITIONS_BY_ID: dict[str, FamilyRule] = {rule.rule_id: rule for rule in FAMILY_DEFINITIONS}
 
 
@@ -379,6 +702,9 @@ def classify_product(product: Product) -> ProductTaxonomy:
     dietary_facets, merchandising_facets = _facets_from_category_memberships(category_memberships)
 
     for rule in FAMILY_DEFINITIONS:
+        if rule.exclude_title_phrases and any(p in normalized_title for p in rule.exclude_title_phrases):
+            continue
+
         category_hit = next((t for t in rule.category_terms if t in category_set), None)
         title_hit = next((p for p in rule.title_phrases if p in normalized_title), None)
 
