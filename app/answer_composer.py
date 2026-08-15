@@ -88,6 +88,21 @@ def compose_continuation_answer(result_set: ResultSet, revealed_count: int) -> s
     return f"Tu je zvyšných {revealed_count}:"
 
 
+_CROSS_SELL_INTROS = {
+    "RECIPE_COMPLETION": "Na prípravu ešte budete potrebovať aj:",
+    "USE_CASE_COMPLETION": "K tomu sa vám môže hodiť aj:",
+    "PRODUCT_COMPLEMENT": "K tomu sa môže hodiť:",
+}
+
+
+def compose_cross_sell_intro(context_type: str) -> str:
+    """Section 71/72 - context-sensitive title, never mechanically the
+    same phrase everywhere. Cross-sell copy is generated from an already-
+    approved context_type only - this function never searches the catalog
+    or decides which products qualify (Section 112)."""
+    return _CROSS_SELL_INTROS.get(context_type, _CROSS_SELL_INTROS["PRODUCT_COMPLEMENT"])
+
+
 def compose_show_more_label(result_set: ResultSet) -> str:
     """Section 39 - contextual microcopy, semantic action stays SHOW_MORE/
     SHOW_ALL server-side; this is just the SK default text (localization

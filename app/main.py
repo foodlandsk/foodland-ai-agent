@@ -94,6 +94,8 @@ from app.answer_composer import compose_continuation_answer as _compose_continua
 from app.result_sets import get_result_set as _get_result_set
 from app.result_sets import advance_displayed_count as _advance_displayed_count
 from app.result_sets import show_all as _show_all_result_set
+from app import cross_sell as _cross_sell
+from app.answer_composer import compose_cross_sell_intro as _compose_cross_sell_intro
 
 
 logging.basicConfig(
@@ -2245,6 +2247,13 @@ RECIPE_SHOPPING_CORE_QUERIES = {
     ],
 }
 
+# V2.6 cross-sell mines these two curated dicts (recipe ingredient
+# roles, use-case companion products) - handed in once here rather
+# than imported the other way, so app/cross_sell.py never depends on
+# app/main.py (Section 110).
+_cross_sell.set_data_sources(RECIPE_SHOPPING_CORE_QUERIES, SPECIAL_PRODUCT_QUERIES)
+
+
 RELATED_INTENT_MARKERS = (
     "co na",
     "co k",
@@ -4160,6 +4169,18 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         # V2.5 Result Presentation (Section 24/50): deterministic, template-
         # based answer over the already-decided ResultSet - no OpenAI call,
         # no LLM re-selection of products/counts/pagination state.
+        # V2.6 cross-sell: only ever computed for a FRESH primary answer,
+        # never for a SHOW_MORE/SHOW_ALL continuation (Section 36 - that
+        # branch returns earlier in this function and never reaches here).
+        _cross_sell_decision, _cross_sell_products = _cross_sell.build_cross_sell(
+            structured_presentation=structured_presentation,
+            related_subject=related_subject,
+            is_continuation=False,
+            products=products,
+            taxonomy_index=product_taxonomy_index,
+            knowledge=knowledge,
+            fbt_data=get_fbt_data(),
+        )
         return {
             "answer": _compose_answer(structured_presentation),
             "products": matches,
@@ -4177,6 +4198,10 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "result_set_id": structured_presentation.result_set_id,
             "answer_strategy": structured_presentation.answer_strategy,
             "groups": structured_presentation.groups,
+            "cross_sell": _cross_sell_products,
+            "cross_sell_eligible": _cross_sell_decision.eligible,
+            "cross_sell_context_type": _cross_sell_decision.context_type,
+            "cross_sell_intro": _compose_cross_sell_intro(_cross_sell_decision.context_type) if _cross_sell_decision.eligible else "",
         }
 
     if not matches and not knowledge_matches and not needs_knowledge:

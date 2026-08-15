@@ -1297,3 +1297,33 @@ Committed fixture (2 140 produktov, pinned test suite): `classified=720`, `cover
 **Riziká/obmedzenia (úprimne):** `COMPARISON`/`USE_CASE_ADVICE`/`RECOMMENDATION`/`REPLACEMENT`/`RECIPE_SHOPPING` stratégie sú definované ako konštanty, ale zatiaľ sa automaticky nevyberajú – tieto zákaznícke zámery bežia naďalej cez existujúce, samostatne testované legacy cesty. Personalizácia sa pre štruktúrované odpovede teraz explicitne VYNECHÁVA (namiesto post-hoc aplikácie), aby stránkovanie ResultSetu zostalo stabilné naprieč viacerými "Zobraziť viac" kolami (Section 44 zadania). Detail: `docs/result-presentation-audit.md`.
 
 **Ďalší krok (mimo rozsahu tejto iterácie):** V2.6 — Contextual Cross-Sell & Basket Intelligence.
+
+### Sprint V2.6 – Contextual Cross-Sell & Basket Intelligence
+
+**Zadanie:** odpovedať na "čo ešte by zákazníkovi genuinely pomohlo dokončiť tú istú úlohu?", nie "čo ešte môžeme ponúknuť". Cross-sell musí mať explicitnú eligibility bránu, roly pred produktmi, sémantickú validáciu proti FBT-ako-pravda, basket/duplicate exklúziu, a musí zostať malý a diverzný.
+
+**Implementované:** nový modul `app/cross_sell.py` — `should_cross_sell()` (eligibility gate), `generate_candidates()` (role-first, multi-zdrojová generácia), `rank_candidates()` (deterministický, evidence-weighted). Roly = V2.3 taxonomy `concept_id`, mined zo **skutočných, už existujúcich curated dát**, nie vymyslené: `RECIPE_SHOPPING_CORE_QUERIES` (47 jedál z V2.1) normalizované cez `app.query_constraints.parse_structured_query()` (napr. `pad_thai` → `['rice_noodles', 'fish_sauce']`), a malá ručne overená podmnožina `SPECIAL_PRODUCT_QUERIES` (`sushi_rice`/`gluten_free_sushi`/`sushi_condiments`/`rice_seasoning` — po inšpekcii zámerne VYNECHANÉ generické témy ako "mild"/"hot"/"kids_snack", ktoré produkujú príliš agresívne páry). Curated `knowledge.json["CrossSell"]` (URL-resolved na product_id, overené 1000/1000 zhôd vo vzorke) a `app.fbt` posilňujú už ustanovené roly, nikdy nezavádzajú novú (Section 51 zadania).
+
+**Kritický nález č.1 (pred nasadením):** priama curated `CrossSell` dáta pre reálny produkt jazmínovej ryže odporúčajú kari pastu + sójovú omáčku + MSG — presne ten typ "predpokladu kari", ktorý zadanie zakazuje pre holý dopyt (Section 31). Preto sa curated `CrossSell` NEPOUŽÍVA ako nezávislý spúšťač eligibility, iba na posilnenie roly už ustanovenej recipe/use_case kontextom.
+
+**Kritický nález č.2 (self-audit):** prvá implementácia same-need exclúzie porovnávala `canonical_family` — príliš hrubé pre rodinu `sauce` (obsahuje sójovú/rybaciu/ustricovú/hoisin/čili omáčku ako navzájom odlišné doplnkové potreby). S family-level porovnaním by `fish_sauce` nikdy nemohla byť cross-sell kandidát pre sójovú omáčku, čo by ticho rozbilo presne Pad Thai scenár (Section 85). Opravené na `canonical_subfamily` porovnanie (fallback na `family` len keď `subfamily` je `None`, napr. curry pasta varianty).
+
+**Zapojenie do `app/main.py`:** `should_cross_sell()`/`build_cross_sell()` sa volajú výhradne v novom V2.5 `structured_presentation` early-return bloku (t.j. iba pre FRESH primárnu odpoveď) — nikdy pre SHOW_MORE/SHOW_ALL pokračovanie (to sa vracia skôr vo funkcii a nikdy sem nedorazí, Section 36 automaticky splnené). Nový response field `cross_sell` (samostatný zoznam formátovaných produktov, nikdy nemieša do `products[]` ani nemení `matching_total`), plus `cross_sell_eligible`/`cross_sell_context_type`/`cross_sell_intro`.
+
+**Overené naživo cez `app.main.chat()`:**
+```
+"ryza na sushi" -> primárne: 4× sushi ryža
+  cross_sell_eligible=True, context=USE_CASE_COMPLETION
+  -> Sójová omáčka (role=soy_sauce), Morské riasy SUSHINORI (role=nori), Ryžový ocot (role=rice_vinegar)
+  0 prekryvov s primárnou množinou, 0 rovnakej-potreby (žiadna ďalšia ryža)
+
+"jazminova ryza" -> cross_sell_eligible=False, reason="no_grounded_context" (konzervatívne, ako mandátne)
+```
+
+**Testy:** nový `tests/test_cross_sell.py` (21 testov — eligibility gate 7 scenárov, same-need contamination hard gate, duplicate exclusion, role generation zo skutočných dát, FBT sémantická validácia, multi-source ranking, role diversity/budget, reason grounding). **Plný beh: 752/752** (731 pred V2.6 + 21 nových), 0 regresií.
+
+**Performance:** cross-sell pridáva ~0,19 ms/dopyt nad V2.4+V2.5 — zanedbateľné.
+
+**Riziká/obmedzenia (úprimne):** plná dvoj-ťahová konverzačná perzistencia ("Chcem robiť sushi." → "Akú ryžu?") závisí od pred-existujúceho `is_context_followup()` heuristického detektora (V2.1), ktorý nerozpoznáva "akú ryžu?" bez explicitného markera — V2.6 tento mechanizmus zámerne nerozširuje (Section 34: použiť existujúcu architektúru, nie novú pamäť). Jednoťahové dopyty s explicitným use_case/receptom fungujú spoľahlivo, overené naživo. `BasketContext` je zámerne minimálny (žiadny reálny cart API v aktuálnej architektúre widgetu). Detail: `docs/cross-sell-audit.md`.
+
+**Ďalší krok (mimo rozsahu tejto iterácie):** V2.7 — Workflow & Orchestration Migration.
