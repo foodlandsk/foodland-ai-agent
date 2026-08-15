@@ -169,17 +169,55 @@ zanedbateľné v porovnaní s network/OpenAI latenciou. Bez plných
 katalógových skenov — role lookup je O(1) cez precomputed `concept_id`
 index.
 
+## Kritický nález č.3 (live verifikácia pred nasadením) — `RECIPE_COMPLETION` bol nedosiahnuteľný
+
+Pri živom testovaní cez skutočnú `app.main.chat()` (nie izolovaný modul)
+sa zistilo, že `RECIPE_COMPLETION` kontext nikdy nenastal, hoci
+`generate_candidates()`/`should_cross_sell()` boli správne otestované v
+izolácii. Príčina: `app/main.py`'s routovacia kaskáda (`if
+already_have_subject: ... elif related_subject: ... else: <- V2.6 kód>`)
+znamená, že kedykoľvek je `related_subject` (aktuálneho ťahu) pravdivé,
+kód sa vôbec nedostane do `else:` vetvy, kde V2.6 beží — a `related_
+subject` premenná v tom bode funkcie je VŽDY nepravdivá práve preto, že
+inak by sa tam kód nedostal. Pôvodná implementácia odovzdávala práve
+`related_subject` do `should_cross_sell()`, čím kontrola `related_
+subject in RECIPE_ROLE_INDEX` bola štrukturálne vždy `None in {...}` =
+`False`.
+
+Opravené použitím `memory_subject` (surová, perzistovaná session hodnota,
+počítaná nezávisle na začiatku `chat()` a routovacou kaskádou nikdy
+neprepisovaná) namiesto `related_subject`. Overené naživo:
+
+```
+Ťah 1: "chcem robiť satay"       -> memory subjects: [..., "satay"]
+Ťah 2: "kokosové mlieko"          -> primárne: 17× kokosové mlieko (kokosové
+                                      mlieko samo osebe vylúčené ako
+                                      primárna potreba)
+  cross_sell_eligible=True, context=RECIPE_COMPLETION
+  -> Sójová omáčka (role=soy_sauce)
+  -> Sezamový olej (role=sesame_oil)
+  -> Červená kari pasta (role=red_curry_paste)
+```
+
+Táto oprava si vyžiadala revert + prerobenie cez byte-safe Python patch
+(pôvodný pokus cez štandardný Edit nástroj omylom znormalizoval
+line-endingy v celom `app/main.py` — zachytené `git diff --stat` vs
+`git diff --ignore-space-at-eol --stat` kontrolou pred commitom, presne
+podľa Section 113 zadania).
+
 ## RIZIKÁ (úprimne)
 
-- Plná dvoj-ťahová konverzačná perzistencia ("Chcem robiť sushi." →
-  "Akú ryžu?") závisí od PRE-EXISTUJÚCEHO `is_context_followup()`
-  heuristického detektora vo `app/main.py` (z V2.1), ktorý nerozpoznáva
-  "akú ryžu?" ako pokračovanie bez explicitného markera ("k tomu",
-  "odporúč", ...). V2.6 tento mechanizmus zámerne nerozširuje (Section
-  34: *"Use current conversation-state architecture. Do not invent a
-  separate memory system"*) — jednoťahové dopyty s explicitným
-  use_case/receptom (napr. "ryža na sushi") fungujú spoľahlivo cez
-  skutočný `chat()`, overené naživo.
+- Rozlíšenie samotnej ŠTRUKTÚROVANEJ otázky ("akú ryžu?" má rozumieť, že
+  ide konkrétne o sushi ryžu, nie hocijakú) je oddelený problém od
+  cross-sell recipe-kontextu a stále závisí od PRE-EXISTUJÚCEHO
+  `is_context_followup()` heuristického detektora vo `app/main.py`
+  (z V2.1), ktorý nerozpoznáva "akú ryžu?" bez explicitného markera
+  ("k tomu", "odporúč", ...) — V2.6 tento mechanizmus zámerne
+  nerozširuje (Section 34). Samotný **cross-sell recipe-kontext** túto
+  limitáciu NEMÁ (opravené v Kritickom náleze č.3 vyššie — používa
+  `memory_subject`, nie `related_subject`/`is_context_followup()`), takže
+  "chcem robiť satay" → "kokosové mlieko" funguje spoľahlivo naprieč
+  ťahmi aj bez explicitného markera, overené naživo.
 - `BasketContext` (Section 19) je zámerne minimálny — žiadny reálny
   cart API v aktuálnej architektúre, takže V2.6 exclúzia sa opiera iba
   o aktuálny `ResultSet`, nie o históriu celej konverzácie/objednávky.

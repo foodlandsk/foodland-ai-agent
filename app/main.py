@@ -4172,9 +4172,19 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         # V2.6 cross-sell: only ever computed for a FRESH primary answer,
         # never for a SHOW_MORE/SHOW_ALL continuation (Section 36 - that
         # branch returns earlier in this function and never reaches here).
+        # Uses `memory_subject` (the raw persisted session subject,
+        # Section 34), not `related_subject`: by construction,
+        # `related_subject` is ALWAYS falsy whenever this code runs at
+        # all - a truthy value (freshly detected or promoted from memory
+        # a few lines above) always diverts to the earlier
+        # `elif related_subject:` branch first. `memory_subject` is
+        # computed once, independently, near the top of this function
+        # and is never reassigned by the routing cascade, so it is the
+        # only signal that can carry a persisted recipe/dish context
+        # into this branch.
         _cross_sell_decision, _cross_sell_products = _cross_sell.build_cross_sell(
             structured_presentation=structured_presentation,
-            related_subject=related_subject,
+            related_subject=memory_subject,
             is_continuation=False,
             products=products,
             taxonomy_index=product_taxonomy_index,
