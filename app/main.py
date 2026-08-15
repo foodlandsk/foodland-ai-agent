@@ -79,6 +79,7 @@ from app.search import (
     search_products,
     strict_product_match,
     tokenize,
+    warm_search_indexes,
 )
 from app.workflows import products_to_cart_candidates
 from app.intent import build_customer_intent
@@ -221,6 +222,7 @@ translation_index: dict[str, dict[str, "Product"]] = {}
 # Rebuilt in lockstep with `products` on every refresh_feed() call.
 product_taxonomy_index = build_taxonomy_index(products)
 taxonomy_concept_index = build_concept_index(product_taxonomy_index)
+warm_search_indexes(products)
 rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 event_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 autocomplete_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
@@ -8526,6 +8528,7 @@ def refresh_feed() -> None:
     translation_index = new_translation_index
     product_taxonomy_index = new_taxonomy_index
     taxonomy_concept_index = build_concept_index(new_taxonomy_index)
+    warm_search_indexes(new_products)
     clear_product_search_cache()
     last_feed_refresh_at = int(time.time())
     last_feed_refresh_error = None

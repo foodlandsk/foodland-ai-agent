@@ -1171,3 +1171,33 @@ Detailná inšpekcia koreňa `ryz` (`--family ryz`) potvrdila presne tú triedu 
 **Performance:** vlastné nové funkcie ~0.13 ms/dopyt (precomputed indexy, žiadne LLM). **Pred-existujúci nález** (potvrdené `cProfile`, nulová účasť nového kódu): `fuzzy_hits()`/`edit_distance()` v `app/search.py` prehľadáva celý katalóg per-token pre KAŽDÝ odlišný dopyt – ~700-2000 ms na prvý výskyt danej query string, opakovaný identický dopyt rýchly (~8 ms, existujúci per-string cache). Toto NIE JE spôsobené touto iteráciou (izolovane odmerané a profilované) – silný kandidát na samostatný performance sprint, mimo rozsahu tejto iterácie (Section 71/72 zadania explicitne zakazujú "overbuild").
 
 **Ďalší krok (mimo rozsahu tejto iterácie):** (1) Performance sprint pre `fuzzy_hits`/`edit_distance` (vyššie) – priamo blokuje skutočný "rýchle ako klávesnica" UX cieľ zadania. (2) Result presentation / `action`+`constraints` consumer na frontende, keď bude V2.3 Structured Retrieval pripravené.
+
+### Sprint V2.2.1 – Autocomplete Performance Optimization
+
+**Zadanie:** vyriešiť pred-existujúci `fuzzy_hits`/`edit_distance` nález zo Sprintu V2.2.2 vyššie bez zmeny sémantiky (žiadna zmena poradia/labelov/typov návrhov).
+
+**Bottleneck (potvrdené `cProfile` pred zmenou):** `search_products()` a `autocomplete_suggestions()` (`app/search.py`) prepočítavali `tokenize()`/`normalize()` pre title/brand/category/description KAŽDÉHO produktu pri KAŽDOM dopyte (rovnaký text, rovnaký výsledok, len znovu a znovu) a volali `edit_distance()` raz za KAŽDÚ inštanciu tokenu naprieč katalógom (~286 000 volaní pre jeden dopyt na 2 140 produktoch), hoci bežné slová (`"kg"`, `"omacka"`, `"ryza"`) sa opakujú naprieč stovkami produktov – `edit_distance(query_token, "ryza")` sa tak počítal stokrát namiesto raz.
+
+**Implementované (`app/search.py`, mimo `main.py` až na 3 volania warmup/importu):**
+1. `ProductTokenIndex` / `build_product_token_index()` / `get_product_token_index()` – precomputed per-produkt tokeny (title/brand/category/description), `id(products)`-keyed cache (rovnaký vzor ako existujúci `get_bm25_index()`). `search_products()` aj `autocomplete_suggestions()` teraz čítajú z tohto indexu namiesto opakovaného `tokenize()`/`normalize()`.
+2. `get_catalog_token_vocabulary()` (~9 885 distinct tokenov pre 2 140 produktov) + `build_fuzzy_match_cache()`/`fuzzy_hits_cached()` – `edit_distance()` deduplikovaný na úroveň DISTINCT slovníka namiesto per-produkt inštancie. `get_fuzzy_match_cache()` navyše zdieľa výsledok medzi oboma volaniami (`search_products` aj `autocomplete_suggestions`) v rámci jedného `/search/autocomplete` requestu, keďže oba bežia nad rovnakým dopytom.
+3. `warm_search_indexes()` – volané pri module-load aj v `refresh_feed()`, takže index sa staví PRED prvým užívateľským dopytom (Section 44 zadania: atomický index swap, žiadny čiastočne postavený stav).
+
+**Objavený vedľajší nález (opravené):** `id(products)` samotné je nebezpečný cache kľúč – CPython môže znovu použiť pamäťovú adresu uvoľneného zoznamu pre nový, nesúvisiaci zoznam, čo by spôsobilo, že cache vráti dáta z INÉHO katalógu. Zachytené vlastným novým testom (`TestCatalogTokenVocabulary::test_vocabulary_is_union_across_catalog` zlyhal pri prvom behu presne takto). Opravené na `(id(products), len(products))` naprieč VŠETKÝMI `id(products)`-keyed cache v module – vrátane pôvodného, staršieho `get_bm25_index()`, ktorý mal ten istý latentný problém.
+
+**Output equivalence (Section 5/30/36 zadania):** `git stash` pred-optimalizačnej verzie, zachytený skutočný "before" výstup pre všetkých 15 povinných dopytov zo zadania (`r, ry, ryža, ryza, jazm, jazmínová, basmati, ryžové, ryžový ocot, kikko, kimchi, miso, kokos, akú ryžu, rozdiel jazmínová basmati`), `git stash pop`, porovnané byte-presne s "after" výstupom: **0 rozdielov**. Rovnako 0 rozdielov pre pôvodnú V2.2.1-baseline sadu (15 ďalších reprezentatívnych dopytov).
+
+**Performance (2 140 produktov, studený beh = prvý výskyt danej kombinácie query tokenov po `warm_search_indexes()`):**
+
+```
+                    PRED         PO
+avg                 980.6 ms     24.5 ms
+p50                 980.5 ms      8.4 ms
+max                2253.3 ms    174.9 ms
+teplý opakovaný dopyt  ~8 ms      ~8-12 ms  (nezmenené, cache-hit už predtým)
+edit_distance volania (1 dopyt)  ~286 000   ~10 000-30 000
+```
+
+**Testy:** nový `tests/test_search_performance.py` (18 testov – ekvivalencia fuzzy cache, typo tolerancia, cache invalidation podľa `products` identity, `warm_search_indexes()`), rozšírený `tests/test_core.py` o `test_refresh_feed_rebuilds_search_performance_indexes`. **Plný beh: 624/624**, 0 regresií (bežal aj 286,95s namiesto pôvodných ~460-560s – vedľajší efekt: existujúce testy nad `search_autocomplete()`/`search_products()` sú teraz tiež rýchlejšie).
+
+**Ďalší krok (mimo rozsahu tejto iterácie):** V2.3 – Structured Retrieval & Category-Aware Ranking (napojiť `find_by_family()`/`find_by_attributes()` na retrieval namiesto re-tokenizácie `product_type`), teraz bez performance prekážky z tejto iterácie.

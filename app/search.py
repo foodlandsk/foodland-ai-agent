@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
 import re
@@ -10,6 +11,8 @@ from collections import Counter
 from dataclasses import asdict, dataclass, is_dataclass
 
 from app.feed import Product
+
+logger = logging.getLogger(__name__)
 from app.behavioral import behavioral_multiplier, load_behavioral_rankings
 from app.merchandising import (
     is_hidden,
@@ -250,6 +253,62 @@ def fuzzy_hits(query_tokens: set[str], field_tokens: set[str]) -> int:
     return hits
 
 
+def build_fuzzy_match_cache(query_tokens: set[str], vocabulary: frozenset[str]) -> dict[str, frozenset[str]]:
+    """Sprint V2.2.1: the (product, field_token) fuzzy scan in search_products()/
+    autocomplete_suggestions() called edit_distance() once per catalog token
+    INSTANCE (~286k calls on a 2,140-product catalog), even though the same
+    common words (e.g. "kg", "omacka", "ryza") repeat across hundreds of
+    products - edit_distance(query_token, some_word) is a pure function of
+    the two strings, so recomputing it per product instance was pure waste.
+    This computes it once per (query_token, DISTINCT vocabulary token) pair
+    instead - exactly equivalent results (same thresholds, same formula),
+    just deduplicated. `vocabulary` is the catalog-wide distinct token set
+    (see catalog_token_vocabulary() below)."""
+    cache: dict[str, frozenset[str]] = {}
+    for query_token in query_tokens:
+        if len(query_token) < 4:
+            continue
+        max_distance = 1 if len(query_token) <= 6 else 2
+        cache[query_token] = frozenset(
+            token for token in vocabulary
+            if edit_distance(query_token, token, max_distance) <= max_distance
+        )
+    return cache
+
+
+_fuzzy_match_cache_by_query: dict[tuple[int, int, frozenset[str]], dict[str, frozenset[str]]] = {}
+FUZZY_MATCH_CACHE_MAX_SIZE = 64
+
+
+def get_fuzzy_match_cache(products: list[Product] | list[dict], query_tokens: set[str]) -> dict[str, frozenset[str]]:
+    """search_autocomplete() calls both search_products() and
+    autocomplete_suggestions() for the same query - without this, each
+    independently rebuilt an identical build_fuzzy_match_cache(). Keyed by
+    (products identity, query tokens), so a feed refresh invalidates it the
+    same way as every other id(products)-keyed cache in this module."""
+    key = (id(products), len(products), frozenset(query_tokens))
+    cached = _fuzzy_match_cache_by_query.get(key)
+    if cached is not None:
+        return cached
+    cached = build_fuzzy_match_cache(query_tokens, get_catalog_token_vocabulary(products))
+    if len(_fuzzy_match_cache_by_query) >= FUZZY_MATCH_CACHE_MAX_SIZE:
+        _fuzzy_match_cache_by_query.pop(next(iter(_fuzzy_match_cache_by_query)))
+    _fuzzy_match_cache_by_query[key] = cached
+    return cached
+
+
+def fuzzy_hits_cached(query_tokens: set[str], field_tokens: frozenset[str], fuzzy_match_cache: dict[str, frozenset[str]]) -> int:
+    """Same result as fuzzy_hits(query_tokens, field_tokens), but reuses a
+    per-query build_fuzzy_match_cache() instead of calling edit_distance()
+    again for every product."""
+    hits = 0
+    for query_token in query_tokens:
+        matched_vocab = fuzzy_match_cache.get(query_token)
+        if matched_vocab and (matched_vocab & field_tokens):
+            hits += 1
+    return hits
+
+
 def raw_tokens(value: str) -> set[str]:
     return {token for token in re.split(r"[^a-z0-9]+", normalize(value)) if token}
 
@@ -312,15 +371,18 @@ def build_bm25_index(products: list[Product] | list[dict]) -> BM25Index:
     return BM25Index(doc_freq, doc_term_freq, doc_lengths, avgdl, n_docs)
 
 
-_bm25_index_cache: dict[int, BM25Index] = {}
+_bm25_index_cache: dict[tuple[int, int], BM25Index] = {}
 
 
 def get_bm25_index(products: list[Product] | list[dict]) -> BM25Index:
     """Cached by products-list identity, same pattern as main.py's product/
     autocomplete search caches: a feed refresh creates a new list object, so a
     stale entry is simply never looked up again rather than needing explicit
-    invalidation."""
-    key = id(products)
+    invalidation. Keyed by (id(products), len(products)), not id() alone -
+    CPython can reuse a freed list's address for an unrelated new list, and
+    id() alone would then wrongly hit this cache for different data
+    (Sprint V2.2.1, caught by test_search_performance.py)."""
+    key = (id(products), len(products))
     cached = _bm25_index_cache.get(key)
     if cached is None:
         cached = build_bm25_index(products)
@@ -349,6 +411,123 @@ def bm25_score(index: BM25Index, product_id: str, query_tokens: set[str]) -> flo
     return score
 
 
+@dataclass(slots=True)
+class ProductTokenIndex:
+    """Precomputed, per-product normalization/tokenization (Sprint V2.2.1).
+
+    tokenize()/normalize() are pure functions of a field's text, which
+    never changes between queries for the same product - recomputing them
+    on every autocomplete keystroke for all ~2,300 products was the
+    dominant cost in profiling (see docs/advisor-v2-architecture.md).
+    Built once per products-list identity, same cache pattern as
+    get_bm25_index() below, so a feed refresh (which creates a new list
+    object) invalidates it automatically - no explicit rebuild call needed.
+    """
+
+    product_id: str
+    title_normalized: str
+    title_tokens: frozenset[str]
+    brand_tokens: frozenset[str]
+    category_parts: tuple[str, ...]
+    category_part_tokens: tuple[frozenset[str], ...]
+    category_tokens: frozenset[str]
+    description_tokens: frozenset[str]
+
+
+def _clean_field(value: str) -> str:
+    """Same whitespace-collapse app.search.autocomplete_suggestions()'s
+    add() already applies before normalize()/tokenize() - tokenize()
+    itself is whitespace-run-insensitive (splits on any non-alnum run),
+    but normalize() is not, so this keeps the precomputed index exactly
+    equivalent to what both call sites computed inline before."""
+    return " ".join(str(value or "").split())
+
+
+def _build_product_token_entry(product: Product | dict) -> ProductTokenIndex:
+    title = _clean_field(product_value(product, "title", ""))
+    category_raw = str(product_value(product, "product_type", product_value(product, "category", "")))
+    category_parts = tuple(
+        cleaned for part in re.split(r"[>/|]", category_raw) if (cleaned := _clean_field(part))
+    )
+    category_part_tokens = tuple(frozenset(tokenize(part)) for part in category_parts)
+    category_tokens: frozenset[str] = frozenset().union(*category_part_tokens) if category_part_tokens else frozenset()
+    return ProductTokenIndex(
+        product_id=str(product_value(product, "id", "")),
+        title_normalized=normalize(title),
+        title_tokens=frozenset(tokenize(title)),
+        brand_tokens=frozenset(tokenize(_clean_field(product_value(product, "brand", "")))),
+        category_parts=category_parts,
+        category_part_tokens=category_part_tokens,
+        category_tokens=category_tokens,
+        description_tokens=frozenset(tokenize(str(product_value(product, "description", "")))),
+    )
+
+
+def build_product_token_index(products: list[Product] | list[dict]) -> dict[str, ProductTokenIndex]:
+    index: dict[str, ProductTokenIndex] = {}
+    for product in products:
+        product_id = str(product_value(product, "id", ""))
+        if not product_id:
+            continue
+        index[product_id] = _build_product_token_entry(product)
+    return index
+
+
+_product_token_index_cache: dict[tuple[int, int], dict[str, ProductTokenIndex]] = {}
+
+
+def get_product_token_index(products: list[Product] | list[dict]) -> dict[str, ProductTokenIndex]:
+    """Cached by products-list identity - see get_bm25_index() for why the
+    key also includes len(products), not just id(products)."""
+    key = (id(products), len(products))
+    cached = _product_token_index_cache.get(key)
+    if cached is None:
+        cached = build_product_token_index(products)
+        if len(_product_token_index_cache) > 4:
+            _product_token_index_cache.clear()
+        _product_token_index_cache[key] = cached
+    return cached
+
+
+_catalog_vocabulary_cache: dict[tuple[int, int], frozenset[str]] = {}
+
+
+def get_catalog_token_vocabulary(products: list[Product] | list[dict]) -> frozenset[str]:
+    """Distinct token set across every product's title/brand/category/
+    description (~10k tokens for ~2,300 products, vs. hundreds of
+    thousands of per-product token instances) - the input to
+    build_fuzzy_match_cache(). Cached by products-list identity."""
+    key = (id(products), len(products))
+    cached = _catalog_vocabulary_cache.get(key)
+    if cached is None:
+        token_index = get_product_token_index(products)
+        vocabulary: set[str] = set()
+        for entry in token_index.values():
+            vocabulary |= entry.title_tokens | entry.brand_tokens | entry.category_tokens | entry.description_tokens
+        cached = frozenset(vocabulary)
+        if len(_catalog_vocabulary_cache) > 4:
+            _catalog_vocabulary_cache.clear()
+        _catalog_vocabulary_cache[key] = cached
+    return cached
+
+
+def warm_search_indexes(products: list[Product] | list[dict]) -> None:
+    """Build the BM25/token/vocabulary indexes for this products list right
+    away (Sprint V2.2.1) instead of paying that cost on the first user
+    autocomplete/search request after a feed refresh. Safe to call multiple
+    times - every index below is cached by id(products), so a repeat call
+    on the same list is a no-op lookup."""
+    started_at = time.time()
+    token_index = get_product_token_index(products)
+    vocabulary = get_catalog_token_vocabulary(products)
+    if BM25_ENABLED:
+        get_bm25_index(products)
+    logger.info(
+        "Search indexes warmed: %d products, %d vocabulary tokens, %.3fs",
+        len(token_index), len(vocabulary), time.time() - started_at,
+    )
+
+
 def search_products(products: list[Product] | list[dict], query: str, limit: int = 8) -> list[dict]:
     query_tokens = tokenize(query)
     if not query_tokens:
@@ -358,6 +537,8 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
     raw_query_tokens = raw_tokens(query)
     wants_sushi_rice = {"ryza"} <= query_tokens and bool({"sushi", "susi"} & query_tokens)
     bm25_index = get_bm25_index(products) if BM25_ENABLED else None
+    token_index = get_product_token_index(products)
+    fuzzy_match_cache = get_fuzzy_match_cache(products, query_tokens)
     merchandising_rules = get_merchandising_rules()
     behavioral_rankings = get_behavioral_rankings() if BEHAVIORAL_RANKING_ENABLED else None
 
@@ -367,11 +548,14 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
         if is_hidden(product_id, merchandising_rules):
             continue
 
-        title_tokens = tokenize(str(product_value(product, "title", "")))
-        category_tokens = tokenize(str(product_value(product, "product_type", product_value(product, "category", ""))))
-        brand_tokens = tokenize(str(product_value(product, "brand", "")))
-        description_tokens = tokenize(str(product_value(product, "description", "")))
-        normalized_title = normalize(str(product_value(product, "title", "")))
+        entry = token_index.get(product_id)
+        if entry is None:
+            entry = _build_product_token_entry(product)
+        title_tokens = entry.title_tokens
+        category_tokens = entry.category_tokens
+        brand_tokens = entry.brand_tokens
+        description_tokens = entry.description_tokens
+        normalized_title = entry.title_normalized
         if not strict_product_match(raw_query_tokens, normalized_title):
             continue
 
@@ -379,8 +563,8 @@ def search_products(products: list[Product] | list[dict], query: str, limit: int
         brand_hits = len(query_tokens & brand_tokens)
         category_hits = len(query_tokens & category_tokens)
         description_hits = len(query_tokens & description_tokens)
-        fuzzy_title_hits = fuzzy_hits(query_tokens, title_tokens)
-        fuzzy_category_hits = fuzzy_hits(query_tokens, category_tokens)
+        fuzzy_title_hits = fuzzy_hits_cached(query_tokens, title_tokens, fuzzy_match_cache)
+        fuzzy_category_hits = fuzzy_hits_cached(query_tokens, category_tokens, fuzzy_match_cache)
 
         score = 0
         score += 8 * title_hits
@@ -507,17 +691,25 @@ def autocomplete_suggestions(products: list[Product] | list[dict], query: str, l
     query_tokens = tokenize(query)
     raw_query_tokens = raw_tokens(query)
     suggestions: dict[str, dict] = {}
+    fuzzy_match_cache = get_fuzzy_match_cache(products, query_tokens)
 
-    def add(label: str, kind: str, score: int) -> None:
-        clean = " ".join(str(label or "").split())
+    def add(label: str, kind: str, score: int, precomputed_tokens: frozenset[str] | None = None) -> None:
+        clean = _clean_field(label)
         if not clean:
             return
         key = normalize(clean)
         if kind == "product" and not strict_product_match(raw_query_tokens, key):
             return
-        label_tokens = tokenize(clean)
+        if precomputed_tokens is not None:
+            label_tokens = precomputed_tokens
+            fuzzy_token_hits = fuzzy_hits_cached(query_tokens, label_tokens, fuzzy_match_cache)
+        else:
+            # Not from the catalog token vocabulary (e.g. a PHRASE_SYNONYMS
+            # label) - the vocabulary-deduplicated cache above doesn't cover
+            # it, so fall back to the exact original per-call computation.
+            label_tokens = tokenize(clean)
+            fuzzy_token_hits = fuzzy_hits(query_tokens, label_tokens)
         token_hits = len(query_tokens & label_tokens)
-        fuzzy_token_hits = fuzzy_hits(query_tokens, label_tokens)
         direct_match = normalized_query in key or key.startswith(normalized_query)
         if not direct_match and not token_hits and not fuzzy_token_hits:
             return
@@ -532,16 +724,18 @@ def autocomplete_suggestions(products: list[Product] | list[dict], query: str, l
         add(replacement, "synonym", 80)
         add(phrase, "synonym", 70)
 
+    token_index = get_product_token_index(products)
     for product in products:
-        title = str(product_value(product, "title", ""))
-        brand = str(product_value(product, "brand", ""))
-        category = str(product_value(product, "product_type", product_value(product, "category", "")))
+        product_id = str(product_value(product, "id", ""))
+        entry = token_index.get(product_id) or _build_product_token_entry(product)
         availability = str(product_value(product, "availability", ""))
         availability_score = 5 if availability in {"in_stock", "in stock"} else 0
-        add(title, "product", 60 + availability_score)
-        add(brand, "brand", 45 + availability_score)
-        for part in re.split(r"[>/|]", category):
-            add(part, "category", 35 + availability_score)
+        # label text stays the ORIGINAL (display-cased) field - only the
+        # tokenization is precomputed/reused, never the label itself.
+        add(str(product_value(product, "title", "")), "product", 60 + availability_score, entry.title_tokens)
+        add(str(product_value(product, "brand", "")), "brand", 45 + availability_score, entry.brand_tokens)
+        for part, part_tokens in zip(entry.category_parts, entry.category_part_tokens):
+            add(part, "category", 35 + availability_score, part_tokens)
 
     ordered = sorted(suggestions.values(), key=lambda item: item["score"], reverse=True)
     return [{k: v for k, v in item.items() if k != "score"} for item in ordered[:limit]]

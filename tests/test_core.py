@@ -2898,6 +2898,35 @@ class TestSessionMemory:
             for name, value in original.items():
                 setattr(main, name, value)
 
+    def test_refresh_feed_rebuilds_search_performance_indexes(self, products, monkeypatch):
+        # V2.2.1: refresh_feed() must warm the new precomputed token/
+        # vocabulary/BM25 indexes for the NEW products list, not leave the
+        # first post-refresh autocomplete call to build them on the
+        # critical path (Section 44 - atomic index swap, no partial state).
+        from app.search import get_product_token_index
+
+        basmati_products = [p for p in products if "basmati" in main.normalize(p.title)]
+        assert basmati_products
+        reduced_products = [p for p in products if p.id != basmati_products[0].id]
+
+        original = {
+            name: getattr(main, name)
+            for name in ("products", "product_snapshot", "translation_index",
+                         "product_taxonomy_index", "taxonomy_concept_index",
+                         "last_feed_refresh_at", "last_feed_refresh_error")
+        }
+        try:
+            monkeypatch.setattr(main, "load_multilang_feeds", lambda: {"sk": reduced_products})
+            main.refresh_feed()
+
+            # get_product_token_index() must return instantly (already
+            # warmed) and reflect the reduced catalog, not the old one.
+            index = get_product_token_index(main.products)
+            assert basmati_products[0].id not in index
+        finally:
+            for name, value in original.items():
+                setattr(main, name, value)
+
     def test_static_files_serve_known_binary_assets(self):
         # app/mei-avatar.png, app/foodland-symbol.png and
         # app/foodland-mei-avatar-rigged.glb are served under /static but
