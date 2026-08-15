@@ -339,6 +339,12 @@ FAMILY_DEFINITIONS += [
         # sauce, poke sauce, unagi sauce, dumpling sauce, teriyaki - not
         # pure soy-sauce identity on its own (Section 53/58 purity gate).
         title_phrases=("tmava sojova omacka",),
+        # "sójová omáčka" as a bare flavour descriptor also appears in
+        # instant ramen/noodle titles (e.g. "Instantné rezance NISSIN Demae
+        # Ramen Sójová omáčka") - found live during V2.4 structured
+        # retrieval verification (Section 96), same collision class already
+        # guarded for teriyaki_sauce below.
+        exclude_title_phrases=("instantna", "instantne"),
         attributes=(("style", "dark"),),
         display_label="Tmavá sójová omáčka",
     ),
@@ -348,6 +354,7 @@ FAMILY_DEFINITIONS += [
         subfamily="soy_sauce",
         confidence="HIGH",
         title_phrases=("svetla sojova omacka",),
+        exclude_title_phrases=("instantna", "instantne"),
         attributes=(("style", "light"),),
         display_label="Svetlá sójová omáčka",
     ),
@@ -357,6 +364,7 @@ FAMILY_DEFINITIONS += [
         subfamily="soy_sauce",
         confidence="HIGH",
         title_phrases=("sojova omacka",),
+        exclude_title_phrases=("instantna", "instantne"),
         display_label="Sójová omáčka",
     ),
     FamilyRule(
