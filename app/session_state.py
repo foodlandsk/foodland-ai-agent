@@ -118,13 +118,17 @@ def get_recent_presentation(memory: dict) -> list[str]:
 
 
 _ORDINAL_WORDS: dict[str, int] = {
-    "prvy": 0, "prva": 0, "prve": 0, "prveho": 0, "prvej": 0, "prvu": 0, "1": 0, "first": 0,
-    "druhy": 1, "druha": 1, "druhe": 1, "druheho": 1, "druhej": 1, "druhu": 1, "2": 1, "second": 1,
-    "treti": 2, "tretia": 2, "tretie": 2, "tretieho": 2, "tretej": 2, "tretiu": 2, "3": 2, "third": 2,
-    "stvrty": 3, "stvrta": 3, "stvrte": 3, "4": 3, "fourth": 3,
+    "prvy": 0, "prva": 0, "prve": 0, "prveho": 0, "prvej": 0, "prvu": 0, "first": 0,
+    "druhy": 1, "druha": 1, "druhe": 1, "druheho": 1, "druhej": 1, "druhu": 1, "second": 1,
+    "treti": 2, "tretia": 2, "tretie": 2, "tretieho": 2, "tretej": 2, "tretiu": 2, "third": 2,
+    "stvrty": 3, "stvrta": 3, "stvrte": 3, "fourth": 3,
 }
-
-_ORDINAL_REFERENCE_MARKERS = ("ten ", "tu ", "to ", "tie ", "tej ", "that ")
+# Deliberately NO bare digit tokens ("1", "2", "3"...) here (a real bug
+# found via live multi-turn testing, spec Section 79): a message like
+# "radšej 1 kg" or "chcem 2 ks" contains a bare digit that has nothing to
+# do with an ordinal reference - it is a quantity/size. Only an actual
+# ordinal WORD (slovenský/anglický) counts as a reference (Section 47 -
+# deterministic, but not so loose it collides with ordinary numbers).
 
 
 def _extract_ordinal_index(message: str) -> int | None:

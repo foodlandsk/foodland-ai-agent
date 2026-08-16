@@ -96,20 +96,43 @@ class TestRiceConstraintMatrix:
     "niečo lacnejšie" -> "ukáž všetky"."""
 
     def test_family_persists_size_overrides_then_removes(self):
+        """Strong assertions (not just "products truthy") - a weaker
+        version of this test originally passed while two real bugs were
+        live: (1) bare digit "1" in "radšej 1 kg" was misread as an
+        ordinal reference ("ten prvý"), returning the STALE 5kg product
+        instead of switching to 1kg; (2) "niečo lacnejšie" had no
+        price-direction wiring in the generic (non-recipe) structured
+        retrieval path at all and fell through to a nonsensical legacy
+        lexical search on the literal words "niečo"/"lacnejšie". Both
+        found via live production multi-turn testing (spec Section 79),
+        not by this test - strengthened here so they cannot silently
+        return."""
         sid = "v29-rice-matrix"
         r1 = _chat("jazminova ryza", sid)
-        assert r1.get("response_mode") != "result_set_continuation"
-        q1 = r1.get("answer_strategy") or r1.get("intent")
-        assert r1.get("products")
+        assert r1.get("response_mode") == "result_set"
+        assert len(r1.get("products", [])) >= 2
+        titles1 = {p["id"]: p.get("title", "") for p in r1["products"]}
+        assert all("jazm" in t.lower() for t in titles1.values())
 
         r2 = _chat("len 5 kg", sid)
-        assert r2.get("products")
+        assert r2.get("response_mode") == "result_set"
+        assert all("5" in p.get("title", "") for p in r2["products"])
+        assert all("jazm" in p.get("title", "").lower() for p in r2["products"])
+        five_kg_ids = {p["id"] for p in r2["products"]}
 
         r3 = _chat("radsej 1 kg", sid)
-        assert r3.get("products")
+        assert r3.get("response_mode") == "result_set"
+        assert r3.get("products"), "size override must still return real rice products"
+        assert not ({p["id"] for p in r3["products"]} & five_kg_ids), "the stale 5kg product must not survive the override"
+        assert all("jazm" in p.get("title", "").lower() for p in r3["products"])
+        one_kg_ids = {p["id"] for p in r3["products"]}
 
-        r4 = _chat("ukaz vsetky", sid)
-        assert r4.get("response_mode") == "result_set_continuation"
+        r4 = _chat("nieco lacnejsie", sid)
+        assert r4.get("response_mode") == "result_set", "price direction must not fall through to legacy lexical search"
+        assert {p["id"] for p in r4["products"]} == one_kg_ids, "cheaper must re-rank the SAME candidate set, not search anew"
+
+        r5 = _chat("ukaz vsetky", sid)
+        assert r5.get("response_mode") == "result_set_continuation"
 
 
 class TestSushiUseCaseMatrix:
@@ -245,6 +268,13 @@ class TestConstraintRemovalLive:
 
     def test_size_removal_after_narrowing(self):
         sid = "v29-size-removal"
-        _chat("jazminova ryza 5 kg", sid)
+        r1 = _chat("jazminova ryza 5 kg", sid)
+        assert r1.get("response_mode") == "result_set"
+        narrowed_count = len(r1["products"])
+
         r2 = _chat("na velkosti nezalezi", sid)
-        assert r2.get("products")
+        assert r2.get("response_mode") == "result_set"
+        assert all("jazm" in p.get("title", "").lower() for p in r2["products"])
+        # Removing the size constraint must widen the candidate set back
+        # out, not merely re-return the same narrowed 5kg result.
+        assert len(r2["products"]) >= narrowed_count

@@ -120,6 +120,7 @@ def build_structured_result_set(
     personalization_scores: dict[str, float] | None = None,
     remove_size: bool = False,
     remove_brand: bool = False,
+    price_direction: str | None = None,
 ) -> ResultSet | None:
     """V2.5 entry point: builds a full, pageable ResultSet, or None when
     structured retrieval cannot confidently answer this query (caller
@@ -136,12 +137,20 @@ def build_structured_result_set(
     against `base_query` even though the removal phrase itself carries no
     positive brand/size/dietary attribute of its own to trigger the usual
     narrowing check.
-    """
+
+    `price_direction` (V2.9 Section 20) - "niečo lacnejšie"/"drahšie" also
+    carries no family/brand/size of its own, so it must ALSO force the
+    narrowing merge (otherwise the bare phrase has nothing to retrieve
+    against and falls through to a nonsensical legacy lexical search on
+    the words "niečo"/"lacnejšie" themselves - a real regression caught
+    by live multi-turn testing, spec Section 79). Re-ranks the already-
+    valid candidate set by price after V2.4 ranking (Section 20 - never
+    changes eligibility, only final order)."""
     try:
         index = get_structured_index(products, taxonomy_index, normalized_index)
         parsed = parse_structured_query(query_text, known_brands=index.known_brands)
         should_merge = base_query is not None and parsed.family is None and (
-            parsed.brand or parsed.package_size or parsed.dietary_facets or remove_size or remove_brand
+            parsed.brand or parsed.package_size or parsed.dietary_facets or remove_size or remove_brand or price_direction
         )
         if should_merge:
             query = merge_constraints(base_query, parsed, remove_size=remove_size, remove_brand=remove_brand)
@@ -165,6 +174,10 @@ def build_structured_result_set(
             merchandising_rules=merchandising_rules,
             personalization_scores=personalization_scores,
         )
+        if price_direction:
+            from app.session_state import rank_by_price_direction
+            reranked = rank_by_price_direction([products_by_id[pid] for pid in ranked_ids if pid in products_by_id], price_direction)
+            ranked_ids = [product.id for product in reranked]
         _log_shadow(result, legacy_fallback_used=False)
         return build_result_set(
             query_text,

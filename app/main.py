@@ -119,6 +119,9 @@ from app.session_state import clear_use_case_state as _clear_use_case_state
 from app.session_state import mentions_ordinal_reference as _mentions_ordinal_reference
 from app.session_state import resolve_ordinal_reference as _resolve_ordinal_reference
 from app.session_state import track_presentation as _track_presentation
+from app.session_state import detect_size_removal as _detect_size_removal
+from app.session_state import detect_brand_removal as _detect_brand_removal
+from app.session_state import detect_price_direction as _detect_price_direction
 
 
 logging.basicConfig(
@@ -4271,6 +4274,14 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             ),
             behavioral_rankings=get_behavioral_rankings(),
             merchandising_rules=get_merchandising_rules(),
+            # V2.9 (Section 9/10/20/21) - explicit override/removal/price
+            # signals must reach retrieval, not just the merge function
+            # itself (a real gap found via live multi-turn testing,
+            # Section 79 - "niečo lacnejšie" fell through to a
+            # nonsensical legacy lexical search without this).
+            remove_size=_detect_size_removal(chat_request.message),
+            remove_brand=_detect_brand_removal(chat_request.message),
+            price_direction=_detect_price_direction(chat_request.message),
         )
     ) is not None:
         # V2.4/V2.5 supersede the legacy "plain_rice" bare-"ryz" special-
@@ -4310,6 +4321,9 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             base_query=base_query,
             behavioral_rankings=get_behavioral_rankings(),
             merchandising_rules=get_merchandising_rules(),
+            remove_size=_detect_size_removal(chat_request.message),
+            remove_brand=_detect_brand_removal(chat_request.message),
+            price_direction=_detect_price_direction(chat_request.message),
         ) if V2_STRUCTURED_RETRIEVAL_ENABLED else None
         if structured_presentation is not None:
             matches = _format_result_set_products(products, structured_presentation.initial_page_ids())
