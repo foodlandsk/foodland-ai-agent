@@ -15,12 +15,23 @@ from dataclasses import dataclass, field
 from math import ceil
 
 from app.feed import Product
-from app.ingredients import ParsedQuantity, convert_to_base_unit, scale_quantity
+from app.ingredients import ParsedQuantity, convert_to_base_unit, extract_requested_servings_lenient, scale_quantity
 from app.product_normalizer import NormalizedProduct
 from app.recipe_graph import (
     CATALOG_AVAILABLE,
     RecipeGraphIndex,
     resolve_ingredient_products,
+)
+from app.session_state import (
+    TurnSignals,
+    get_active_recipe,
+    get_last_recipe_ingredient_concept,
+    get_selected_ingredient_products,
+    mark_ingredient_selected,
+    rank_by_price_direction,
+    set_last_recipe_ingredient_concept,
+    set_recipe_servings,
+    track_presentation,
 )
 from app.taxonomy import ProductTaxonomy
 
@@ -296,3 +307,244 @@ def basket_concept_ids(
         if basket_product_ids & set(resolution.matching_product_ids):
             satisfied.add(concept_id)
     return frozenset(satisfied)
+
+
+# ---------------------------------------------------------------------------
+# V2.9 - recipe conversation continuity (Section 16/17/18/53). Owns WHICH
+# recipe is active and how a follow-up question about it resolves;
+# app.recipe_graph/app.recipe_shopping's own ingredient/plan semantics
+# (Section 39) are reused as-is, never duplicated.
+# ---------------------------------------------------------------------------
+
+_STOPWORDS_FOR_RECIPE_MATCH = frozenset({
+    "ake", "aky", "aka", "aku", "a", "co", "ten", "ta", "to", "mate", "mas",
+    "este", "aj", "na", "do", "s", "so", "z", "zo", "je", "su",
+})
+
+# Words that name a whole grocery CATEGORY rather than a specific
+# ingredient - too generic to safely identify one of the active recipe's
+# ~5 ingredients on their own. Without this, "kikkoman sojova omacka 1000
+# ml" (a specific, unrelated branded product search) matched Pad Thai's
+# fish_sauce purely because "omacka" ("sauce") is shared with "rybacia
+# omacka" - a real regression caught by the V2.8 regression suite
+# (tests/test_recipe_shopping.py::test_context_switch_away_from_recipe_does_not_leak_plan).
+# Stripped from BOTH sides before scoring, so a message still matches via
+# any more specific word it shares with the concept (e.g. "rybacia").
+_GENERIC_CATEGORY_WORDS = frozenset({
+    "omacka", "omacky", "omacku", "omackou", "pasta", "pasty", "pastu",
+    "korenie", "korenia", "olej", "oleja", "muka", "muky",
+})
+
+
+def _strip_generic_category_words(tokens: set[str]) -> set[str]:
+    return {t for t in tokens if t not in _GENERIC_CATEGORY_WORDS}
+
+
+_MIN_STEM_LENGTH = 4  # shared-prefix length treated as "same word" across Slovak noun case endings
+
+
+def _stem_overlap(message_tokens: set[str], concept_tokens: set[str]) -> int:
+    """Slovak noun case endings vary ("rybacia omáčka" nominative vs "a
+    rybaciu omáčku?" accusative) and app.search.raw_tokens does not stem -
+    a shared-prefix check of >= _MIN_STEM_LENGTH chars is a cheap,
+    deterministic stand-in for real morphological analysis, scoped to a
+    small (~5-concept) candidate set so a coincidental short prefix match
+    can only ever pick among THIS recipe's own ingredients (Section 47 -
+    deterministic first, no LLM needed for this)."""
+    count = 0
+    for m_token in message_tokens:
+        for c_token in concept_tokens:
+            prefix_len = min(len(m_token), len(c_token), _MIN_STEM_LENGTH)
+            if prefix_len >= _MIN_STEM_LENGTH and m_token[:prefix_len] == c_token[:prefix_len]:
+                count += 1
+                break
+    return count
+
+
+def _match_recipe_ingredient_by_tokens(message: str, graph: RecipeGraphIndex, recipe_concept_ids: set[str]) -> str | None:
+    from app.search import raw_tokens
+    message_tokens = _strip_generic_category_words(raw_tokens(message) - _STOPWORDS_FOR_RECIPE_MATCH)
+    if not message_tokens:
+        return None
+    best_concept_id: str | None = None
+    best_score = 0
+    for concept_id in recipe_concept_ids:
+        concept = graph.ingredient_concepts.get(concept_id)
+        if concept is None:
+            continue
+        concept_tokens: set[str] = set()
+        for alias in concept.aliases:
+            concept_tokens |= raw_tokens(alias)
+        concept_tokens |= raw_tokens(concept.display_name)
+        concept_tokens = _strip_generic_category_words(concept_tokens)
+        score = _stem_overlap(message_tokens, concept_tokens)
+        if score > best_score:
+            best_score = score
+            best_concept_id = concept_id
+    return best_concept_id if best_score > 0 else None
+
+
+RECIPE_FOLLOWUP_INGREDIENT = "ingredient_candidates"
+RECIPE_FOLLOWUP_SELECTED = "selected"
+RECIPE_FOLLOWUP_CLARIFICATION = "clarification_needed"
+RECIPE_FOLLOWUP_PLAN_UPDATE = "plan_update"
+
+
+@dataclass(frozen=True)
+class RecipeFollowupResult:
+    kind: str
+    dish_id: str
+    plan: RecipeShoppingPlan | None = None
+    concept_id: str | None = None
+    candidate_product_ids: tuple[str, ...] = ()
+    selected_product_id: str | None = None
+
+
+def resolve_recipe_followup(
+    message: str,
+    memory: dict,
+    graph: RecipeGraphIndex,
+    products: list[Product],
+    taxonomy_index: dict[str, ProductTaxonomy],
+    normalized_index: dict[str, NormalizedProduct],
+) -> RecipeFollowupResult | None:
+    """Section 16/17/18/53 - resolves a follow-up turn against the ACTIVE
+    recipe tracked in session state, without re-detecting the dish from
+    scratch (Section 39 - V2.9 owns continuity, V2.8 owns recipe
+    semantics). Returns None when the message does not read as a
+    continuation of the active recipe at all - the caller then treats it
+    as a hard switch (Section 27) and clears the active recipe."""
+    active_recipe_id, servings = get_active_recipe(memory)
+    if not active_recipe_id or active_recipe_id not in graph.dishes_by_id:
+        return None
+
+    signals = TurnSignals(message, memory)
+    selected = frozenset(get_selected_ingredient_products(memory).values())
+
+    requested_servings = extract_requested_servings_lenient(message)
+    if requested_servings:
+        set_recipe_servings(memory, requested_servings)
+        servings = requested_servings
+
+    # Ordinal reference against whatever ingredient's candidates were most
+    # recently shown ("aké rezance?" -> "tie druhé") - Section 11/53.
+    last_concept_id = get_last_recipe_ingredient_concept(memory)
+    if signals.ordinal_product_id and last_concept_id:
+        mark_ingredient_selected(memory, last_concept_id, signals.ordinal_product_id)
+        plan = build_recipe_shopping_plan(
+            graph, active_recipe_id, products, taxonomy_index, normalized_index,
+            servings=servings, basket_product_ids=selected | {signals.ordinal_product_id},
+        )
+        return RecipeFollowupResult(
+            kind=RECIPE_FOLLOWUP_SELECTED, dish_id=active_recipe_id, plan=plan,
+            concept_id=last_concept_id, selected_product_id=signals.ordinal_product_id,
+        )
+    if signals.ordinal_needs_clarification:
+        return RecipeFollowupResult(kind=RECIPE_FOLLOWUP_CLARIFICATION, dish_id=active_recipe_id)
+
+    # Explicit ingredient mention ("a rybaciu omáčku?" / "aké rezance?") -
+    # must belong to THIS recipe's own ingredient list, not just any known
+    # concept (Section 18 - never introduces an unrelated role). Matched by
+    # token overlap against the recipe's own (small, ~5) ingredient
+    # concepts rather than the graph-wide alias index: a short follow-up
+    # ("aké rezance?") often shares only one word with the full curated
+    # display name ("ryžové rezance") or required-term ("rezance"), so a
+    # full-phrase substring match against the whole alias index is too
+    # strict here - restricting the candidate set to this recipe first
+    # keeps that looser token match safe (Section 18/141 - can only ever
+    # resolve to an ingredient this exact recipe actually calls for).
+    recipe_concept_ids = {ing.ingredient_concept_id for ing in graph.recipe_ingredients_by_dish[active_recipe_id]}
+    mentioned_concept_id = _match_recipe_ingredient_by_tokens(message, graph, recipe_concept_ids)
+    if mentioned_concept_id and mentioned_concept_id in recipe_concept_ids:
+        resolution = resolve_ingredient_products(graph, mentioned_concept_id, products, taxonomy_index, normalized_index)
+        candidates = list(resolution.matching_product_ids)
+        if signals.price_direction and candidates:
+            products_by_id = {p.id: p for p in products}
+            ranked = rank_by_price_direction([products_by_id[pid] for pid in candidates if pid in products_by_id], signals.price_direction)
+            candidates = [p.id for p in ranked]
+        set_last_recipe_ingredient_concept(memory, mentioned_concept_id)
+        track_presentation(memory, candidates)
+        return RecipeFollowupResult(
+            kind=RECIPE_FOLLOWUP_INGREDIENT, dish_id=active_recipe_id,
+            concept_id=mentioned_concept_id, candidate_product_ids=tuple(candidates),
+        )
+
+    # Price refinement on the ingredient just discussed, with no new
+    # concept named ("niečo lacnejšie" right after "aké rezance?").
+    if signals.price_direction and last_concept_id:
+        resolution = resolve_ingredient_products(graph, last_concept_id, products, taxonomy_index, normalized_index)
+        products_by_id = {p.id: p for p in products}
+        ranked = rank_by_price_direction(
+            [products_by_id[pid] for pid in resolution.matching_product_ids if pid in products_by_id],
+            signals.price_direction,
+        )
+        candidates = [p.id for p in ranked]
+        track_presentation(memory, candidates)
+        return RecipeFollowupResult(
+            kind=RECIPE_FOLLOWUP_INGREDIENT, dish_id=active_recipe_id,
+            concept_id=last_concept_id, candidate_product_ids=tuple(candidates),
+        )
+
+    # Generic continuation question ("čo ešte potrebujem?") or a servings
+    # change alone - rebuild the plan, preserving selected roles (Section 17/18).
+    if signals.is_recipe_followup or requested_servings:
+        plan = build_recipe_shopping_plan(
+            graph, active_recipe_id, products, taxonomy_index, normalized_index,
+            servings=servings, basket_product_ids=selected,
+        )
+        return RecipeFollowupResult(kind=RECIPE_FOLLOWUP_PLAN_UPDATE, dish_id=active_recipe_id, plan=plan)
+
+    return None
+
+
+def compose_recipe_followup_answer(
+    result: RecipeFollowupResult,
+    graph: RecipeGraphIndex,
+    products_by_id: dict[str, Product],
+    lang: str = "sk",
+) -> str:
+    """Section 77/78 - deterministic template, no LLM (matches
+    app.answer_composer's discipline). Consumes only structured facts
+    already decided by resolve_recipe_followup(); never picks a mapping
+    itself."""
+    dish = graph.dishes_by_id.get(result.dish_id)
+    dish_title = dish.title if dish else result.dish_id
+
+    if result.kind == RECIPE_FOLLOWUP_CLARIFICATION:
+        if lang == "en":
+            return "Sorry, which one do you mean? I don't have a recent list to refer to."
+        return "Prepáčte, ktorý presne máte na mysli? Naposledy som Vám nič nezobrazila, na čo by som mohla odkázať."
+
+    if result.kind == RECIPE_FOLLOWUP_INGREDIENT:
+        concept = graph.ingredient_concepts.get(result.concept_id)
+        ingredient_label = concept.display_name if concept else result.concept_id
+        if lang == "en":
+            return f"Here are the options for {ingredient_label} for {dish_title}:"
+        return f"Tu sú možnosti na {ingredient_label} pre {dish_title}:"
+
+    if result.kind == RECIPE_FOLLOWUP_SELECTED:
+        product = products_by_id.get(result.selected_product_id)
+        title = product.title if product else result.selected_product_id
+        if lang == "en":
+            return f"Added {title} to your {dish_title} shopping list."
+        return f"Pridala som {title} do vášho nákupného zoznamu na {dish_title}."
+
+    if result.kind == RECIPE_FOLLOWUP_PLAN_UPDATE and result.plan is not None:
+        remaining = [ing for ing in result.plan.ingredients if ing.status == STATUS_AVAILABLE]
+        satisfied = [ing for ing in result.plan.ingredients if ing.status == STATUS_ALREADY_SATISFIED]
+        servings_note = f" pre {result.plan.requested_servings} porcií" if result.plan.requested_servings else ""
+        if lang == "en":
+            if not remaining:
+                return f"You already have everything needed for {dish_title}{servings_note}."
+            return f"For {dish_title}{servings_note} you still need: " + ", ".join(
+                graph.ingredient_concepts[i.ingredient_concept_id].display_name for i in remaining
+            ) + "."
+        if not remaining:
+            return f"Na {dish_title}{servings_note} už máte všetko potrebné." + (
+                f" Už vybraté: {', '.join(graph.ingredient_concepts[i.ingredient_concept_id].display_name for i in satisfied)}." if satisfied else ""
+            )
+        return f"Na {dish_title}{servings_note} ešte potrebujete: " + ", ".join(
+            graph.ingredient_concepts[i.ingredient_concept_id].display_name for i in remaining
+        ) + "."
+
+    return "" if lang == "en" else ""

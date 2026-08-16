@@ -1386,4 +1386,36 @@ Committed fixture (2 140 produktov, pinned test suite): `classified=720`, `cover
 
 **Riziká/obmedzenia (úprimne):** žiadny reálny recept nemá štruktúrované množstvo/porcie — serving scaling a package count sú implementované a otestované, ale dnes voči živým dátam neaktívne (dormant). Required/optional/garnish nie je v zdrojových dátach rozlíšené — V2.8 konzervatívne označuje všetko ako REQUIRED. Basket satisfaction nemá live signál (vyššie). 56/60 dish markerov má rovnaký intent-detection gap ako Pad Thai mal pred touto iteráciou. Detail: `docs/ingredient-intelligence.md`, `docs/recipe-knowledge-audit.md`.
 
-**Ďalší krok (mimo rozsahu tejto iterácie):** V2.8 — Recipe/Product Knowledge Graph & Ingredient Intelligence.
+### Sprint V2.9 – Conversational Memory, Preference & Session Intelligence
+
+**Zadanie:** naučiť Foodland AI Advisor sledovať prebiehajúcu nákupnú konverzáciu namiesto toho, aby každú správu spracovával ako novú, nezávislú otázku — perzistentné, ale explicitne oscopované constrainty/preferencie, ordinal referencie ("ten druhý"), pokračovanie receptu/porcií, a čisté zabudnutie pri zmene témy.
+
+**Kľúčový poznatok pred implementáciou (audit, `docs/session-intelligence-audit.md`):** V2.5 `merge_constraints()` už rieši family/subfamily perzistenciu + package_size/brand override pre štruktúrovanú product retrieval cestu — V2.9 to nepremiestňuje. Chýbalo explicitné ODOBRATIE constraintu, a hlavne: **recepty (V2.8) nemali žiadnu konverzačnú kontinuitu vôbec** — `detect_recipe_subject()` sa volalo odznova každý ťah, žiadne pole nepamätalo aktívny recept. Priamym testom pred zmenou overené: "aké rezance?" po "Chcem robiť Pad Thai" padalo do generickej cross-sell vetvy namiesto pokračovania v recepte.
+
+**Implementované:** nový modul `app/session_state.py` (žiadne nové úložisko — nové polia priamo v existujúcom process-local `session_memories` dict): `active_use_case`, `active_recipe_id`, `recipe_servings`, `last_recipe_ingredient_concept`, `selected_ingredient_products`, `recent_presentation_ids` + deterministické detektory (ordinal reference, cenová preferencia, veľkosť/značka odobratie, reset, recipe-followup rozpoznanie). `app/query_constraints.py: merge_constraints()` rozšírené o `remove_size`/`remove_brand`. `app/recipe_shopping.py: resolve_recipe_followup()` — hlavná nová schopnosť, plná recipe/servings kontinuita cez V2.8 gráf.
+
+**Mandátny Pad Thai reťazec (Section 53, overený end-to-end cez skutočný `chat()`):**
+```
+"Chcem robiť Pad Thai pre 4. Čo potrebujem?"  -> 5 surovín, coverage 100%
+"aké rezance?"                                 -> kandidáti na ryžové rezance
+"ten druhý"                                    -> vybraný produkt označený ALREADY_SATISFIED
+"a rybaciu omáčku?"                            -> kandidáti na rybaciu omáčku
+"niečo lacnejšie"                              -> tí istí kandidáti zoradení podľa ceny
+"nakoniec pre 8"                               -> servings=8, rezance ZOSTÁVAJÚ satisfied
+"čo ešte potrebujem?"                          -> iba zostávajúce, nie znova rezance
+"chcem kúpiť mlieko"                           -> hard switch: žiadny recipe_shopping_plan
+```
+
+**Kritické nálezy:**
+1. Slovenské pádové tvary ("rybaciu omáčku" vs. kurátorská "rybacia omáčka") vyžadovali prefix-match namiesto presnej zhody tokenov pri priraďovaní správy k ingrediencii aktívneho receptu.
+2. **Reálna regresia**: generické slová ako "omáčka" (spoločné naprieč desiatkami produktov) spôsobili, že "kikkoman sójová omáčka 1000 ml" (úplne nesúvisiaci konkrétny produktový dopyt) sa nesprávne priradil k Pad Thai fish_sauce role. Zachytené existujúcim V2.8 regresným testom pri plnom behu, opravené vylúčením zoznamu generických kategóriových slov z scoringu.
+3. Audit pred zmenou odhalil, že sushi kontext ("aká ryžu?" po "chcem robiť sushi") vracal generickú, nie sushi-špecifickú ryžu — vyriešené `active_use_case="sushi"` narrowing (bare "ryža"/"ocot" → `sushi_rice`/`rice_vinegar`).
+4. Testovaný scenár "sushi → hľadám Shin Ramyun" ukázal nesprávnu odpoveď AJ v úplne čerstvej session — potvrdené ako stateless nedostatok (nie session-kontaminácia), mimo rozsahu V2.9.
+
+**Hard switch (Section 27/84):** recept aj use-case sa explicitne čistia, keď aktuálny ťah nie je pokračovaním — overené, že "chcem kúpiť mlieko" po Pad Thai shopping nenesie žiadny recept kontext ďalej.
+
+**Testy:** `tests/test_session_intelligence.py` (19 — rice constraint matrix, sushi use-case matrix, plný Pad Thai reťazec, hard-switch kontaminačná matica, missing-state clarifikácia, reset, negácia/odobratie constraintu). Plný beh: **847/847** (828 pred V2.9 + 19 nových), 0 regresií.
+
+**Riziká/obmedzenia (úprimne):** basket satisfaction funguje iba pre explicitne v konverzácii potvrdené výbery — `ChatRequest` stále nemá skutočné cart pole (rovnaké obmedzenie ako V2.8). Comparison continuity (Section 22) a replacement continuity (Section 25) neboli implementované — vyžadovali by ďalšiu kaskádovú chirurgiu v `chat()` bez toho, aby boli overené rovnako dôkladne ako recipe/sushi cesta; kandidát na ďalšiu iteráciu. Info→commerce ("čo je miso?" → "ktoré máte?") a product→recipe ("ukáž gochujang" → "čo s tým môžem uvariť?") transitions neboli zapojené live — V2.8 reverse lookup existuje a je otestovaný, ale nemá vlastný trigger v `chat()` tento šprint. Úložisko zostáva process-local (žiadny Redis/DB) — reštart Railway procesu vymaže session pamäť, čestne zdokumentované, nie riešené. Detail: `docs/session-intelligence.md`, `docs/session-intelligence-audit.md`.
+
+**Ďalší krok (mimo rozsahu tejto iterácie):** V2.10 — Evaluation, Learning & Recommendation Quality Engine.

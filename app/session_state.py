@@ -1,0 +1,300 @@
+"""
+app/session_state.py  -  V2.9 Conversational Memory, Preference & Session
+Intelligence
+
+Extends the EXISTING `memory` dict (`app.main.session_memories`, a
+process-local `dict[str, dict]`) with new, explicitly-scoped structured
+fields instead of introducing a second storage mechanism (Section 32 -
+audit first, reuse the simplest storage already in production).
+
+Central invariant (Section 81/82/83/84): this module tracks WHICH task/
+concept/recipe a session is currently in - it never decides what a valid
+product is (that stays V2.3/V2.4/V2.8), and every field here must have an
+explicit reason to still apply to the current turn or it is dropped.
+Correct forgetting beats wrong remembering.
+
+All functions are pure over the `memory` dict passed in (the same dict
+`app.main.get_session_memory()` already returns and mutates in place) -
+no separate session store, no new TTL mechanism (the existing
+`SESSION_MEMORY_TTL_SECONDS`/`prune_session_memories()` already covers
+every key added here for free).
+"""
+from __future__ import annotations
+
+import re
+
+from app.search import normalize, tokenize
+
+# ---------------------------------------------------------------------------
+# Field access - typed, explicit defaults, never KeyError.
+# ---------------------------------------------------------------------------
+
+_RECENT_PRESENTATION_MAX = 8
+
+
+def get_active_use_case(memory: dict) -> str | None:
+    return memory.get("active_use_case") or None
+
+
+def set_active_use_case(memory: dict, use_case: str | None) -> None:
+    memory["active_use_case"] = use_case or ""
+
+
+def get_active_recipe(memory: dict) -> tuple[str | None, int | None]:
+    return memory.get("active_recipe_id") or None, memory.get("recipe_servings") or None
+
+
+def set_active_recipe(memory: dict, dish_id: str | None, servings: int | None = None) -> None:
+    """Starting a DIFFERENT dish than whatever was active drops the prior
+    dish's selections/last-asked-ingredient (Section 84 - a role selected
+    for Pad Thai must never show as satisfied for Kung Pao); re-confirming
+    the SAME active dish (e.g. servings-only update) preserves them."""
+    previous_dish_id = memory.get("active_recipe_id") or None
+    if dish_id and previous_dish_id and dish_id != previous_dish_id:
+        memory["selected_ingredient_products"] = {}
+        memory["last_recipe_ingredient_concept"] = ""
+    memory["active_recipe_id"] = dish_id or ""
+    if servings is not None:
+        memory["recipe_servings"] = servings
+    elif not dish_id:
+        memory["recipe_servings"] = None
+
+
+def set_recipe_servings(memory: dict, servings: int) -> None:
+    memory["recipe_servings"] = servings
+
+
+def clear_recipe_state(memory: dict) -> None:
+    """Hard-switch cleanup (Section 27/84) - drop everything task-scoped to
+    the recipe the customer has moved on from."""
+    memory["active_recipe_id"] = ""
+    memory["recipe_servings"] = None
+    memory["last_recipe_ingredient_concept"] = ""
+    memory["selected_ingredient_products"] = {}
+
+
+def clear_use_case_state(memory: dict) -> None:
+    memory["active_use_case"] = ""
+
+
+def get_last_recipe_ingredient_concept(memory: dict) -> str | None:
+    return memory.get("last_recipe_ingredient_concept") or None
+
+
+def set_last_recipe_ingredient_concept(memory: dict, concept_id: str | None) -> None:
+    memory["last_recipe_ingredient_concept"] = concept_id or ""
+
+
+def get_selected_ingredient_products(memory: dict) -> dict[str, str]:
+    return dict(memory.get("selected_ingredient_products") or {})
+
+
+def mark_ingredient_selected(memory: dict, concept_id: str, product_id: str) -> None:
+    """Section 18/56/72 - the customer explicitly confirmed/picked a
+    product for one recipe role (ordinal reference, explicit product
+    mention). Fed into app.recipe_shopping.build_recipe_shopping_plan's
+    basket_product_ids so that role shows ALREADY_SATISFIED afterwards -
+    Section 19 (do not fabricate basket state): this is only set from an
+    explicit customer action resolved this turn, never inferred from a
+    product merely being displayed."""
+    selected = memory.setdefault("selected_ingredient_products", {})
+    selected[concept_id] = product_id
+
+
+# ---------------------------------------------------------------------------
+# Recent presentation + ordinal reference resolution (Section 11-13, 41, 60)
+# ---------------------------------------------------------------------------
+
+
+def track_presentation(memory: dict, product_ids: list[str]) -> None:
+    """Bounded (Section 12) - one most-recent presentation, not unlimited
+    history. Overwrites the previous one; that is the correct semantics
+    for "ten druhy" (refers to what was JUST shown, not some earlier turn)."""
+    memory["recent_presentation_ids"] = list(product_ids)[:_RECENT_PRESENTATION_MAX]
+
+
+def get_recent_presentation(memory: dict) -> list[str]:
+    return list(memory.get("recent_presentation_ids") or [])
+
+
+_ORDINAL_WORDS: dict[str, int] = {
+    "prvy": 0, "prva": 0, "prve": 0, "prveho": 0, "prvej": 0, "prvu": 0, "1": 0, "first": 0,
+    "druhy": 1, "druha": 1, "druhe": 1, "druheho": 1, "druhej": 1, "druhu": 1, "2": 1, "second": 1,
+    "treti": 2, "tretia": 2, "tretie": 2, "tretieho": 2, "tretej": 2, "tretiu": 2, "3": 2, "third": 2,
+    "stvrty": 3, "stvrta": 3, "stvrte": 3, "4": 3, "fourth": 3,
+}
+
+_ORDINAL_REFERENCE_MARKERS = ("ten ", "tu ", "to ", "tie ", "tej ", "that ")
+
+
+def _extract_ordinal_index(message: str) -> int | None:
+    normalized = normalize(message)
+    tokens = normalized.split()
+    for token in tokens:
+        if token in _ORDINAL_WORDS:
+            return _ORDINAL_WORDS[token]
+    return None
+
+
+def mentions_ordinal_reference(message: str) -> bool:
+    """Section 11 - deterministic, no LLM (Section 47). Requires an ordinal
+    word; a bare demonstrative ("to", "ten") without one is NOT treated as
+    a reference (too weak a signal, would misfire constantly)."""
+    return _extract_ordinal_index(message) is not None
+
+
+def resolve_ordinal_reference(message: str, memory: dict) -> tuple[str | None, bool]:
+    """Returns (product_id, needs_clarification). Section 13 - never
+    guesses: if an ordinal is mentioned but there is no (or an
+    out-of-range) recent presentation, needs_clarification=True and
+    product_id=None, rather than picking an arbitrary SKU."""
+    index = _extract_ordinal_index(message)
+    if index is None:
+        return None, False
+    presented = get_recent_presentation(memory)
+    if index < len(presented):
+        return presented[index], False
+    return None, True
+
+
+# ---------------------------------------------------------------------------
+# Explicit constraint refinement signals (Section 7-10, 20-21)
+# ---------------------------------------------------------------------------
+
+_CHEAPER_MARKERS = ("lacnejsie", "lacnejsia", "lacnejsi", "cheaper", "lacnejsiu", "nieco lacnejsie", "za menej")
+_PRICIER_MARKERS = ("drahsie", "drahsia", "drahsi", "kvalitnejsie", "premium", "luxusnejsie")
+
+
+def detect_price_direction(message: str) -> str | None:
+    """Section 20 - "niečo lacnejšie" narrows within the SAME product
+    concept (caller's responsibility), never a global cheap-products
+    search. Returns "cheaper" | "pricier" | None."""
+    normalized = normalize(message)
+    if any(marker in normalized for marker in _CHEAPER_MARKERS):
+        return "cheaper"
+    if any(marker in normalized for marker in _PRICIER_MARKERS):
+        return "pricier"
+    return None
+
+
+def rank_by_price_direction(products: list, direction: str, reference_price: float | None = None) -> list:
+    """Pure re-rank of an ALREADY-valid candidate list (Section 20 - never
+    changes product eligibility, only order). `products` are Product-like
+    objects with an `.effective_price` property."""
+    priced = [p for p in products if p.effective_price is not None]
+    unpriced = [p for p in products if p.effective_price is None]
+    reverse = direction == "pricier"
+    if reference_price is not None:
+        if direction == "cheaper":
+            priced = [p for p in priced if p.effective_price < reference_price] or priced
+        elif direction == "pricier":
+            priced = [p for p in priced if p.effective_price > reference_price] or priced
+    priced.sort(key=lambda p: p.effective_price, reverse=reverse)
+    return priced + unpriced
+
+
+_SIZE_REMOVAL_PHRASE_MARKERS = ("akakolvek velkost", "vsetky velkosti", "hocijaka velkost")
+_BRAND_REMOVAL_MARKERS = ("nemusi byt", "nezalezi na znacke", "akakolvek znacka", "hocijaka znacka", "nie ")
+
+
+def detect_size_removal(message: str) -> bool:
+    """"na veľkosti nezáleží" (Section 10/64) - token-set match (not exact
+    substring) so natural variation ("na veľkosti mi už nezáleží") still
+    matches; both "velkost*" and "nezalezi" must appear as tokens."""
+    tokens = tokenize(message)
+    if any(t.startswith("velkost") for t in tokens) and "nezalezi" in tokens:
+        return True
+    normalized = normalize(message)
+    return any(marker in normalized for marker in _SIZE_REMOVAL_PHRASE_MARKERS)
+
+
+def detect_brand_removal(message: str) -> bool:
+    """Section 10/21/63 - "nemusí byť Kikkoman" / "nie Kikkoman". Detects
+    the REMOVAL intent generically; the caller drops whatever brand is
+    currently active rather than this function trying to name the exact
+    brand (that would duplicate app.query_constraints' own brand
+    recognition against `known_brands`)."""
+    normalized = normalize(message)
+    return any(marker in normalized for marker in _BRAND_REMOVAL_MARKERS)
+
+
+_RESET_MARKERS = ("zacnime odznova", "zacni odznova", "nove hladanie", "novy hladanie", "zabudni predchadzajuce", "zabudni na predchadzajuce", "od zaciatku", "nova konverzacia")
+
+
+def detect_reset_request(message: str) -> bool:
+    normalized = normalize(message)
+    return any(marker in normalized for marker in _RESET_MARKERS)
+
+
+def apply_reset(memory: dict) -> None:
+    """Section 30 - clears shopping/task state only; never touches
+    anything account-level (none exists in this system)."""
+    memory["active_result_set_id"] = ""
+    clear_recipe_state(memory)
+    clear_use_case_state(memory)
+    memory["recent_presentation_ids"] = []
+    memory["subjects"].clear()
+    memory["diet_terms"].clear()
+    memory["last_top_product_title"] = ""
+
+
+# ---------------------------------------------------------------------------
+# Recipe follow-up detection (Section 16/17/18/53) - the core V2.9<->V2.8
+# integration. Deliberately narrow and deterministic (Section 47).
+# ---------------------------------------------------------------------------
+
+_RECIPE_FOLLOWUP_QUESTION_MARKERS = (
+    "co este", "co chyba", "co mi chyba", "co dalej", "co potrebujem este",
+    "co este potrebujem", "co este treba", "co chyba na",
+)
+# Deliberately excludes bare "aké"/"aký"/"aká"/"aku"/"ktoré"/"ktorý" - those
+# are ordinary Slovak question words that show up in countless unrelated
+# questions ("akú kategóriu produktov máte?"). A short "which one" follow-up
+# about a SPECIFIC ingredient ("aké rezance?") is instead caught by the
+# ingredient-token match in app.recipe_shopping.resolve_recipe_followup,
+# which only fires when the message names a real ingredient of the active
+# recipe - a much stronger, less collision-prone signal than a bare
+# question word (Section 84 - a false positive here wrongly keeps a stale
+# recipe active).
+
+
+def looks_like_recipe_followup(message: str) -> bool:
+    """True when the message reads as a continuation question about an
+    already-active recipe (Section 53: "aké rezance?", "čo ešte
+    potrebujem?") rather than a fresh, unrelated request. Kept intentionally
+    narrow - a false positive here would wrongly keep a stale recipe
+    active (Section 84: correct forgetting beats wrong remembering), so
+    this is only ONE signal; the caller additionally requires the message
+    to either match a known ingredient concept of the active recipe OR one
+    of these generic markers, not markers alone (see
+    resolve_active_recipe_followup in app/main.py)."""
+    normalized = normalize(message)
+    if len(tokenize(normalized)) > 8:
+        return False
+    return any(marker in normalized for marker in _RECIPE_FOLLOWUP_QUESTION_MARKERS)
+
+
+# ---------------------------------------------------------------------------
+# Constraint removal signals bundled into one lightweight resolution object
+# for callers that want everything from one call (Section 36).
+# ---------------------------------------------------------------------------
+
+
+class TurnSignals:
+    """Section 36 - deterministic, structured turn-level signals a single
+    call site can consume. Not a full "TurnResolver" abstraction over the
+    whole cascade (Section 1/75 - incremental, not a rewrite) - just the
+    concrete signals V2.9's new call sites in app/main.py actually need."""
+
+    __slots__ = (
+        "ordinal_product_id", "ordinal_needs_clarification", "price_direction",
+        "size_removed", "brand_removed", "reset_requested", "is_recipe_followup",
+    )
+
+    def __init__(self, message: str, memory: dict) -> None:
+        self.ordinal_product_id, self.ordinal_needs_clarification = resolve_ordinal_reference(message, memory)
+        self.price_direction = detect_price_direction(message)
+        self.size_removed = detect_size_removal(message)
+        self.brand_removed = detect_brand_removal(message)
+        self.reset_requested = detect_reset_request(message)
+        self.is_recipe_followup = looks_like_recipe_followup(message)

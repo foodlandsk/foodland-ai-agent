@@ -102,6 +102,23 @@ from app.recipe_graph import build_recipe_graph_index as _build_recipe_graph_ind
 from app.recipe_shopping import build_recipe_shopping_plan as _build_recipe_shopping_plan
 from app.recipe_shopping import summarize_plan as _summarize_recipe_shopping_plan
 from app.ingredients import extract_requested_servings as _extract_requested_servings
+from app.ingredients import extract_requested_servings_lenient as _extract_requested_servings_lenient
+from app.recipe_shopping import resolve_recipe_followup as _resolve_recipe_followup
+from app.recipe_shopping import compose_recipe_followup_answer as _compose_recipe_followup_answer
+from app.recipe_shopping import RECIPE_FOLLOWUP_INGREDIENT as _RF_INGREDIENT
+from app.recipe_shopping import RECIPE_FOLLOWUP_SELECTED as _RF_SELECTED
+from app.recipe_shopping import STATUS_AVAILABLE as _RF_STATUS_AVAILABLE
+from app.session_state import get_active_recipe as _get_active_recipe
+from app.session_state import set_active_recipe as _set_active_recipe
+from app.session_state import clear_recipe_state as _clear_recipe_state
+from app.session_state import detect_reset_request as _detect_reset_request
+from app.session_state import apply_reset as _apply_session_reset
+from app.session_state import get_active_use_case as _get_active_use_case
+from app.session_state import set_active_use_case as _set_active_use_case
+from app.session_state import clear_use_case_state as _clear_use_case_state
+from app.session_state import mentions_ordinal_reference as _mentions_ordinal_reference
+from app.session_state import resolve_ordinal_reference as _resolve_ordinal_reference
+from app.session_state import track_presentation as _track_presentation
 
 
 logging.basicConfig(
@@ -3458,6 +3475,12 @@ def get_session_memory(memory_key: str) -> dict:
             "last_top_product_title": "",
             "last_intent": "",
             "active_result_set_id": "",
+            "active_use_case": "",
+            "active_recipe_id": "",
+            "recipe_servings": None,
+            "last_recipe_ingredient_concept": "",
+            "selected_ingredient_products": {},
+            "recent_presentation_ids": [],
             "updated_at": now,
         }
         session_memories[memory_key] = memory
@@ -3885,6 +3908,84 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "intent": "recipe",
         }
 
+    # V2.9 (Section 30) - explicit reset clears shopping/task state and
+    # answers immediately; never touches anything else (no account data
+    # exists in this system to accidentally affect).
+    if _detect_reset_request(chat_request.message):
+        _apply_session_reset(memory)
+        updated_profile = update_user_memory(profile_key, chat_request.message, "reset", [], [])
+        log_question(chat_request.message, client_key, 0, intent="reset", session_id=session_id, primary_intent="reset", subject="")
+        return {
+            "answer": (
+                "Starting fresh - what are you looking for?"
+                if query_language == "en"
+                else "Začíname odznova - čo hľadáte?"
+            ),
+            "products": [],
+            "knowledge": knowledge_summary({}),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": "reset",
+        }
+
+    # V2.9 (Section 16/17/18/53) - a follow-up about an already-active
+    # recipe ("aké rezance?", "tie druhé", "čo ešte potrebujem?") is
+    # resolved BEFORE recipe_subject re-detection, since these messages
+    # rarely name the dish again. When the active recipe does NOT explain
+    # this turn, that is a hard switch (Section 27/84) - drop the stale
+    # recipe state immediately so it cannot leak into whatever this turn
+    # actually is.
+    _active_recipe_id_before, _ = _get_active_recipe(memory)
+    _recipe_followup_result = None
+    if _active_recipe_id_before and not recipe_subject:
+        try:
+            _recipe_followup_result = _resolve_recipe_followup(
+                chat_request.message, memory, recipe_graph_index, products, product_taxonomy_index, normalized_product_index,
+            )
+        except Exception:
+            logger.warning("V2.9 recipe followup resolution failed", exc_info=True)
+            _recipe_followup_result = None
+        if _recipe_followup_result is None:
+            _clear_recipe_state(memory)
+
+    # V2.9 (Section 11/13/60/61) - a short, bare ordinal reference ("ten
+    # druhý") with no recipe follow-up match is resolved against
+    # whatever was most recently shown to THIS session, or answered with
+    # a clarification when nothing was - never an arbitrary/random SKU
+    # (Section 141). Tightly scoped to short messages so a longer
+    # sentence that merely CONTAINS an ordinal word is not misfired on.
+    if (
+        _recipe_followup_result is None
+        and not recipe_subject
+        and len(tokenize(chat_request.message)) <= 4
+        and _mentions_ordinal_reference(chat_request.message)
+    ):
+        _ordinal_product_id, _ordinal_needs_clarification = _resolve_ordinal_reference(chat_request.message, memory)
+        if _ordinal_product_id or _ordinal_needs_clarification:
+            _products_by_id = {product.id: product for product in products}
+            _ordinal_products = [format_product(_products_by_id[_ordinal_product_id])] if _ordinal_product_id in _products_by_id else []
+            _ordinal_answer = (
+                (
+                    "Sorry, which one do you mean? I don't have a recent list to refer to."
+                    if query_language == "en"
+                    else "Prepáčte, ktorý presne máte na mysli? Naposledy som Vám nič nezobrazila, na čo by som mohla odkázať."
+                )
+                if not _ordinal_products
+                else (
+                    f"Here it is: {_ordinal_products[0].get('title', '')}"
+                    if query_language == "en"
+                    else f"Tu je: {_ordinal_products[0].get('title', '')}"
+                )
+            )
+            updated_profile = update_user_memory(profile_key, chat_request.message, "product_search", _ordinal_products, [])
+            log_question(chat_request.message, client_key, 0, intent="product_search", session_id=session_id, primary_intent="product_search", subject="")
+            return {
+                "answer": _ordinal_answer,
+                "products": _ordinal_products,
+                "knowledge": knowledge_summary({}),
+                "memory": public_user_memory_summary(updated_profile),
+                "intent": "product_search",
+            }
+
     if recipe_subject:
         recipes = recipe_results(knowledge_matches, chat_request.limit, contextual_message, knowledge)
         recipes = personalize_recipes(recipes, user_profile)
@@ -3923,7 +4024,9 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                         products,
                         product_taxonomy_index,
                         normalized_product_index,
-                        servings=_extract_requested_servings(chat_request.message),
+                        # lenient: recipe_subject is already confirmed here, so a bare
+                        # "pre 4" (no trailing "ludi"/"osob") is unambiguous (Section 16).
+                        servings=_extract_requested_servings_lenient(chat_request.message),
                     )
                 except Exception:
                     logger.warning("V2.8 recipe shopping plan failed for dish=%s", recipe_product_subject, exc_info=True)
@@ -3938,6 +4041,12 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                 ]
             else:
                 recipe_products = recipe_shopping_core_products(products, recipe_product_subject, recipe_products, max(chat_request.limit, 8))
+        # V2.9 (Section 16) - persist which recipe is active only when a
+        # real V2.8 plan was built (Section 39 - continuity only for what
+        # V2.8 actually understands); a different dish than before drops
+        # the previous dish's selections (app.session_state.set_active_recipe).
+        if recipe_shopping_plan is not None:
+            _set_active_recipe(memory, recipe_product_subject, recipe_shopping_plan.requested_servings)
         intent = "recipe_to_products" if recipe_products else "recipe"
         if recipe_products:
             annotate_recommendations(
@@ -3985,6 +4094,41 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "workflow_id": _recipe_workflow.workflow_id,
             "workflow_confidence": _recipe_workflow.confidence,
             "recipe_shopping_plan": _summarize_recipe_shopping_plan(recipe_shopping_plan) if recipe_shopping_plan else None,
+        }
+
+    if _recipe_followup_result is not None:
+        _products_by_id = {product.id: product for product in products}
+        if _recipe_followup_result.kind == _RF_INGREDIENT:
+            _followup_products = [
+                format_product(_products_by_id[pid])
+                for pid in _recipe_followup_result.candidate_product_ids
+                if pid in _products_by_id
+            ][: chat_request.limit]
+        elif _recipe_followup_result.kind == _RF_SELECTED and _recipe_followup_result.selected_product_id in _products_by_id:
+            _followup_products = [format_product(_products_by_id[_recipe_followup_result.selected_product_id])]
+        elif _recipe_followup_result.plan is not None:
+            _remaining_ids = [
+                ing.selected_product_id
+                for ing in _recipe_followup_result.plan.ingredients
+                if ing.status == _RF_STATUS_AVAILABLE and ing.selected_product_id
+            ]
+            _followup_products = [format_product(_products_by_id[pid]) for pid in _remaining_ids if pid in _products_by_id]
+        else:
+            _followup_products = []
+        _followup_answer = _compose_recipe_followup_answer(_recipe_followup_result, recipe_graph_index, _products_by_id, query_language)
+        update_session_memory(memory_key, chat_request.message, "recipe_to_products", _followup_products, [], knowledge_matches)
+        updated_profile = update_user_memory(profile_key, chat_request.message, "recipe_to_products", _followup_products, [])
+        log_question(chat_request.message, client_key, 0, intent="recipe_to_products", session_id=session_id, primary_intent="recipe_to_products", subject=_recipe_followup_result.dish_id)
+        return {
+            "answer": _followup_answer,
+            "products": _followup_products,
+            "articles": [],
+            "recipe_shopping_plan": _summarize_recipe_shopping_plan(_recipe_followup_result.plan) if _recipe_followup_result.plan else None,
+            "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": "recipe_to_products",
+            "workflow_id": "RECIPE_SHOPPING",
+            "workflow_confidence": 0.9,
         }
 
     if detect_out_of_domain(chat_request.message):
@@ -4060,6 +4204,31 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
         # signals the customer wants that literal product, not "what
         # goes with this cuisine" pairings.
         related_subject = None
+    # V2.9 (Section 15/26/52) - within an active "sushi" use case, a
+    # bare follow-up naming only the generic ingredient family ("aká
+    # ryžu?", "aký ocot?") resolves to the sushi-specific concept
+    # instead of a generic one. Scoped to exactly the verified test
+    # scenario (Section 5 - narrow first); special_subject/related_subject
+    # have already run their own collision guards above by this point.
+    _V29_SUSHI_NARROWING = {"ryza": "sushi_rice", "ocot": "rice_vinegar"}
+    _active_use_case = _get_active_use_case(memory)
+    if _active_use_case == "sushi":
+        if special_subject == "plain_rice":
+            special_subject = _V29_SUSHI_NARROWING["ryza"]
+            related_subject = None
+        elif related_subject in _V29_SUSHI_NARROWING:
+            special_subject = _V29_SUSHI_NARROWING[related_subject]
+            related_subject = None
+    if related_subject == "sushi":
+        _set_active_use_case(memory, "sushi")
+    elif _active_use_case == "sushi" and (
+        (special_subject and special_subject not in {"sushi_rice", "rice_vinegar"})
+        or replacement_subject
+        or (related_subject and related_subject not in {"sushi", "ocot"})
+    ):
+        # Hard switch (Section 27/84) - a concretely different, named
+        # subject means the customer has moved on from sushi.
+        _clear_use_case_state(memory)
     cross_sell_matches = cross_sell_products_for_message(products, knowledge, contextual_message, chat_request.limit)
     article_product_subject = (
         detect_article_product_subject(contextual_message, articles)
@@ -4150,6 +4319,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     if structured_presentation is None:
         matches = personalize_products(matches, user_profile)
     memory["active_result_set_id"] = structured_presentation.result_set_id if structured_presentation is not None else ""
+    _track_presentation(memory, [product.get("id") for product in matches if product.get("id")])
     if is_shopping_list_request and related_subject == "sushi":
         matches = sushi_shopping_core_products(products, matches, chat_request.limit)
     if is_shopping_list_request and related_subject == "tom_yum":

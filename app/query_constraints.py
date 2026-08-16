@@ -255,25 +255,47 @@ def query_from_constraints(
     return query
 
 
-def merge_constraints(base: StructuredProductQuery, addition: StructuredProductQuery) -> StructuredProductQuery:
+def merge_constraints(
+    base: StructuredProductQuery,
+    addition: StructuredProductQuery,
+    *,
+    remove_size: bool = False,
+    remove_brand: bool = False,
+) -> StructuredProductQuery:
     """V2.5 follow-up narrowing (Section 13): "jazmínová ryža" then "len 5
     kg" must keep family=rice/variety=jasmine and only ADD package_size,
     never restart interpretation from the short follow-up message alone.
+    `addition.package_size`/`addition.brand` OVERRIDE the base value when
+    present (Section 9 of V2.9 - "radšej 1 kg" replaces 5kg, never keeps
+    both) because `or` already prefers the truthy `addition` side.
 
     Caller is responsible for only merging when `addition` genuinely has
     no family of its own (a follow-up that DOES name a new family/concept
-    is a fresh query, not a narrowing - see app.structured_search)."""
+    is a fresh query, not a narrowing - see app.structured_search).
+
+    `remove_size`/`remove_brand` (V2.9 Section 10/21/63/64) - explicit
+    customer removal ("na veľkosti nezáleží", "nemusí byť Kikkoman"),
+    detected by app.session_state's deterministic text markers (not
+    something `addition`'s own parse would produce, since there is no
+    positive value to parse out of a removal phrase). Removal wins over
+    whatever `addition`/`base` would otherwise have supplied."""
+    merged_size = None if remove_size else (addition.package_size or base.package_size)
+    merged_brand = None if remove_brand else (addition.brand or base.brand)
     merged = StructuredProductQuery(
         raw_query=f"{base.raw_query} {addition.raw_query}".strip(),
         family=base.family,
         subfamily=base.subfamily,
         attributes=dict(base.attributes),
         concept_id=base.concept_id,
-        brand=addition.brand or base.brand,
-        package_size=addition.package_size or base.package_size,
+        brand=merged_brand,
+        package_size=merged_size,
         dietary_facets=list(dict.fromkeys([*base.dietary_facets, *addition.dietary_facets])),
         confidence=base.confidence,
     )
-    merged.explicit_constraints = set(base.explicit_constraints) | set(addition.explicit_constraints)
+    merged.explicit_constraints = (set(base.explicit_constraints) | set(addition.explicit_constraints))
+    if remove_size:
+        merged.explicit_constraints.discard("package_size")
+    if remove_brand:
+        merged.explicit_constraints.discard("brand")
     merged.constraint_sources = {**base.constraint_sources, **addition.constraint_sources}
     return merged

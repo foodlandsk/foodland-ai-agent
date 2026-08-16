@@ -253,6 +253,27 @@ def extract_requested_servings(message: str) -> int | None:
     return value if 1 <= value <= 20 else None
 
 
+_SERVINGS_PATTERN_BARE = re.compile(r"\b(?:pre|na)\s+(\d{1,2})\b", re.IGNORECASE)
+
+
+def extract_requested_servings_lenient(message: str) -> int | None:
+    """Bare "pre 8" (no trailing "ľudí"/"osôb") - Section 17's "nakoniec
+    pre 8" follow-up. Only safe to use once the caller already knows the
+    conversation is an active-recipe continuation (app.recipe_shopping.
+    resolve_recipe_followup) - outside that context "pre 8" is too
+    ambiguous (could mean a package count, a price, anything) to treat as
+    servings, which is why extract_requested_servings() stays strict."""
+    servings = extract_requested_servings(message)
+    if servings is not None:
+        return servings
+    normalized = normalize(message)
+    match = _SERVINGS_PATTERN_BARE.search(normalized)
+    if not match:
+        return None
+    value = int(match.group(1))
+    return value if 1 <= value <= 20 else None
+
+
 def scale_quantity(quantity: float, base_servings: int, target_servings: int) -> float:
     """Linear serving scale (Section 24). Caller must only call this for
     ParsedQuantity.is_numeric=True values (Section 25)."""

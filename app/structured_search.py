@@ -118,6 +118,8 @@ def build_structured_result_set(
     behavioral_rankings: dict | None = None,
     merchandising_rules: dict | None = None,
     personalization_scores: dict[str, float] | None = None,
+    remove_size: bool = False,
+    remove_brand: bool = False,
 ) -> ResultSet | None:
     """V2.5 entry point: builds a full, pageable ResultSet, or None when
     structured retrieval cannot confidently answer this query (caller
@@ -128,12 +130,21 @@ def build_structured_result_set(
     of its own but DOES carry a brand/size/dietary constraint, it is
     treated as a narrowing follow-up (Section 13) rather than a fresh,
     unrelated search.
+
+    `remove_size`/`remove_brand` (V2.9 Section 10/21) - explicit customer
+    removal ("na veľkosti nezáleží"/"nemusí byť Kikkoman") forces a merge
+    against `base_query` even though the removal phrase itself carries no
+    positive brand/size/dietary attribute of its own to trigger the usual
+    narrowing check.
     """
     try:
         index = get_structured_index(products, taxonomy_index, normalized_index)
         parsed = parse_structured_query(query_text, known_brands=index.known_brands)
-        if base_query is not None and parsed.family is None and (parsed.brand or parsed.package_size or parsed.dietary_facets):
-            query = merge_constraints(base_query, parsed)
+        should_merge = base_query is not None and parsed.family is None and (
+            parsed.brand or parsed.package_size or parsed.dietary_facets or remove_size or remove_brand
+        )
+        if should_merge:
+            query = merge_constraints(base_query, parsed, remove_size=remove_size, remove_brand=remove_brand)
         else:
             query = parsed
 
