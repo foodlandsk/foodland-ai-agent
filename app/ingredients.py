@@ -233,6 +233,26 @@ def convert_to_base_unit(quantity: float, unit: str) -> tuple[float, str] | None
     return None
 
 
+_SERVINGS_PATTERN = re.compile(
+    r"\b(?:pre|na)\s+(\d{1,2})\s*(?:osob|osoby|osobu|ludi|ludia|luda|porci|porcie|porcii)\b",
+    re.IGNORECASE,
+)
+
+
+def extract_requested_servings(message: str) -> int | None:
+    """Section 134-F - "Pad Thai pre 8 ludi" -> 8. Purely a request-side
+    signal surfaced on RecipeShoppingPlan.requested_servings; does not by
+    itself imply scaled quantities are available (Section 24/25 - see
+    docs/recipe-knowledge-audit.md: no current recipe carries a structured
+    base quantity, so there is nothing to scale against today)."""
+    normalized = normalize(message)
+    match = _SERVINGS_PATTERN.search(normalized)
+    if not match:
+        return None
+    value = int(match.group(1))
+    return value if 1 <= value <= 20 else None
+
+
 def scale_quantity(quantity: float, base_servings: int, target_servings: int) -> float:
     """Linear serving scale (Section 24). Caller must only call this for
     ParsedQuantity.is_numeric=True values (Section 25)."""

@@ -101,6 +101,7 @@ from app.workflow_registry import RoutingSignals as _RoutingSignals
 from app.recipe_graph import build_recipe_graph_index as _build_recipe_graph_index
 from app.recipe_shopping import build_recipe_shopping_plan as _build_recipe_shopping_plan
 from app.recipe_shopping import summarize_plan as _summarize_recipe_shopping_plan
+from app.ingredients import extract_requested_servings as _extract_requested_servings
 
 
 logging.basicConfig(
@@ -3922,6 +3923,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                         products,
                         product_taxonomy_index,
                         normalized_product_index,
+                        servings=_extract_requested_servings(chat_request.message),
                     )
                 except Exception:
                     logger.warning("V2.8 recipe shopping plan failed for dish=%s", recipe_product_subject, exc_info=True)

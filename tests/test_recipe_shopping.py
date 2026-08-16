@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import app.main as m
-from app.ingredients import ParsedQuantity, parse_quantity_text, scale_quantity
+from app.ingredients import ParsedQuantity, extract_requested_servings, parse_quantity_text, scale_quantity
 from app.recipe_graph import build_recipe_graph_index
 from app.recipe_shopping import (
     STATUS_ALREADY_SATISFIED,
@@ -125,6 +125,20 @@ class TestQuantityParsing:
             parsed = parse_quantity_text(phrase)
             assert not parsed.is_numeric
             assert parsed.quantity is None
+
+
+class TestServingsExtraction:
+    """Section 134-F."""
+
+    def test_extracts_servings_from_natural_phrasing(self):
+        assert extract_requested_servings("Chcem robit Pad Thai pre 8 ludi. Co mam kupit?") == 8
+        assert extract_requested_servings("recept na kung pao pre 4 osoby") == 4
+
+    def test_no_servings_phrase_returns_none(self):
+        assert extract_requested_servings("Co potrebujem na Pad Thai?") is None
+
+    def test_out_of_range_servings_ignored(self):
+        assert extract_requested_servings("pre 999 osob") is None
 
 
 class TestServingScaling:
