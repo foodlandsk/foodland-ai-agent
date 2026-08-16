@@ -17,17 +17,29 @@ MIGRATED (this sprint) - PRODUCT_LOOKUP, CATEGORY_BROWSE, ATTRIBUTE_SEARCH:
     contribution for them is making that pipeline explicitly addressable
     as a workflow contract, not rewriting it (Section 4).
 
+MIGRATED (V2.8 addition) - RECIPE_SHOPPING: for the 47 curated dishes
+    app.recipe_graph actually covers, the response now runs through the
+    real V2.8 structured pipeline (app.recipe_graph -> app.recipe_shopping
+    -> RecipeShoppingPlan), the same "primary path is the new pipeline,
+    with an explicit legacy fallback" bar PRODUCT_LOOKUP/CATEGORY_BROWSE/
+    ATTRIBUTE_SEARCH already meet (those also fall back to
+    hybrid_search_products' legacy_search_fn when structured retrieval
+    can't confidently answer). Dishes outside the 47 (sushi/tom_yum/
+    kimchi_ramen's own specialized handlers, any subject V2.8's graph
+    doesn't cover) safely fall back to the pre-V2.8 legacy branches
+    (Section 123) - see docs/recipe-knowledge-audit.md and
+    docs/ingredient-intelligence.md for exactly which dishes are covered.
+
 SHADOW (labeled, not yet re-routed) - USE_CASE_ADVICE, COMPARISON,
-    REPLACEMENT, RECIPE_SHOPPING, FAQ_INFORMATIONAL: select_workflow()
-    correctly identifies these turns and an analytics label is recorded,
-    but the actual response is still produced by the existing, separately
-    battle-tested app/main.py branches (recipe_results(), replacement
-    logic, FAQ lookup, ...) - re-platforming five more legacy branches
-    onto WorkflowContract in the same sprint the labeling layer was
-    introduced is exactly the "one-shot rewrite" the spec forbids
-    (Section 0/5/38/66/80). Section 20's shadow-mode-first requirement is
-    satisfied by construction: the label is compared against actual
-    behavior with zero risk of changing it.
+    REPLACEMENT, FAQ_INFORMATIONAL: select_workflow() correctly identifies
+    these turns and an analytics label is recorded, but the actual
+    response is still produced by the existing, separately battle-tested
+    app/main.py branches (replacement logic, FAQ lookup, ...) -
+    re-platforming more legacy branches onto WorkflowContract in the same
+    sprint the labeling layer was introduced is exactly the "one-shot
+    rewrite" the spec forbids (Section 0/5/38/66/80). Section 20's
+    shadow-mode-first requirement is satisfied by construction: the label
+    is compared against actual behavior with zero risk of changing it.
 
 LEGACY - ORDER_TRACKING, SUPPORT_ESCALATION: Foodland's current product
     surface has no order-tracking or support-escalation capability at all
@@ -135,13 +147,13 @@ WORKFLOWS: dict[str, WorkflowContract] = {
     ),
     RECIPE_SHOPPING: WorkflowContract(
         workflow_id=RECIPE_SHOPPING,
-        migration_status=SHADOW,
+        migration_status=MIGRATED,
         supported_intents=("recipe_shopping", "recipe_discovery"),
-        retrieval_strategy="legacy_recipe_shopping_core_products",
+        retrieval_strategy="v2.8_recipe_graph",  # 47 curated dishes; see app.recipe_graph
         presentation_strategy="RECIPE_SHOPPING",
         cross_sell_policy="enabled",  # V2.6 RECIPE_COMPLETION
         grounding="verified_recipe_data",
-        fallback_behavior="legacy_recipe_results",
+        fallback_behavior="legacy_recipe_shopping_core_products | legacy_recipe_results",
     ),
     FAQ_INFORMATIONAL: WorkflowContract(
         workflow_id=FAQ_INFORMATIONAL,
@@ -207,6 +219,12 @@ class RoutingSignals:
     faq_answer_found: bool = False
     is_random_recipe_query: bool = False
     recipe_subject: str | None = None
+    # V2.8 - True only when app.recipe_shopping.build_recipe_shopping_plan()
+    # actually produced a plan for this dish (one of the 47 curated dishes
+    # app.recipe_graph covers). False for random-recipe / no-plan / legacy-
+    # only dishes (sushi/tom_yum/kimchi_ramen and anything outside the
+    # graph) - those still resolve via the pre-V2.8 legacy branches.
+    recipe_shopping_plan_used: bool = False
     out_of_domain: bool = False
     is_category_discovery: bool = False
     already_have_subject: str | None = None
@@ -251,7 +269,9 @@ def select_workflow(signals: RoutingSignals) -> WorkflowSelection:
         return WorkflowSelection(RECIPE_SHOPPING, 0.6, "random_recipe_discovery")
 
     if signals.recipe_subject:
-        return WorkflowSelection(RECIPE_SHOPPING, 0.85, "recipe_subject_detected")
+        if signals.recipe_shopping_plan_used:
+            return WorkflowSelection(RECIPE_SHOPPING, 0.9, "v2.8_recipe_shopping_plan")
+        return WorkflowSelection(RECIPE_SHOPPING, 0.85, "recipe_subject_detected", fallback_workflow=LEGACY_FALLBACK)
 
     if signals.out_of_domain:
         return WorkflowSelection(LEGACY_FALLBACK, 0.9, "out_of_domain")

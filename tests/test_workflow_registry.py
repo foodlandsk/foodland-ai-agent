@@ -190,10 +190,12 @@ class TestWorkflowContractIntegrity:
             assert contract.fallback_behavior
 
     def test_migrated_workflows_are_exactly_the_first_activation_set(self):
-        """Section 67 - PRODUCT_LOOKUP/CATEGORY_BROWSE/ATTRIBUTE_SEARCH
-        first, nothing else claims MIGRATED yet this sprint."""
+        """Section 67 (V2.7) + V2.8 Section 46/54/122 - PRODUCT_LOOKUP/
+        CATEGORY_BROWSE/ATTRIBUTE_SEARCH (V2.7) plus RECIPE_SHOPPING (V2.8,
+        for the 47 curated dishes app.recipe_graph covers); nothing else
+        claims MIGRATED yet."""
         migrated = {wf_id for wf_id, c in WORKFLOWS.items() if c.migration_status == MIGRATED}
-        assert migrated == {PRODUCT_LOOKUP, CATEGORY_BROWSE, ATTRIBUTE_SEARCH}
+        assert migrated == {PRODUCT_LOOKUP, CATEGORY_BROWSE, ATTRIBUTE_SEARCH, RECIPE_SHOPPING}
 
     def test_comparison_and_replacement_suppress_cross_sell(self):
         """Section 14/15/38."""

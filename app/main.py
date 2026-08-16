@@ -98,6 +98,9 @@ from app import cross_sell as _cross_sell
 from app.answer_composer import compose_cross_sell_intro as _compose_cross_sell_intro
 from app.workflow_registry import select_workflow as _select_workflow
 from app.workflow_registry import RoutingSignals as _RoutingSignals
+from app.recipe_graph import build_recipe_graph_index as _build_recipe_graph_index
+from app.recipe_shopping import build_recipe_shopping_plan as _build_recipe_shopping_plan
+from app.recipe_shopping import summarize_plan as _summarize_recipe_shopping_plan
 
 
 logging.basicConfig(
@@ -2255,6 +2258,23 @@ RECIPE_SHOPPING_CORE_QUERIES = {
 # app/main.py (Section 110).
 _cross_sell.set_data_sources(RECIPE_SHOPPING_CORE_QUERIES, SPECIAL_PRODUCT_QUERIES)
 
+# V2.8 recipe/ingredient knowledge graph (Section 64/65/66) - built once
+# here, rebuilt in lockstep with `products`/`product_taxonomy_index` in
+# refresh_feed(). Grounded entirely in already-curated, already-in-
+# production data (docs/recipe-knowledge-audit.md); never invents recipe
+# or ingredient facts.
+recipe_graph_index = _build_recipe_graph_index(
+    products=products,
+    taxonomy_index=product_taxonomy_index,
+    normalized_index=normalized_product_index,
+    recipe_shopping_core_queries=RECIPE_SHOPPING_CORE_QUERIES,
+    missing_ingredients_by_subject=MISSING_INGREDIENTS_BY_SUBJECT,
+    recipe_title_product_subjects=RECIPE_TITLE_PRODUCT_SUBJECTS,
+    cms_recipes=knowledge.get("sections", {}).get("Recipes", []),
+    products_ai=knowledge.get("sections", {}).get("Products_AI", []),
+    special_product_queries=SPECIAL_PRODUCT_QUERIES,
+)
+
 
 RELATED_INTENT_MARKERS = (
     "co na",
@@ -2444,6 +2464,9 @@ RECIPE_INTENT_MARKERS = (
     # marker so the recipe workflow is reachable without the word
     # "recept".
     "tom kha",
+    # V2.8 Section 100/142 target scenario ("Chcem robit Pad Thai") -
+    # same bare-dish-marker fix pattern as vindaloo/karaage/tom kha above.
+    "pad thai",
 )
 
 RANDOM_RECIPE_INTENT_MARKERS = (
@@ -3883,8 +3906,36 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             recipe_products = tom_yum_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
         if recipe_products and recipe_product_subject == "kimchi_ramen":
             recipe_products = kimchi_ramen_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
+        recipe_shopping_plan = None
         if recipe_products and recipe_product_subject not in {"sushi", "tom_yum", "kimchi_ramen"}:
-            recipe_products = recipe_shopping_core_products(products, recipe_product_subject, recipe_products, max(chat_request.limit, 8))
+            # V2.8 (Section 46) - the 47 curated dishes app.recipe_graph
+            # covers get their shopping list from the real structured
+            # RecipeShoppingPlan, not generic search or the flat legacy
+            # candidate list. Any dish outside the graph, or any internal
+            # error, falls back to the pre-V2.8 legacy path unchanged
+            # (Section 123 - V2.8 failure must never break recipe shopping).
+            if V2_STRUCTURED_RETRIEVAL_ENABLED and recipe_product_subject in recipe_graph_index.dishes_by_id:
+                try:
+                    recipe_shopping_plan = _build_recipe_shopping_plan(
+                        recipe_graph_index,
+                        recipe_product_subject,
+                        products,
+                        product_taxonomy_index,
+                        normalized_product_index,
+                    )
+                except Exception:
+                    logger.warning("V2.8 recipe shopping plan failed for dish=%s", recipe_product_subject, exc_info=True)
+                    recipe_shopping_plan = None
+            if recipe_shopping_plan is not None:
+                _products_by_id = {product.id: product for product in products}
+                _plan_product_ids = [
+                    ing.selected_product_id for ing in recipe_shopping_plan.ingredients if ing.selected_product_id
+                ]
+                recipe_products = [
+                    format_product(_products_by_id[pid]) for pid in _plan_product_ids if pid in _products_by_id
+                ]
+            else:
+                recipe_products = recipe_shopping_core_products(products, recipe_product_subject, recipe_products, max(chat_request.limit, 8))
         intent = "recipe_to_products" if recipe_products else "recipe"
         if recipe_products:
             annotate_recommendations(
@@ -3913,6 +3964,11 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             # Nic v databaze Foodlandu - skus kratku vseobecnu kulinarsku
             # odpoved namiesto len "skuste napisat recept na kimchi...".
             recipe_answer_text = general_ai_recipe_answer(chat_request.message) or recipe_answer(recipe_subject, recipes, query_language)
+        _recipe_workflow = _select_workflow(_RoutingSignals(
+            message=chat_request.message,
+            recipe_subject=recipe_subject,
+            recipe_shopping_plan_used=recipe_shopping_plan is not None,
+        ))
         return {
             "answer": recipe_answer_text,
             "recipes": recipes,
@@ -3924,6 +3980,9 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             "knowledge": knowledge_summary(knowledge_matches),
             "memory": public_user_memory_summary(updated_profile),
             "intent": intent,
+            "workflow_id": _recipe_workflow.workflow_id,
+            "workflow_confidence": _recipe_workflow.confidence,
+            "recipe_shopping_plan": _summarize_recipe_shopping_plan(recipe_shopping_plan) if recipe_shopping_plan else None,
         }
 
     if detect_out_of_domain(chat_request.message):
@@ -8723,7 +8782,7 @@ async def feed_refresh_loop(refresh_minutes: int) -> None:
 def refresh_feed() -> None:
     """Nacita produkty zo vsetkych jazykovych mutacii feedu (SK/CZ/DE/EN/HU/PL)."""
     global products, product_snapshot, translation_index, product_taxonomy_index, taxonomy_concept_index, normalized_product_index
-    global last_feed_refresh_at, last_feed_refresh_error
+    global last_feed_refresh_at, last_feed_refresh_error, recipe_graph_index
 
     lang_feeds = load_multilang_feeds()
     new_products = lang_feeds.get('sk', [])
@@ -8749,6 +8808,21 @@ def refresh_feed() -> None:
     product_taxonomy_index = new_taxonomy_index
     taxonomy_concept_index = build_concept_index(new_taxonomy_index)
     normalized_product_index = normalize_catalog(new_products)
+    # V2.8 - atomic rebuild alongside the taxonomy/normalized indexes it
+    # depends on (Section 66); uses the current `knowledge` global, same as
+    # every other feed-refresh-driven index here.
+    recipe_graph_index = _build_recipe_graph_index(
+        products=new_products,
+        taxonomy_index=new_taxonomy_index,
+        normalized_index=normalized_product_index,
+        recipe_shopping_core_queries=RECIPE_SHOPPING_CORE_QUERIES,
+        missing_ingredients_by_subject=MISSING_INGREDIENTS_BY_SUBJECT,
+        recipe_title_product_subjects=RECIPE_TITLE_PRODUCT_SUBJECTS,
+        cms_recipes=knowledge.get("sections", {}).get("Recipes", []),
+        products_ai=knowledge.get("sections", {}).get("Products_AI", []),
+        special_product_queries=SPECIAL_PRODUCT_QUERIES,
+        catalog_version=int(last_feed_refresh_at or 0),
+    )
     warm_search_indexes(new_products)
     clear_product_search_cache()
     last_feed_refresh_at = int(time.time())
