@@ -1,0 +1,37 @@
+{
+  "dataset_version": "1.0",
+  "domain": "noodles",
+  "cases": [
+    {
+      "id": "noodle_rice_001",
+      "query": "ryzove rezance",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["rice_noodles"],
+      "must_not_concept_ids": ["soba_noodles", "instant_noodles", "jasmine_rice"],
+      "critical": true,
+      "note": "Pad Thai/Pho core ingredient (V2.8) - must not surface instant/soba noodles."
+    },
+    {
+      "id": "noodle_soba_001",
+      "query": "soba rezance",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["soba_noodles"],
+      "must_not_concept_ids": ["rice_noodles", "instant_noodles"]
+    },
+    {
+      "id": "noodle_instant_001",
+      "query": "instantne rezance",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["instant_noodles"],
+      "must_not_concept_ids": ["rice_noodles", "soba_noodles"],
+      "note": "V2.4 historical bug: soy_sauce/teriyaki_sauce taxonomy rules once false-matched instant noodle products via a flavor descriptor in the title - permanent regression guard."
+    },
+    {
+      "id": "noodle_shin_ramyun_001",
+      "query": "Shin Ramyun",
+      "query_type": "BRAND",
+      "expected_concept_ids": ["instant_noodles"],
+      "note": "Section 90/E - known weak spot (docs/session-intelligence-audit.md): confirmed stateless retrieval gap, not session-caused. Non-critical - tracked as a reporting metric, not a blocking gate, until addressed."
+    }
+  ]
+}

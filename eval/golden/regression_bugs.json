@@ -1,0 +1,400 @@
+{
+  "dataset_version": "1.0",
+  "domain": "regression_bugs",
+  "note": "Every case here is a REAL, previously-fixed Foodland production bug (Section 91-92) - converted 1:1 from tests/regression_training_cases.jsonl, not invented. All marked critical - a regression here means a bug that was already fixed once has come back.",
+  "cases": [
+    {
+      "id": "regbug_rt0001",
+      "query": "máte bezlepkovú sójovú omáčku?",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "product_search",
+      "must_include_title_substrings": [
+        "Bezlepková sójová omáčka",
+        "Tamari",
+        "KIKKOMAN"
+      ],
+      "must_not_include_title_substrings": [
+        "Soju"
+      ],
+      "note": "Bezlepková sójová omáčka je produktový dotaz, nie alergia na sóju. (converted from tests/regression_training_cases.jsonl, id=RT0001)"
+    },
+    {
+      "id": "regbug_rt0002",
+      "query": "potrebujem niečo bez lepku k sushi",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "product_search",
+      "must_include_title_substrings": [
+        "bezlepková sójová omáčka",
+        "tamari",
+        "nori",
+        "sushi ryža"
+      ],
+      "expected_answer_include": [
+        "overte zloženie",
+        "bezlepk"
+      ],
+      "note": "Má odporúčať vhodné sushi doplnky a upozorniť na zloženie. (converted from tests/regression_training_cases.jsonl, id=RT0002)"
+    },
+    {
+      "id": "regbug_rt0003",
+      "query": "alergia na arašidy, čo môžem kúpiť?",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "allergen_safety",
+      "expected_answer_include": [
+        "overte zloženie",
+        "alergény"
+      ],
+      "max_products": 0,
+      "note": "Pri alergii nesmie odporúčať produkty len podľa názvu. (converted from tests/regression_training_cases.jsonl, id=RT0003)"
+    },
+    {
+      "id": "regbug_rt0004",
+      "query": "súvisiace produkty k sushi ryži",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "related_products",
+      "must_include_title_substrings": [
+        "nori",
+        "ryžový ocot",
+        "wasabi",
+        "nakladaný zázvor"
+      ],
+      "must_not_be_first_title_substrings": [
+        "Suši ryža"
+      ],
+      "note": "Doplnky k sushi ryži, nie ďalšie balenia ryže. (converted from tests/regression_training_cases.jsonl, id=RT0004)"
+    },
+    {
+      "id": "regbug_rt0005",
+      "query": "čo sa hodí ku gochujang?",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "related_products",
+      "must_include_title_substrings": [
+        "kimchi",
+        "sezamový olej",
+        "ryža",
+        "ramen"
+      ],
+      "must_not_be_first_title_substrings": [
+        "Čili pasta Gochujang"
+      ],
+      "note": "Má odporúčať doplnky ku gochujang, nie ďalšie gochujang pasty. (converted from tests/regression_training_cases.jsonl, id=RT0005)"
+    },
+    {
+      "id": "regbug_rt0006",
+      "query": "čo k červenej kari paste?",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "related_products",
+      "must_include_title_substrings": [
+        "kokosové mlieko",
+        "jazmínová ryža",
+        "rybia omáčka"
+      ],
+      "note": "Kari dotaz má preferovať suroviny ku kari. (converted from tests/regression_training_cases.jsonl, id=RT0006)"
+    },
+    {
+      "id": "regbug_rt0007",
+      "query": "obsahuje kimchi rybiu omáčku?",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "allergen_safety",
+      "expected_answer_include": [
+        "overte zloženie",
+        "konkrétny produkt"
+      ],
+      "note": "Otázka na zloženie má byť opatrná a nemá vymýšľať zloženie každého kimchi. (converted from tests/regression_training_cases.jsonl, id=RT0007)"
+    },
+    {
+      "id": "regbug_rt0008",
+      "query": "kimci",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "product_search",
+      "must_include_title_substrings": [
+        "Kimchi"
+      ],
+      "note": "Preklep kimci má nájsť kimchi produkty. (converted from tests/regression_training_cases.jsonl, id=RT0008)"
+    },
+    {
+      "id": "regbug_rt0009",
+      "query": "gochuang",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "product_search",
+      "must_include_title_substrings": [
+        "Gochujang"
+      ],
+      "note": "Preklep gochuang má nájsť gochujang produkty. (converted from tests/regression_training_cases.jsonl, id=RT0009)"
+    },
+    {
+      "id": "regbug_rt0010",
+      "query": "sójová omáčka bez sóje",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "allergen_safety",
+      "must_not_include_title_substrings": [
+        "Soju"
+      ],
+      "expected_answer_include": [
+        "overte zloženie",
+        "alergény"
+      ],
+      "max_products": 0,
+      "note": "Bez sóje nie je to isté ako bezlepková sójová omáčka. (converted from tests/regression_training_cases.jsonl, id=RT0010)"
+    },
+    {
+      "id": "regbug_rt0011",
+      "query": "mám rád nepálivé jedlo, čo odporúčaš?",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "product_search",
+      "must_include_title_substrings": [
+        "mochi",
+        "kokosové mlieko",
+        "jazmínová ryža",
+        "miso"
+      ],
+      "must_not_include_title_substrings": [
+        "EKO kraft box",
+        "spicy",
+        "hot",
+        "páliv"
+      ],
+      "note": "Nepálivá preferencia nesmie skončiť na obaloch ani pálivých snackoch. (converted from tests/regression_training_cases.jsonl, id=RT0011)"
+    },
+    {
+      "id": "regbug_rt0012",
+      "query": "chcem niečo extra pálivé",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "product_search",
+      "must_include_title_substrings": [
+        "Sambal Oelek Extra hot",
+        "Sriracha",
+        "čili pasta",
+        "Gochujang"
+      ],
+      "must_not_include_title_substrings": [
+        "Basmati ryža"
+      ],
+      "note": "Extra pálivé má ukázať pálivé omáčky/pasty, nie ryžu s tokenom extra. (converted from tests/regression_training_cases.jsonl, id=RT0012)"
+    },
+    {
+      "id": "regbug_rt0013",
+      "query": "náhrada za rybiu omáčku vegan",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "product_search",
+      "must_include_title_substrings": [
+        "sójová omáčka",
+        "tamari",
+        "hubová vegetariánska omáčka"
+      ],
+      "must_not_include_title_substrings": [
+        "Dressing box",
+        "Fľaštičky",
+        "miska",
+        "obal"
+      ],
+      "note": "Vegan náhrada za rybiu omáčku má odporúčať dochucovadlá, nie obaly na omáčku. (converted from tests/regression_training_cases.jsonl, id=RT0013)"
+    },
+    {
+      "id": "regbug_rt0014",
+      "query": "chcem snack pre deti",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "product_search",
+      "must_include_title_substrings": [
+        "Pocky",
+        "Mochi",
+        "ryžové krekry"
+      ],
+      "must_not_include_title_substrings": [
+        "angry spicy",
+        "hot & spicy",
+        "Soju",
+        "Sake"
+      ],
+      "note": "Detské snacky nesmú začínať pálivými snackmi ani alkoholom. (converted from tests/regression_training_cases.jsonl, id=RT0014)"
+    },
+    {
+      "id": "regbug_rt0015",
+      "query": "kredity od akej sumy môžem použiť?",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "faq",
+      "expected_answer_include": [
+        "50"
+      ],
+      "max_products": 0,
+      "note": "FAQ odpoveď nemá zobrazovať náhodné produktové karty. (converted from tests/regression_training_cases.jsonl, id=RT0015)"
+    },
+    {
+      "id": "regbug_rt0016",
+      "query": "dá sa platiť kartou?",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "faq",
+      "expected_answer_include": [
+        "kartou"
+      ],
+      "max_products": 0,
+      "note": "Platobná FAQ odpoveď nemá zobrazovať produkty. (converted from tests/regression_training_cases.jsonl, id=RT0016)"
+    },
+    {
+      "id": "regbug_rt0017",
+      "query": "kimchi",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "product_search",
+      "must_include_title_substrings": [
+        "Kimchi"
+      ],
+      "must_not_include_title_substrings": [
+        "KIMPO",
+        "Suši ryža"
+      ],
+      "note": "Pri hľadaní kimchi sa nesmie zobrazovať demo/fallback sushi ryža KIMPO. (converted from tests/regression_training_cases.jsonl, id=RT0017)"
+    },
+    {
+      "id": "regbug_rt0018",
+      "query": "sriracha",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "product_search",
+      "must_include_title_substrings": [
+        "Sriracha"
+      ],
+      "must_not_include_title_substrings": [
+        "Kimchi",
+        "KIMPO",
+        "Suši ryža"
+      ],
+      "note": "Pri hľadaní Sriracha sa nesmú zobrazovať kimchi demo produkty ani sushi ryža. (converted from tests/regression_training_cases.jsonl, id=RT0018)"
+    },
+    {
+      "id": "regbug_rt0019",
+      "query": "sriraca",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "product_search",
+      "must_include_title_substrings": [
+        "Sriracha"
+      ],
+      "note": "Preklep sriraca má nájsť Sriracha produkty. (converted from tests/regression_training_cases.jsonl, id=RT0019)"
+    },
+    {
+      "id": "regbug_rt0022",
+      "query": "potrebujem recept na kimchi",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "recipe",
+      "expected_answer_include": [
+        "Recept",
+        "kapustu",
+        "fermentovat"
+      ],
+      "max_products": 0,
+      "note": "Recept na kimchi ma odpovedat postupom, nie produktovymi kartami na vyrobu. (converted from tests/regression_training_cases.jsonl, id=RT0022)"
+    },
+    {
+      "id": "regbug_rt0023",
+      "query": "koľko stojí doprava?",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "faq",
+      "expected_answer_include": [
+        "49"
+      ],
+      "max_products": 0,
+      "note": "Otazky na cenu dopravy musia ist cez FAQ, nie cez AI produktovy fallback. (converted from tests/regression_training_cases.jsonl, id=RT0023)"
+    },
+    {
+      "id": "regbug_rt0024",
+      "query": "ako môžem zaplatiť?",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "faq",
+      "expected_answer_include": [
+        "Dobierka",
+        "kartou"
+      ],
+      "max_products": 0,
+      "note": "Platobne otazky musia ist cez FAQ. (converted from tests/regression_training_cases.jsonl, id=RT0024)"
+    },
+    {
+      "id": "regbug_rt0025",
+      "query": "poštovné",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "faq",
+      "expected_answer_include": [
+        "49"
+      ],
+      "max_products": 0,
+      "note": "Synonymum postovne ma smerovat na dopravu FAQ. (converted from tests/regression_training_cases.jsonl, id=RT0025)"
+    },
+    {
+      "id": "regbug_rt0026",
+      "query": "ramen na Pho polievku mate ingrediencie?",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "related_products",
+      "must_include_title_substrings": [
+        "ryžové rezance",
+        "rybacia omáčka",
+        "hoisin"
+      ],
+      "must_not_include_title_substrings": [
+        "ramen",
+        "miso",
+        "wakame",
+        "kimchi"
+      ],
+      "note": "Ak widget omylom prilepi starsi kontext, jasne spomenute Pho musi vyhrat nad ramenom. (converted from tests/regression_training_cases.jsonl, id=RT0026)"
+    },
+    {
+      "id": "regbug_rt0027",
+      "query": "mam alergiu na lepok, čo by ste dopuručili?",
+      "query_type": "REGRESSION_BUG",
+      "source": "regression_bug",
+      "critical": true,
+      "expected_intent": "allergen_safety",
+      "expected_answer_include": [
+        "overte zloženie",
+        "alergény"
+      ],
+      "max_products": 0,
+      "note": "Vseobecna alergicka otazka bez konkretneho produktu nesmie vracat nahodne produktove karty ani pri preklepe odporucili/doporucili. (converted from tests/regression_training_cases.jsonl, id=RT0027)"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "dataset_version": "1.0",
+  "domain": "coconut_oil_misc",
+  "cases": [
+    {
+      "id": "coconut_milk_001",
+      "query": "kokosove mlieko",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["coconut_milk"],
+      "must_not_concept_ids": ["coconut_water"],
+      "critical": true,
+      "note": "Pad Thai/curry ingredient - coconut_cream/coconut_oil have no taxonomy rule yet (docs/recipe-knowledge-audit.md), so only coconut_water is a real, checkable sibling."
+    },
+    {
+      "id": "coconut_water_001",
+      "query": "kokosova voda",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["coconut_water"],
+      "must_not_concept_ids": ["coconut_milk"]
+    },
+    {
+      "id": "oil_sesame_001",
+      "query": "sezamovy olej",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["sesame_oil"],
+      "must_not_concept_ids": []
+    },
+    {
+      "id": "seaweed_nori_001",
+      "query": "nori",
+      "query_type": "EXACT_PRODUCT",
+      "expected_concept_ids": ["nori"],
+      "must_not_concept_ids": ["wakame"],
+      "critical": true,
+      "note": "Sushi ingredient, used in V2.9 sushi use-case matrix."
+    },
+    {
+      "id": "seaweed_wakame_001",
+      "query": "wakame",
+      "query_type": "EXACT_PRODUCT",
+      "expected_concept_ids": ["wakame"],
+      "must_not_concept_ids": ["nori"]
+    }
+  ]
+}

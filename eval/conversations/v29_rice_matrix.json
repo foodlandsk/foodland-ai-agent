@@ -1,0 +1,19 @@
+{
+  "dataset_version": "1.0",
+  "domain": "v29_rice_matrix",
+  "note": "Spec Section 30/51 mandated sequence, matching tests/test_session_intelligence.py::TestRiceConstraintMatrix (already verified end-to-end during V2.9, including two real bugs found via live production testing - see docs/session-intelligence.md).",
+  "cases": [
+    {
+      "id": "conv_rice_matrix_001",
+      "session_id_prefix": "rice-matrix",
+      "critical": true,
+      "turns": [
+        {"message": "jazminova ryza", "expected_response_mode": "result_set", "expected_products_nonempty": true},
+        {"message": "len 5 kg", "expected_response_mode": "result_set", "expected_products_nonempty": true},
+        {"message": "radsej 1 kg", "expected_response_mode": "result_set", "expected_products_nonempty": true, "note": "Override, not ordinal reference - regression guard for the bare-digit ordinal bug fixed in commit 407efb1."},
+        {"message": "nieco lacnejsie", "expected_response_mode": "result_set", "expected_products_nonempty": true, "note": "Regression guard for the missing price_direction wiring bug fixed in commit 407efb1."},
+        {"message": "ukaz vsetky", "expected_response_mode": "result_set_continuation"}
+      ]
+    }
+  ]
+}

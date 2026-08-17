@@ -1,0 +1,16 @@
+{
+  "dataset_version": "1.0",
+  "domain": "regression_bugs_conversations",
+  "note": "RT0020/RT0021 (tests/regression_training_cases.jsonl) are inherently a 2-turn sequence (a follow-up 'na vyrobu' depending on the prior 'kimchi na vyrobu' turn) - converted from two independent single-turn cases into one proper ConversationCase, since app.evaluation.runner deliberately isolates every GoldenCase into its own session and would otherwise never let turn 2 see turn 1's context.",
+  "cases": [
+    {
+      "id": "conv_regbug_rt0020_021",
+      "session_id_prefix": "regbug-rt0020",
+      "critical": true,
+      "turns": [
+        {"message": "kimchi na vyrobu", "expected_intent": "related_products", "expected_products_nonempty": true, "note": "Must recommend kimchi-making ingredients (gochujang, fish sauce, rice flour, chili), not finished kimchi products."},
+        {"message": "na vyrobu", "expected_intent": "related_products", "expected_products_nonempty": true, "note": "Short follow-up must inherit the same ingredient context, not restart."}
+      ]
+    }
+  ]
+}

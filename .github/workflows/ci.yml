@@ -38,6 +38,16 @@ jobs:
       - name: Full test suite
         run: pytest tests/ -q
 
+      # V2.10 Foodland quality suite (docs/quality-gates.md) - critical
+      # cases only, for CI speed (scripts/run_evaluation.py --full is for
+      # local/manual release checks). Exits non-zero only on a genuine
+      # regression against eval/baselines/v2.9.json for a case marked
+      # critical, or an absolute invariant (context contamination,
+      # duplicate results) - never on a pre-existing, already-baselined
+      # issue, so this cannot flip red without an actual regression.
+      - name: Foodland quality suite (fast, blocking)
+        run: python scripts/run_evaluation.py --fast
+
       - name: Consistency audit (marker/alias collisions)
         run: python scripts/consistency_audit.py --collisions
 

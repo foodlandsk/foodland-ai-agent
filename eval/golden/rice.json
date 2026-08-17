@@ -1,0 +1,106 @@
+{
+  "dataset_version": "1.0",
+  "domain": "rice",
+  "note": "Every query below uses a real app.taxonomy.FAMILY_DEFINITIONS title_phrase or a natural customer variant of one - never invented text. must_not_concept_ids encode the exact rice-family collisions Section 33/116 call out by name (rice != rice noodles/vinegar/paper/cooker/flour).",
+  "cases": [
+    {
+      "id": "rice_jasmine_001",
+      "query": "jazminova ryza",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["jasmine_rice"],
+      "must_not_concept_ids": ["rice_noodles", "rice_vinegar", "rice_paper", "rice_cooker", "rice_flour", "basmati_rice", "sushi_rice"],
+      "expected_intent": "product_search",
+      "critical": true,
+      "note": "Core V2.4 mandated scenario - jasmine rice must never surface rice vinegar/noodles/paper/cooker."
+    },
+    {
+      "id": "rice_jasmine_002",
+      "query": "jazminova ryza 5kg",
+      "query_type": "PACKAGE_SIZE",
+      "expected_concept_ids": ["jasmine_rice"],
+      "must_not_concept_ids": ["rice_noodles", "rice_vinegar", "rice_paper"],
+      "note": "Package-size attribute must not change family eligibility."
+    },
+    {
+      "id": "rice_basmati_001",
+      "query": "basmati ryza",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["basmati_rice"],
+      "must_not_concept_ids": ["jasmine_rice", "sushi_rice", "rice_noodles", "rice_vinegar"],
+      "critical": true,
+      "note": "Section 12 - basmati must not return jasmine rice merely because both are rice."
+    },
+    {
+      "id": "rice_sushi_001",
+      "query": "susi ryza",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["sushi_rice"],
+      "must_not_concept_ids": ["jasmine_rice", "basmati_rice", "rice_vinegar", "rice_noodles"],
+      "critical": true
+    },
+    {
+      "id": "rice_sushi_002",
+      "query": "ryza na sushi",
+      "query_type": "USE_CASE",
+      "expected_concept_ids": ["sushi_rice"],
+      "must_not_concept_ids": ["jasmine_rice", "basmati_rice"],
+      "note": "Natural use-case phrasing, not the bare taxonomy phrase."
+    },
+    {
+      "id": "rice_glutinous_001",
+      "query": "lepkava ryza",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["glutinous_rice"],
+      "must_not_concept_ids": ["jasmine_rice", "basmati_rice", "sushi_rice"]
+    },
+    {
+      "id": "rice_bare_001",
+      "query": "ryza",
+      "query_type": "CATEGORY",
+      "expected_workflow": "CATEGORY_BROWSE",
+      "must_not_concept_ids": ["rice_noodles", "rice_vinegar", "rice_paper", "rice_cooker"],
+      "critical": true,
+      "note": "Bare family mention (Section 25/26 of V2.4 spec - specificity monotonicity) must browse rice varieties, never rice-adjacent non-rice products."
+    },
+    {
+      "id": "rice_vinegar_not_rice_001",
+      "query": "ryzovy ocot",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["rice_vinegar"],
+      "must_not_concept_ids": ["jasmine_rice", "basmati_rice", "sushi_rice", "plain_rice"],
+      "critical": true,
+      "note": "Section 33/116 explicit example: rice vinegar != rice."
+    },
+    {
+      "id": "rice_noodles_not_rice_001",
+      "query": "ryzove rezance",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["rice_noodles"],
+      "must_not_concept_ids": ["jasmine_rice", "basmati_rice", "sushi_rice", "plain_rice"],
+      "critical": true,
+      "note": "Section 33/116 explicit example: rice noodles != rice."
+    },
+    {
+      "id": "rice_paper_not_rice_001",
+      "query": "ryzovy papier",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["rice_paper"],
+      "must_not_concept_ids": ["jasmine_rice", "basmati_rice", "plain_rice"]
+    },
+    {
+      "id": "rice_cooker_not_rice_001",
+      "query": "ryzovar",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["rice_cooker"],
+      "must_not_concept_ids": ["jasmine_rice", "basmati_rice", "plain_rice"],
+      "note": "Kitchenware, not a food product - must never surface actual rice."
+    },
+    {
+      "id": "rice_flour_not_rice_001",
+      "query": "ryzova muka",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["rice_flour"],
+      "must_not_concept_ids": ["jasmine_rice", "basmati_rice", "plain_rice"]
+    }
+  ]
+}

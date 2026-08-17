@@ -1419,3 +1419,27 @@ Committed fixture (2 140 produktov, pinned test suite): `classified=720`, `cover
 **Riziká/obmedzenia (úprimne):** basket satisfaction funguje iba pre explicitne v konverzácii potvrdené výbery — `ChatRequest` stále nemá skutočné cart pole (rovnaké obmedzenie ako V2.8). Comparison continuity (Section 22) a replacement continuity (Section 25) neboli implementované — vyžadovali by ďalšiu kaskádovú chirurgiu v `chat()` bez toho, aby boli overené rovnako dôkladne ako recipe/sushi cesta; kandidát na ďalšiu iteráciu. Info→commerce ("čo je miso?" → "ktoré máte?") a product→recipe ("ukáž gochujang" → "čo s tým môžem uvariť?") transitions neboli zapojené live — V2.8 reverse lookup existuje a je otestovaný, ale nemá vlastný trigger v `chat()` tento šprint. Úložisko zostáva process-local (žiadny Redis/DB) — reštart Railway procesu vymaže session pamäť, čestne zdokumentované, nie riešené. Detail: `docs/session-intelligence.md`, `docs/session-intelligence-audit.md`.
 
 **Ďalší krok (mimo rozsahu tejto iterácie):** V2.10 — Evaluation, Learning & Recommendation Quality Engine.
+
+### Sprint V2.10 – Evaluation, Quality & Recommendation Intelligence Engine
+
+**Zadanie:** postaviť trvalú, reprodukovateľnú evaluačnú vrstvu, ktorá objektívne odpovedá "urobila táto zmena Mei lepšou alebo horšou?" — namiesto spoliehania sa iba na unit testy a ručne vybrané produkčné dopyty.
+
+**Kľúčový princíp (Section 115):** evaluátor existuje na to, aby NAŠIEL, kde je Mei zlá — nie aby dokázal, že je dobrá. Nikdy sa neoptimalizuje benchmark na vysoké skóre.
+
+**Implementované:** nový balík `app/evaluation/` (schema, metriky, runner, konverzačný evaluátor, taxonomy quality, baseline/diff, loader, adapter) + `scripts/run_evaluation.py` CLI. Evaluátor beží cez SKUTOČNÝ `app.main.chat()` (Section 52 — nikdy druhá implementácia vyhľadávania), nikdy nemení runtime správanie. Golden dataset: 60 single-turn prípadov (`eval/golden/*.json`, reálne `app.taxonomy.FAMILY_DEFINITIONS` frázy, relevance počítaná proti aktuálnemu katalógu) + 4 multi-turn konverzácie (`eval/conversations/*.json`, priamo z overených V2.9 scenárov). 27 reálnych, predtým opravených produkčných bugov (`tests/regression_training_cases.jsonl`) konvertovaných do novej schémy ako trvalé regresné prípady (Section 91/92).
+
+**Metriky:** eligibility precision, precision/recall/hit-rate@k, MRR, NDCG@k, duplicate rate, context contamination rate, taxonomy coverage+precision — všetko sémanticky (real taxonomy classification), nie lexikálne (Section 116).
+
+**Kritické nálezy:**
+1. **Nález v evaluátore samotnom**: prvá verzia adaptéra posielala všetkých 60 golden prípadov cez ROVNAKÚ session (prázdny `session_id` → zdieľaný anonymný fallback kľúč) — V2.9 session state unikal medzi nesúvisiacimi prípadmi (34/60 → 44/60 po oprave izolácie na unikátnu session per prípad). Presne tá trieda chyby, ktorú V2.9 existuje aby zabránila, teraz nájdená vo vlastnom testovacom nástroji.
+2. **Reálny produkčný nález (neopravený tento šprint)**: bare dopyty na konkrétnu omáčku ("rybacia omáčka", "hoisin omáčka", "ustricová omáčka", "teriyaki omáčka", "čili cesnak omáčka") sa smerujú cez legacy `detect_related_subject()` cross-sell kaskádu namiesto čistej V2.4 `ATTRIBUTE_SEARCH` cesty — miešajú sa nesúvisiace variancie sójovej omáčky (Ponzu, Tamari) do výsledkov. Kritický golden prípad `sauce_fish_001` (Pad Thai ingrediencia) preto v baseline zlyháva. Zaznamenané, nahlásené, NEOPRAVENÉ (vyžadovalo by kaskádovú chirurgiu mimo rozsahu tohto sprintu) — prioritný kandidát pre V2.11.
+
+**Baseline a quality gates:** prvý beh (`eval/baselines/v2.9.json`, commit `3e72ac5`) zaznamenáva 44/58 golden (75,9 %), 4/4 konverzácie, `context_contamination_rate=0,0`. Blokujúce CI brány (Section 38): iba (a) regresia KRITICKÉHO prípadu oproti baseline, (b) `context_contamination_rate > 0`, (c) `max_duplicate_rate > 0`. Existujúce, práve objavené zlyhania sú WARN, nezablokujú CI — baseline politika explicitne zdôvodnená v `docs/quality-gates.md` (Section 39-41: "use measured baseline before choosing thresholds").
+
+**CI integrácia:** nový krok "Foodland quality suite (fast, blocking)" v `.github/workflows/ci.yml`, `python scripts/run_evaluation.py --fast` (39 kritických golden + 4 konverzácie, ~12s).
+
+**Testy:** `tests/test_evaluation_engine.py` (30 — metrické výpočty, deliberate-failure detekcia dokazujúca, že evaluátor NIE JE "vždy prejde", baseline diff/gate logika, integrita datasetu), `tests/test_evaluation_golden.py` (1, plná pytest integrácia kritickej sady).
+
+**Riziká/obmedzenia (úprimne):** cross-sell/recipe/autocomplete majú menej hĺbky pokrytia než rice/sauce taxonomy domény (bolo by potrebné rozšíriť dataset). NDCG implementovaný, ale bez graded-relevance prípadov v datasete (dormant, otestovaný len jednotkovo). Latency p99 (~1,4s pre jeden prípad) nebol hlbšie analyzovaný — pravdepodobne cold-search cesta, nie systémový problém. `related_subject`-vs-`ATTRIBUTE_SEARCH` precedenčný nález (vyššie) je najdôležitejšia otvorená otázka z tohto sprintu. Detail: `docs/evaluation-engine.md`, `docs/evaluation-dataset.md`, `docs/quality-gates.md`.
+
+**Ďalší krok (mimo rozsahu tejto iterácie):** V2.11 — na základe nameraných V2.10 výsledkov, prioritne `related_subject`-vs-`ATTRIBUTE_SEARCH` precedenčná oprava.

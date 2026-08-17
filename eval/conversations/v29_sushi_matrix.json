@@ -1,0 +1,17 @@
+{
+  "dataset_version": "1.0",
+  "domain": "v29_sushi_matrix",
+  "note": "Spec Section 52 mandated sequence. sushi_rice/rice_vinegar are not V2.8 recipe-graph dishes, so no recipe_shopping_plan is expected here - this exercises app.session_state's active_use_case narrowing instead (Section 15/26).",
+  "cases": [
+    {
+      "id": "conv_sushi_matrix_001",
+      "session_id_prefix": "sushi-matrix",
+      "critical": true,
+      "turns": [
+        {"message": "chcem robit sushi", "expected_intent": "related_products"},
+        {"message": "aku ryzu?", "expected_products_nonempty": true, "note": "Must narrow to sushi_rice, not generic rice - verified via title inspection in tests/test_session_intelligence.py, kept lighter here (no per-turn concept check yet in the conversation schema)."},
+        {"message": "a aky ocot?", "expected_products_nonempty": true}
+      ]
+    }
+  ]
+}

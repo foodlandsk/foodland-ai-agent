@@ -1,0 +1,60 @@
+{
+  "dataset_version": "1.0",
+  "domain": "sauces",
+  "note": "Sauce family has the most subfamily siblings in FAMILY_DEFINITIONS - highest collision risk. Queries are real title_phrases.",
+  "cases": [
+    {
+      "id": "sauce_soy_001",
+      "query": "sojova omacka",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["soy_sauce", "dark_soy_sauce", "light_soy_sauce"],
+      "must_not_concept_ids": ["fish_sauce", "oyster_sauce", "hoisin_sauce"],
+      "critical": true,
+      "note": "Bare soy sauce may resolve to any soy_sauce variant (no style specified) but must never be fish/oyster/hoisin sauce."
+    },
+    {
+      "id": "sauce_fish_001",
+      "query": "rybacia omacka",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["fish_sauce"],
+      "must_not_concept_ids": ["soy_sauce", "dark_soy_sauce", "light_soy_sauce", "oyster_sauce", "hoisin_sauce"],
+      "critical": true,
+      "note": "Pad Thai's core ingredient (V2.8) - a wrong sauce here breaks recipe shopping too."
+    },
+    {
+      "id": "sauce_oyster_001",
+      "query": "ustricova omacka",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["oyster_sauce"],
+      "must_not_concept_ids": ["fish_sauce", "soy_sauce", "hoisin_sauce"]
+    },
+    {
+      "id": "sauce_hoisin_001",
+      "query": "hoisin omacka",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["hoisin_sauce"],
+      "must_not_concept_ids": ["soy_sauce", "fish_sauce", "oyster_sauce"]
+    },
+    {
+      "id": "sauce_teriyaki_001",
+      "query": "teriyaki omacka",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["teriyaki_sauce"],
+      "must_not_concept_ids": ["soy_sauce", "fish_sauce"]
+    },
+    {
+      "id": "sauce_sriracha_001",
+      "query": "sriracha omacka",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["sriracha_sauce"],
+      "must_not_concept_ids": ["soy_sauce", "fish_sauce", "chili_garlic_sauce"]
+    },
+    {
+      "id": "sauce_chili_garlic_001",
+      "query": "cili cesnak omacka",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["chili_garlic_sauce"],
+      "must_not_concept_ids": ["sriracha_sauce", "sweet_chili_sauce"]
+    }
+  ]
+}

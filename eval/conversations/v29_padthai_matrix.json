@@ -1,0 +1,22 @@
+{
+  "dataset_version": "1.0",
+  "domain": "v29_padthai_matrix",
+  "note": "Spec Section 31/53 mandated sequence - the flagship V2.9 capability. Matches tests/test_session_intelligence.py::TestPadThaiMatrix.",
+  "cases": [
+    {
+      "id": "conv_padthai_matrix_001",
+      "session_id_prefix": "padthai-matrix",
+      "critical": true,
+      "turns": [
+        {"message": "Chcem robit Pad Thai pre 4. Co potrebujem?", "expected_workflow": "RECIPE_SHOPPING", "expected_recipe_plan_present": true, "expected_active_recipe_id": "pad_thai", "expected_servings": 4},
+        {"message": "ake rezance?", "expected_workflow": "RECIPE_SHOPPING", "expected_products_nonempty": true, "note": "Candidate list for one ingredient, not the full plan."},
+        {"message": "ten druhy", "expected_reference_resolved_from_previous_index": 1, "note": "0-based index into the previous turn's candidates (the SECOND noodle option)."},
+        {"message": "a rybaciu omacku?", "expected_workflow": "RECIPE_SHOPPING", "expected_products_nonempty": true},
+        {"message": "nieco lacnejsie", "expected_workflow": "RECIPE_SHOPPING", "expected_products_nonempty": true},
+        {"message": "nakoniec pre 8", "expected_recipe_plan_present": true, "expected_active_recipe_id": "pad_thai", "expected_servings": 8, "note": "Servings update must not lose the already-selected noodle role (Section 17/18)."},
+        {"message": "co este potrebujem?", "expected_recipe_plan_present": true, "expected_servings": 8},
+        {"message": "chcem kupit mlieko", "expected_context_switch": "HARD", "note": "Hard switch - the recipe plan and all Pad Thai product ids must be gone."}
+      ]
+    }
+  ]
+}

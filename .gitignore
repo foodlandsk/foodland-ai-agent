@@ -5,6 +5,11 @@ tmp/
 work/
 .runtime-check*/
 
+# V2.10 evaluation reports - regenerated every run (scripts/run_evaluation.py),
+# not intentionally versioned (only eval/baselines/*.json is - Section 108)
+eval/reports/*.json
+eval/reports/*.md
+
 # Python cache and local environments
 __pycache__/
 *.py[cod]

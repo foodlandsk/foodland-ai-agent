@@ -1,0 +1,46 @@
+{
+  "dataset_version": "1.0",
+  "domain": "pastes_and_curry",
+  "cases": [
+    {
+      "id": "curry_red_001",
+      "query": "cervena kari pasta",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["red_curry_paste"],
+      "must_not_concept_ids": ["green_curry_paste", "massaman_curry_paste", "panang_curry_paste"],
+      "critical": true,
+      "note": "V2.3 audit historical bug: red curry paste was misclassified as massaman due to shared category evidence - permanent regression case."
+    },
+    {
+      "id": "curry_green_001",
+      "query": "zelena kari pasta",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["green_curry_paste"],
+      "must_not_concept_ids": ["red_curry_paste", "massaman_curry_paste"]
+    },
+    {
+      "id": "curry_massaman_001",
+      "query": "massaman kari pasta",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["massaman_curry_paste"],
+      "must_not_concept_ids": ["red_curry_paste", "green_curry_paste", "panang_curry_paste"]
+    },
+    {
+      "id": "paste_miso_001",
+      "query": "miso pasta",
+      "query_type": "ATTRIBUTE",
+      "expected_concept_ids": ["miso"],
+      "must_not_concept_ids": ["gochujang", "black_bean_paste"],
+      "critical": true
+    },
+    {
+      "id": "paste_gochujang_001",
+      "query": "gochujang",
+      "query_type": "EXACT_PRODUCT",
+      "expected_concept_ids": ["gochujang"],
+      "must_not_concept_ids": ["miso", "black_bean_paste", "red_curry_paste"],
+      "critical": true,
+      "note": "Mandated V2.9/V2.8 reference concept for reverse-lookup and cross-sell scenarios."
+    }
+  ]
+}
