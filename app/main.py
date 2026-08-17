@@ -89,6 +89,7 @@ from app.product_normalizer import normalize_catalog
 from app.structured_search import hybrid_search_products as _hybrid_search_products
 from app.structured_search import build_structured_result_set as _build_structured_result_set
 from app.structured_search import format_result_set_products as _format_result_set_products
+from app.ranking_config import get_active_ranking_profile
 from app.answer_composer import compose_answer as _compose_answer
 from app.answer_composer import compose_continuation_answer as _compose_continuation_answer
 from app.result_sets import get_result_set as _get_result_set
@@ -333,6 +334,7 @@ def hybrid_cached_search_products(query: str, limit: int = 8) -> list[dict]:
         legacy_search_fn=cached_search_products,
         behavioral_rankings=get_behavioral_rankings(),
         merchandising_rules=get_merchandising_rules(),
+        ranking_profile=get_active_ranking_profile(),
     )
 
 
@@ -4274,6 +4276,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             ),
             behavioral_rankings=get_behavioral_rankings(),
             merchandising_rules=get_merchandising_rules(),
+            ranking_profile=get_active_ranking_profile(),
             # V2.9 (Section 9/10/20/21) - explicit override/removal/price
             # signals must reach retrieval, not just the merge function
             # itself (a real gap found via live multi-turn testing,
@@ -4321,6 +4324,7 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
             base_query=base_query,
             behavioral_rankings=get_behavioral_rankings(),
             merchandising_rules=get_merchandising_rules(),
+            ranking_profile=get_active_ranking_profile(),
             remove_size=_detect_size_removal(chat_request.message),
             remove_brand=_detect_brand_removal(chat_request.message),
             price_direction=_detect_price_direction(chat_request.message),

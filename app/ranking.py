@@ -19,6 +19,7 @@ from app.behavioral import behavioral_multiplier
 from app.feed import Product
 from app.merchandising import merchandising_multiplier
 from app.product_normalizer import NormalizedProduct
+from app.ranking_config import RankingProfile, RankingWeights
 from app.retrieval import StructuredProductIndex, size_matches
 from app.search import tokenize
 
@@ -73,12 +74,23 @@ def rank_candidates(
     behavioral_rankings: dict | None = None,
     merchandising_rules: dict | None = None,
     personalization_scores: dict[str, float] | None = None,
+    ranking_profile: RankingProfile | None = None,
 ) -> list[str]:
     """Returns `candidate_ids` reordered - same set, same length, just a
     different permutation. Never raises on missing optional signals (all
     default to a 1.0/no-op multiplier), matching the safe-fallback
-    philosophy the rest of V2 already uses."""
+    philosophy the rest of V2 already uses.
+
+    `ranking_profile` (V2.11, Section 10/106) scales the SAME soft signals
+    this function already applied before V2.11 existed - `ranking_profile=
+    None` (the default) resolves to RankingWeights(), whose defaults
+    reproduce the exact hardcoded behavior this function had pre-V2.11
+    (weight=1.0, min/max ratio 0.5/2.0, merchandising unchanged,
+    personalization capped at 1.0). It can never affect l1-l4 - those are
+    computed identically regardless of profile, so a soft-signal weight
+    can never let a product outrank one with a strictly better hard score."""
     query_tokens = frozenset(tokenize(query.raw_query)) if getattr(query, "raw_query", "") else frozenset()
+    family = getattr(query, "family", None)
 
     def sort_key(product_id: str):
         product = products_by_id.get(product_id)
@@ -87,6 +99,8 @@ def rank_candidates(
             # the current catalog snapshot it was built from; keeps a stale
             # id from crashing ranking instead of silently vanishing it.
             return (-1, -1, -1, -1, 0.0, product_id)
+
+        weights: RankingWeights = ranking_profile.weights_for(family) if ranking_profile is not None else RankingWeights()
 
         l1_confidence = _CONFIDENCE_RANK.get(index.confidence_by_id.get(product_id, "UNKNOWN"), 0)
         l2_explicit_hits = _explicit_attribute_hits(product_id, query, index, normalized_index)
@@ -99,15 +113,20 @@ def rank_candidates(
                 product_id,
                 behavioral_rankings["scores"],
                 behavioral_rankings["baseline_ctr"],
+                weights.behavioral_weight,
+                weights.behavioral_min_ratio,
+                weights.behavioral_max_ratio,
             )
         if merchandising_rules:
-            soft *= merchandising_multiplier(
+            raw_merchandising = merchandising_multiplier(
                 str(getattr(product, "brand", "")),
                 str(getattr(product, "product_type", "")),
                 merchandising_rules,
             )
+            soft *= raw_merchandising ** weights.merchandising_exponent if raw_merchandising > 0 else raw_merchandising
         if personalization_scores:
-            soft *= 1.0 + max(0.0, min(1.0, personalization_scores.get(product_id, 0.0)))
+            capped = max(0.0, min(weights.personalization_cap, personalization_scores.get(product_id, 0.0)))
+            soft *= 1.0 + capped
 
         return (-l1_confidence, -l2_explicit_hits, -l3_availability, -l4_relevance, -soft, product_id)
 

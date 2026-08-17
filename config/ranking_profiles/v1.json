@@ -1,0 +1,13 @@
+{
+  "default": {
+    "behavioral_max_ratio": 2.0,
+    "behavioral_min_ratio": 0.5,
+    "behavioral_weight": 1.0,
+    "merchandising_exponent": 1.0,
+    "personalization_cap": 1.0
+  },
+  "description": "Pre-V2.11 behavior, unchanged.",
+  "family_overrides": {},
+  "name": "default",
+  "version": "v1"
+}

@@ -30,6 +30,7 @@ from app.presentation import build_result_set
 from app.product_normalizer import NormalizedProduct
 from app.query_constraints import StructuredProductQuery, merge_constraints, parse_structured_query
 from app.ranking import rank_candidates
+from app.ranking_config import RankingProfile
 from app.result_sets import ResultSet
 from app.retrieval import (
     LEGACY_FALLBACK,
@@ -68,6 +69,7 @@ def hybrid_search_products(
     behavioral_rankings: dict | None = None,
     merchandising_rules: dict | None = None,
     personalization_scores: dict[str, float] | None = None,
+    ranking_profile: RankingProfile | None = None,
 ) -> list[dict]:
     """Structured retrieval where the taxonomy confidently recognizes the
     query's family; legacy `legacy_search_fn` (e.g. main.cached_search_products)
@@ -92,6 +94,7 @@ def hybrid_search_products(
             behavioral_rankings=behavioral_rankings,
             merchandising_rules=merchandising_rules,
             personalization_scores=personalization_scores,
+            ranking_profile=ranking_profile,
         )
         results = [format_product(products_by_id[pid]) for pid in ranked_ids[:limit] if pid in products_by_id]
         if not results:
@@ -118,6 +121,7 @@ def build_structured_result_set(
     behavioral_rankings: dict | None = None,
     merchandising_rules: dict | None = None,
     personalization_scores: dict[str, float] | None = None,
+    ranking_profile: RankingProfile | None = None,
     remove_size: bool = False,
     remove_brand: bool = False,
     price_direction: str | None = None,
@@ -173,6 +177,7 @@ def build_structured_result_set(
             behavioral_rankings=behavioral_rankings,
             merchandising_rules=merchandising_rules,
             personalization_scores=personalization_scores,
+            ranking_profile=ranking_profile,
         )
         if price_direction:
             from app.session_state import rank_by_price_direction
