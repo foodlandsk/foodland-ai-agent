@@ -7,6 +7,34 @@ Dátum: 2026-08-16. Zdroj kódu: `app/session_state.py` (nový),
 `app/structured_search.py` (`build_structured_result_set()` prijíma
 removal flagy), `app/main.py` (zapojenie, byte-safe patche).
 
+## Kritické nálezy zo živého multi-turn testovania (Section 79)
+
+Živé produkčné testovanie mandátnej Session A (`docs/roadmap-features.md`
+Section 51) odhalilo DVA reálne bugy, ktoré unit/integračné testy
+nezachytili — presne dôvod, prečo je Section 79 povinná, nie voliteľná:
+
+1. **Ordinal-digit kolízia**: bare číslice `"1"`/`"2"`/`"3"`/`"4"` boli
+   pôvodne zaregistrované ako ordinálne slová. `"radšej 1 kg"` sa preto
+   nesprávne interpretovalo ako `"ten prvý"` (ordinal reference), čo
+   vrátilo STARÝ 5kg produkt namiesto prepnutia na 1kg. Opravené —
+   odstránené bare číslice, ostali iba skutočné ordinálne slová
+   (prvý/druhý/tretí/štvrtý, first/second/third/fourth).
+2. **Chýbajúce price-direction prepojenie**: `detect_price_direction()`
+   bol zapojený iba do recipe-ingredient-followup vetvy, nie do
+   generickej štruktúrovanej retrieval cesty. `"niečo lacnejšie"` bez
+   recipe kontextu preto nemalo čo vyhľadávať a padlo na nezmyselné
+   legacy lexikálne vyhľadávanie doslovných slov "niečo"/"lacnejšie".
+   Opravené — `build_structured_result_set()` prijíma `price_direction`
+   (aj `remove_size`/`remove_brand`, ktoré boli tiež postavené, ale
+   NIKDY reálne prepojené z `chat()` do retrieval volaní), re-rankuje už
+   validný kandidátny set podľa ceny.
+
+Oba nálezy potvrdené lokálnou reprodukciou pred opravou, opravené,
+overené znova lokálne AJ naživo na produkcii po redeploy (commit
+`407efb1`). Test `test_family_persists_size_overrides_then_removes`
+posilnený zo slabých `assert r.get("products")` asercií na skutočné
+product-ID porovnania — pôvodná slabá verzia by tieto bugy nezachytila.
+
 ## Session state model
 
 Žiadne nové úložisko (Section 32, `docs/session-intelligence-audit.md`).
