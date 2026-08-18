@@ -3858,7 +3858,18 @@ def detect_query_language(message: str) -> str:
 @app.post("/chat")
 def chat(chat_request: ChatRequest, request: Request) -> dict:
     client_key = get_client_key(request)
-    enforce_rate_limit(client_key)
+    # V2.12 fix: app.evaluation.adapter.make_chat_fn() calls chat() directly
+    # in-process with a plain duck-typed _FakeRequest stub (never reachable via
+    # real HTTP dispatch - FastAPI itself always constructs a genuine Request
+    # from the ASGI scope for actual customer calls, so this cannot be spoofed
+    # by an external client). Without this, every evaluate_profile() call inside
+    # a learning cycle shares ONE client_key ("127.0.0.1") and trips the real
+    # customer-facing RATE_LIMIT_PER_MINUTE within seconds in production, where
+    # (unlike CI/tests) that env var is already explicitly set so the harness's
+    # own setdefault() override never takes effect - found via a real failed
+    # POST /admin/learning/run-cycle against production (429 after ~12 calls).
+    if isinstance(request, Request):
+        enforce_rate_limit(client_key)
     log_taxonomy_shadow(chat_request.message, client_key, classify_rice_query(chat_request.message, normalize))
 
     session_id = getattr(chat_request, "session_id", "") or ""
