@@ -6518,7 +6518,15 @@ def suggested_analytics_action(intent: str, normalized_question: str, issue_type
 
 def is_no_result_event(event: dict) -> bool:
     intent = str(event.get("intent") or "")
-    product_intents = {"product_search", "related_products", "replacement_products", "article_products", "product_advice", "recipe_to_products", "allergen_safety"}
+    # allergen_safety deliberately returns products=[] for a general
+    # allergy question with no specific product named (Section audit,
+    # regbug_rt0027 - critical golden case, never show product cards for
+    # an unverified allergen match). The substantive answer lives in
+    # `answer` text (a safety disclaimer), not in a product list, so
+    # matches_count==0 there does not mean the customer got nothing
+    # useful - counting it as a no-result event here would misrepresent
+    # what actually happened (found via a real production analytics audit).
+    product_intents = {"product_search", "related_products", "replacement_products", "article_products", "product_advice", "recipe_to_products"}
     return intent in product_intents and int(event.get("matches_count", 0) or 0) == 0
 
 
