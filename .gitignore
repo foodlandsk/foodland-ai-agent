@@ -10,6 +10,14 @@ work/
 eval/reports/*.json
 eval/reports/*.md
 
+# V2.12 learning-cycle reports and audit ledger - regenerated every run
+# (scripts/run_learning_cycle.py) / accumulated at runtime from real
+# production activity, not intentionally versioned (only
+# config/ranking_profiles/*.json is - same reasoning as eval/reports/ above)
+learning/reports/*.json
+learning/reports/*.md
+config/learning_history/
+
 # Python cache and local environments
 __pycache__/
 *.py[cod]

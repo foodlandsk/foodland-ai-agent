@@ -89,7 +89,14 @@ from app.product_normalizer import normalize_catalog
 from app.structured_search import hybrid_search_products as _hybrid_search_products
 from app.structured_search import build_structured_result_set as _build_structured_result_set
 from app.structured_search import format_result_set_products as _format_result_set_products
-from app.ranking_config import get_active_ranking_profile
+from app.ranking_config import get_active_ranking_profile, get_active_ranking_profile_version
+from app.learning_cycle import run_learning_cycle as _run_learning_cycle
+from app.learning_cycle import REPORTS_DIR as _LEARNING_REPORTS_DIR
+from app.learning_cycle import LEARNING_ENGINE_ENABLED as _LEARNING_ENGINE_ENABLED
+from app.learning_cycle import LEARNING_CYCLE_MINUTES as _LEARNING_CYCLE_MINUTES
+from app.learning_lifecycle import get_history as _learning_history
+from app.learning_lifecycle import get_last_known_good as _learning_last_known_good
+from app.learning_lifecycle import AUTO_PROMOTION_ENABLED as _LEARNING_AUTO_PROMOTION_ENABLED
 from app.answer_composer import compose_answer as _compose_answer
 from app.answer_composer import compose_continuation_answer as _compose_continuation_answer
 from app.result_sets import get_result_set as _get_result_set
@@ -254,6 +261,7 @@ knowledge = load_knowledge()
 last_feed_refresh_at = int(time.time()) if products else None
 last_feed_refresh_error: str | None = None
 feed_refresh_task: asyncio.Task | None = None
+learning_cycle_task: asyncio.Task | None = None
 # Knowledge-builder state
 product_snapshot: ProductSnapshot = build_product_snapshot(products)
 translation_index: dict[str, dict[str, "Product"]] = {}
@@ -2892,6 +2900,25 @@ app.add_middleware(
 )
 
 
+def _learning_health_summary() -> dict:
+    """Section 98 - aggregate-only, never raw events."""
+    summary = {
+        "learning_engine_enabled": _LEARNING_ENGINE_ENABLED,
+        "active_ranking_config": get_active_ranking_profile_version(),
+        "last_learning_cycle_status": None,
+        "shadow_candidate_count": 0,
+    }
+    try:
+        report_path = _LEARNING_REPORTS_DIR / "latest.json"
+        if report_path.exists():
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            summary["last_learning_cycle_status"] = report.get("status")
+            summary["shadow_candidate_count"] = (report.get("candidate_summary") or {}).get("shadow_eligible", 0)
+    except Exception:
+        pass
+    return summary
+
+
 @app.get("/health")
 def health() -> dict:
     return {
@@ -2900,6 +2927,7 @@ def health() -> dict:
         "knowledge": knowledge.get("counts", {}),
         "last_feed_refresh_at": last_feed_refresh_at,
         "last_feed_refresh_error": last_feed_refresh_error,
+        "learning": _learning_health_summary(),
     }
 
 
@@ -3269,6 +3297,58 @@ def admin_fbt_pairs(
         "skus_with_pairs": skus_with_pairs,
         "sample": sample,
     }
+
+
+@app.get("/admin/learning/status")
+def admin_learning_status(x_admin_token: str | None = Header(default=None)) -> dict:
+    require_admin_token(x_admin_token)
+    return {
+        "learning_engine_enabled": _LEARNING_ENGINE_ENABLED,
+        "auto_promotion_enabled": _LEARNING_AUTO_PROMOTION_ENABLED,
+        "learning_cycle_minutes": _LEARNING_CYCLE_MINUTES,
+        "active_ranking_config": get_active_ranking_profile_version(),
+        "last_known_good": _learning_last_known_good(),
+        **_learning_health_summary(),
+    }
+
+
+@app.get("/admin/learning/candidates")
+def admin_learning_candidates(x_admin_token: str | None = Header(default=None)) -> dict:
+    require_admin_token(x_admin_token)
+    try:
+        report = json.loads((_LEARNING_REPORTS_DIR / "latest.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"learning_cycle_id": None, "candidates": [], "note": "no learning cycle report available yet"}
+    return {
+        "learning_cycle_id": report.get("learning_cycle_id"),
+        "status": report.get("status"),
+        "candidate_summary": report.get("candidate_summary"),
+        "candidates": report.get("candidates", []),
+    }
+
+
+@app.get("/admin/learning/history")
+def admin_learning_history(
+    candidate_id: str = "",
+    limit: int = 100,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    require_admin_token(x_admin_token)
+    safe_limit = max(1, min(int(limit or 100), 500))
+    return {"entries": _learning_history(candidate_id or None, safe_limit)}
+
+
+@app.post("/admin/learning/run-cycle")
+def admin_learning_run_cycle(
+    days: int = 0,
+    full: bool = False,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """Section 70/97 - manual on-demand trigger, same pairing pattern as
+    POST /admin/feed/refresh next to the periodic asyncio loop below."""
+    require_admin_token(x_admin_token)
+    known_product_ids = frozenset(p.id for p in products)
+    return _run_learning_cycle(known_product_ids=known_product_ids, days=days or None, fast_evaluation=not full)
 
 
 def session_memory_key(session_id: str, client_key: str) -> str:
@@ -8967,6 +9047,34 @@ async def feed_refresh_loop(refresh_minutes: int) -> None:
             logger.error("Knowledge rebuild timed out after 300s.")
         except Exception as exc:
             logger.error("Knowledge rebuild failed: %s", exc, exc_info=True)
+
+
+@app.on_event("startup")
+async def start_learning_cycle_loop() -> None:
+    global learning_cycle_task
+    if _LEARNING_CYCLE_MINUTES > 0 and _LEARNING_ENGINE_ENABLED:
+        logger.info("Starting learning cycle loop every %s minutes.", _LEARNING_CYCLE_MINUTES)
+        learning_cycle_task = asyncio.create_task(learning_cycle_loop(_LEARNING_CYCLE_MINUTES))
+
+
+async def learning_cycle_loop(cycle_minutes: int) -> None:
+    """Off the customer request path (Section 102) - same asyncio-loop-
+    in-the-web-process pattern as feed_refresh_loop above, since this
+    repo has no separate scheduler infrastructure (Section 9 audit).
+    A learning-cycle failure is logged and skipped, never raised past
+    this loop (Section 100 - it must never affect customer search)."""
+    while True:
+        await asyncio.sleep(cycle_minutes * 60)
+        known_product_ids = frozenset(p.id for p in products)
+        try:
+            await asyncio.wait_for(
+                asyncio.to_thread(_run_learning_cycle, known_product_ids=known_product_ids),
+                timeout=280.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Learning cycle still running after 280s, will retry next interval.")
+        except Exception as exc:
+            logger.error("Learning cycle failed: %s", exc, exc_info=True)
 
 
 def refresh_feed() -> None:
