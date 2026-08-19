@@ -130,6 +130,7 @@ from app.session_state import track_presentation as _track_presentation
 from app.session_state import detect_size_removal as _detect_size_removal
 from app.session_state import detect_brand_removal as _detect_brand_removal
 from app.session_state import detect_price_direction as _detect_price_direction
+from app.session_state import looks_like_recipe_followup as _looks_like_recipe_followup
 
 
 logging.basicConfig(
@@ -4081,6 +4082,34 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                 "memory": public_user_memory_summary(updated_profile),
                 "intent": "product_search",
             }
+
+    # Real gap found via a production no-result/analytics audit: "co este
+    # potrebujem?" / "niečo lacnejšie" are ONLY meaningful as a follow-up
+    # to an active recipe or an active result set (Section 16/20). Without
+    # that context they previously fell all the way through to raw
+    # lexical search, which confidently matched unrelated tokens and
+    # returned WRONG products - worse than no result at all ("co este
+    # potrebujem?" returned bamboo steamers, "nieco lacnejsie" returned
+    # candy and ice cream, live-verified against production data). Mirrors
+    # the ordinal-reference clarification above, not a new pattern.
+    _orphaned_followup = _recipe_followup_result is None and not recipe_subject and (
+        _looks_like_recipe_followup(chat_request.message)
+        or (_detect_price_direction(chat_request.message) is not None and not memory.get("active_result_set_id"))
+    )
+    if _orphaned_followup:
+        updated_profile = update_user_memory(profile_key, chat_request.message, "product_search", [], [])
+        log_question(chat_request.message, client_key, 0, intent="product_search", session_id=session_id, primary_intent="product_search", subject="")
+        return {
+            "answer": (
+                "I don't have an active shopping list or search to refer that to - what are you looking for?"
+                if query_language == "en"
+                else "Nemám aktívny nákupný zoznam ani vyhľadávanie, na ktoré by som to mohla naviazať - čo hľadáte?"
+            ),
+            "products": [],
+            "knowledge": knowledge_summary({}),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": "product_search",
+        }
 
     if recipe_subject:
         recipes = recipe_results(knowledge_matches, chat_request.limit, contextual_message, knowledge)

@@ -202,6 +202,54 @@ class TestPadThaiMatrix:
         assert r8.get("workflow_id") != "RECIPE_SHOPPING"
 
 
+class TestOrphanedFollowupClarification:
+    """Real gap found via a production no-result/analytics audit: "co este
+    potrebujem?" / "nieco lacnejsie" are only meaningful as a follow-up to
+    an active recipe or an active result set. Without that context they
+    previously fell through to raw lexical search, which confidently
+    matched unrelated tokens and returned WRONG products - live-verified
+    against production: "co este potrebujem?" returned bamboo steamers,
+    "nieco lacnejsie" returned candy and ice cream. Mirrors the existing
+    ordinal-reference clarification, not a new pattern."""
+
+    def test_recipe_followup_shape_with_no_active_recipe_asks_for_clarification(self):
+        sid = "v29-orphan-1"
+        r = _chat("co este potrebujem?", sid)
+        assert r.get("products") == []
+        assert r.get("intent") == "product_search"
+
+    def test_price_direction_with_no_active_result_set_asks_for_clarification(self):
+        sid = "v29-orphan-2"
+        r = _chat("nieco lacnejsie", sid)
+        assert r.get("products") == []
+
+    def test_recipe_followup_inside_an_active_recipe_is_unaffected(self):
+        """Regression guard - the new clarification branch must never fire
+        while a real recipe/result-set context exists."""
+        sid = "v29-orphan-3"
+        _chat("Chcem robit Pad Thai pre 4. Co potrebujem?", sid)
+        r2 = _chat("co este potrebujem?", sid)
+        assert r2.get("recipe_shopping_plan") is not None
+        assert r2.get("products")
+
+    def test_price_direction_inside_an_active_result_set_is_unaffected(self):
+        sid = "v29-orphan-4"
+        _chat("jazminova ryza", sid)
+        r2 = _chat("nieco lacnejsie", sid)
+        assert r2.get("response_mode") == "result_set"
+        assert r2.get("products")
+
+    def test_ake_rezance_without_recipe_context_still_falls_back_to_category(self):
+        """Not every context-dependent-shaped phrase needs a clarification -
+        "ake rezance?" alone still reasonably falls back to a real noodle
+        category, so this deliberately does NOT match looks_like_recipe_
+        followup()'s marker set (see app.session_state's own comment on why
+        bare question words are excluded)."""
+        sid = "v29-orphan-5"
+        r = _chat("ake rezance?", sid)
+        assert r.get("products")
+
+
 class TestHardSwitchContaminationMatrix:
     """Section 58/59 - broad transitions must never leak stale constraints."""
 
