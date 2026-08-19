@@ -232,7 +232,7 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         subfamily="rice_noodles",
         confidence="HIGH",
         category_terms=("ryzove rezance",),
-        title_phrases=("ryzove rezance", "ryzovymi rezancami", "ryzovych rezancov"),
+        title_phrases=("ryzove rezance", "ryzovymi rezancami", "ryzovych rezancov", "rice noodles"),
         attributes=(("ingredient_base", "rice"),),
         display_label="Ryžové rezance",
     ),
@@ -338,7 +338,7 @@ FAMILY_DEFINITIONS += [
         # No category_terms: "Sójové omáčky" also cross-lists black bean
         # sauce, poke sauce, unagi sauce, dumpling sauce, teriyaki - not
         # pure soy-sauce identity on its own (Section 53/58 purity gate).
-        title_phrases=("tmava sojova omacka",),
+        title_phrases=("tmava sojova omacka", "dark soy sauce"),
         # "sójová omáčka" as a bare flavour descriptor also appears in
         # instant ramen/noodle titles (e.g. "Instantné rezance NISSIN Demae
         # Ramen Sójová omáčka") - found live during V2.4 structured
@@ -353,7 +353,7 @@ FAMILY_DEFINITIONS += [
         family="sauce",
         subfamily="soy_sauce",
         confidence="HIGH",
-        title_phrases=("svetla sojova omacka",),
+        title_phrases=("svetla sojova omacka", "light soy sauce"),
         exclude_title_phrases=("instantna", "instantne"),
         attributes=(("style", "light"),),
         display_label="Svetlá sójová omáčka",
@@ -363,7 +363,7 @@ FAMILY_DEFINITIONS += [
         family="sauce",
         subfamily="soy_sauce",
         confidence="HIGH",
-        title_phrases=("sojova omacka",),
+        title_phrases=("sojova omacka", "soy sauce"),
         exclude_title_phrases=("instantna", "instantne"),
         display_label="Sójová omáčka",
     ),
@@ -382,7 +382,7 @@ FAMILY_DEFINITIONS += [
         subfamily="fish_sauce",
         confidence="HIGH",
         category_terms=("rybacie omacky",),
-        title_phrases=("rybacia omacka",),
+        title_phrases=("rybacia omacka", "fish sauce"),
         display_label="Rybacia omáčka",
     ),
     FamilyRule(
@@ -419,6 +419,41 @@ FAMILY_DEFINITIONS += [
         confidence="HIGH",
         title_phrases=("cierna fazula pasta",),
         display_label="Čierna fazuľa pasta",
+    ),
+    # V2.12.3 - "čili pasta"/"chilli paste" had no FamilyRule at all: the
+    # chili_sauce rule below already explicitly excludes "cili pasta" title
+    # matches (a pre-existing collision guard), which meant these products
+    # resolved to no family whatsoever and fell to the unguarded legacy
+    # scorer, surfacing a chili SNACK and a chili PICKLE for a paste query
+    # (docs/query-semantics.md). Grounded in 19 real "Čili pasta ..." catalog
+    # products (Gochujang, Sambal Oelek, Thai-basil varieties).
+    FamilyRule(
+        rule_id="chili_paste",
+        family="paste",
+        subfamily="chili_paste",
+        confidence="HIGH",
+        title_phrases=("cili pasta", "chili paste", "chilli paste"),
+        # Korean gochujang products are literally titled "Čili pasta
+        # Gochujang ..." on this catalog - the gochujang rule below is
+        # more specific and must win (test_taxonomy_v23.py::test_gochujang).
+        exclude_title_phrases=("gochujang", "gochu jang", "gochudzang", "gochudang"),
+        display_label="Čili pasta",
+    ),
+    # V2.12.3 - "tamarindová pasta"/"tamarind paste" had no FamilyRule at
+    # all (family=None/UNKNOWN for both languages), so the query fell to
+    # detect_related_subject()'s "tamarind" bundle
+    # (RELATED_PRODUCT_QUERIES["tamarind"]) which mixes in fish sauce,
+    # coconut milk and brown sugar alongside the one real tamarind product
+    # (docs/query-semantics.md, SPECIAL_PRODUCT_QUERIES/bundle audit).
+    # Grounded in real catalog products: "Tamarind pasta na varenie THAI
+    # DANCER" (250/435/1000ml).
+    FamilyRule(
+        rule_id="tamarind_pasta",
+        family="paste",
+        subfamily="tamarind_pasta",
+        confidence="HIGH",
+        title_phrases=("tamarindova pasta", "tamarind pasta", "tamarind paste"),
+        display_label="Tamarindová pasta",
     ),
     FamilyRule(
         rule_id="sriracha_sauce",
@@ -603,7 +638,7 @@ FAMILY_DEFINITIONS += [
         subfamily="coconut_oil",
         confidence="HIGH",
         category_terms=("kokosovy olej",),
-        title_phrases=("kokosovy olej",),
+        title_phrases=("kokosovy olej", "coconut oil"),
         display_label="Kokosový olej",
     ),
     # --- noodles expansion ----------------------------------------------
@@ -628,9 +663,33 @@ FAMILY_DEFINITIONS += [
         subfamily="wheat_noodles",
         confidence="HIGH",
         category_terms=("psenicne rezance",),
-        exclude_title_phrases=("instantna", "instantne", "polievka"),
+        # "udon" title-matches so the bare *query* "udon"/"udon rezance"
+        # resolves here too (queries have no category to match against -
+        # V2.12.3, docs/query-semantics.md). Real udon products already
+        # classified correctly via category_terms above; this only fixes
+        # query-side resolution, which previously fell through to
+        # instant_noodles' bare "rezance" phrase. Excludes a literal
+        # Japanese ceramic bowl SET also titled "Udon Misky" - same
+        # collision-guard pattern as soba's "miska" exclude below.
+        title_phrases=("udon",),
+        exclude_title_phrases=("instantna", "instantne", "polievka", "miska", "misky"),
         attributes=(("ingredient_base", "wheat"),),
         display_label="Pšeničné rezance",
+    ),
+    # V2.12.3 - "sklenené rezance"/"glass noodles" had no FamilyRule: both
+    # the products (14 real catalog items) and the bare query fell through
+    # to instant_noodles via its generic "rezance" title phrase, so a glass-
+    # noodle query returned Korean instant ramyun cups instead
+    # (docs/query-semantics.md). Positioned before instant_noodles so
+    # first-match-wins routes both products and queries here correctly.
+    FamilyRule(
+        rule_id="glass_noodles",
+        family="noodles",
+        subfamily="glass_noodles",
+        confidence="HIGH",
+        category_terms=("sklenene rezance",),
+        title_phrases=("sklenene rezance", "glass noodles"),
+        display_label="Sklenené rezance",
     ),
     # --- instant food -----------------------------------------------------
     FamilyRule(
@@ -640,7 +699,13 @@ FAMILY_DEFINITIONS += [
         confidence="HIGH",
         category_terms=("instantne polievky",),
         title_phrases=("rezance", "ramyeon", "ramyun", "ramen"),
-        exclude_title_phrases=("polievka", "koreniaca pasta"),
+        # V2.12.3 - the bare "rezance" phrase (kept because ~half of real
+        # instant-noodle titles, e.g. "Instantné rezance KING COOK", carry
+        # no other distinguishing word) was also matching a noodle
+        # STRAINER, konjac/shirataki noodles, and noodle-flavoured SAUCES
+        # that are not instant noodles at all - found while tracing why
+        # glass noodles fell into this rule (docs/query-semantics.md).
+        exclude_title_phrases=("polievka", "koreniaca pasta", "omacka", "sitko", "shirataki", "konjac"),
         display_label="Instantné rezance",
     ),
     FamilyRule(

@@ -302,6 +302,7 @@ taxonomy_concept_index = build_concept_index(product_taxonomy_index)
 # `products`/`product_taxonomy_index` on every refresh_feed() call.
 normalized_product_index = normalize_catalog(products)
 V2_STRUCTURED_RETRIEVAL_ENABLED = os.getenv("V2_STRUCTURED_RETRIEVAL_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
+LEGACY_SEARCH_FAMILY_GUARD_ENABLED = os.getenv("LEGACY_SEARCH_FAMILY_GUARD_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
 warm_search_indexes(products)
 rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
 event_rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
@@ -336,17 +337,52 @@ product_search_cache: dict[tuple[int, str, int], list[dict]] = {}
 autocomplete_cache: dict[tuple[int, str, int], list[dict]] = {}
 
 
+def _exclude_taxonomy_family_mismatches(results: list[dict], query: str, limit: int) -> list[dict]:
+    """V2.12.3 Bug C (docs/query-semantics.md): the legacy search_products()
+    scorer is additive/OR-based with no taxonomy awareness and no minimum
+    token coverage, so PREFIX_SYNONYMS roots shared across unrelated families
+    (kokos, ryz/rice, sojov/soy, rezance/noodles) let it surface a different,
+    well-classified family alongside the query's own confidently-resolved
+    family (e.g. "kokosovy olej" pulling in coconut vinegar/juice/cream).
+    This filters exactly that: candidates that resolved to a DIFFERENT known
+    canonical_family than the query's own resolved family. It runs inside
+    cached_search_products() rather than app/search.py because app.taxonomy
+    already imports app.search (search_normalize) - importing app.taxonomy
+    back into app/search.py would be circular. Unclassified candidates and
+    unresolved/low-confidence queries are left untouched (absence of
+    classification never excludes a product, same invariant as
+    classify_product()), and filtering never empties an otherwise non-empty
+    result set - a partially wrong list beats a hard zero-result regression."""
+    if not LEGACY_SEARCH_FAMILY_GUARD_ENABLED or not results:
+        return results
+
+    structured = parse_structured_query(query)
+    if structured.family is None or structured.confidence not in {"HIGH", "MEDIUM"}:
+        return results
+
+    filtered = [
+        item
+        for item in results
+        if (taxonomy := product_taxonomy_index.get(item.get("id"))) is None
+        or taxonomy.canonical_family is None
+        or taxonomy.canonical_family == structured.family
+    ]
+    if not filtered:
+        return results
+    return filtered[:limit]
+
+
 def cached_search_products(products_list: list[Product] | list[dict], query: str, limit: int = 8) -> list[dict]:
     """Cache repeated catalog scans for hot chat/autocomplete queries."""
     if PRODUCT_SEARCH_CACHE_MAX_SIZE <= 0:
-        return search_products(products_list, query, limit)
+        return _exclude_taxonomy_family_mismatches(search_products(products_list, query, limit), query, limit)
 
     cache_key = (id(products_list), normalize(query), int(limit))
     cached = product_search_cache.get(cache_key)
     if cached is not None:
         return [dict(product) for product in cached]
 
-    results = search_products(products_list, query, limit)
+    results = _exclude_taxonomy_family_mismatches(search_products(products_list, query, limit), query, limit)
     if len(product_search_cache) >= PRODUCT_SEARCH_CACHE_MAX_SIZE:
         product_search_cache.pop(next(iter(product_search_cache)))
     product_search_cache[cache_key] = [dict(product) for product in results]

@@ -1,0 +1,385 @@
+{
+  "commit": "de2d4ebd48f993f02c28fe20f7bb7c68a03b5873",
+  "dataset_version": "1.0",
+  "summary": {
+    "conversations": {
+      "context_contamination_rate": 0.0,
+      "critical_failures": [],
+      "pass_rate": 1.0,
+      "passed": 4,
+      "per_case": {
+        "conv_padthai_matrix_001": {
+          "context_contamination": false,
+          "critical_failure": false,
+          "passed": true
+        },
+        "conv_regbug_rt0020_021": {
+          "context_contamination": false,
+          "critical_failure": false,
+          "passed": true
+        },
+        "conv_rice_matrix_001": {
+          "context_contamination": false,
+          "critical_failure": false,
+          "passed": true
+        },
+        "conv_sushi_matrix_001": {
+          "context_contamination": false,
+          "critical_failure": false,
+          "passed": true
+        }
+      },
+      "reference_errors_total": 0,
+      "total": 4
+    },
+    "golden": {
+      "avg_eligibility_precision": 1.0,
+      "avg_hit_rate_at_3": 1.0,
+      "avg_precision_at_5": 1.0,
+      "avg_recall_at_5": 0.464983997985159,
+      "critical_failures": [
+        "regbug_rt0010"
+      ],
+      "error_buckets": {
+        "GROUNDING_ERROR": 3,
+        "INTENT_ERROR": 3,
+        "PRESENTATION_ERROR": 1,
+        "RANKING_ERROR": 1,
+        "RETRIEVAL_MISS": 3
+      },
+      "max_duplicate_rate": 0.0,
+      "mrr": 1.0,
+      "pass_rate": 0.8793103448275862,
+      "passed": 51,
+      "per_case": {
+        "coconut_milk_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "coconut_water_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "curry_green_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "curry_massaman_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "curry_red_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "noodle_instant_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "noodle_rice_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "noodle_shin_ramyun_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "noodle_soba_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "oil_sesame_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "paste_gochujang_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "paste_miso_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0002": {
+          "critical_failure": false,
+          "error_buckets": [
+            "RETRIEVAL_MISS"
+          ],
+          "passed": false
+        },
+        "regbug_rt0003": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0004": {
+          "critical_failure": false,
+          "error_buckets": [
+            "RETRIEVAL_MISS",
+            "RANKING_ERROR",
+            "INTENT_ERROR"
+          ],
+          "passed": false
+        },
+        "regbug_rt0005": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0006": {
+          "critical_failure": false,
+          "error_buckets": [
+            "RETRIEVAL_MISS"
+          ],
+          "passed": false
+        },
+        "regbug_rt0007": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0008": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0009": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0010": {
+          "critical_failure": true,
+          "error_buckets": [
+            "PRESENTATION_ERROR",
+            "GROUNDING_ERROR",
+            "INTENT_ERROR"
+          ],
+          "passed": false
+        },
+        "regbug_rt0011": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0012": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0013": {
+          "critical_failure": false,
+          "error_buckets": [
+            "INTENT_ERROR"
+          ],
+          "passed": false
+        },
+        "regbug_rt0014": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0015": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0016": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0017": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0018": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0019": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0022": {
+          "critical_failure": false,
+          "error_buckets": [
+            "GROUNDING_ERROR"
+          ],
+          "passed": false
+        },
+        "regbug_rt0023": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0024": {
+          "critical_failure": false,
+          "error_buckets": [
+            "GROUNDING_ERROR"
+          ],
+          "passed": false
+        },
+        "regbug_rt0025": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0026": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "regbug_rt0027": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "rice_bare_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "rice_basmati_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "rice_cooker_not_rice_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "rice_flour_not_rice_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "rice_glutinous_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "rice_jasmine_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "rice_jasmine_002": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "rice_noodles_not_rice_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "rice_paper_not_rice_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "rice_sushi_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "rice_sushi_002": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "rice_vinegar_not_rice_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "sauce_chili_garlic_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "sauce_fish_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "sauce_hoisin_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "sauce_oyster_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "sauce_soy_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "sauce_sriracha_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "sauce_teriyaki_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "seaweed_nori_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        },
+        "seaweed_wakame_001": {
+          "critical_failure": false,
+          "error_buckets": [],
+          "passed": true
+        }
+      },
+      "total": 58
+    },
+    "performance": {
+      "p50_ms": 15.257099992595613,
+      "p95_ms": 489.802899886854,
+      "p99_ms": 782.3091000318527
+    },
+    "taxonomy": {
+      "confidence_distribution": {
+        "HIGH": 516,
+        "LOW": 8,
+        "MEDIUM": 204,
+        "UNKNOWN": 1412
+      },
+      "coverage_ratio": 0.3401869158878505,
+      "expected_concepts_in_golden": 30,
+      "expected_concepts_missing_from_catalog": [],
+      "expected_concepts_with_catalog_evidence": 30,
+      "total_products": 2140
+    }
+  }
+}
