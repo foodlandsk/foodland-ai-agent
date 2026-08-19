@@ -89,6 +89,7 @@ from app.product_normalizer import normalize_catalog
 from app.structured_search import hybrid_search_products as _hybrid_search_products
 from app.structured_search import build_structured_result_set as _build_structured_result_set
 from app.structured_search import format_result_set_products as _format_result_set_products
+from app.query_constraints import parse_structured_query
 from app.ranking_config import get_active_ranking_profile, get_active_ranking_profile_version
 from app.ranking_config import CONFIG_DIR as _RANKING_PROFILE_DIR
 from app.ranking_config import is_active_profile_degraded as _ranking_profile_degraded
@@ -4425,6 +4426,21 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         mentioned_related_brand = detect_mentioned_replacement_brand(contextual_message, products, related_subject)
         if mentioned_related_brand:
             related_subject = None
+    if related_subject and not _has_recipe_shopping_language(contextual_message) and _query_resolves_to_confident_product_family(contextual_message):
+        # V2.12.2 root cause (docs/query-semantics.md): RELATED_INTENT_MARKERS
+        # intentionally contains broad single-word markers like "rezanc"/
+        # "olej" so genuine recipe questions ("co este chyba do rezancov")
+        # are caught - but that same broadness was sweeping bare PRODUCT
+        # NAME queries ("ryzove rezance", "kokosovy olej") into the
+        # recipe-ingredient-companion workflow (related_products_for_subject)
+        # just because the product name happens to contain one of those
+        # words, returning an unrelated sauce/condiment shopping list
+        # instead of the literal product. A bare query the taxonomy engine
+        # can confidently resolve to its OWN family, with no genuine
+        # recipe-shopping-list language present, is a direct product
+        # search - same "explicit signal beats broad category word"
+        # principle as the brand/kitchenware guards below.
+        related_subject = None
     if related_subject and related_subject.endswith("_kuchyna") and any(
         marker in normalize(contextual_message)
         for marker in ("noz", "nozice", "palick", "tanier", "misk", "misa", "cajnik", "salk", "lyzic", "podlozk", "sekaci", "brusny")
@@ -4490,7 +4506,20 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     structured_presentation = None
     if already_have_subject:
         matches = complement_products_for_subject(products, already_have_subject, chat_request.limit)
-    elif special_subject == "plain_rice" and V2_STRUCTURED_RETRIEVAL_ENABLED and (
+    # V2.12.2 (docs/query-semantics.md, Section 34/106) - "sushi_rice" is a
+    # second legacy special_subject (predating V2.4/V2.5) superseded the
+    # same way "plain_rice" already was: SPECIAL_PRODUCT_QUERIES["sushi_rice"]
+    # is a hardcoded BUNDLE search ("sushi ryza" + "nori" + "ryzovy ocot" +
+    # "wasabi" merged together) that put nori/wasabi/rice-vinegar directly
+    # into the primary search result for a plain "sushi ryza" product
+    # query - cross-sell items mixed into direct search (a real,
+    # confirmed production bug, not a hypothetical). The taxonomy engine
+    # already classifies sushi rice as its own family=rice/subfamily=
+    # sushi_rice with real exclusion of nori (family=seaweed) and rice
+    # vinegar (family=vinegar) - falls back to the legacy bundle only if
+    # structured retrieval genuinely cannot answer (identical safety net
+    # to plain_rice).
+    elif special_subject in {"plain_rice", "sushi_rice"} and V2_STRUCTURED_RETRIEVAL_ENABLED and (
         structured_presentation := _build_structured_result_set(
             contextual_message,
             products,
@@ -8358,6 +8387,38 @@ def detect_special_product_subject(message: str) -> str | None:
     if "nepaliv" in normalized_message or "jemne" in normalized_message:
         return "mild"
     return None
+
+
+# V2.12.2 (docs/query-semantics.md) - a small, deliberately narrow set of
+# phrases that genuinely signal "I want a recipe/shopping list", as
+# opposed to RELATED_INTENT_MARKERS below, which is intentionally broad
+# (single category words like "rezanc"/"olej") so real recipe questions
+# are still caught. Used only to DISTINGUISH a genuine recipe question
+# from a bare product-name query that happens to share a word with one -
+# never to detect recipe intent on its own.
+RECIPE_SHOPPING_LANGUAGE_MARKERS = (
+    "recept", "ingredien", "surovin", "vyrob", "priprav", "urobit", "spravit",
+    "nakupny zoznam", "co potrebujem", "co treba", "co k tomu", "chyba mi",
+    "chybaju mi", "este chyba", "co pridat", "do kosika", "nakupujem",
+    "hodi", "hodia", "pasuje", "pasuju", "suvisiace", "doplnky", "odporuc",
+)
+
+
+def _has_recipe_shopping_language(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(marker in normalized_message for marker in RECIPE_SHOPPING_LANGUAGE_MARKERS)
+
+
+def _query_resolves_to_confident_product_family(message: str) -> bool:
+    """True when the taxonomy engine can resolve this bare query to its
+    own family with real confidence - i.e. it looks like a direct
+    product-name search the structured retrieval pipeline should own,
+    not a cross-sell/recipe-companion question."""
+    try:
+        parsed = parse_structured_query(message)
+    except Exception:
+        return False
+    return parsed.family is not None and parsed.confidence in {"HIGH", "MEDIUM"}
 
 
 def detect_related_subject(message: str) -> str | None:

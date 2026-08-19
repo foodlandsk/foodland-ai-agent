@@ -551,6 +551,42 @@ FAMILY_DEFINITIONS += [
         title_phrases=("kokosova voda",),
         display_label="Kokosová voda",
     ),
+    # V2.12.2 - "kokosovy olej" (coconut OIL) was leaking coconut cream/
+    # juice/vinegar/milk into its results because none of these had a
+    # FamilyRule at all: with no rule, parse_structured_query() never
+    # resolves a family, retrieve_products() unconditionally returns
+    # LEGACY_FALLBACK, and the query never reaches the taxonomy-aware
+    # exclusion retrieval already does for every OTHER rice/coconut
+    # variant - it fell straight to the un-filtered legacy lexical
+    # scorer (docs/query-semantics.md). Ordered before coconut_oil below
+    # (own family) and coconut_milk above (own subfamily) so first-match-
+    # wins never confuses these adjacent-but-distinct coconut products.
+    FamilyRule(
+        rule_id="coconut_cream",
+        family="coconut_product",
+        subfamily="coconut_cream",
+        confidence="HIGH",
+        category_terms=("kokosove mlieko a kremy",),
+        title_phrases=("kokosovy krem", "kokosovy krem v prasku"),
+        display_label="Kokosový krém",
+    ),
+    FamilyRule(
+        rule_id="coconut_juice",
+        family="coconut_product",
+        subfamily="coconut_juice",
+        confidence="HIGH",
+        title_phrases=("kokosovy dzus",),
+        display_label="Kokosový džús",
+    ),
+    FamilyRule(
+        rule_id="coconut_vinegar",
+        family="vinegar",
+        subfamily="coconut_vinegar",
+        confidence="HIGH",
+        title_phrases=("kokosovy ocot",),
+        attributes=(("source", "coconut"),),
+        display_label="Kokosový ocot",
+    ),
     # --- oils ---------------------------------------------------------------
     FamilyRule(
         rule_id="sesame_oil",
@@ -560,6 +596,15 @@ FAMILY_DEFINITIONS += [
         category_terms=("sezamovy olej",),
         title_phrases=("sezamovy olej",),
         display_label="Sezamový olej",
+    ),
+    FamilyRule(
+        rule_id="coconut_oil",
+        family="oil",
+        subfamily="coconut_oil",
+        confidence="HIGH",
+        category_terms=("kokosovy olej",),
+        title_phrases=("kokosovy olej",),
+        display_label="Kokosový olej",
     ),
     # --- noodles expansion ----------------------------------------------
     FamilyRule(
