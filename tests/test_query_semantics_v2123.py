@@ -277,6 +277,41 @@ class TestRelatedProductBundleInteraction:
         assert r.get("intent") == "related_products"
 
 
+class TestBrandExactAndUnknownQueriesUnaffected:
+    """Spec-mandated matrix (Sections 44-56): brand/exact-product lookups
+    and genuinely unresolvable queries must not be touched by the guard."""
+
+    def test_brand_plus_family_query_stays_within_brand_and_family(self):
+        titles = [m.normalize(t) for t in _search_titles("kikkoman sojova omacka")]
+        assert titles
+        assert all("kikkoman" in t for t in titles), titles
+        assert all("sojova omacka" in t for t in titles), titles
+
+    def test_exact_product_line_lookup_stays_within_paste_family(self):
+        # "gochujang sempio" mixes a product name with a brand - the legacy
+        # scorer legitimately also surfaces other SEMPIO pastes (ssamjang,
+        # fermented soy paste) via the shared "sempio" token, and other
+        # brands' gochujang via the shared "gochujang" token (not a brand-
+        # exclusivity guarantee). What the guard must still hold is family
+        # purity: no result is from an entirely different top-level family.
+        titles = _search_titles("gochujang sempio")
+        assert titles
+        for p in m.products:
+            if p.title in titles:
+                tax = m.product_taxonomy_index.get(p.id)
+                if tax is not None and tax.canonical_family is not None:
+                    assert tax.canonical_family == "paste", p.title
+
+    def test_generic_no_family_query_returns_results_unfiltered(self):
+        # "wasabi" has no dedicated FamilyRule (family=None) - the guard
+        # must be a complete no-op, not silently drop real results.
+        parsed = parse_structured_query("wasabi")
+        assert parsed.family is None
+        titles = _search_titles("wasabi")
+        assert titles
+        assert any("wasabi" in m.normalize(t) for t in titles), titles
+
+
 class TestFullRegressionSuiteUnaffected:
     """Spot-check that V2.12.2's own golden cases are still clean after
     the Bug C guard and new taxonomy rules."""
