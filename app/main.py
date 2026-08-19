@@ -3446,7 +3446,7 @@ def admin_rollback_learning(
 
 
 @app.post("/admin/test/inject-candidate")
-def admin_test_inject_candidate(x_admin_token: str | None = Header(default=None)) -> dict:
+def admin_test_inject_candidate(restore_default: bool = False, x_admin_token: str | None = Header(default=None)) -> dict:
     """TEMPORARY - V2.12.1 durability verification only (see
     docs/learning-operations-runbook.md). Injects one synthetic, harmless
     SHADOW_ELIGIBLE candidate (a tiny behavioral_weight nudge on a
@@ -3465,20 +3465,32 @@ def admin_test_inject_candidate(x_admin_token: str | None = Header(default=None)
     from app.learning_candidates import LearningCandidate as _LearningCandidate
     from app.learning_candidates import DECISION_SHADOW_ELIGIBLE as _DECISION_SHADOW_ELIGIBLE
     from app.learning_lifecycle import run_shadow as _run_shadow
+    from app.ranking_config import DEFAULT_PROFILE as _DEFAULT_PROFILE
 
     stamp = int(time.time())
-    base_profile = get_active_ranking_profile()
-    test_profile = base_profile.with_family_override("kitchenware", behavioral_weight=1.1)
-    test_profile = _dc_replace(
-        test_profile,
-        version=f"v2121-durability-test-{stamp}",
-        name="V2.12.1 durability test",
-        description="Synthetic test candidate for restart/redeploy persistence verification - safe to reject/rollback.",
-    )
+    if restore_default:
+        # Cleanup path: restores the exact built-in DEFAULT_PROFILE
+        # (version "v1") as a real, persisted, approvable candidate -
+        # used because rollback_to_last_known_good() has nothing to roll
+        # back to the FIRST time anything is ever activated on a fresh
+        # FOODLAND_DATA_DIR path (no prior last_known_good was ever
+        # recorded there).
+        test_profile = _DEFAULT_PROFILE
+        candidate_id = f"candidate:v2121-durability-restore-{stamp}"
+    else:
+        base_profile = get_active_ranking_profile()
+        test_profile = base_profile.with_family_override("kitchenware", behavioral_weight=1.1)
+        test_profile = _dc_replace(
+            test_profile,
+            version=f"v2121-durability-test-{stamp}",
+            name="V2.12.1 durability test",
+            description="Synthetic test candidate for restart/redeploy persistence verification - safe to reject/rollback.",
+        )
+        candidate_id = f"candidate:v2121-durability-test-{stamp}"
     test_profile.validate()
 
     test_candidate = _LearningCandidate(
-        id=f"candidate:v2121-durability-test-{stamp}",
+        id=candidate_id,
         opportunity_id="v2121-durability-test",
         opportunity_type="SYNTHETIC_TEST",
         risk_class="LOW",
