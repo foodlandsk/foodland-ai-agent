@@ -4519,7 +4519,22 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     # vinegar (family=vinegar) - falls back to the legacy bundle only if
     # structured retrieval genuinely cannot answer (identical safety net
     # to plain_rice).
-    elif special_subject in {"plain_rice", "sushi_rice"} and V2_STRUCTURED_RETRIEVAL_ENABLED and (
+    # V2.12.2 - rice_vinegar/rice_cooker are the SAME class
+    # of legacy bare-product-name detector as plain_rice/sushi_rice above
+    # (detect_special_product_subject() matches them via simple "root word
+    # in message [+ second word]" patterns, not genuine dietary/exclusion
+    # constraint language) - SPECIAL_PRODUCT_QUERIES["rice_vinegar"] includes
+    # the sub-query "ocot sushi", which (via the legacy OR-based scorer
+    # this bundle mechanism uses, see docs/query-semantics.md "Bug C")
+    # pulled unrelated sushi-kit/rice-flour products directly into a plain
+    # "ryzovy ocot" search - a real production bug found via this sprint
+    # own smoke-testing, not from the original hypothesis. Every OTHER
+    # special_subject (gluten_free_sushi/medium_spicy/hot/tofu_seaweed/
+    # dairy_replacement/tamari/sushi_condiments/...) is a genuine curated
+    # recommendation list for constraint-based questions the taxonomy
+    # engine does not natively answer ("very spicy, not sweet") and is
+    # deliberately left on the legacy path.
+    elif special_subject in {"plain_rice", "sushi_rice", "rice_vinegar", "rice_cooker"} and V2_STRUCTURED_RETRIEVAL_ENABLED and (
         structured_presentation := _build_structured_result_set(
             contextual_message,
             products,

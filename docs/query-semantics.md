@@ -90,6 +90,26 @@ aj o `sushi_rice` — `elif special_subject in {"plain_rice", "sushi_rice"} and 
 Rovnaká bezpečnostná poistka ako predtým: ak štruktúrované vyhľadávanie
 zlyhá/vráti `None`, spadne späť na legacy bundle, nikdy sa nič nerozbije.
 
+**Druhý nález počas vlastného production smoke-testingu (nie z pôvodnej
+hypotézy)**: rovnaký problém mal aj `special_subject = "rice_vinegar"`
+— `SPECIAL_PRODUCT_QUERIES["rice_vinegar"]` obsahuje pod-dopyt
+`"ocot sushi"`, ktorý cez legacy OR-based scorer (Bug C) doslovne
+vrátil japonský sushi set a lepkavú ryžovú múku priamo do výsledkov pre
+holý dopyt "ryzový ocot". Namiesto opravy len tejto jednej hodnoty som
+opravu **zovšeobecnil**: `elif special_subject in {"plain_rice", "sushi_rice", "rice_vinegar", "rice_cooker"} and ...`
+— presne tie special_subject hodnoty, ktoré taxonomy engine vie
+spoľahlivo priradiť k VLASTNEJ, správnej rodine (`rice`, `rice`+`sushi_rice`,
+`vinegar`+`rice_vinegar`, `kitchenware`+`rice_cooker`). **Zámerne
+vynechané**: `rice_seasoning` — nemá vlastné taxonomy pravidlo, takže by
+sa `parse_structured_query()` vrátil len na generickú rodinu `rice` a
+stratil by kvalifikátor "koreniaca zmes" (overené priamo pri tejto
+oprave — skutočný near-miss, nie hypotéza). Všetky ostatné
+`special_subject` hodnoty (`gluten_free_sushi`, `medium_spicy`, `hot`,
+`tofu_seaweed`, `dairy_replacement`, `tamari`, `sushi_condiments`, ...)
+sú skutočné kurátorované zoznamy pre otázky založené na obmedzeniach
+("veľmi pikantné, nie sladké"), ktoré taxonomy engine prirodzene
+nerozumie — zámerne ponechané na legacy ceste.
+
 ## Čo NEBOLO opravené v tomto sprinte (vedomé rozhodnutie)
 
 `app/search.py`'s legacy OR-based scorer (žiadna minimálna zhoda

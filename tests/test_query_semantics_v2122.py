@@ -22,11 +22,22 @@ queries from ever reaching that engine, not a missing architecture:
   Bug B - app.taxonomy had no coconut_oil/coconut_cream/coconut_juice/
           coconut_vinegar FamilyRule at all, so "kokosovy olej" could
           never resolve a family and always hit LEGACY_FALLBACK.
-  Bug D - SPECIAL_PRODUCT_QUERIES["sushi_rice"] is a legacy (pre-V2.4)
-          hardcoded BUNDLE search ("sushi ryza" + "nori" + "ryzovy ocot"
-          + "wasabi" merged) that intercepted "sushi ryza" before
-          structured retrieval ever ran, mixing cross-sell items directly
-          into primary search results.
+  Bug D - SPECIAL_PRODUCT_QUERIES["sushi_rice"]/["rice_vinegar"] are
+          legacy (pre-V2.4) hardcoded BUNDLE searches ("sushi ryza" +
+          "nori" + "ryzovy ocot" + "wasabi"; "ryzovy ocot" + "rice
+          vinegar" + "ocot sushi") that intercepted these queries before
+          structured retrieval ever ran, mixing cross-sell/wrong-family
+          items directly into primary search results. rice_vinegar was
+          found via this sprint's OWN production smoke-testing (not part
+          of the original hypothesis) - proof that "fix the semantic
+          class of error, not individual queries" mattered in practice:
+          the fix generalizes to every bare-product-name special_subject
+          that has its OWN correct taxonomy family (plain_rice,
+          sushi_rice, rice_vinegar, rice_cooker), while deliberately
+          leaving constraint-based curated lists (gluten_free_sushi,
+          medium_spicy, dairy_replacement, tamari, rice_seasoning - which
+          has NO dedicated taxonomy family and would incorrectly widen to
+          plain "rice" if migrated) on their existing legacy path.
 """
 from __future__ import annotations
 
@@ -160,6 +171,40 @@ class TestBugD_SushiRiceNoLongerBundlesCrossSell:
         titles = _normalized_titles(r2)
         forbidden = ("nori", "wasabi", "ocot", "morske riasy")
         assert not any(f in t for t in titles for f in forbidden), titles
+
+
+class TestBugD_RiceVinegarAndRiceCookerAlsoDeBundled:
+    """Found via this sprint's own production smoke-testing (not the
+    original hypothesis): SPECIAL_PRODUCT_QUERIES["rice_vinegar"]
+    includes the sub-query "ocot sushi", which pulled sushi-kit and
+    rice-flour products directly into a plain "ryzovy ocot" search - the
+    same bundle-search class of bug as sushi_rice (Bug D above)."""
+
+    def test_rice_vinegar_special_subject_excludes_unrelated_products(self):
+        r = _chat("ryzovy ocot", "v2122-d2-vinegar")
+        assert r["intent"] == "product_search"
+        titles = _normalized_titles(r)
+        assert titles
+        assert all("ocot" in t for t in titles), titles
+        forbidden = ("sushi set", "muka", "papier", "vlocky")
+        assert not any(f in t for t in titles for f in forbidden), titles
+
+    def test_rice_cooker_special_subject_stays_rice_cooker_only(self):
+        r = _chat("ryzovar", "v2122-d2-cooker")
+        assert r["intent"] == "product_search"
+        titles = _normalized_titles(r)
+        assert titles
+        assert all("ryzovar" in t or "hrniec" in t for t in titles), titles
+
+    def test_rice_seasoning_deliberately_left_on_legacy_path(self):
+        """rice_seasoning has NO dedicated taxonomy family - migrating it
+        would make parse_structured_query() fall back to plain "rice"
+        family and lose the "seasoning mix" qualifier entirely (verified
+        during this sprint's own fix - a real near-miss, not a
+        hypothetical). Must NOT be in the generalized migration set."""
+        from app.query_constraints import parse_structured_query
+        parsed = parse_structured_query("koreniaca zmes na ryzu")
+        assert parsed.family in (None, "rice")  # no dedicated "rice_seasoning" family exists
 
 
 class TestAlreadyCleanQueriesStayClean:
