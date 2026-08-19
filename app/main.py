@@ -3445,6 +3445,46 @@ def admin_rollback_learning(
     return {"status": "rolled_back", "profile_version": version}
 
 
+@app.post("/admin/test/reset-last-known-good")
+def admin_test_reset_last_known_good(x_admin_token: str | None = Header(default=None)) -> dict:
+    """TEMPORARY - V2.12.1 durability-test cleanup only (see
+    docs/learning-operations-runbook.md). The live restart/redeploy
+    verification left last_known_good.json pointing at a synthetic test
+    version (approve_candidate_by_id()'s idempotency guard correctly
+    refuses to re-record last_known_good when re-approving a candidate
+    that is ALREADY active, which is the right behavior in general but
+    blocks using that same endpoint to clean this up). This calls
+    approve_and_activate() DIRECTLY (bypassing the ID-lookup/idempotency
+    wrapper) with the real DEFAULT_PROFILE so last_known_good correctly
+    becomes {"version": "v1"} - the honest previous-active-version at
+    the moment this runs. Gated behind PROMOTION scope AND the same
+    ALLOW_TEST_CANDIDATE_INJECTION env flag as the (now-removed)
+    injection endpoint. To be deleted immediately after use."""
+    _require_admin_scope(x_admin_token, _SCOPE_PROMOTION)
+    if os.getenv("ALLOW_TEST_CANDIDATE_INJECTION", "false").strip().lower() not in {"1", "true", "yes"}:
+        raise HTTPException(status_code=404, detail="Test candidate injection is not enabled.")
+
+    from app.learning_candidates import LearningCandidate as _LearningCandidate
+    from app.learning_candidates import DECISION_SHADOW_ELIGIBLE as _DECISION_SHADOW_ELIGIBLE
+    from app.learning_lifecycle import approve_and_activate as _approve_and_activate
+    from app.ranking_config import DEFAULT_PROFILE as _DEFAULT_PROFILE
+
+    candidate = _LearningCandidate(
+        id="candidate:v2121-durability-reset-lkg",
+        opportunity_id="v2121-durability-test",
+        opportunity_type="SYNTHETIC_TEST",
+        risk_class="LOW",
+        decision=_DECISION_SHADOW_ELIGIBLE,
+        profile=_DEFAULT_PROFILE,
+        rejection_reasons=(),
+        baseline_objective=None,
+        candidate_objective=None,
+        explanation={"note": "V2.12.1 durability test cleanup - resets last_known_good to the real v1"},
+    )
+    profile = _approve_and_activate(candidate, approved_by="v2.12.1-cleanup", learning_cycle_id="v2121-durability-test")
+    return {"status": "activated", "profile_version": profile.version}
+
+
 def session_memory_key(session_id: str, client_key: str) -> str:
     raw_session = re.sub(r"[^a-zA-Z0-9_-]", "", str(session_id or ""))[:64]
     if raw_session:
