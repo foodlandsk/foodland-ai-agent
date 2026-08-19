@@ -3445,6 +3445,58 @@ def admin_rollback_learning(
     return {"status": "rolled_back", "profile_version": version}
 
 
+@app.post("/admin/test/inject-candidate")
+def admin_test_inject_candidate(x_admin_token: str | None = Header(default=None)) -> dict:
+    """TEMPORARY - V2.12.1 durability verification only (see
+    docs/learning-operations-runbook.md). Injects one synthetic, harmless
+    SHADOW_ELIGIBLE candidate (a tiny behavioral_weight nudge on a
+    low-traffic family, not derived from real evidence) via the REAL
+    run_shadow() persistence path, so the real approve/rollback +
+    restart/redeploy durability test can be exercised without waiting
+    for real production data to naturally produce a qualifying
+    candidate. Gated behind BOTH PROMOTION scope AND an explicit env
+    flag defaulting off - to be deleted entirely once verification is
+    complete, this is not meant to be permanent."""
+    _require_admin_scope(x_admin_token, _SCOPE_PROMOTION)
+    if os.getenv("ALLOW_TEST_CANDIDATE_INJECTION", "false").strip().lower() not in {"1", "true", "yes"}:
+        raise HTTPException(status_code=404, detail="Test candidate injection is not enabled.")
+
+    from dataclasses import replace as _dc_replace
+    from app.learning_candidates import LearningCandidate as _LearningCandidate
+    from app.learning_candidates import DECISION_SHADOW_ELIGIBLE as _DECISION_SHADOW_ELIGIBLE
+    from app.learning_lifecycle import run_shadow as _run_shadow
+
+    stamp = int(time.time())
+    base_profile = get_active_ranking_profile()
+    test_profile = base_profile.with_family_override("kitchenware", behavioral_weight=1.1)
+    test_profile = _dc_replace(
+        test_profile,
+        version=f"v2121-durability-test-{stamp}",
+        name="V2.12.1 durability test",
+        description="Synthetic test candidate for restart/redeploy persistence verification - safe to reject/rollback.",
+    )
+    test_profile.validate()
+
+    test_candidate = _LearningCandidate(
+        id=f"candidate:v2121-durability-test-{stamp}",
+        opportunity_id="v2121-durability-test",
+        opportunity_type="SYNTHETIC_TEST",
+        risk_class="LOW",
+        decision=_DECISION_SHADOW_ELIGIBLE,
+        profile=test_profile,
+        rejection_reasons=(),
+        baseline_objective=None,
+        candidate_objective=None,
+        explanation={"note": "synthetic test candidate, not derived from real evidence - V2.12.1 durability verification"},
+    )
+    result = _run_shadow(test_candidate, learning_cycle_id="v2121-durability-test")
+    return {
+        "candidate_id": test_candidate.id,
+        "profile_version": test_profile.version,
+        "queries_changed": result.report.queries_changed,
+    }
+
+
 def session_memory_key(session_id: str, client_key: str) -> str:
     raw_session = re.sub(r"[^a-zA-Z0-9_-]", "", str(session_id or ""))[:64]
     if raw_session:
