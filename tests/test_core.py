@@ -4209,7 +4209,7 @@ class TestProductFacets:
         monkeypatch.setattr(main, "products", products)
         sample_brand = next((p.brand for p in products if p.brand), None)
 
-        request = make_filter_request(brand=[sample_brand], limit=100)
+        request = make_filter_request(brand=[sample_brand], limit=50)
         result = main.product_filter(request)
 
         assert result["products"]

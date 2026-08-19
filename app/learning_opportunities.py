@@ -234,13 +234,29 @@ def detect_taxonomy_gap_candidates(events: list[LearningEvent]) -> list[Learning
     """Section 41 (merged with Section 33's NEW_QUERY_CLUSTER, see module
     docstring) - recurring search_submit queries the V2.4 taxonomy cannot
     classify into any family at all. Always REVIEW_REQUIRED/HIGH RISK
-    (Section 38/39/41 - taxonomy changes are never auto-applied)."""
+    (Section 38/39/41 - taxonomy changes are never auto-applied).
+
+    Real false-positive found via a production audit: "family is None"
+    alone is NOT evidence of a customer-facing gap - a query outside the
+    STRUCTURED V2.4 taxonomy can still be answered perfectly well by the
+    legacy lexical search fallback ("cajove sety" -> 6 real tea-set
+    products) or FAQ routing. Only flag a query here when it ALSO has a
+    genuine no_result event for the same normalized text - i.e. corroborated
+    evidence the customer actually got nothing, not just "no structured
+    family exists for this text"."""
+    no_result_query_texts = {
+        event.query.strip().lower() for event in events
+        if event.event_type == "no_result" and event.query
+    }
     counts: Counter[str] = Counter()
     for event in events:
         if event.event_type == "search_submit" and event.query:
+            normalized_query = event.query.strip().lower()
+            if normalized_query not in no_result_query_texts:
+                continue
             family, _ = query_concept(event.query)
             if family is None:
-                counts[event.query.strip().lower()] += 1
+                counts[normalized_query] += 1
 
     opportunities = []
     for query_text, count in counts.items():

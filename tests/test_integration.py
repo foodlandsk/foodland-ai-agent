@@ -155,11 +155,17 @@ SAMPLE_KNOWLEDGE: dict = {}
 
 
 def _make_chat_request(message: str, limit: int = 5):
-    """Vytvori ChatRequest-like objekt kompatibilny s main.chat()."""
-    req = object.__new__(main.ChatRequest)
-    req.message = message
-    req.limit = limit
-    return req
+    """Vytvori ChatRequest objekt kompatibilny s main.chat().
+
+    Predtym pouzivalo object.__new__(main.ChatRequest) + rucne priradenie
+    atributov, co obchadzalo Pydantic-ov skutocny konstruktor a nikdy
+    neinicializovalo __pydantic_fields_set__ na instancii - krehke voci
+    poradiu zberu testov (zavisi od nedokumentovaneho internal stavu
+    pydantic-u zdielaneho na urovni triedy). Normalna konstrukcia cez
+    kwargs je rovnako rychla a nema tento problem - session_id/client_id
+    maju v ChatRequest defaultne hodnoty, takze tu nie je potrebne ich
+    explicitne uvadzat."""
+    return main.ChatRequest(message=message, limit=limit)
 
 
 def _mock_http_request():
@@ -370,13 +376,38 @@ class TestOpenAIRetry:
     """
 
     def _get_openai_errors(self):
-        """Vrati error briady zo stubnuteho openai modulu."""
+        """Vrati error triedy z aktualne nacitaneho openai modulu (moze byt
+        realny balik alebo stub - zavisi od poradia zberu testov)."""
         openai_mod = sys.modules["openai"]
         return (
             openai_mod.RateLimitError,
             openai_mod.APITimeoutError,
             openai_mod.APIConnectionError,
         )
+
+    def _make_openai_error(self, error_cls, message: str = "test error"):
+        """Skonstruuje instanciu realnej openai SDK vynimky pre retry-logic
+        testy. Realne openai vynimky maju prisnejsi konstruktor nez holy
+        Exception (RateLimitError/APIStatusError potrebuju message+response+
+        body, APIConnectionError potrebuje message+request, APITimeoutError
+        potrebuje len request) - zostavi presne ten tvar, aky realna trieda
+        ocakava, namiesto predpokladu, ze je aktivny zjednoduseny stub."""
+        import httpx
+
+        fake_request = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+        name = getattr(error_cls, "__name__", "")
+        if name == "APITimeoutError":
+            return error_cls(fake_request)
+        if name == "APIConnectionError":
+            try:
+                return error_cls(message=message, request=fake_request)
+            except TypeError:
+                return error_cls(message)
+        fake_response = httpx.Response(status_code=429, request=fake_request)
+        try:
+            return error_cls(message, response=fake_response, body=None)
+        except TypeError:
+            return error_cls(message)
 
     def _make_fake_client(self, side_effects: list):
         """
@@ -412,14 +443,18 @@ class TestOpenAIRetry:
         RateLimitError, _, _ = self._get_openai_errors()
 
         # Prvy a druhy pokus vracia RateLimitError, treti uspeje
-        side_effects = [RateLimitError(), RateLimitError(), "success"]
+        side_effects = [
+            self._make_openai_error(RateLimitError, "rate limited"),
+            self._make_openai_error(RateLimitError, "rate limited"),
+            "success",
+        ]
         call_count = [0]
 
         def fake_create(**kw):
             idx = call_count[0]
             call_count[0] += 1
             if idx < 2:
-                raise RateLimitError("rate limited")
+                raise self._make_openai_error(RateLimitError, "rate limited")
             return types.SimpleNamespace(
                 choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="OK po retry"))]
             )
@@ -490,7 +525,7 @@ class TestOpenAIRetry:
                  mock.patch.object(
                      main,
                      "_call_openai_with_retry",
-                     side_effect=APIConnectionError("connection refused")
+                     side_effect=self._make_openai_error(APIConnectionError, "connection refused")
                  ):
                 original_products = getattr(main, "products", [])
                 main.products = SAMPLE_PRODUCTS

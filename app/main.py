@@ -3856,8 +3856,7 @@ def detect_query_language(message: str) -> str:
     return "en" if len(hits) >= 2 else "sk"
 
 
-@app.post("/chat")
-def chat(chat_request: ChatRequest, request: Request) -> dict:
+def _chat_impl(chat_request: ChatRequest, request: Request) -> dict:
     client_key = get_client_key(request)
     # V2.12 fix: app.evaluation.adapter.make_chat_fn() calls chat() directly
     # in-process with a plain duck-typed _FakeRequest stub (never reachable via
@@ -4788,6 +4787,44 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
                 else "Odpoveď sa nepodarilo vygenerovať, zobrazujem nájdené produkty."
             ),
         }
+
+
+def _compute_answered(response: dict) -> bool:
+    """V2.12 audit fix: app.widget.js's no_result telemetry (and
+    therefore app.learning_opportunities' HIGH_ZERO_RESULT/TAXONOMY_GAP_
+    CANDIDATE detectors, which read that same event) only ever checked
+    products/recipes/articles - a real FAQ answer or allergen-safety
+    disclaimer lives in `answer` text alone and was being misclassified
+    as a customer-facing failure (found via a real production audit -
+    'doprava' got a correct FAQ answer about shipping options but still
+    fired no_result on every occurrence). This is the single choke point
+    every /chat response passes through, so the widget checks ONE
+    explicit field instead of re-deriving 'did we help' itself."""
+    if response.get("products"):
+        return True
+    if response.get("recipes"):
+        return True
+    if response.get("articles"):
+        return True
+    if response.get("recipe_shopping_plan"):
+        return True
+    knowledge = response.get("knowledge") or {}
+    if any(isinstance(v, (int, float)) and v > 0 for v in knowledge.values()):
+        return True
+    # These intents always carry a real, substantive `answer` (never the
+    # generic fallback text) at their one-and-only return site in
+    # _chat_impl() - each is gated so it can only return with this
+    # intent when it actually has something to say.
+    if response.get("intent") in {"allergen_safety", "faq", "missing_composition", "reset"}:
+        return True
+    return False
+
+
+@app.post("/chat")
+def chat(chat_request: ChatRequest, request: Request) -> dict:
+    response = _chat_impl(chat_request, request)
+    response["answered"] = _compute_answered(response)
+    return response
 
 
 def should_use_fast_chat_answer(

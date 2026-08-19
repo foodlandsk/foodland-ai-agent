@@ -1990,7 +1990,14 @@
       const hasProducts = Array.isArray(data.products) && data.products.length > 0;
       const hasRecipes = Array.isArray(data.recipes) && data.recipes.length > 0;
       const hasArticles = Array.isArray(data.articles) && data.articles.length > 0;
-      if (!hasProducts && !hasRecipes && !hasArticles) {
+      // V2.12 audit fix: a real FAQ answer or allergen-safety disclaimer
+      // carries its substance in `answer` text alone (no products/recipes/
+      // articles) - the backend now says so explicitly via `answered`, so
+      // this no longer misfires no_result telemetry for a query Mei
+      // actually helped with (found via production audit: "doprava" got a
+      // correct shipping FAQ answer but fired no_result on every occurrence).
+      const hasAnswer = data.answered === true;
+      if (!hasProducts && !hasRecipes && !hasArticles && !hasAnswer) {
         fireEvent({ event_type: "no_result", query: text });
       }
       loading.innerHTML = renderText(

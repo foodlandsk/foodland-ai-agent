@@ -126,10 +126,10 @@ class TestHighZeroResult:
 
 class TestTaxonomyGapCandidate:
     def test_recurring_unparseable_query_produces_review_required_opportunity(self):
-        raw = [
-            {"ts": i, "session_id": f"tg{i}", "event_type": "search_submit", "query": "asdkjaslkdj nonsense query"}
-            for i in range(1, MIN_SUPPORT_TAXONOMY_GAP + 3)
-        ]
+        raw = []
+        for i in range(1, MIN_SUPPORT_TAXONOMY_GAP + 3):
+            raw.append({"ts": i, "session_id": f"tg{i}", "event_type": "search_submit", "query": "asdkjaslkdj nonsense query"})
+            raw.append({"ts": i, "session_id": f"tg{i}", "event_type": "no_result", "query": "asdkjaslkdj nonsense query"})
         opportunities = detect_taxonomy_gap_candidates(_normalize(raw))
         assert len(opportunities) == 1
         assert opportunities[0].type == TYPE_TAXONOMY_GAP_CANDIDATE
@@ -137,6 +137,17 @@ class TestTaxonomyGapCandidate:
 
     def test_recognized_family_query_never_flagged_as_gap(self):
         raw = [{"ts": i, "session_id": f"r{i}", "event_type": "search_submit", "query": "jazminova ryza"} for i in range(1, 20)]
+        assert detect_taxonomy_gap_candidates(_normalize(raw)) == []
+
+    def test_unparseable_query_without_corroborating_no_result_is_not_flagged(self):
+        """Real false-positive found via a production audit: 'family is
+        None' alone is not evidence of a customer-facing gap - the legacy
+        lexical/FAQ fallback can still answer it perfectly well ("cajove
+        sety" -> 6 real tea-set products, never a no_result event)."""
+        raw = [
+            {"ts": i, "session_id": f"tg{i}", "event_type": "search_submit", "query": "cajove sety"}
+            for i in range(1, MIN_SUPPORT_TAXONOMY_GAP + 3)
+        ]
         assert detect_taxonomy_gap_candidates(_normalize(raw)) == []
 
 
