@@ -25,6 +25,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.evaluation.adapter import make_chat_fn
+from app.execution_context import shadow_context
 from app.ranking_config import RankingProfile, use_ranking_profile
 
 DEFAULT_SHADOW_QUERIES = (
@@ -88,7 +89,7 @@ def shadow_compare(
     *,
     limit: int = 8,
 ) -> ShadowComparisonReport:
-    chat_fn = make_chat_fn()
+    chat_fn = make_chat_fn(execution_context=shadow_context())
     results = []
     for query in queries:
         with use_ranking_profile(baseline):

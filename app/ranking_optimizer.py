@@ -24,6 +24,7 @@ import random
 from dataclasses import dataclass, replace
 
 from app.evaluation.adapter import get_taxonomy_index, make_chat_fn, make_session_chat_fn
+from app.execution_context import learning_context
 from app.evaluation.baseline import GATE_FAIL, aggregate_results, evaluate_quality_gates, load_baseline
 from app.evaluation.conversation import run_conversation_suite
 from app.evaluation.loader import BASELINES_DIR, load_all_conversation_cases, load_all_golden_cases
@@ -133,9 +134,9 @@ def evaluate_profile(profile: RankingProfile, *, fast: bool = False) -> Candidat
     conversation_cases = [c for c in all_conversation_cases if c.critical] if fast else all_conversation_cases
 
     with use_ranking_profile(profile):
-        chat_fn = make_chat_fn()
+        chat_fn = make_chat_fn(execution_context=learning_context())
         golden_results = run_golden_suite(golden_cases, lambda q, limit: chat_fn(q, limit), taxonomy_index)
-        session_chat_fn = make_session_chat_fn()
+        session_chat_fn = make_session_chat_fn(execution_context=learning_context())
         conversation_results = run_conversation_suite(conversation_cases, session_chat_fn)
 
     tax_stats = taxonomy_coverage(taxonomy_index)

@@ -36,6 +36,7 @@ def isolated_lifecycle(tmp_path, monkeypatch):
     monkeypatch.setattr(ll, "HISTORY_DIR", tmp_path / "learning_history")
     monkeypatch.setattr(ll, "LEDGER_PATH", tmp_path / "learning_history" / "ledger.jsonl")
     monkeypatch.setattr(ll, "LAST_KNOWN_GOOD_PATH", tmp_path / "learning_history" / "last_known_good.json")
+    monkeypatch.setattr(ll, "CANDIDATE_STORE_PATH", tmp_path / "learning_history" / "candidates.jsonl")
     yield
 
 
@@ -165,3 +166,33 @@ class TestAuditTrail:
 class TestAutoPromotionDefaultsOff:
     def test_auto_promotion_disabled_by_default(self):
         assert ll.AUTO_PROMOTION_ENABLED is False
+
+
+class TestLedgerFailureDuringPromotion:
+    """V2.12.1 mandatory scenario: what happens if the audit-ledger write
+    fails AFTER the active pointer has already been switched? Documents
+    CURRENT behavior (activation still succeeds - the ledger write is the
+    last step in approve_and_activate(), not a precondition for it) rather
+    than changing the architecture, per this sprint's explicit scope
+    limits. A production alert on log_question/record_transition
+    write-errors is the real mitigation - see docs/learning-operations-
+    runbook.md section 6."""
+
+    def test_activation_succeeds_even_if_the_ledger_write_subsequently_fails(self, isolated_lifecycle, monkeypatch):
+        candidate = _shadow_eligible_candidate()
+
+        def failing_append_ledger(entry):
+            raise OSError("simulated disk failure writing ledger.jsonl")
+
+        monkeypatch.setattr(ll, "_append_ledger", failing_append_ledger)
+
+        with pytest.raises(OSError):
+            ll.approve_and_activate(candidate, approved_by="foodlandsk", learning_cycle_id="cycle-test")
+
+        # The active pointer already moved before the ledger write ran -
+        # a failed audit write does not roll back the activation itself.
+        assert get_active_ranking_profile_version() == candidate.profile.version
+        # And the ledger genuinely has no ACTIVE entry for it - this gap
+        # is exactly what makes it worth documenting, not silently ok.
+        history = ll.get_history(candidate_id=candidate.id)
+        assert not any(e["state"] == ll.STATE_ACTIVE for e in history)

@@ -21,11 +21,24 @@ import os
 os.environ.setdefault("RATE_LIMIT_PER_MINUTE", "100000")
 
 
-def make_chat_fn():
+def make_chat_fn(*, execution_context=None):
     """Returns a `chat_fn(query, limit) -> dict` closure over the real,
-    already-imported app.main.chat() - same code path a live customer
-    request takes, deterministic (LOCAL_TESTING avoids network egress:
-    same fixture data/products.json every run, Section 45).
+    already-imported app.main._chat_internal() - same code path a live
+    customer request takes, deterministic (LOCAL_TESTING avoids network
+    egress: same fixture data/products.json every run, Section 45).
+
+    V2.12.1 Part D: calls app.main._chat_internal() directly with an
+    explicit ExecutionContext (default EVALUATION) rather than
+    app.main.chat() - see app/execution_context.py's module docstring.
+    Before this, "internal caller, not real traffic" was INFERRED from
+    passing a duck-typed `_FakeRequest` instead of a real Starlette
+    Request (commit 8936188's isinstance(request, Request) hotfix); now
+    it is a declared parameter. `_FakeRequest` itself is unchanged and
+    still passed through - app.main.get_client_key() still needs
+    something with a `.headers`/`.client.host` shape to read, and it is
+    not reachable from real HTTP dispatch either way (see app.main's
+    own comment on that hotfix) - only WHICH behavior it triggers moved
+    from implicit to explicit.
 
     Each call gets its OWN isolated session_id, one per (query, limit)
     pair. A real, load-bearing bug was found building this adapter: an
@@ -38,19 +51,21 @@ def make_chat_fn():
     itself must stay deterministic, so the id is derived from the query
     text and an incrementing counter, never real randomness)."""
     import app.main as m
+    from app.execution_context import evaluation_context
 
     class _FakeRequest:
         class client:
             host = "127.0.0.1"
         headers = {}
 
+    ctx = execution_context if execution_context is not None else evaluation_context()
     counter = {"n": 0}
 
     def chat_fn(query: str, limit: int) -> dict:
         counter["n"] += 1
         session_id = f"eval-isolated-{counter['n']}"
         request = m.ChatRequest(message=query, limit=limit, session_id=session_id)
-        return m.chat(request, _FakeRequest())
+        return m._chat_internal(request, _FakeRequest(), execution_context=ctx)
 
     return chat_fn
 
@@ -60,19 +75,24 @@ def get_taxonomy_index() -> dict:
     return m.product_taxonomy_index
 
 
-def make_session_chat_fn():
+def make_session_chat_fn(*, execution_context=None):
     """Session-aware variant for conversation-sequence evaluation
-    (Section 29) - one FakeRequest, caller supplies session_id per turn."""
+    (Section 29) - one FakeRequest, caller supplies session_id per turn.
+    See make_chat_fn() above for why this calls _chat_internal() with an
+    explicit ExecutionContext (default EVALUATION) instead of chat()."""
     import app.main as m
+    from app.execution_context import evaluation_context
 
     class _FakeRequest:
         class client:
             host = "127.0.0.1"
         headers = {}
 
+    ctx = execution_context if execution_context is not None else evaluation_context()
+
     def chat_fn(query: str, limit: int, session_id: str) -> dict:
         request = m.ChatRequest(message=query, limit=limit, session_id=session_id)
-        return m.chat(request, _FakeRequest())
+        return m._chat_internal(request, _FakeRequest(), execution_context=ctx)
 
     return chat_fn
 

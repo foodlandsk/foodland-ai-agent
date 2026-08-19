@@ -39,13 +39,15 @@ from __future__ import annotations
 import json
 import os
 import re
-import tempfile
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-CONFIG_DIR = Path(os.getenv("RANKING_PROFILE_DIR", "config/ranking_profiles"))
+from app.durable_storage import atomic_write_json
+from app.storage_paths import resolve_dir
+
+CONFIG_DIR = resolve_dir("RANKING_PROFILE_DIR", "ranking_profiles", legacy_default="config/ranking_profiles")
 ACTIVE_POINTER_PATH = CONFIG_DIR / "active.json"
 
 _VERSION_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$")
@@ -183,8 +185,7 @@ def save_ranking_profile(profile: RankingProfile, *, overwrite: bool = False) ->
     path = _profile_path(profile.version)
     if path.exists() and not overwrite:
         raise RankingProfileError(f"ranking profile version {profile.version!r} already exists at {path} (immutable - use a new version)")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(profile.to_dict(), ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    atomic_write_json(path, profile.to_dict())
     return path
 
 
@@ -224,16 +225,7 @@ def set_active_ranking_profile_version(version: str) -> None:
     active.json."""
     if version not in list_ranking_profile_versions():
         raise RankingProfileError(f"cannot activate unknown ranking profile version {version!r}")
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps({"active_version": version, "activated_at": time.time()}, indent=2, sort_keys=True)
-    fd, tmp_path = tempfile.mkstemp(dir=str(CONFIG_DIR), prefix=".active-", suffix=".json")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(payload)
-        os.replace(tmp_path, ACTIVE_POINTER_PATH)
-    finally:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+    atomic_write_json(ACTIVE_POINTER_PATH, {"active_version": version, "activated_at": time.time()})
     clear_active_ranking_profile_cache()
 
 
@@ -243,6 +235,7 @@ RANKING_PROFILE_CACHE_SECONDS = int(os.getenv("RANKING_PROFILE_CACHE_SECONDS", "
 _active_profile_cache: RankingProfile | None = None
 _active_profile_cache_at: float = 0.0
 _profile_override: RankingProfile | None = None
+_active_profile_degraded: bool = False
 
 
 def clear_active_ranking_profile_cache() -> None:
@@ -251,29 +244,73 @@ def clear_active_ranking_profile_cache() -> None:
     _active_profile_cache_at = 0.0
 
 
+def is_active_profile_degraded() -> bool:
+    """True when the most recent `get_active_ranking_profile()` resolution
+    could not read the persisted active.json pointer or its target version
+    file and had to fall back to last_known_good or DEFAULT_PROFILE
+    (Section 111 - a degraded ranking config must be observable, not a
+    silent substitution). Reflects the last real resolution, not the
+    cached read - checking this after every `get_active_ranking_profile()`
+    call is safe even while the 60s cache is warm."""
+    return _active_profile_degraded
+
+
+def _resolve_active_profile() -> tuple[RankingProfile, bool]:
+    """Fallback chain (Section 106/111): the persisted active.json pointer
+    and its target version file > last_known_good.json (V2.12's rollback
+    target - reused here as a second line of defense, not a new concept)
+    > the built-in DEFAULT_PROFILE, which is what every caller got before
+    V2.11 existed. Returns (profile, degraded) - degraded is True whenever
+    the primary (active.json) path could not be used."""
+    # Whether the pointer FILE exists is distinct from whether it yields a
+    # usable version: a pointer that has simply never been written (no
+    # promotion has ever happened) is normal, not degraded - only a
+    # pointer that exists but fails to resolve (corrupt JSON, or points
+    # at a version file that is missing/invalid) counts as degraded.
+    pointer_exists = ACTIVE_POINTER_PATH.exists()
+
+    version = get_active_ranking_profile_version()
+    if version is not None:
+        try:
+            return load_ranking_profile(version), False
+        except RankingProfileError:
+            pass  # fall through to last_known_good
+
+    # Lazy import: app.learning_lifecycle imports FROM this module, so a
+    # top-level import here would be circular.
+    try:
+        from app.learning_lifecycle import get_last_known_good
+        last_known_good = get_last_known_good()
+    except Exception:
+        last_known_good = None
+
+    if last_known_good is not None:
+        try:
+            return load_ranking_profile(str(last_known_good["version"])), True
+        except (RankingProfileError, KeyError):
+            pass
+
+    return DEFAULT_PROFILE, pointer_exists
+
+
 def get_active_ranking_profile() -> RankingProfile:
     """Resolution order (Section 106 - must never surprise a caller that
     passes nothing): an explicit `use_ranking_profile()` override (used by
     the optimizer/shadow tooling to evaluate a candidate in-process without
-    touching persisted state) > the persisted active.json pointer > the
-    built-in DEFAULT_PROFILE, which is what every caller got before V2.11
-    existed."""
+    touching persisted state) > the persisted active.json pointer > V2.12's
+    last_known_good.json > the built-in DEFAULT_PROFILE, which is what
+    every caller got before V2.11 existed. See `is_active_profile_degraded()`
+    for whether the primary path was actually used."""
     if _profile_override is not None:
         return _profile_override
 
-    global _active_profile_cache, _active_profile_cache_at
+    global _active_profile_cache, _active_profile_cache_at, _active_profile_degraded
     now = time.time()
     if _active_profile_cache is not None and now - _active_profile_cache_at <= RANKING_PROFILE_CACHE_SECONDS:
         return _active_profile_cache
 
-    version = get_active_ranking_profile_version()
-    if version is None:
-        profile = DEFAULT_PROFILE
-    else:
-        try:
-            profile = load_ranking_profile(version)
-        except RankingProfileError:
-            profile = DEFAULT_PROFILE
+    profile, degraded = _resolve_active_profile()
+    _active_profile_degraded = degraded
     _active_profile_cache = profile
     _active_profile_cache_at = now
     return profile

@@ -24,11 +24,10 @@ from __future__ import annotations
 
 import json
 import os
-import tempfile
 import time
 from dataclasses import dataclass
-from pathlib import Path
 
+from app.durable_storage import atomic_write_json
 from app.learning_candidates import DECISION_SHADOW_ELIGIBLE, LearningCandidate
 from app.ranking_config import (
     RankingProfile,
@@ -39,10 +38,18 @@ from app.ranking_config import (
     set_active_ranking_profile_version,
 )
 from app.ranking_shadow import DEFAULT_SHADOW_QUERIES, ShadowComparisonReport, shadow_compare
+from app.storage_paths import resolve_dir
 
-HISTORY_DIR = Path(os.getenv("LEARNING_HISTORY_DIR", "config/learning_history"))
+HISTORY_DIR = resolve_dir("LEARNING_HISTORY_DIR", "learning_history", legacy_default="config/learning_history")
 LEDGER_PATH = HISTORY_DIR / "ledger.jsonl"
 LAST_KNOWN_GOOD_PATH = HISTORY_DIR / "last_known_good.json"
+# Section [Part C] - candidate ids (e.g. "candidate:HIGH_ZERO_RESULT:mlieko
+# bez laktozy") embed free-text query scopes and are not safe filesystem
+# names on every OS this runs on (Windows dev boxes included) - stored as
+# an append-only JSONL log instead, same pattern as LEDGER_PATH, so a
+# real HTTP approval endpoint can look a candidate up by id without ever
+# needing a filesystem-safe encoding of that id.
+CANDIDATE_STORE_PATH = HISTORY_DIR / "candidates.jsonl"
 
 # Section 55/56 - human approval is required by default. This flag is a
 # documented future extension point (Section 56), not something this
@@ -109,18 +116,6 @@ def get_history(candidate_id: str | None = None, limit: int = 200) -> list[dict]
     return entries[-limit:]
 
 
-def _atomic_write_json(path: Path, payload: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}-", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
-        os.replace(tmp_path, path)
-    finally:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-
-
 def get_last_known_good() -> dict | None:
     if not LAST_KNOWN_GOOD_PATH.exists():
         return None
@@ -130,11 +125,60 @@ def get_last_known_good() -> dict | None:
         return None
 
 
+def _persist_candidate_snapshot(candidate: LearningCandidate, *, learning_cycle_id: str, config_version_at_generation: str | None) -> None:
+    """Section [Part C] - durable, ID-keyed candidate persistence. Without
+    this, a SHADOW_ELIGIBLE candidate's full RankingProfile (the actual
+    proposed weights, not just a version string) only ever existed in the
+    in-memory return value of the single run_learning_cycle() call that
+    generated it - unrecoverable once that process call returned, and
+    certainly not survivable across a Railway worker restart. Appending
+    here at the moment a candidate reaches READY_FOR_APPROVAL means a
+    real approval endpoint can act on it later, in a different process,
+    using only the candidate id."""
+    HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+    entry = {
+        "id": candidate.id,
+        "learning_cycle_id": learning_cycle_id,
+        "persisted_at": time.time(),
+        "config_version_at_generation": config_version_at_generation,
+        "opportunity_id": candidate.opportunity_id,
+        "opportunity_type": candidate.opportunity_type,
+        "risk_class": candidate.risk_class,
+        "decision": candidate.decision,
+        "profile": candidate.profile.to_dict() if candidate.profile else None,
+        "rejection_reasons": list(candidate.rejection_reasons),
+        "baseline_objective": candidate.baseline_objective,
+        "candidate_objective": candidate.candidate_objective,
+        "explanation": candidate.explanation,
+    }
+    with CANDIDATE_STORE_PATH.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def get_persisted_candidate(candidate_id: str) -> dict | None:
+    """The MOST RECENT persisted snapshot for this id - if the same
+    opportunity produced a candidate with this id in more than one cycle
+    (evidence changed between runs), the latest snapshot is always the
+    one an approval should act on."""
+    if not CANDIDATE_STORE_PATH.exists():
+        return None
+    found = None
+    with CANDIDATE_STORE_PATH.open("r", encoding="utf-8") as f:
+        for line in f:
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if entry.get("id") == candidate_id:
+                found = entry
+    return found
+
+
 def _record_last_known_good(version: str, *, evaluation_summary: dict | None = None) -> None:
     """Section 62 - captured BEFORE any activation, so rollback always has
     a deterministic, known-safe target: the config that was active
     immediately before the new one."""
-    _atomic_write_json(LAST_KNOWN_GOOD_PATH, {
+    atomic_write_json(LAST_KNOWN_GOOD_PATH, {
         "version": version,
         "recorded_at": time.time(),
         "evaluation_summary": evaluation_summary or {},
@@ -181,6 +225,10 @@ def run_shadow(
         learning_cycle_id=learning_cycle_id, candidate_id=candidate.id,
         profile_version=candidate.profile.version, state=STATE_READY_FOR_APPROVAL,
         note="shadow comparison complete - awaiting explicit human approval before activation",
+    )
+    _persist_candidate_snapshot(
+        candidate, learning_cycle_id=learning_cycle_id,
+        config_version_at_generation=baseline_profile.version,
     )
     return ShadowResult(candidate=candidate, report=report)
 
@@ -231,6 +279,80 @@ def approve_and_activate(
     return candidate.profile
 
 
+def approve_candidate_by_id(
+    candidate_id: str,
+    *,
+    approved_by: str,
+    expected_current_config_version: str | None = None,
+) -> dict:
+    """Section [Part C] - the durable, ID-keyed counterpart to
+    approve_and_activate() a real HTTP endpoint calls, without needing an
+    in-memory LearningCandidate from the same process that generated it
+    (Railway's worker handling this request is not guaranteed to be the
+    one that ran the learning cycle).
+
+    Two safety checks approve_and_activate() itself does not need (it
+    always operates on a freshly-generated in-memory candidate, so
+    staleness/duplication cannot happen there):
+      - stale-candidate protection: if the caller supplies
+        `expected_current_config_version` (the active version the
+        approval UI/CLI last saw) and the real active version has since
+        moved, this raises rather than silently promoting on top of a
+        change the approver never saw.
+      - idempotency: if this candidate's profile is ALREADY the active
+        version (e.g. a duplicate/retried approval call), returns
+        immediately without a second last_known_good/ledger mutation -
+        calling approve_and_activate() again here would corrupt
+        last_known_good with a self-referential "previous version"."""
+    snapshot = get_persisted_candidate(candidate_id)
+    if snapshot is None:
+        raise LifecycleError(f"no persisted candidate found for id {candidate_id!r}")
+
+    current_active_version = get_active_ranking_profile_version()
+    snapshot_profile = snapshot.get("profile")
+
+    if snapshot_profile and current_active_version == snapshot_profile.get("version"):
+        return {
+            "status": "already_active",
+            "candidate_id": candidate_id,
+            "profile_version": current_active_version,
+        }
+
+    if expected_current_config_version is not None and expected_current_config_version != current_active_version:
+        raise LifecycleError(
+            f"stale candidate: caller expected active config {expected_current_config_version!r} "
+            f"but it is currently {current_active_version!r} - reload before approving"
+        )
+
+    if snapshot.get("decision") != DECISION_SHADOW_ELIGIBLE or not snapshot_profile:
+        raise LifecycleError(f"candidate {candidate_id!r} is not SHADOW_ELIGIBLE (decision={snapshot.get('decision')!r})")
+
+    candidate = LearningCandidate(
+        id=snapshot["id"],
+        opportunity_id=snapshot["opportunity_id"],
+        opportunity_type=snapshot["opportunity_type"],
+        risk_class=snapshot["risk_class"],
+        decision=snapshot["decision"],
+        profile=RankingProfile.from_dict(snapshot_profile),
+        rejection_reasons=tuple(snapshot.get("rejection_reasons") or ()),
+        baseline_objective=snapshot.get("baseline_objective"),
+        candidate_objective=snapshot.get("candidate_objective"),
+        explanation=snapshot.get("explanation") or {},
+    )
+
+    profile = approve_and_activate(
+        candidate,
+        approved_by=approved_by,
+        learning_cycle_id=snapshot.get("learning_cycle_id") or "manual-approval",
+    )
+    return {
+        "status": "activated",
+        "candidate_id": candidate_id,
+        "profile_version": profile.version,
+        "approved_by": approved_by,
+    }
+
+
 def mark_monitored(candidate_id: str, profile_version: str, *, learning_cycle_id: str, summary: dict) -> None:
     """Section 59 - post-deploy monitoring window observation, recorded
     but not itself a state transition trigger (that's `check_rollback_
@@ -254,29 +376,66 @@ def check_rollback_conditions(monitoring_gate: dict) -> tuple[bool, str | None]:
     return False, None
 
 
-def rollback_to_last_known_good(*, reason: str, learning_cycle_id: str) -> str | None:
+def rollback_to_last_known_good(
+    *,
+    reason: str,
+    learning_cycle_id: str,
+    triggered_by: str = "system",
+    expected_current_config_version: str | None = None,
+) -> str | None:
     """Section 60/62 - deterministic: always the config active immediately
-    before the most recent activation, never a heuristic guess."""
+    before the most recent activation, never a heuristic guess.
+
+    `expected_current_config_version` mirrors approve_candidate_by_id()'s
+    stale-candidate protection: an operator's rollback UI/CLI may have
+    been looking at an active version that has since changed (someone
+    else already promoted or rolled back) - raises rather than rolling
+    back on top of a change the caller never saw. `triggered_by` defaults
+    to "system" so app.learning_cycle's own future automatic-rollback
+    callers (Section 60/61 - check_rollback_conditions) need not change,
+    while a real HTTP endpoint always passes a real identity."""
+    current_active_version = get_active_ranking_profile_version()
+    if expected_current_config_version is not None and expected_current_config_version != current_active_version:
+        raise LifecycleError(
+            f"stale rollback request: caller expected active config {expected_current_config_version!r} "
+            f"but it is currently {current_active_version!r} - reload before rolling back"
+        )
+
     last_known_good = get_last_known_good()
     if last_known_good is None:
         record_transition(
             learning_cycle_id=learning_cycle_id, candidate_id="rollback", profile_version=None,
             state=STATE_ROLLED_BACK, note=f"rollback requested ({reason}) but no last_known_good recorded - no-op",
+            evidence={"triggered_by": triggered_by},
         )
         return None
 
     version = last_known_good["version"]
+
+    if current_active_version == version:
+        # Idempotent: already at the rollback target (duplicate/retried
+        # request) - still recorded for the audit trail, but not treated
+        # as a distinct rollback with its own last_known_good movement.
+        record_transition(
+            learning_cycle_id=learning_cycle_id, candidate_id="rollback", profile_version=version,
+            state=STATE_ROLLED_BACK, note=f"rollback requested ({reason}) but already at last_known_good {version!r} - no-op",
+            evidence={"triggered_by": triggered_by, "idempotent": True},
+        )
+        return version
+
     try:
         set_active_ranking_profile_version(version)
     except RankingProfileError as exc:
         record_transition(
             learning_cycle_id=learning_cycle_id, candidate_id="rollback", profile_version=version,
             state=STATE_ROLLED_BACK, note=f"rollback FAILED: {exc}",
+            evidence={"triggered_by": triggered_by},
         )
         raise
 
     record_transition(
         learning_cycle_id=learning_cycle_id, candidate_id="rollback", profile_version=version,
         state=STATE_ROLLED_BACK, note=f"rolled back to last_known_good: {reason}",
+        evidence={"triggered_by": triggered_by},
     )
     return version

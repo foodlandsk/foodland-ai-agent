@@ -956,7 +956,10 @@ class TestSemanticSearchEndpoint:
 
     def test_admin_rebuild_embeddings_saves_and_clears_cache(self, products, monkeypatch, tmp_path):
         path = tmp_path / "embeddings.json"
-        monkeypatch.setenv("ADMIN_ANALYTICS_TOKEN", "test-token")
+        # V2.12.1: rebuild is state-changing (OPERATIONS scope) - the
+        # legacy ADMIN_ANALYTICS_TOKEN now only grants READ, see
+        # app/admin_auth.py.
+        monkeypatch.setenv("ADMIN_RELOAD_TOKEN", "test-token")
         monkeypatch.setenv("PRODUCT_EMBEDDINGS_PATH", str(path))
         monkeypatch.setattr(main, "products", products[:2])
         monkeypatch.setattr(main, "_get_openai_client", lambda: _FakeOpenAIClient(_make_vector_fn({}, default=(1.0, 0.0))))
@@ -989,7 +992,10 @@ class TestSemanticSearchEndpoint:
                          "product_taxonomy_index", "last_feed_refresh_at", "last_feed_refresh_error")
         }
         try:
-            monkeypatch.setenv("ADMIN_ANALYTICS_TOKEN", "test-token")
+            # V2.12.1: feed refresh is state-changing (OPERATIONS scope) -
+            # the legacy ADMIN_ANALYTICS_TOKEN now only grants READ, see
+            # app/admin_auth.py.
+            monkeypatch.setenv("ADMIN_RELOAD_TOKEN", "test-token")
             monkeypatch.setattr(main, "load_multilang_feeds", lambda: {"sk": products})
 
             result = main.admin_refresh_feed(x_admin_token="test-token")
@@ -1012,7 +1018,10 @@ class TestSemanticSearchEndpoint:
         # other pytest.raises(main.HTTPException) test in this file.)
         original_error = main.last_feed_refresh_error
         try:
-            monkeypatch.setenv("ADMIN_ANALYTICS_TOKEN", "test-token")
+            # V2.12.1: must grant OPERATIONS scope (ADMIN_RELOAD_TOKEN) so
+            # this actually exercises the empty-feed error path below
+            # rather than merely failing auth for an unrelated reason.
+            monkeypatch.setenv("ADMIN_RELOAD_TOKEN", "test-token")
             monkeypatch.setattr(main, "load_multilang_feeds", lambda: {"sk": []})
 
             with pytest.raises(main.HTTPException):

@@ -90,6 +90,18 @@ from app.structured_search import hybrid_search_products as _hybrid_search_produ
 from app.structured_search import build_structured_result_set as _build_structured_result_set
 from app.structured_search import format_result_set_products as _format_result_set_products
 from app.ranking_config import get_active_ranking_profile, get_active_ranking_profile_version
+from app.ranking_config import CONFIG_DIR as _RANKING_PROFILE_DIR
+from app.ranking_config import is_active_profile_degraded as _ranking_profile_degraded
+from app.storage_paths import data_dir as _foodland_data_dir
+from app.storage_paths import is_data_dir_configured as _foodland_data_dir_configured
+from app.durable_storage import atomic_write_json as _atomic_write_json
+from app.admin_auth import require_admin_scope as _require_admin_scope
+from app.admin_auth import SCOPE_READ as _SCOPE_READ
+from app.admin_auth import SCOPE_OPERATIONS as _SCOPE_OPERATIONS
+from app.admin_auth import SCOPE_PROMOTION as _SCOPE_PROMOTION
+from app.execution_context import ExecutionContext as _ExecutionContext
+from app.execution_context import customer_context as _customer_context
+from app.execution_context import evaluation_context as _evaluation_context
 from app.learning_cycle import run_learning_cycle as _run_learning_cycle
 from app.learning_cycle import REPORTS_DIR as _LEARNING_REPORTS_DIR
 from app.learning_cycle import LEARNING_ENGINE_ENABLED as _LEARNING_ENGINE_ENABLED
@@ -97,6 +109,10 @@ from app.learning_cycle import LEARNING_CYCLE_MINUTES as _LEARNING_CYCLE_MINUTES
 from app.learning_lifecycle import get_history as _learning_history
 from app.learning_lifecycle import get_last_known_good as _learning_last_known_good
 from app.learning_lifecycle import AUTO_PROMOTION_ENABLED as _LEARNING_AUTO_PROMOTION_ENABLED
+from app.learning_lifecycle import HISTORY_DIR as _LEARNING_HISTORY_DIR
+from app.learning_lifecycle import approve_candidate_by_id as _approve_candidate_by_id
+from app.learning_lifecycle import rollback_to_last_known_good as _rollback_to_last_known_good
+from app.learning_lifecycle import LifecycleError as _LifecycleError
 from app.answer_composer import compose_answer as _compose_answer
 from app.answer_composer import compose_continuation_answer as _compose_continuation_answer
 from app.result_sets import get_result_set as _get_result_set
@@ -226,6 +242,17 @@ class EventRequest(BaseModel):
     rating: int | None = Field(default=None, ge=-1, le=1)
 
 
+class ApproveCandidateRequest(BaseModel):
+    approved_by: str = Field(min_length=1, max_length=120)
+    expected_current_config_version: str | None = Field(default=None, max_length=64)
+
+
+class RollbackRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=500)
+    triggered_by: str = Field(min_length=1, max_length=120)
+    expected_current_config_version: str | None = Field(default=None, max_length=64)
+
+
 class BasketRecommendRequest(BaseModel):
     skus: list[str] = Field(..., min_length=1, max_length=50)
     limit: int = Field(default=6, ge=1, le=20)
@@ -296,7 +323,7 @@ _facets_cache: dict | None = None
 _facets_cache_at: float = 0.0
 FACETS_CACHE_SECONDS = int(os.getenv("FACETS_CACHE_SECONDS", "600"))
 _RATE_LIMIT_MAX_CLIENTS = 50_000  # BUG-02: ochrana pamate – max pocet trackovanych klientov
-DEFAULT_RUNTIME_LOG_DIR = Path(tempfile.gettempdir()) / "foodland-ai-agent"
+DEFAULT_RUNTIME_LOG_DIR = _foodland_data_dir()
 SESSION_MEMORY_TTL_SECONDS = int(os.getenv("SESSION_MEMORY_TTL_SECONDS", "1800"))
 SESSION_MEMORY_MAX_SESSIONS = int(os.getenv("SESSION_MEMORY_MAX_SESSIONS", "20000"))
 USER_MEMORY_ENABLED = os.getenv("USER_MEMORY_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
@@ -2920,6 +2947,25 @@ def _learning_health_summary() -> dict:
     return summary
 
 
+def _durable_storage_health_summary() -> dict:
+    """Section 111/112 - durable storage must be observable, not assumed.
+    `*_uses_git_tracked_default` / `*_uses_unmounted_default` is True precisely
+    when that path is still on the git-tracked/unmounted default it has today
+    (docs/runtime-state-inventory.md finding 2/3) - i.e. neither FOODLAND_DATA_DIR
+    nor the per-item override env var has been set, so a redeploy will reset or
+    revert it."""
+    return {
+        "foodland_data_dir_configured": _foodland_data_dir_configured(),
+        "foodland_data_dir": str(_foodland_data_dir()),
+        "ranking_profile_dir": str(_RANKING_PROFILE_DIR),
+        "ranking_profile_dir_uses_git_tracked_default": _RANKING_PROFILE_DIR == Path("config/ranking_profiles"),
+        "active_ranking_profile_degraded": _ranking_profile_degraded(),
+        "learning_history_dir": str(_LEARNING_HISTORY_DIR),
+        "learning_history_dir_uses_unmounted_default": _LEARNING_HISTORY_DIR == Path("config/learning_history"),
+        "learning_history_dir_exists": _LEARNING_HISTORY_DIR.exists(),
+    }
+
+
 @app.get("/health")
 def health() -> dict:
     return {
@@ -2929,6 +2975,7 @@ def health() -> dict:
         "last_feed_refresh_at": last_feed_refresh_at,
         "last_feed_refresh_error": last_feed_refresh_error,
         "learning": _learning_health_summary(),
+        "durable_storage": _durable_storage_health_summary(),
     }
 
 
@@ -3145,7 +3192,7 @@ def admin_analytics_summary(
     limit: int = 10,
     x_admin_token: str | None = Header(default=None),
 ) -> dict:
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
     events = read_analytics_events(days)
     errors = read_error_events(days)
     return analytics_report(events, errors, limit)
@@ -3157,7 +3204,7 @@ def admin_analytics_top_questions(
     limit: int = 20,
     x_admin_token: str | None = Header(default=None),
 ) -> dict:
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
     events = read_analytics_events(days)
     return {"top_questions": top_question_rows(events, limit)}
 
@@ -3168,7 +3215,7 @@ def admin_analytics_no_results(
     limit: int = 20,
     x_admin_token: str | None = Header(default=None),
 ) -> dict:
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
     events = read_analytics_events(days)
     return {"no_results": no_result_rows(events, limit)}
 
@@ -3178,7 +3225,7 @@ def admin_analytics_intents(
     days: int = 7,
     x_admin_token: str | None = Header(default=None),
 ) -> dict:
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
     events = read_analytics_events(days)
     return {"intents": intent_rows(events)}
 
@@ -3189,7 +3236,7 @@ def admin_analytics_tasks(
     limit: int = 20,
     x_admin_token: str | None = Header(default=None),
 ) -> dict:
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
     events = read_analytics_events(days)
     errors = read_error_events(days)
     return {"action_items": analytics_action_items(events, errors, limit)}
@@ -3200,14 +3247,14 @@ def admin_analytics_events_summary(
     days: int = 30,
     x_admin_token: str | None = Header(default=None),
 ) -> dict:
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
     events = read_engagement_events(days)
     return events_summary(events)
 
 
 @app.post("/admin/embeddings/rebuild")
 def admin_rebuild_embeddings(x_admin_token: str | None = Header(default=None)) -> dict:
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_OPERATIONS)
 
     openai_client = _get_openai_client()
     if openai_client is None:
@@ -3229,7 +3276,7 @@ def admin_refresh_feed(x_admin_token: str | None = Header(default=None)) -> dict
     waiting. Deliberately does NOT call rebuild_knowledge_from_feed() -
     that triggers OpenAI enrichment calls, out of scope for a pipeline
     smoke check."""
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_OPERATIONS)
 
     started_at = time.time()
     refresh_feed()
@@ -3251,7 +3298,7 @@ def admin_behavioral_rankings(
     limit: int = 20,
     x_admin_token: str | None = Header(default=None),
 ) -> dict:
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
     rankings = get_behavioral_rankings()
     scores = rankings["scores"]
     safe_limit = max(1, min(int(limit or 20), 100))
@@ -3274,7 +3321,7 @@ def admin_fbt_pairs(
     limit: int = 20,
     x_admin_token: str | None = Header(default=None),
 ) -> dict:
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
     fbt_data = get_fbt_data()
     safe_limit = max(1, min(int(limit or 20), 100))
 
@@ -3302,7 +3349,7 @@ def admin_fbt_pairs(
 
 @app.get("/admin/learning/status")
 def admin_learning_status(x_admin_token: str | None = Header(default=None)) -> dict:
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
     return {
         "learning_engine_enabled": _LEARNING_ENGINE_ENABLED,
         "auto_promotion_enabled": _LEARNING_AUTO_PROMOTION_ENABLED,
@@ -3315,7 +3362,7 @@ def admin_learning_status(x_admin_token: str | None = Header(default=None)) -> d
 
 @app.get("/admin/learning/candidates")
 def admin_learning_candidates(x_admin_token: str | None = Header(default=None)) -> dict:
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
     try:
         report = json.loads((_LEARNING_REPORTS_DIR / "latest.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -3334,7 +3381,7 @@ def admin_learning_history(
     limit: int = 100,
     x_admin_token: str | None = Header(default=None),
 ) -> dict:
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
     safe_limit = max(1, min(int(limit or 100), 500))
     return {"entries": _learning_history(candidate_id or None, safe_limit)}
 
@@ -3347,9 +3394,55 @@ def admin_learning_run_cycle(
 ) -> dict:
     """Section 70/97 - manual on-demand trigger, same pairing pattern as
     POST /admin/feed/refresh next to the periodic asyncio loop below."""
-    require_admin_token(x_admin_token)
+    _require_admin_scope(x_admin_token, _SCOPE_OPERATIONS)
     known_product_ids = frozenset(p.id for p in products)
     return _run_learning_cycle(known_product_ids=known_product_ids, days=days or None, fast_evaluation=not full)
+
+
+@app.post("/admin/learning/candidates/{candidate_id}/approve")
+def admin_approve_candidate(
+    candidate_id: str,
+    body: ApproveCandidateRequest,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """Section [Part C] - the only HTTP-reachable path that can move
+    config/ranking_profiles/active.json. Requires PROMOTION scope (a
+    READ or OPERATIONS token, including both legacy tokens, is refused -
+    see app.admin_auth) and a real approved_by identity (enforced again,
+    unconditionally, inside approve_and_activate() itself)."""
+    _require_admin_scope(x_admin_token, _SCOPE_PROMOTION)
+    try:
+        return _approve_candidate_by_id(
+            candidate_id,
+            approved_by=body.approved_by,
+            expected_current_config_version=body.expected_current_config_version,
+        )
+    except _LifecycleError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.post("/admin/learning/rollback")
+def admin_rollback_learning(
+    body: RollbackRequest,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """Section [Part C] - manual, human-triggered rollback to
+    last_known_good. Requires PROMOTION scope, same as approval - rolling
+    back what is live for real customers is exactly as sensitive as
+    promoting something new."""
+    _require_admin_scope(x_admin_token, _SCOPE_PROMOTION)
+    try:
+        version = _rollback_to_last_known_good(
+            reason=body.reason,
+            learning_cycle_id="manual-rollback",
+            triggered_by=body.triggered_by,
+            expected_current_config_version=body.expected_current_config_version,
+        )
+    except _LifecycleError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    if version is None:
+        return {"status": "no_op", "reason": "no last_known_good recorded"}
+    return {"status": "rolled_back", "profile_version": version}
 
 
 def session_memory_key(session_id: str, client_key: str) -> str:
@@ -3403,11 +3496,7 @@ def save_user_memories() -> None:
         return
     path = user_memory_path()
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(pruned_user_memories(user_memories), ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        _atomic_write_json(path, pruned_user_memories(user_memories))
     except Exception as exc:
         logger.error("Failed to write user memory %s: %s", path, exc, exc_info=True)
 
@@ -3856,20 +3945,43 @@ def detect_query_language(message: str) -> str:
     return "en" if len(hits) >= 2 else "sk"
 
 
-def _chat_impl(chat_request: ChatRequest, request: Request) -> dict:
+def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _ExecutionContext | None = None) -> dict:
+    # V2.12.1 Part D: explicit execution context replaces the old
+    # isinstance(request, Request) hotfix (commit 8936188) as the
+    # PREFERRED signal for "is this real customer traffic" - see
+    # app/execution_context.py's module docstring. The isinstance check
+    # is preserved as a fallback for any caller that has not been
+    # migrated to pass an explicit context (Section 59 - not removed
+    # until every internal caller passes one explicitly).
+    if execution_context is None:
+        execution_context = _customer_context() if isinstance(request, Request) else _evaluation_context()
+
     client_key = get_client_key(request)
-    # V2.12 fix: app.evaluation.adapter.make_chat_fn() calls chat() directly
-    # in-process with a plain duck-typed _FakeRequest stub (never reachable via
-    # real HTTP dispatch - FastAPI itself always constructs a genuine Request
-    # from the ASGI scope for actual customer calls, so this cannot be spoofed
-    # by an external client). Without this, every evaluate_profile() call inside
-    # a learning cycle shares ONE client_key ("127.0.0.1") and trips the real
-    # customer-facing RATE_LIMIT_PER_MINUTE within seconds in production, where
-    # (unlike CI/tests) that env var is already explicitly set so the harness's
-    # own setdefault() override never takes effect - found via a real failed
-    # POST /admin/learning/run-cycle against production (429 after ~12 calls).
-    if isinstance(request, Request):
+    # V2.12 fix, now generalized by execution_context.apply_rate_limit
+    # (Section 48/59): app.evaluation.adapter.make_chat_fn() calls chat()
+    # directly in-process with a plain duck-typed _FakeRequest stub
+    # (never reachable via real HTTP dispatch - FastAPI itself always
+    # constructs a genuine Request from the ASGI scope for actual
+    # customer calls, so this cannot be spoofed by an external client).
+    # Without this, every evaluate_profile() call inside a learning
+    # cycle shares ONE client_key ("127.0.0.1") and trips the real
+    # customer-facing RATE_LIMIT_PER_MINUTE within seconds in production,
+    # where (unlike CI/tests) that env var is already explicitly set so
+    # the harness's own setdefault() override never takes effect - found
+    # via a real failed POST /admin/learning/run-cycle against
+    # production (429 after ~12 calls).
+    if execution_context.apply_rate_limit:
         enforce_rate_limit(client_key)
+    # Section 59 - only CUSTOMER traffic is counted in customer-facing
+    # analytics. Rebinding the name locally (rather than touching each
+    # of the ~13 log_question(...) call sites below) works because a
+    # local assignment makes `log_question` local for this ENTIRE
+    # function body in Python - the real function is fetched via
+    # globals() rather than a bare `log_question` reference, since a
+    # bare reference on the right-hand side would itself resolve to the
+    # (not-yet-assigned) local and raise UnboundLocalError.
+    _real_log_question = globals()["log_question"]
+    log_question = _real_log_question if execution_context.emit_customer_analytics else (lambda *args, **kwargs: None)  # noqa: E731
     log_taxonomy_shadow(chat_request.message, client_key, classify_rice_query(chat_request.message, normalize))
 
     session_id = getattr(chat_request, "session_id", "") or ""
@@ -4820,11 +4932,24 @@ def _compute_answered(response: dict) -> bool:
     return False
 
 
-@app.post("/chat")
-def chat(chat_request: ChatRequest, request: Request) -> dict:
-    response = _chat_impl(chat_request, request)
+def _chat_internal(chat_request: ChatRequest, request: Request, execution_context: _ExecutionContext | None = None) -> dict:
+    response = _chat_impl(chat_request, request, execution_context=execution_context)
     response["answered"] = _compute_answered(response)
     return response
+
+
+@app.post("/chat")
+def chat(chat_request: ChatRequest, request: Request) -> dict:
+    # Deliberately does NOT force execution_context=customer_context()
+    # here: real HTTP dispatch always hands this a genuine Request (see
+    # _chat_impl's isinstance fallback), and a large existing test suite
+    # calls chat() directly with a duck-typed FakeRequest expecting the
+    # pre-V2.12.1 "not a real Request -> not rate-limited" behavior to
+    # keep working unchanged. Callers that want to declare a specific
+    # non-CUSTOMER mode explicitly should call _chat_internal() directly
+    # (see app.evaluation.adapter, app.ranking_shadow) rather than route
+    # through this endpoint function.
+    return _chat_internal(chat_request, request)
 
 
 def should_use_fast_chat_answer(
@@ -6209,16 +6334,6 @@ def log_event(event_request: EventRequest, client_key: str) -> None:
         logger.error("Failed to log event: %s", exc, exc_info=True)
 
 
-def require_admin_token(x_admin_token: str | None) -> None:
-    expected = os.getenv("ADMIN_ANALYTICS_TOKEN") or os.getenv("ADMIN_RELOAD_TOKEN")
-    if not expected:
-        raise HTTPException(status_code=404, detail="Admin analytika nie je zapnutá.")
-    if not x_admin_token or not hmac_compare(str(x_admin_token), str(expected)):
-        raise HTTPException(status_code=401, detail="Neplatný admin token.")
-
-
-def hmac_compare(left: str, right: str) -> bool:
-    return secrets.compare_digest(left, right)
 
 
 def read_analytics_events(days: int = 7) -> list[dict]:
