@@ -65,6 +65,37 @@ pred V2.13b (rt0002/rt0006 lexikálny nesúlad, rt0013 human review, rt0022/
 rt0024 LLM textová variancia) — nulový neočakávaný routing drift (Section
 143 zadania).
 
+### C) `regbug_rt0011` — FIXED_V2_13B_1
+
+```
+"mám rád nepálivé jedlo, čo odporúčaš?" (opakovaný v tej istej session)
+Workflow: PRODUCT_SEARCH (predtým, pri opakovaní: RELATED_PRODUCTS)
+```
+
+**root_cause**: `SESSION_CONTEXT_CONTAMINATION`, nie primárny
+WorkflowResolver defekt — `resolve_action_target_signal()` samotný
+pracoval korektne nad tým, čo dostal; problém bol, že
+`contextualize_message()` mu bezpodmienečne (mimo `is_context_followup()`
+brány) dodával stale `diet_terms` z pamäte, ktoré manufacturovali
+`special_subject`/`related_subject` konflikt neexistujúci v aktuálnom
+ťahu. Objavené cez `app.ranking_optimizer.evaluate_profile()`'s
+session_id kolíziu (dva nezávislé eval behy s rovnakým `session_id` na
+tej istej pozícii golden zoznamu). Detail root cause + plný audit:
+`docs/contextualization-risk-v2.13b.1.md`.
+
+**fix**: nová `app.main._routing_message()` — rovnaký
+`is_context_followup()`-gated subject-carryover ako
+`contextualize_message()`, nikdy diet_terms. Nahradila
+`contextual_message` na 9 routing-kritických miestach
+(`special_subject`, `related_subject`, `already_have_subject`,
+`replacement_subject`, `article_product_subject`,
+`resolve_action_target_signal()` a jeho 4 refining guardy). Generický
+fix (nie hardcoded na "jemne"/"pikantne" ani na túto jednu frázu) —
+overené s odlišným diet termom v `tests/test_session_contamination_v2_13b_1.py`.
+`contextualize_message()` sama zostáva nezmenená (naďalej kŕmi retrieval/
+knowledge/answer composition, kde diet-term kontext je zámerná, testovaná
+hodnota — `test_diet_preference_is_remembered`).
+
 ## Čo tento dokument NIE JE
 
 - Nie je zoznam vecí opravených v V2.13a (V2.13a routing nemení vôbec).

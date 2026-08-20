@@ -3874,6 +3874,41 @@ def contextualize_message(message: str, memory: dict | None) -> str:
     return " ".join(parts).strip()
 
 
+def _routing_message(message: str, memory: dict | None) -> str:
+    # V2.13b.1 (docs/contextualization-risk-v2.13b.1.md, regbug_rt0011):
+    # text for WORKFLOW-ROUTING-CRITICAL detection (special_subject/
+    # related_subject/already_have_subject/replacement_subject/
+    # article_product_subject and the guards that refine them below).
+    # Reuses contextualize_message()'s legitimate is_context_followup()-
+    # gated subject/product-title carry-over unchanged (same Show More/
+    # ordinal/companion-follow-up behavior, e.g. "a co k tomu" ->
+    # resolves the prior dish) but NEVER appends diet_terms. Diet
+    # preference is retrieval/answer-quality signal, not workflow-
+    # routing evidence - unconditionally folding it into the same text
+    # used for special_subject/related_subject detection let a stale,
+    # unrelated diet term manufacture a false routing conflict on a
+    # later, unrelated turn (regbug_rt0011: "jemne"/"pikantne" left over
+    # from an earlier message coincidentally matched special_subject=
+    # "mild"/related_subject="medium_spicy", hijacking dispatch into
+    # RELATED_PRODUCTS for a plain "co odporucas?" follow-up). This is a
+    # separate, narrower value than contextualize_message()'s output -
+    # retrieval, knowledge search, recipe-subject detection and answer
+    # composition keep using the full contextualized message unchanged
+    # (Invariant: this sprint hardens workflow-routing input, it does
+    # not redesign retrieval/ranking/taxonomy).
+    if not memory:
+        return message
+    parts = [message]
+    if is_context_followup(message):
+        if memory.get("last_top_product_title"):
+            parts.append(memory["last_top_product_title"])
+        else:
+            subject = best_memory_subject(memory)
+            if subject:
+                parts.append(subject.replace("_", " "))
+    return " ".join(parts).strip()
+
+
 def is_context_followup(message: str) -> bool:
     normalized_message = normalize(message).strip()
     if len(tokenize(normalized_message)) <= 3 and any(
@@ -4195,6 +4230,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
                     "response_mode": "result_set_continuation",
                 }
     contextual_message = contextualize_message(chat_request.message, memory)
+    routing_message = _routing_message(chat_request.message, memory)
     memory_subject = best_memory_subject(memory)
 
     allergen_term = detect_allergen_intent(chat_request.message)
@@ -4586,10 +4622,10 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             "intent": "category_discovery",
         }
 
-    already_have_subject = detect_already_have_subject(contextual_message)
-    special_subject = detect_special_product_subject(contextual_message)
-    replacement_subject = detect_replacement_subject(contextual_message)
-    related_subject = detect_related_subject(contextual_message)
+    already_have_subject = detect_already_have_subject(routing_message)
+    special_subject = detect_special_product_subject(routing_message)
+    replacement_subject = detect_replacement_subject(routing_message)
+    related_subject = detect_related_subject(routing_message)
     # V2.13b (docs/workflow-precedence-before-v2.13b.md, rt0004): the
     # old unconditional "if special_subject: related_subject = None"
     # let a coarse, substring-based special_subject match (e.g.
@@ -4613,10 +4649,10 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     _raw_special_subject = detect_special_product_subject(chat_request.message)
     _raw_related_subject = detect_related_subject(chat_request.message)
     _action_target_analysis = _resolve_action_target_signal(
-        contextual_message,
+        routing_message,
         special_subject=special_subject if _raw_special_subject else None,
         related_subject=related_subject if _raw_related_subject else None,
-        has_recipe_shopping_language=_has_recipe_shopping_language(contextual_message),
+        has_recipe_shopping_language=_has_recipe_shopping_language(routing_message),
         # V2.13b perf note: resolve_workflow()'s RELATED_PRODUCTS decision
         # only needs related_subject + has_recipe_shopping_language (see
         # app/turn_resolver.py) - the confident-family check is a separate,
@@ -4629,7 +4665,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     _related_products_forced = _action_target_resolution.workflow_id == _WORKFLOW_RELATED_PRODUCTS
     if special_subject and not _related_products_forced:
         related_subject = None
-    if related_subject and PRODUCT_SET_SIGNAL_TOKENS & tokenize(contextual_message):
+    if related_subject and PRODUCT_SET_SIGNAL_TOKENS & tokenize(routing_message):
         # "sake sety" (sake SETS) was forced into the sake cross-sell
         # branch just because it contains "sake" - even though a plain
         # search finds the literal "Sake Set" products among the top
@@ -4647,10 +4683,10 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         # plain product search instead, which already handles brand+
         # category combinations correctly (same fix as the Kikkoman
         # behavioral-ranking issue above, one layer up in the cascade).
-        mentioned_related_brand = detect_mentioned_replacement_brand(contextual_message, products, related_subject)
+        mentioned_related_brand = detect_mentioned_replacement_brand(routing_message, products, related_subject)
         if mentioned_related_brand:
             related_subject = None
-    if related_subject and not _has_recipe_shopping_language(contextual_message) and _query_resolves_to_confident_product_family(contextual_message):
+    if related_subject and not _has_recipe_shopping_language(routing_message) and _query_resolves_to_confident_product_family(routing_message):
         # V2.12.2 root cause (docs/query-semantics.md): RELATED_INTENT_MARKERS
         # intentionally contains broad single-word markers like "rezanc"/
         # "olej" so genuine recipe questions ("co este chyba do rezancov")
@@ -4666,7 +4702,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         # principle as the brand/kitchenware guards below.
         related_subject = None
     if related_subject and related_subject.endswith("_kuchyna") and any(
-        marker in normalize(contextual_message)
+        marker in normalize(routing_message)
         for marker in ("noz", "nozice", "palick", "tanier", "misk", "misa", "cajnik", "salk", "lyzic", "podlozk", "sekaci", "brusny")
     ):
         # Real user report: "japonske noze" / "noz japonsky" (Japanese
@@ -4707,7 +4743,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         _clear_use_case_state(memory)
     cross_sell_matches = cross_sell_products_for_message(products, knowledge, contextual_message, chat_request.limit)
     article_product_subject = (
-        detect_article_product_subject(contextual_message, articles)
+        detect_article_product_subject(routing_message, articles)
         if is_article_info_intent(chat_request.message)
         else None
     )

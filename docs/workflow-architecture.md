@@ -1,6 +1,7 @@
-# Workflow Architecture — TurnResolver & WorkflowResolver (V2.13b)
+# Workflow Architecture — TurnResolver & WorkflowResolver (V2.13b, hardened V2.13b.1)
 
-Dátum: 2026-08-20.
+Dátum: 2026-08-20 (V2.13b), aktualizované 2026-08-20 (V2.13b.1 — vstupný
+text pre routing-kritické detektory sprísnený, pozri poslednú sekciu).
 
 ## Cieľ
 
@@ -148,3 +149,18 @@ decision (`app.workflow_resolver.stash_resolution()`/`pop_last_resolution()`).
   skutočný `chat()`, dôkaz nulového neočakávaného driftu (Section 143).
 - `tests/test_advisor_engine.py` — `rt0004`/`rt0010` charakterizačné
   testy prevedené na `FIXED_ROUTING_REGRESSION`/`FIXED_SAFETY_ROUTING_REGRESSION`.
+
+## V2.13b.1 — vstupný text pre routing-kritické detektory (hardening)
+
+`special_subject`, `related_subject`, `already_have_subject`,
+`replacement_subject`, `article_product_subject` a
+`resolve_action_target_signal()`'s vstup teraz čítajú
+`app.main._routing_message()` namiesto `contextual_message` —
+`contextualize_message()`'s bezpodmienečná `diet_terms` prípona (mimo
+`is_context_followup()` brány) dokázateľne manufacturovala falošné
+`special_subject`/`related_subject` konflikty na nesúvisiacich neskorších
+ťahoch (`regbug_rt0011`). Plný root cause, audit a scope rozhodnutia:
+`docs/contextualization-risk-v2.13b.1.md`, `docs/session-context-model.md`.
+TurnResolver/WorkflowResolver samotné (`app/turn_resolver.py`,
+`app/workflow_resolver.py`) sú nezmenené — dostávajú teraz len čistejší
+vstupný text.

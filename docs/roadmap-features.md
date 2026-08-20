@@ -1584,3 +1584,25 @@ Committed fixture (2 140 produktov, pinned test suite): `classified=720`, `cover
 **Výsledky:** V2.10 gate **51/58 nezmenené** (identické error buckets, identický critical failure). Hard canary **10/10 nezmenené**. Performance overhead AdvisorEngine vs. priame volanie: **~0.012ms/request (0.13% relatívne)** – prakticky nulový. Plný beh: **1214/1214** (1196 + 18 nových), 0 regresií. Detail: `docs/advisor-engine.md`, `docs/v2.13a-current-execution-map.md`, `docs/routing-debt.md`.
 
 **Ďalší krok:** V2.13b (`TurnResolver` → `WorkflowResolver` → `WorkflowHandler`) je opodstatnený teraz, keď aplikačná hranica existuje a je empiricky overená ako behaviorálne ekvivalentná. Prvé dva mandátne routing testy pre V2.13b: `regbug_rt0004` (related-products fráza musí prebiť produktovú entitu) a `regbug_rt0010` (safety intent musí získať prednosť pred product retrieval).
+
+### Sprint V2.13b – TurnResolver & Executable Workflow Resolution
+
+**Zadanie:** vybudovať kauzálnu `TurnResolver` → `WorkflowResolver` architektúru, ktorá GENERICKY opraví `regbug_rt0004`/`regbug_rt0010`, bez prestavby retrievalu/rankingu/taxonómie, bez hardcodovania týchto dvoch konkrétnych golden dopytov.
+
+**Implementácia:** nový `app/turn_resolver.py` (čistá signal-extraction vrstva nad UŽ existujúcimi detektormi) a `app/workflow_resolver.py` (`resolve_workflow(analysis) -> WorkflowResolution`, precedencia `RESULTSET_CONTINUATION > ALLERGEN_SAFETY > RELATED_PRODUCTS > LEGACY_FALLBACK`). Kauzálne zapojené do `_chat_impl()` na dvoch miestach – `rt0004` (special_subject už bezpodmienečne nenuluje related_subject, keď explicitný akčný jazyk signalizuje companion-request) a `rt0010` (safety má bezpodmienečne najvyššiu precedenciu, `allergen_product_query()`'s zámerný `""` signál sa už nezamieňa za "nerozpoznané").
+
+**Kritický nález počas vlastného regresného overovania**: prvá verzia `resolve_action_target_signal()` nesprávne spúšťala RELATED_PRODUCTS aj bez skutočného special_subject/related_subject konfliktu – odhalené cez `regbug_rt0011` (session_id kolízia v `app.ranking_optimizer`), zúžené na overenie aj proti surovej správe. Táto konkrétna oprava sa neskôr ukázala ako príliš úzka (opravila jeden rozhodovací bod, nie celú triedu) – pozri Sprint V2.13b.1 nižšie.
+
+**Výsledky:** V2.10 **51/58 → 53/58**, 0 kritických zlyhaní (predtým 1). Hard canary **10/10**. Testy: `tests/test_turn_resolver.py` (7), `tests/test_workflow_resolver.py` (10), `tests/test_routing_regressions.py` (16). Plný beh: **1247/1247**, 0 regresií. Detail: `docs/workflow-architecture.md`, `docs/workflow-precedence-v2.13b.md`, `docs/routing-debt.md`.
+
+### Sprint V2.13b.1 – Contextualization Safety & Session Contamination Hardening
+
+**Zadanie:** V2.13b's `regbug_rt0011` oprava bola úzko scoped na jeden rozhodovací bod. Tento sprint rieši SYSTEMICKÚ príčinu – `contextualize_message()`'s bezpodmienečná `diet_terms` injekcia do textu, ktorý kŕmi workflow-routing detektory – bez redizajnu retrievalu/rankingu/taxonómie/workflow precedencie.
+
+**Root cause (plný audit `docs/contextualization-risk-v2.13b.1.md`)**: `contextualize_message()` pripája posledné 2 `diet_terms` z pamäte do KAŽDEJ nasledujúcej správy bezpodmienečne – mimo `is_context_followup()` brány, ktorá chráni legitímny subject-carryover o riadok vyššie. Leftover diet slová z jedného ťahu tak mohli manufacturovať falošný `special_subject`/`related_subject` konflikt na nesúvisiacom neskoršom ťahu v tej istej session.
+
+**Zvažovaná a zamietnutá alternatíva**: plná `ContextMergePolicy`/`ContextConflict`/`provenance`-enum architektúra podľa pôvodného zadania. Po audite zistené, že Invariant "explicit current turn wins" je už štrukturálne zaručený `is_context_followup()`'s úzkou bránou (krátka/presná fráza bez vlastného predmetu) – konflikt so subject-carryoverom je principiálne nemožný, netreba naň novú arbitration vrstvu. Plná trieda-hierarchia by riešila hypotetické riziko bez dôkazu za výrazne väčší blast-radius.
+
+**Implementácia**: nová `app.main._routing_message()` – identický `is_context_followup()`-gated subject-carryover, NIKDY `diet_terms`. Nahradila `contextual_message` na 9 routing-kritických miestach (`special_subject`, `related_subject`, `already_have_subject`, `replacement_subject`, `article_product_subject`, `resolve_action_target_signal()` + 4 refining guardy). `contextualize_message()` samotná nezmenená – naďalej kŕmi retrieval/knowledge search/recipe subject/cross-sell/odpoveďové texty, kde diet-term kontext je zámerná, testovaná hodnota.
+
+**Výsledky:** V2.10 **53/58 nezmenené**, 0 kritických zlyhaní. `regbug_rt0011` teraz FIXED_V2_13B_1 (permanentný regresný test, generický – overený s odlišným diet termom). Testy: `tests/test_session_contamination_v2_13b_1.py` (14). Detail: `docs/contextualization-risk-v2.13b.1.md`, `docs/session-context-model.md`.
