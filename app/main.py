@@ -127,6 +127,8 @@ from app.workflow_resolver import stash_resolution as _stash_workflow_resolution
 from app.workflow_resolver import pop_last_resolution as _pop_workflow_resolution
 from app.advisor_engine import advisor_engine as _advisor_engine
 from app.advisor_engine import AdvisorRequest as _AdvisorRequest
+from app.workflow_executor import execute_resultset_continuation as _execute_resultset_continuation
+from app.workflow_executor import execute_allergen_safety as _execute_allergen_safety
 from app.learning_cycle import run_learning_cycle as _run_learning_cycle
 from app.learning_cycle import REPORTS_DIR as _LEARNING_REPORTS_DIR
 from app.learning_cycle import LEARNING_ENGINE_ENABLED as _LEARNING_ENGINE_ENABLED
@@ -4206,29 +4208,26 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         wants_show_all = is_show_all_query(normalized_continuation_message)
         wants_show_more = not wants_show_all and is_show_more_query(normalized_continuation_message)
         if wants_show_all or wants_show_more:
-            active_result_set = _get_result_set(active_result_set_id, time.time())
-            if active_result_set is not None and active_result_set.catalog_version == id(products):
-                revealed_ids = active_result_set.remaining_ids() if wants_show_all else active_result_set.next_page_ids()
-                if wants_show_all:
-                    _show_all_result_set(active_result_set)
-                else:
-                    _advance_displayed_count(active_result_set, active_result_set.page_size)
-                revealed_products = _format_result_set_products(products, revealed_ids)
-                revealed_products = personalize_products(revealed_products, user_profile)
-                update_session_memory(memory_key, chat_request.message, "product_search", revealed_products, [], {})
-                updated_profile = update_user_memory(profile_key, chat_request.message, "product_search", revealed_products, [])
-                return {
-                    "answer": _compose_continuation_answer(active_result_set, len(revealed_products)),
-                    "products": revealed_products,
-                    "matching_total": active_result_set.matching_total,
-                    "displayed_count": active_result_set.displayed_count,
-                    "has_more": active_result_set.has_more,
-                    "result_set_id": active_result_set.result_set_id,
-                    "answer_strategy": active_result_set.answer_strategy,
-                    "memory": public_user_memory_summary(updated_profile),
-                    "intent": "product_search",
-                    "response_mode": "result_set_continuation",
-                }
+            # V2.13c: RESULTSET_CONTINUATION executor handler
+            # (app.workflow_executor) - unchanged logic, formalized as
+            # the canonical execution boundary for the one workflow
+            # that is both resolver-decided AND fully self-contained
+            # (docs/workflow-inventory-v2.13c.md). Returns None (falls
+            # through to the unchanged legacy cascade below) if the
+            # ResultSet has expired/rotated - same fallback contract as
+            # before, just made explicit.
+            _rc_result = _execute_resultset_continuation(
+                chat_request=chat_request,
+                memory_key=memory_key,
+                profile_key=profile_key,
+                memory=memory,
+                user_profile=user_profile,
+                products=products,
+                active_result_set_id=active_result_set_id,
+                wants_show_all=wants_show_all,
+            )
+            if _rc_result is not None:
+                return _rc_result
     contextual_message = contextualize_message(chat_request.message, memory)
     routing_message = _routing_message(chat_request.message, memory)
     memory_subject = best_memory_subject(memory)
@@ -4287,24 +4286,23 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     _safety_resolution = _resolve_workflow(_safety_analysis)
     _stash_workflow_resolution(_safety_resolution)
     if _safety_resolution.workflow_id == _WORKFLOW_ALLERGEN_SAFETY:
-        allergen_matches = allergen_product_matches(chat_request.message, chat_request.limit)
-        allergen_matches = personalize_products(allergen_matches, user_profile)
-        update_session_memory(memory_key, chat_request.message, "allergen_safety", allergen_matches, [], knowledge_matches)
-        updated_profile = update_user_memory(profile_key, chat_request.message, "allergen_safety", allergen_matches, [])
-        _ci = build_customer_intent(
-            chat_request.message, "allergen_safety",
-            allergen_constraints=[allergen_term] if allergen_term else None,
-            language=query_language,
+        # V2.13c: ALLERGEN_SAFETY executor handler (app.workflow_executor)
+        # - unchanged logic, formalized as the canonical execution
+        # boundary. The precedence decision above (frozen, V2.13b/
+        # V2.13b.1) is unchanged - this only moves EXECUTION of that
+        # already-made decision.
+        return _execute_allergen_safety(
+            chat_request=chat_request,
+            memory_key=memory_key,
+            profile_key=profile_key,
+            user_profile=user_profile,
+            knowledge_matches=knowledge_matches,
+            articles=articles,
+            allergen_term=allergen_term,
+            client_key=client_key,
+            session_id=session_id,
+            query_language=query_language,
         )
-        log_question(chat_request.message, client_key, len(allergen_matches), intent="allergen_safety", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
-        return {
-            "answer": allergen_safety_answer(allergen_term, query_language),
-            "products": allergen_matches,
-            "articles": articles,
-            "knowledge": knowledge_summary(knowledge_matches),
-            "memory": public_user_memory_summary(updated_profile),
-            "intent": "allergen_safety",
-        }
 
     faq_answer = None
     if is_faq_query:

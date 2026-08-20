@@ -96,6 +96,26 @@ overené s odlišným diet termom v `tests/test_session_contamination_v2_13b_1.p
 knowledge/answer composition, kde diet-term kontext je zámerná, testovaná
 hodnota — `test_diet_preference_is_remembered`).
 
+## V2.13c — vykonávacia (nie routing) debt: LEGACY_EXECUTION register
+
+V2.13c auditoval CELÚ `_chat_impl()` kaskádu (`docs/workflow-inventory-v2.13c.md`)
+a zaviedol `app.workflow_executor` pre 2 zo 4 `workflow_id`. Toto je
+INÝ typ dlhu než routing precedencia vyššie — nie "ktorý workflow sa
+zvolí", ale "kde sa vykoná, keď je už zvolený". Register:
+
+| workflow_id | Rozhoduje resolver? | Vykonáva sa cez executor? |
+|---|---|---|
+| `RESULTSET_CONTINUATION` | ÁNO (V2.13b) | **ÁNO (V2.13c)** |
+| `ALLERGEN_SAFETY` | ÁNO (V2.13b) | **ÁNO (V2.13c)** |
+| `RELATED_PRODUCTS` | ÁNO (V2.13b) | NIE — zdieľa prezentačnú pipeline s legacy vetvami |
+| `LEGACY_FALLBACK` (~9 vetiev: FAQ, recept, replacement, article, category discovery, out-of-domain, reset, missing-composition, random-recipe) | NIE — vlastné legacy detektory | NIE |
+
+Toto **nie je nová routing ambiguita** — každá z `LEGACY_FALLBACK`
+vetiev má vlastný, disjunktný detektor bežiaci v pevnom poradí, žiadne
+dve nesúperia o ten istý ťah. Je to zdokumentovaný, zámerný rozsah
+(`LegacyWorkflowAdapter`, sankcionovaný V2.13a/V2.13b), nie prehliadnutá
+chyba. Detail: `docs/workflow-inventory-v2.13c.md`, `docs/workflow-migration-v2.13c.md`.
+
 ## Čo tento dokument NIE JE
 
 - Nie je zoznam vecí opravených v V2.13a (V2.13a routing nemení vôbec).

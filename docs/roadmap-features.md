@@ -1606,3 +1606,17 @@ Committed fixture (2 140 produktov, pinned test suite): `classified=720`, `cover
 **Implementácia**: nová `app.main._routing_message()` – identický `is_context_followup()`-gated subject-carryover, NIKDY `diet_terms`. Nahradila `contextual_message` na 9 routing-kritických miestach (`special_subject`, `related_subject`, `already_have_subject`, `replacement_subject`, `article_product_subject`, `resolve_action_target_signal()` + 4 refining guardy). `contextualize_message()` samotná nezmenená – naďalej kŕmi retrieval/knowledge search/recipe subject/cross-sell/odpoveďové texty, kde diet-term kontext je zámerná, testovaná hodnota.
 
 **Výsledky:** V2.10 **53/58 nezmenené**, 0 kritických zlyhaní. `regbug_rt0011` teraz FIXED_V2_13B_1 (permanentný regresný test, generický – overený s odlišným diet termom). Testy: `tests/test_session_contamination_v2_13b_1.py` (14). Detail: `docs/contextualization-risk-v2.13b.1.md`, `docs/session-context-model.md`.
+
+### Sprint V2.13c – Workflow Architecture Closure (partial)
+
+**Zadanie:** urobiť `WorkflowResolver` autoritatívnym aj pre VYKONANIE (Invariant #1: resolver rozhoduje, executor vykonáva), nie len pre rozhodnutie – bez zmeny správania.
+
+**Implementácia:** plný audit `_chat_impl()` (21 vetiev, `docs/workflow-inventory-v2.13c.md`). Nový `app/workflow_executor.py` (`WorkflowResult = dict`, rovnaké zdôvodnenie ako `AdvisorResponse`) – `execute_resultset_continuation()`, `execute_allergen_safety()`, oba mechanicky presunuté (nie duplikované) z pôvodných inline blokov.
+
+**Rozsahové rozhodnutie**: migrované len 2 zo 4 `workflow_id` – jediné dve, ktoré sú súčasne resolver-driven AJ plne samostatné. `RELATED_PRODUCTS`'s vykonanie zdieľa ~250 riadkov prezentačnej logiky s 8 legacy vetvami – extrakcia by vyžadovala buď duplikáciu (zakázané), alebo oveľa väčšiu reštrukturalizáciu naraz (zakázané zadaním – incremental migration only).
+
+**Výsledky:** V2.10 **53/58 nezmenené**, canary **10/10**. Testy: `tests/test_workflow_executor_v2_13c.py` (9). Plný beh: 0 regresií.
+
+**Čestný výsledný stav**: **WORKFLOW_ARCHITECTURE_PARTIALLY_CLOSED**, nie CLOSED – `_chat_impl()` naďalej obsahuje ~9 vetiev nezávisle rozhodujúcich mimo `WorkflowResolver` (`LegacyWorkflowAdapter`, sankcionovaný už V2.13a/V2.13b, nie nová medzera). Detail: `docs/workflow-architecture.md`, `docs/workflow-inventory-v2.13c.md`, `docs/workflow-migration-v2.13c.md`.
+
+**Ďalší krok:** Úplné uzavretie (`WORKFLOW_ARCHITECTURE_CLOSED`) by vyžadovalo viacsprintovú migráciu zvyšných ~9 legacy vetiev s dôkladným charakterizačným pokrytím každej – kandidát na budúcu iteráciu, ak sa ukáže opodstatnený (nie automaticky V2.14).

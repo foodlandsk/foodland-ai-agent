@@ -1,7 +1,8 @@
-# Workflow Architecture — TurnResolver & WorkflowResolver (V2.13b, hardened V2.13b.1)
+# Workflow Architecture — TurnResolver, WorkflowResolver & WorkflowExecutor (V2.13b, hardened V2.13b.1, executor V2.13c)
 
 Dátum: 2026-08-20 (V2.13b), aktualizované 2026-08-20 (V2.13b.1 — vstupný
-text pre routing-kritické detektory sprísnený, pozri poslednú sekciu).
+text pre routing-kritické detektory sprísnený; V2.13c — kanonický
+`WorkflowExecutor` pre 2 zo 4 `workflow_id`, pozri poslednú sekciu).
 
 ## Cieľ
 
@@ -164,3 +165,39 @@ decision (`app.workflow_resolver.stash_resolution()`/`pop_last_resolution()`).
 TurnResolver/WorkflowResolver samotné (`app/turn_resolver.py`,
 `app/workflow_resolver.py`) sú nezmenené — dostávajú teraz len čistejší
 vstupný text.
+
+## V2.13c — WorkflowExecutor (kanonická vykonávacia hranica, ČIASTOČNÉ)
+
+Nový `app/workflow_executor.py` — `WorkflowResult = dict[str, Any]`
+(zámerne obyčajný `dict`, rovnaké zdôvodnenie ako `AdvisorResponse`
+z V2.13a), `execute_resultset_continuation()`, `execute_allergen_safety()`.
+Obe funkcie sú PRESUNUTÝ (nie duplikovaný) kód z ich pôvodných inline
+blokov v `_chat_impl()` — mechanický, byte-safe presun, overený
+identickým správaním pred/po (`git stash` porovnanie + priame `chat()`
+volania).
+
+**Migrované** (2 zo 4 `workflow_id`, ktoré `resolve_workflow()` môže
+vrátiť): `RESULTSET_CONTINUATION`, `ALLERGEN_SAFETY` — JEDINÉ dve, ktoré
+sú súčasne (i) rozhodnuté resolverom AJ (ii) plne samostatné (okamžitý
+`return`, nulová závislosť na zdieľanej `matches`→
+`structured_presentation`→odpoveď pipeline).
+
+**Nemigrované** (zámerne, zdokumentované): `RELATED_PRODUCTS` (rozhodnutie
+zostáva resolver-driven od V2.13b, ale VYKONANIE zostáva inline —
+zdieľa ~250 riadkov prezentačnej logiky s 8 legacy vetvami) a
+`LEGACY_FALLBACK` (celá `LegacyWorkflowAdapter` kaskáda, ~9 vetiev).
+Plný audit a zdôvodnenie: `docs/workflow-inventory-v2.13c.md`,
+migračný register: `docs/workflow-migration-v2.13c.md`.
+
+**Stav**: `WORKFLOW_ARCHITECTURE_PARTIALLY_CLOSED` — nie
+`WORKFLOW_ARCHITECTURE_CLOSED`. Hlavný `_chat_impl()` naďalej obsahuje
+~9 vetiev, ktoré nezávisle rozhodujú o type úlohy MIMO
+`WorkflowResolver` (FAQ, recipe, replacement, article, category
+discovery, out-of-domain, reset, missing-composition, random-recipe) —
+toto NIE JE nová medzera objavená V2.13c, je to ten istý
+`LegacyWorkflowAdapter`, ktorý V2.13a/V2.13b explicitne sankcionovali
+ako prijateľný rozsah (Section 61/62 zadania V2.13b). Úplné uzavretie by
+vyžadovalo rozsiahlejšiu, viacsprintovú migráciu s dôkladným
+charakterizačným pokrytím každej vetvy — mimo rozsahu jedného sedenia
+bez neprimeraného rizika (Section 36 zadania V2.13c: "no big-bang
+rewrite... migrate incrementally").

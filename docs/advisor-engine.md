@@ -152,6 +152,19 @@ app.main._chat_impl()  (nezmenené entry point)
           → WorkflowResolver.resolve_workflow() → ak RELATED_PRODUCTS: KAUZÁLNE prvá vetva v matches-dispatch
 ```
 
+## V2.13c — WorkflowExecutor (aktualizácia)
+
+`AdvisorEngine` zostáva nezmenený. Nový `app/workflow_executor.py`
+formalizuje vykonanie presne 2 zo 4 `workflow_id`
+(`RESULTSET_CONTINUATION`, `ALLERGEN_SAFETY`) — jediné dve, ktoré sú
+súčasne resolver-driven AJ plne samostatné (okamžitý `return`, nulová
+závislosť na zdieľanej prezentačnej pipeline). `RELATED_PRODUCTS`'s
+vykonanie a celá zvyšná `LegacyWorkflowAdapter` kaskáda zostávajú
+inline v `_chat_impl()` — zámerné, zdokumentované rozhodnutie
+(`WORKFLOW_ARCHITECTURE_PARTIALLY_CLOSED`). Detail:
+`docs/workflow-architecture.md`, `docs/workflow-inventory-v2.13c.md`,
+`docs/workflow-migration-v2.13c.md`.
+
 Plná architektúra, presné poradie precedencie a Workflow Execution Map:
 `docs/workflow-architecture.md`, `docs/workflow-precedence-v2.13b.md`.
 `rt0004`/`rt0010` stav: `docs/routing-debt.md` (**FIXED_V2_13B**, oba
