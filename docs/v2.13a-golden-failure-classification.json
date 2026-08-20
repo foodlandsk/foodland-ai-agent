@@ -1,0 +1,237 @@
+{
+  "commit": "5f7303d89b4169f5a79028fc40b0f6881063c9c1",
+  "v210_result": "51/58",
+  "failures": [
+    {
+      "case_id": "regbug_rt0002",
+      "query": "potrebujem niečo bez lepku k sushi",
+      "source": "regression_bug",
+      "critical": true,
+      "note": "Má odporúčať vhodné sushi doplnky a upozorniť na zloženie. (converted from tests/regression_training_cases.jsonl, id=RT0002)",
+      "expected_intent": "product_search",
+      "expected_workflow": null,
+      "actual_intent": "product_search",
+      "actual_workflow": null,
+      "expected_concept_ids": [],
+      "must_not_concept_ids": [],
+      "max_products": null,
+      "returned_product_ids": [
+        "FL_5451",
+        "FL_3519",
+        "FL_6913",
+        "FL_175",
+        "FL_2765",
+        "FL_3321"
+      ],
+      "error_buckets": [
+        "RETRIEVAL_MISS"
+      ],
+      "reasons": [
+        "missing expected title substring: 'sushi ryža'"
+      ],
+      "critical_failure": false,
+      "severity": "LOW",
+      "routing_relevant": false,
+      "known_intentional": false,
+      "status": "CLOSED",
+      "notes": "Golden case expects English transliteration \"sushi ryža\"; catalog uses Slovak \"Suši ryža\". Evaluation wording artifact, not a system defect."
+    },
+    {
+      "case_id": "regbug_rt0004",
+      "query": "súvisiace produkty k sushi ryži",
+      "source": "regression_bug",
+      "critical": true,
+      "note": "Doplnky k sushi ryži, nie ďalšie balenia ryže. (converted from tests/regression_training_cases.jsonl, id=RT0004)",
+      "expected_intent": "related_products",
+      "expected_workflow": null,
+      "actual_intent": "product_search",
+      "actual_workflow": "LEGACY_FALLBACK",
+      "expected_concept_ids": [],
+      "must_not_concept_ids": [],
+      "max_products": null,
+      "returned_product_ids": [
+        "FL_1081",
+        "FL_1109",
+        "FL_11455",
+        "FL_11457"
+      ],
+      "error_buckets": [
+        "RETRIEVAL_MISS",
+        "RANKING_ERROR",
+        "INTENT_ERROR"
+      ],
+      "reasons": [
+        "missing expected title substring: 'nori'",
+        "missing expected title substring: 'ryžový ocot'",
+        "missing expected title substring: 'wasabi'",
+        "missing expected title substring: 'nakladaný zázvor'",
+        "forbidden substring 'Suši ryža' must not rank first, got 'Suši ryža Japonská HARUKA 20 kg'",
+        "expected intent 'related_products', got 'product_search'"
+      ],
+      "critical_failure": false,
+      "severity": "HIGH",
+      "routing_relevant": true,
+      "known_intentional": false,
+      "status": "OPEN",
+      "notes": "V2.12.2 Bug A guard suppresses related_products when sushi rice family resolves confidently; explicit companion phrase does not override."
+    },
+    {
+      "case_id": "regbug_rt0006",
+      "query": "čo k červenej kari paste?",
+      "source": "regression_bug",
+      "critical": true,
+      "note": "Kari dotaz má preferovať suroviny ku kari. (converted from tests/regression_training_cases.jsonl, id=RT0006)",
+      "expected_intent": "related_products",
+      "expected_workflow": null,
+      "actual_intent": "related_products",
+      "actual_workflow": null,
+      "expected_concept_ids": [],
+      "must_not_concept_ids": [],
+      "max_products": null,
+      "returned_product_ids": [
+        "FL_404",
+        "FL_6891",
+        "FL_3254",
+        "FL_11360",
+        "FL_2578",
+        "FL_7351"
+      ],
+      "error_buckets": [
+        "RETRIEVAL_MISS"
+      ],
+      "reasons": [
+        "missing expected title substring: 'rybia omáčka'"
+      ],
+      "critical_failure": false,
+      "severity": "LOW",
+      "routing_relevant": false,
+      "known_intentional": false,
+      "status": "CLOSED",
+      "notes": "Golden case expects \"rybia omáčka\"; catalog uses \"Rybacia omáčka\". Product is genuinely present. Lexical mismatch, not a system defect."
+    },
+    {
+      "case_id": "regbug_rt0010",
+      "query": "sójová omáčka bez sóje",
+      "source": "regression_bug",
+      "critical": true,
+      "note": "Bez sóje nie je to isté ako bezlepková sójová omáčka. (converted from tests/regression_training_cases.jsonl, id=RT0010)",
+      "expected_intent": "allergen_safety",
+      "expected_workflow": null,
+      "actual_intent": "product_search",
+      "actual_workflow": "PRODUCT_LOOKUP",
+      "expected_concept_ids": [],
+      "must_not_concept_ids": [],
+      "max_products": 0,
+      "returned_product_ids": [
+        "FL_102",
+        "FL_1026",
+        "FL_10334",
+        "FL_10468"
+      ],
+      "error_buckets": [
+        "PRESENTATION_ERROR",
+        "GROUNDING_ERROR",
+        "INTENT_ERROR"
+      ],
+      "reasons": [
+        "expected at most 0 products, got 4",
+        "answer missing expected content: 'overte zloženie'",
+        "answer missing expected content: 'alergény'",
+        "expected intent 'allergen_safety', got 'product_search'"
+      ],
+      "critical_failure": true,
+      "severity": "HIGH",
+      "routing_relevant": true,
+      "known_intentional": false,
+      "status": "OPEN",
+      "notes": "allergen/safety intent lacks precedence over product_search when allergen is inherent to the product category itself. Previously mislabeled INTENTIONAL_SAFETY_BEHAVIOR in V2.12.3; corrected in V2.12.4/V2.13a."
+    },
+    {
+      "case_id": "regbug_rt0013",
+      "query": "náhrada za rybiu omáčku vegan",
+      "source": "regression_bug",
+      "critical": true,
+      "note": "Vegan náhrada za rybiu omáčku má odporúčať dochucovadlá, nie obaly na omáčku. (converted from tests/regression_training_cases.jsonl, id=RT0013)",
+      "expected_intent": "product_search",
+      "expected_workflow": null,
+      "actual_intent": "replacement_products",
+      "actual_workflow": null,
+      "expected_concept_ids": [],
+      "must_not_concept_ids": [],
+      "max_products": null,
+      "returned_product_ids": [
+        "FL_2764",
+        "FL_2765",
+        "FL_3321",
+        "FL_6600"
+      ],
+      "error_buckets": [
+        "INTENT_ERROR"
+      ],
+      "reasons": [
+        "expected intent 'product_search', got 'replacement_products'"
+      ],
+      "critical_failure": false,
+      "severity": "MEDIUM",
+      "routing_relevant": null,
+      "known_intentional": null,
+      "status": "PENDING_SEMANTIC_PRODUCT_DECISION",
+      "notes": "System routes replacement_products for a literal \"náhrada za X\" query; golden case expects product_search. Requires human decision on which is correct before treating as bug."
+    },
+    {
+      "case_id": "regbug_rt0022",
+      "query": "potrebujem recept na kimchi",
+      "source": "regression_bug",
+      "critical": true,
+      "note": "Recept na kimchi ma odpovedat postupom, nie produktovymi kartami na vyrobu. (converted from tests/regression_training_cases.jsonl, id=RT0022)",
+      "expected_intent": "recipe",
+      "expected_workflow": null,
+      "actual_intent": "recipe",
+      "actual_workflow": "RECIPE_SHOPPING",
+      "expected_concept_ids": [],
+      "must_not_concept_ids": [],
+      "max_products": 0,
+      "returned_product_ids": [],
+      "error_buckets": [
+        "GROUNDING_ERROR"
+      ],
+      "reasons": [
+        "answer missing expected content: 'kapustu'",
+        "answer missing expected content: 'fermentovat'"
+      ],
+      "critical_failure": false,
+      "severity": "LOW",
+      "routing_relevant": false,
+      "known_intentional": false,
+      "status": "CLOSED",
+      "notes": "Intent (recipe) and workflow (RECIPE_SHOPPING) both correct. LLM-generated recipe text does not contain exact expected words. Grounding/content variance, not routing."
+    },
+    {
+      "case_id": "regbug_rt0024",
+      "query": "ako môžem zaplatiť?",
+      "source": "regression_bug",
+      "critical": true,
+      "note": "Platobne otazky musia ist cez FAQ. (converted from tests/regression_training_cases.jsonl, id=RT0024)",
+      "expected_intent": "faq",
+      "expected_workflow": null,
+      "actual_intent": "faq",
+      "actual_workflow": null,
+      "expected_concept_ids": [],
+      "must_not_concept_ids": [],
+      "max_products": 0,
+      "returned_product_ids": [],
+      "error_buckets": [
+        "GROUNDING_ERROR"
+      ],
+      "reasons": [
+        "answer missing expected content: 'Dobierka'"
+      ],
+      "critical_failure": false,
+      "severity": "LOW",
+      "routing_relevant": false,
+      "known_intentional": false,
+      "status": "CLOSED",
+      "notes": "Intent (faq) correct. FAQ answer text does not contain exact expected word. Grounding/content variance, not routing."
+    }
+  ]
+}

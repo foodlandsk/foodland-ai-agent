@@ -27,21 +27,19 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app import main as bot  # noqa: E402
+from app.advisor_engine import advisor_engine, AdvisorRequest  # noqa: E402
 from app.execution_context import admin_test_context  # noqa: E402
 from app.search_quality import canary_anomalies, current_deployment_version, load_canary_cases, run_canaries  # noqa: E402
 
 DEFAULT_CANARY_PATH = ROOT / "eval" / "search_quality_canaries.json"
 
 
-class _FakeRequest:
-    class client:
-        host = "127.0.0.1"
-    headers: dict = {}
-
-
 def _chat_fn(query: str) -> dict:
-    request = bot.ChatRequest(message=query, session_id="search-quality-canary")
-    return bot._chat_internal(request, _FakeRequest(), execution_context=admin_test_context())
+    # V2.13a: goes through AdvisorEngine (app/advisor_engine.py) instead of
+    # a script-local duck-typed FakeRequest + app.main._chat_internal() -
+    # same underlying call, one fewer independent shim to keep in sync.
+    request = AdvisorRequest(message=query, session_id="search-quality-canary", client_key="search-quality-canary")
+    return advisor_engine.run(request, admin_test_context())
 
 
 def _classify_product_family(product_id: str) -> str | None:

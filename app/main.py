@@ -117,6 +117,8 @@ from app.search_quality import save_last_canary_result as _save_last_search_qual
 from app.search_quality import canary_anomalies as _search_quality_canary_anomalies
 from app.search_quality import load_canary_cases as _load_search_quality_canary_cases
 from app.search_quality import run_canaries as _run_search_quality_canaries
+from app.advisor_engine import advisor_engine as _advisor_engine
+from app.advisor_engine import AdvisorRequest as _AdvisorRequest
 from app.learning_cycle import run_learning_cycle as _run_learning_cycle
 from app.learning_cycle import REPORTS_DIR as _LEARNING_REPORTS_DIR
 from app.learning_cycle import LEARNING_ENGINE_ENABLED as _LEARNING_ENGINE_ENABLED
@@ -3514,15 +3516,11 @@ def admin_rollback_learning(
 _SEARCH_QUALITY_CANARY_PATH = str(Path(__file__).resolve().parents[1] / "eval" / "search_quality_canaries.json")
 
 
-class _SearchQualityCanaryRequest:
-    class client:
-        host = "127.0.0.1"
-    headers: dict = {}
-
-
 def _search_quality_chat_fn(query: str) -> dict:
-    request = ChatRequest(message=query, session_id="search-quality-admin-canary")
-    return _chat_internal(request, _SearchQualityCanaryRequest(), execution_context=_admin_test_context())
+    # V2.13a: goes through AdvisorEngine instead of a locally-defined
+    # duck-typed request shim - AdvisorEngine owns that internally now.
+    request = _AdvisorRequest(message=query, session_id="search-quality-admin-canary", client_key="search-quality-admin-canary")
+    return _advisor_engine.run(request, _admin_test_context())
 
 
 def _search_quality_classify_product_family(product_id: str) -> str | None:
@@ -5173,16 +5171,30 @@ def _chat_internal(chat_request: ChatRequest, request: Request, execution_contex
 
 @app.post("/chat")
 def chat(chat_request: ChatRequest, request: Request) -> dict:
-    # Deliberately does NOT force execution_context=customer_context()
-    # here: real HTTP dispatch always hands this a genuine Request (see
-    # _chat_impl's isinstance fallback), and a large existing test suite
-    # calls chat() directly with a duck-typed FakeRequest expecting the
-    # pre-V2.12.1 "not a real Request -> not rate-limited" behavior to
-    # keep working unchanged. Callers that want to declare a specific
-    # non-CUSTOMER mode explicitly should call _chat_internal() directly
-    # (see app.evaluation.adapter, app.ranking_shadow) rather than route
-    # through this endpoint function.
-    return _chat_internal(chat_request, request)
+    # V2.13a: thin AdvisorEngine adapter (app/advisor_engine.py) - HTTP
+    # transport concerns (real vs. duck-typed Request, client_key
+    # derivation) are resolved HERE, once, then handed to AdvisorEngine
+    # as plain, already-trusted values. Deliberately does NOT force
+    # execution_context=customer_context() here: real HTTP dispatch
+    # always hands this a genuine Request, and a large existing test
+    # suite calls chat() directly with a duck-typed FakeRequest
+    # expecting the pre-V2.12.1 "not a real Request -> not
+    # rate-limited" behavior to keep working unchanged - same
+    # isinstance() fallback as before, just resolved one level up.
+    # Callers that want to declare a specific non-CUSTOMER mode
+    # explicitly should call app.advisor_engine.advisor_engine.run()
+    # directly (see app.evaluation.adapter, app.ranking_shadow) rather
+    # than route through this endpoint function.
+    resolved_context = _customer_context() if isinstance(request, Request) else _evaluation_context()
+    advisor_request = _AdvisorRequest(
+        message=chat_request.message,
+        session_id=chat_request.session_id,
+        limit=chat_request.limit,
+        conversation_history=chat_request.conversation_history,
+        client_id=chat_request.client_id,
+        client_key=get_client_key(request),
+    )
+    return _advisor_engine.run(advisor_request, resolved_context)
 
 
 def should_use_fast_chat_answer(

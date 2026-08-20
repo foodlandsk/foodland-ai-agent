@@ -120,3 +120,14 @@ defaultuje na EVALUATION a prijíma explicitný override;
 `ranking_shadow`/`ranking_optimizer` zdrojový kód skutočne obsahuje
 volanie s príslušným kontextom (nie len že existuje, ale že sa reálne
 používa).
+
+## V2.13a — AdvisorEngine teraz vyžaduje explicitný kontext
+
+`app.advisor_engine.AdvisorEngine.run(advisor_request, execution_context)`
+nemá default `None` pre `execution_context` — každý volajúci cez tento
+nový vstupný bod MUSÍ deklarovať svoj režim explicitne (Section 17
+vyžaduje presne toto). `isinstance(request, Request)` fallback zostáva
+**iba** vnútri `app.main._chat_impl()`/`chat()` (kvôli existujúcej
+veľkej testovacej sade s duck-typed requestmi, ktorá tento fallback
+stále využíva) — `AdvisorEngine` sám o sebe už tento fallback
+nepotrebuje ani nekonzultuje. Detail: `docs/advisor-engine.md`.
