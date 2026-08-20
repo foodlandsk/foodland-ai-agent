@@ -30,12 +30,44 @@ class _FakeRequest:
     headers: dict = {}
 
 
+class _FakeRequestForClientKey:
+    def __init__(self, host: str) -> None:
+        self.client = type("client", (), {"host": host})()
+        self.headers: dict = {}
+
+
 def _legacy_chat(message: str, session_id: str, context=None) -> dict:
-    return m._chat_internal(m.ChatRequest(message=message, session_id=session_id), _FakeRequest(), execution_context=context)
+    # V2.13c fix: client_key must be unique per (session_id, side) pair,
+    # not the single hardcoded "127.0.0.1" this and _engine_chat() used
+    # to share. user_memory_key() falls back to a hash of client_key
+    # when client_id is empty, so sharing one client_key means
+    # _legacy_chat() and _engine_chat() shared ONE mutable
+    # personalization profile (app.main.user_memories) - not just with
+    # each other, but with every OTHER test in the suite that also
+    # hardcodes "127.0.0.1". personalization_score() reads accumulated
+    # profile counters (subjects/diet_terms/product_titles/brands), so
+    # whichever side's profile happened to carry more cross-test
+    # accumulation at that point in the run could get a different
+    # ranking tie-break - not a real behavior difference. This
+    # intermittently failed on a different query each run ("sojova
+    # omacka"/"suvisiace produkty k sushi ryzi" locally, "Kikkoman" in a
+    # clean CI checkout). An earlier fix attempt gave only the legacy
+    # side a distinct-but-fixed host, which made legacy permanently
+    # FRESH while engine kept the suite-shared "127.0.0.1" identity -
+    # trading intermittent flakiness for a consistent asymmetry instead
+    # of removing it. Deriving the client_key from session_id (already
+    # unique per call site throughout this file) keeps both sides
+    # equally fresh and mutually isolated, with no dependency on test
+    # execution order.
+    return m._chat_internal(
+        m.ChatRequest(message=message, session_id=session_id),
+        _FakeRequestForClientKey(f"{session_id}.legacy"),
+        execution_context=context,
+    )
 
 
 def _engine_chat(message: str, session_id: str, context=None) -> dict:
-    request = AdvisorRequest(message=message, session_id=session_id, client_key="127.0.0.1")
+    request = AdvisorRequest(message=message, session_id=session_id, client_key=f"{session_id}.engine")
     return advisor_engine.run(request, context or evaluation_context())
 
 
