@@ -1,6 +1,7 @@
-# AdvisorEngine — Application Boundary (Sprint V2.13a)
+# AdvisorEngine — Application Boundary (Sprint V2.13a, aktualizované V2.13b)
 
-Dátum: 2026-08-20.
+Dátum: 2026-08-20 (V2.13a), aktualizované 2026-08-20 (V2.13b — TurnResolver/
+WorkflowResolver integrácia, pozri poslednú sekciu).
 
 ## Prečo AdvisorEngine existuje
 
@@ -117,35 +118,41 @@ Vyjadrené čisto cez `ExecutionContext.apply_rate_limit` — žiadny
 `customer_context()` cez engine sa rate-limituje presne ako predtým;
 `evaluation_context()`/iné interné kontexty nikdy.
 
-## Čo zostáva nezmenené (Section 26/27, Invariant #2)
+## Čo zostáva nezmenené aj po V2.13b (Section 26/27 zadania V2.13a, Invariant #2)
 
-- Routing precedencia (`_chat_impl()`'s kaskáda vetiev)
-- Intent klasifikácia
-- Retrieval, ranking, taxonomy
+- Intent klasifikácia (mimo 2 nových natívnych workflow rozhodnutí nižšie)
+- Retrieval, ranking, taxonomy — **bezo zmeny** (V2.13b Invariant #6)
 - Session/ResultSet sémantika
-- Recipe, cross-sell, safety routing logika
+- Recipe, cross-sell, safety routing logika (mimo `ALLERGEN_SAFETY`
+  precedencie, pozri nižšie)
 - `app.workflow_registry.select_workflow()` zostáva čisto observability
-  label, nikdy router — `workflow_id`/`workflow_confidence` sa naďalej
-  len prenášajú do odpovede, AdvisorEngine ich nereinterpretuje.
+  label pre všetko, čo NEPREJDE novým natívnym resolverom — `workflow_id`/
+  `workflow_confidence` sa naďalej len prenášajú do odpovede.
 
-## V2.13b — čo AdvisorEngine NIE JE
+**Routing precedencia `_chat_impl()`'s kaskády sa V2.13b ZÁMERNE mení** —
+presne pre dva evidované prípady (`rt0004`, `rt0010`), pozri nižšie.
 
-`AdvisorEngine` nie je `WorkflowResolver`. Cieľová architektúra V2.13b:
+## V2.13b — TurnResolver/WorkflowResolver integrácia (implementované)
+
+`AdvisorEngine` samotný zostáva nezmenený od V2.13a — je stále čistý
+transport/aplikačný adaptér, ktorý deleguje na `app.main._chat_internal()`.
+TurnResolver a WorkflowResolver **nesídlia v AdvisorEngine** — sídlia
+priamo vo `_chat_impl()` kaskáde, na presne dvoch miestach, kde boli
+predtým dva samostatné (a chybné) inline rozhodnutia:
 
 ```
-AdvisorEngine
+AdvisorEngine.run()
       ↓
-TurnResolver
-      ↓
-WorkflowResolver
-      ↓
-WorkflowHandler
-      ↓
-Domain Services
+app.main._chat_impl()  (nezmenené entry point)
+      │
+      ├── allergen_term známy → TurnResolver.resolve_safety_signal()
+      │   → WorkflowResolver.resolve_workflow() → ak ALLERGEN_SAFETY: KAUZÁLNE vykoná, return
+      │
+      └── special_subject/related_subject známe → TurnResolver.resolve_action_target_signal()
+          → WorkflowResolver.resolve_workflow() → ak RELATED_PRODUCTS: KAUZÁLNE prvá vetva v matches-dispatch
 ```
 
-Táto vrstva **nebola vybudovaná** v tomto sprinte. `docs/routing-debt.md`
-dokumentuje presne dva prípady (`rt0004`, `rt0010`), ktoré V2.13b musí
-riešiť ako prvé — oba boli v tomto sprinte len **charakterizované**
-(zachytené testom, ktorý dokazuje, že AdvisorEngine reprodukuje presne
-to isté, už-existujúce správanie), nie opravené.
+Plná architektúra, presné poradie precedencie a Workflow Execution Map:
+`docs/workflow-architecture.md`, `docs/workflow-precedence-v2.13b.md`.
+`rt0004`/`rt0010` stav: `docs/routing-debt.md` (**FIXED_V2_13B**, oba
+generickým fixom, nie hardcoded na tieto dve konkrétne frázy).

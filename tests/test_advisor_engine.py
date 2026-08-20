@@ -162,44 +162,47 @@ class TestTopicSwitchEquivalence:
         assert legacy_2.get("intent") == engine_2.get("intent")
 
 
-class TestCharacterization_rt0004_KNOWN_ROUTING_DEFECT_PENDING_V2_13B:
-    """Section 28 - characterizes, does NOT fix. This test's purpose is to
-    detect ACCIDENTAL behavior drift introduced by the AdvisorEngine
-    extraction, not to assert the current behavior is desirable. See
-    docs/routing-debt.md for the real root cause."""
+class TestCharacterization_rt0004_FIXED_ROUTING_REGRESSION:
+    """V2.13a labeled this KNOWN_ROUTING_DEFECT_PENDING_V2_13B; V2.13b's
+    WorkflowResolver (app.workflow_resolver, app.turn_resolver) fixes it
+    generically - see docs/routing-debt.md and
+    docs/workflow-precedence-before-v2.13b.md for the exact root cause
+    (detect_special_product_subject() unconditionally nulled
+    related_subject with no regard for explicit companion-language,
+    "súvisiace"). This test now asserts the FIXED behavior and guards
+    against it silently regressing back to product_search."""
 
     QUERY = "súvisiace produkty k sushi ryži"
 
-    def test_current_defect_behavior_is_reproduced_by_advisor_engine(self):
+    def test_resolves_to_related_products_not_plain_search(self):
         legacy = _legacy_chat(self.QUERY, "ae-rt0004-legacy", evaluation_context())
         engine = _engine_chat(self.QUERY, "ae-rt0004-engine", evaluation_context())
-        # KNOWN_ROUTING_DEFECT_PENDING_V2_13B: the correct behavior would be
-        # intent="related_products" with complementary products (nori,
-        # rice vinegar, wasabi, pickled ginger). Current (defective)
-        # behavior is captured here so V2.13a cannot silently change it.
-        assert legacy.get("intent") == engine.get("intent") == "product_search"
+        assert legacy.get("intent") == engine.get("intent") == "related_products"
         assert _product_ids(legacy) == _product_ids(engine)
-        # Documents the defect signature itself (more sushi rice, not
-        # complements) so a future accidental fix is visible as a test
-        # change, not a silent pass.
+        # The anchor (sushi rice) must still inform the results, but the
+        # PRIMARY workflow must return complementary products, not more
+        # sushi rice packages (the old defect signature).
         titles = [p.get("title", "").lower() for p in (legacy.get("products") or [])]
-        assert any("ryža" in t or "ryza" in t for t in titles), "defect signature (more rice, not complements) changed unexpectedly"
+        assert titles
+        assert not all("ryž" in t or "ryz" in t for t in titles), "still returning only more rice, not complements"
 
 
-class TestCharacterization_rt0010_KNOWN_SAFETY_ROUTING_GAP_PENDING_V2_13B:
-    """Section 29 - characterizes, does NOT fix. See docs/routing-debt.md."""
+class TestCharacterization_rt0010_FIXED_SAFETY_ROUTING_REGRESSION:
+    """V2.13a labeled this KNOWN_SAFETY_ROUTING_GAP_PENDING_V2_13B;
+    V2.13b's WorkflowResolver fixes it generically - see
+    docs/routing-debt.md. Root cause: allergen_product_query() returning
+    "" (a deliberate zero-safe-product signal for e.g. "bez soj") was
+    conflated with "not applicable" by the old guard's boolean logic."""
 
     QUERY = "sójová omáčka bez sóje"
 
-    def test_current_gap_behavior_is_reproduced_by_advisor_engine(self):
+    def test_resolves_to_allergen_safety_with_no_unsupported_claim(self):
         legacy = _legacy_chat(self.QUERY, "ae-rt0010-legacy", evaluation_context())
         engine = _engine_chat(self.QUERY, "ae-rt0010-engine", evaluation_context())
-        # KNOWN_SAFETY_ROUTING_GAP_PENDING_V2_13B: the correct behavior
-        # would be intent="allergen_safety" with 0 products and a safety
-        # disclaimer. Current (gap) behavior: product_search with real
-        # soy-sauce products. Captured, not changed, not endorsed.
-        assert legacy.get("intent") == engine.get("intent") == "product_search"
-        assert len(_product_ids(legacy)) == len(_product_ids(engine)) > 0
+        assert legacy.get("intent") == engine.get("intent") == "allergen_safety"
+        # No unsupported "this product is soy-free" claim: zero products.
+        assert _product_ids(legacy) == _product_ids(engine) == []
+        assert legacy.get("answered") is True
 
 
 class TestExactlyOnceSideEffects:

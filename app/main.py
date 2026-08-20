@@ -117,6 +117,14 @@ from app.search_quality import save_last_canary_result as _save_last_search_qual
 from app.search_quality import canary_anomalies as _search_quality_canary_anomalies
 from app.search_quality import load_canary_cases as _load_search_quality_canary_cases
 from app.search_quality import run_canaries as _run_search_quality_canaries
+from app.turn_resolver import resolve_safety_signal as _resolve_safety_signal
+from app.turn_resolver import resolve_action_target_signal as _resolve_action_target_signal
+from app.workflow_resolver import resolve_workflow as _resolve_workflow
+from app.workflow_resolver import WORKFLOW_ALLERGEN_SAFETY as _WORKFLOW_ALLERGEN_SAFETY
+from app.workflow_resolver import WORKFLOW_RELATED_PRODUCTS as _WORKFLOW_RELATED_PRODUCTS
+from app.workflow_resolver import reset_last_resolution as _reset_workflow_resolution
+from app.workflow_resolver import stash_resolution as _stash_workflow_resolution
+from app.workflow_resolver import pop_last_resolution as _pop_workflow_resolution
 from app.advisor_engine import advisor_engine as _advisor_engine
 from app.advisor_engine import AdvisorRequest as _AdvisorRequest
 from app.learning_cycle import run_learning_cycle as _run_learning_cycle
@@ -4117,6 +4125,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     if execution_context is None:
         execution_context = _customer_context() if isinstance(request, Request) else _evaluation_context()
     _reset_search_quality_decision()
+    _reset_workflow_resolution()
 
     client_key = get_client_key(request)
     # V2.12 fix, now generalized by execution_context.apply_rate_limit
@@ -4224,7 +4233,24 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             "intent": "missing_composition",
         }
 
-    if allergen_term and (allergen_product_query(chat_request.message) or not detect_related_subject(chat_request.message)):
+    # V2.13b (docs/workflow-precedence-before-v2.13b.md, rt0010): the
+    # old inline condition treated allergen_product_query() returning ""
+    # as "not applicable", when it is often a DELIBERATE zero-safe-
+    # product signal (e.g. "bez soj"/"bez soja") - conflating the two
+    # let a coincidental related_subject match suppress a genuine
+    # safety answer. WorkflowResolver makes that distinction explicit
+    # and generically (Invariant #11 - not hard-coded to this query);
+    # the two detector calls below are the SAME ones the old condition
+    # already made, just fed through the resolver instead of inlined.
+    _safety_analysis = _resolve_safety_signal(
+        chat_request.message,
+        allergen_term=allergen_term,
+        allergen_product_query_result=allergen_product_query(chat_request.message),
+        related_subject=detect_related_subject(chat_request.message),
+    )
+    _safety_resolution = _resolve_workflow(_safety_analysis)
+    _stash_workflow_resolution(_safety_resolution)
+    if _safety_resolution.workflow_id == _WORKFLOW_ALLERGEN_SAFETY:
         allergen_matches = allergen_product_matches(chat_request.message, chat_request.limit)
         allergen_matches = personalize_products(allergen_matches, user_profile)
         update_session_memory(memory_key, chat_request.message, "allergen_safety", allergen_matches, [], knowledge_matches)
@@ -4564,7 +4590,44 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     special_subject = detect_special_product_subject(contextual_message)
     replacement_subject = detect_replacement_subject(contextual_message)
     related_subject = detect_related_subject(contextual_message)
-    if special_subject:
+    # V2.13b (docs/workflow-precedence-before-v2.13b.md, rt0004): the
+    # old unconditional "if special_subject: related_subject = None"
+    # let a coarse, substring-based special_subject match (e.g.
+    # "sushi_rice" from "sushi ryzi" anywhere in the message) always
+    # win over an explicit companion/action request ("suvisiace
+    # produkty k X") - product recognition is not the same as the
+    # requested ACTION (Invariant #1). WorkflowResolver decides this
+    # generically (Invariant #10), reusing the same action-language
+    # marker set (_has_recipe_shopping_language) the V2.12.2 guard
+    # below already relies on - not a new, query-specific patch.
+    # V2.13b (regbug_rt0011 session-collision investigation): the
+    # special_subject/related_subject conflict this resolver arbitrates
+    # must be NATIVE to the current turn's own text, not manufactured by
+    # contextualize_message() appending stale session diet-terms (e.g. a
+    # carried-over diet-term tail coincidentally matching a special_subject
+    # like "mild" on an unrelated later turn). Anchor the conflict check
+    # against the raw message so contextualization cannot newly create a
+    # related-products conflict that was never actually in this turn
+    # (Section 8 - one turn -> one primary workflow, decided by what the
+    # customer actually typed this turn).
+    _raw_special_subject = detect_special_product_subject(chat_request.message)
+    _raw_related_subject = detect_related_subject(chat_request.message)
+    _action_target_analysis = _resolve_action_target_signal(
+        contextual_message,
+        special_subject=special_subject if _raw_special_subject else None,
+        related_subject=related_subject if _raw_related_subject else None,
+        has_recipe_shopping_language=_has_recipe_shopping_language(contextual_message),
+        # V2.13b perf note: resolve_workflow()'s RELATED_PRODUCTS decision
+        # only needs related_subject + has_recipe_shopping_language (see
+        # app/turn_resolver.py) - the confident-family check is a separate,
+        # already-existing guard a few lines below (V2.12.2 Bug A), so it
+        # is intentionally NOT recomputed here (Section 17 - compute once).
+        resolves_confident_product_family=False,
+    )
+    _action_target_resolution = _resolve_workflow(_action_target_analysis)
+    _stash_workflow_resolution(_action_target_resolution)
+    _related_products_forced = _action_target_resolution.workflow_id == _WORKFLOW_RELATED_PRODUCTS
+    if special_subject and not _related_products_forced:
         related_subject = None
     if related_subject and PRODUCT_SET_SIGNAL_TOKENS & tokenize(contextual_message):
         # "sake sety" (sake SETS) was forced into the sake cross-sell
@@ -4665,7 +4728,9 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         related_subject = memory_subject
     needs_composition_caution = is_composition_caution_search(contextual_message)
     structured_presentation = None
-    if already_have_subject:
+    if _related_products_forced:
+        matches = related_products_for_subject(products, knowledge, related_subject, chat_request.limit)
+    elif already_have_subject:
         matches = complement_products_for_subject(products, already_have_subject, chat_request.limit)
     # V2.12.2 (docs/query-semantics.md, Section 34/106) - "sushi_rice" is a
     # second legacy special_subject (predating V2.4/V2.5) superseded the
@@ -4802,15 +4867,19 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         else None
     )
     intent = (
-        "article_products"
-        if article_product_subject
+        "related_products"
+        if _related_products_forced
         else (
-            "replacement_products"
-            if replacement_subject
+            "article_products"
+            if article_product_subject
             else (
-                "product_advice"
-                if product_advice_context
-                else ("related_products" if not special_subject and (related_subject or cross_sell_matches) else "product_search")
+                "replacement_products"
+                if replacement_subject
+                else (
+                    "product_advice"
+                    if product_advice_context
+                    else ("related_products" if not special_subject and (related_subject or cross_sell_matches) else "product_search")
+                )
             )
         )
     )
@@ -5162,6 +5231,8 @@ def _chat_internal(chat_request: ChatRequest, request: Request, execution_contex
                 ranking_config_version=get_active_ranking_profile_version(),
                 taxonomy_version=TAXONOMY_VERSION,
                 retrieval_decision=_pop_search_quality_decision(),
+                resolved_workflow=(_resolved_workflow := _pop_workflow_resolution()) and _resolved_workflow.workflow_id,
+                resolver_reason=_resolved_workflow.reason if _resolved_workflow else None,
             )
             _record_search_quality_trace(_trace)
         except Exception:

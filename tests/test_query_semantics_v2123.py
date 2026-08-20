@@ -329,16 +329,17 @@ class TestFullRegressionSuiteUnaffected:
         assert titles
         assert any("KIKKOMAN" in t.upper() for t in titles), titles
 
-    def test_regbug_rt0010_behavior_unchanged_by_v2123(self):
-        # eval/golden/regression_bugs.json::regbug_rt0010 expects zero
-        # products for "sójová omáčka bez sóje", but that expectation was
-        # ALREADY unmet on the pre-V2.12.3 baseline (commit de2d4eb) -
-        # verified directly: product_search intent, 4 products, on a clean
-        # checkout before this sprint's changes. Classified
-        # INTENTIONAL_SAFETY_BEHAVIOR / OUT_OF_RETRIEVAL_SCOPE and
-        # deliberately NOT fixed via retrieval (spec instruction). This
-        # test only guards that V2.12.3 did not change this pre-existing,
-        # already-known state.
+    def test_regbug_rt0010_behavior_fixed_by_v213b(self):
+        # SAFETY_CORRECTION (Section 114 golden-change policy): this test
+        # asserted product_search/4-products through V2.12.3/V2.12.4/V2.13a
+        # (matching the then-current, then-classified-as-out-of-scope
+        # behavior). V2.13b's WorkflowResolver fixes the underlying
+        # precedence bug generically (docs/routing-debt.md,
+        # docs/workflow-precedence-before-v2.13b.md) - the query now
+        # correctly resolves to allergen_safety with zero products. This
+        # is an intentional, documented, evidenced routing fix, not a
+        # "code differs" drift - see app/turn_resolver.py/
+        # app/workflow_resolver.py.
         r = _chat("sójová omáčka bez sóje", "v2123-allergen")
-        assert r.get("intent") == "product_search"
-        assert len(r.get("products") or []) == 4
+        assert r.get("intent") == "allergen_safety"
+        assert not (r.get("products") or [])

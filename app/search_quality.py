@@ -136,6 +136,8 @@ class SearchQualityTrace:
     deployment_version: str | None
     ranking_config_version: str | None
     taxonomy_version: int | None
+    resolved_workflow: str | None = None
+    resolver_reason: str | None = None
 
 
 def session_hash(session_id: str, salt: str) -> str:
@@ -158,6 +160,8 @@ def build_trace(
     ranking_config_version: str | None,
     taxonomy_version: int | None,
     retrieval_decision: dict | None,
+    resolved_workflow: str | None = None,
+    resolver_reason: str | None = None,
 ) -> SearchQualityTrace:
     decision = retrieval_decision or {
         "mode": PATH_NON_STRUCTURED_WORKFLOW,
@@ -182,6 +186,8 @@ def build_trace(
         nearest_candidate_count=decision["nearest_count"],
         legacy_fallback_used=decision["legacy_fallback_used"],
         zero_exact_match=decision["zero_exact_match"],
+        resolved_workflow=resolved_workflow,
+        resolver_reason=resolver_reason,
         visible_product_count=visible_product_count,
         no_result=no_result,
         answered=answered,
