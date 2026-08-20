@@ -240,3 +240,10 @@ Plný beh: **1024/1024** (932 pred V2.12 + 92 nových), 0 regresií.
   optimization.md` (V2.11) — všetko reuse-ované, nič neduplikované.
 - `docs/evaluation-engine.md`, `docs/quality-gates.md` (V2.10) — každý
   V2.12 kandidát beží cez tento presný harness.
+- `docs/search-quality-observability.md` (V2.12.4) — produkčný quality
+  monitor môže vysoko-dôveryhodné anomálie (napr. `LEGACY_FALLBACK_SPIKE`)
+  exportovať ako evidenciu pre `app.learning_opportunities`, ale
+  ANOMÁLIA != AUTOMATICKÝ KANDIDÁT — prechádza tým istým risk lifecycle
+  (`REVIEW_REQUIRED` by construction pre všetko okrem `RANKING_POSITION_
+  ANOMALY`/`LOW_TOP1_SELECTION`). `AUTO_PROMOTION` zostáva `false` pre
+  oba sprinty.

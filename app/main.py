@@ -103,6 +103,20 @@ from app.admin_auth import SCOPE_PROMOTION as _SCOPE_PROMOTION
 from app.execution_context import ExecutionContext as _ExecutionContext
 from app.execution_context import customer_context as _customer_context
 from app.execution_context import evaluation_context as _evaluation_context
+from app.search_quality import reset_retrieval_decision as _reset_search_quality_decision
+from app.search_quality import pop_retrieval_decision as _pop_search_quality_decision
+from app.search_quality import build_trace as _build_search_quality_trace
+from app.search_quality import record_search_quality_trace as _record_search_quality_trace
+from app.search_quality import current_deployment_version as _search_quality_deployment_version
+from app.execution_context import admin_test_context as _admin_test_context
+from app.search_quality import generate_quality_report as _generate_search_quality_report
+from app.search_quality import load_quality_baseline as _load_search_quality_baseline
+from app.search_quality import save_quality_baseline as _save_search_quality_baseline
+from app.search_quality import load_last_canary_result as _load_last_search_quality_canary
+from app.search_quality import save_last_canary_result as _save_last_search_quality_canary
+from app.search_quality import canary_anomalies as _search_quality_canary_anomalies
+from app.search_quality import load_canary_cases as _load_search_quality_canary_cases
+from app.search_quality import run_canaries as _run_search_quality_canaries
 from app.learning_cycle import run_learning_cycle as _run_learning_cycle
 from app.learning_cycle import REPORTS_DIR as _LEARNING_REPORTS_DIR
 from app.learning_cycle import LEARNING_ENGINE_ENABLED as _LEARNING_ENGINE_ENABLED
@@ -3003,6 +3017,20 @@ def _durable_storage_health_summary() -> dict:
     }
 
 
+def _search_quality_health_summary() -> dict:
+    """Section 65 - public /health may expose only aggregate SAFE
+    status, never anomaly details or raw traces (that stays behind
+    admin READ scope - see /admin/search-quality/*)."""
+    baseline = _load_search_quality_baseline()
+    canary = _load_last_search_quality_canary()
+    return {
+        "search_quality_monitor_enabled": True,
+        "last_quality_report_status": "available" if baseline is not None else "insufficient_data",
+        "last_canary_status": ("pass" if canary.get("all_passed") else "fail") if canary else "never_run",
+        "production_quality_baseline_present": baseline is not None,
+    }
+
+
 @app.get("/health")
 def health() -> dict:
     return {
@@ -3013,6 +3041,7 @@ def health() -> dict:
         "last_feed_refresh_error": last_feed_refresh_error,
         "learning": _learning_health_summary(),
         "durable_storage": _durable_storage_health_summary(),
+        "search_quality": _search_quality_health_summary(),
     }
 
 
@@ -3480,6 +3509,103 @@ def admin_rollback_learning(
     if version is None:
         return {"status": "no_op", "reason": "no last_known_good recorded"}
     return {"status": "rolled_back", "profile_version": version}
+
+
+_SEARCH_QUALITY_CANARY_PATH = str(Path(__file__).resolve().parents[1] / "eval" / "search_quality_canaries.json")
+
+
+class _SearchQualityCanaryRequest:
+    class client:
+        host = "127.0.0.1"
+    headers: dict = {}
+
+
+def _search_quality_chat_fn(query: str) -> dict:
+    request = ChatRequest(message=query, session_id="search-quality-admin-canary")
+    return _chat_internal(request, _SearchQualityCanaryRequest(), execution_context=_admin_test_context())
+
+
+def _search_quality_classify_product_family(product_id: str) -> str | None:
+    tax = product_taxonomy_index.get(product_id)
+    return tax.canonical_family if tax else None
+
+
+@app.get("/admin/search-quality/status")
+def admin_search_quality_status(x_admin_token: str | None = Header(default=None)) -> dict:
+    """Section 62 - READ scope, aggregate/safe status only (mirrors the
+    public /health subset but with a bit more admin-facing detail)."""
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
+    baseline = _load_search_quality_baseline()
+    canary = _load_last_search_quality_canary()
+    return {
+        "search_quality_monitor_enabled": True,
+        "auto_promotion_enabled": _LEARNING_AUTO_PROMOTION_ENABLED,
+        "production_quality_baseline_present": baseline is not None,
+        "baseline_deployment_version": baseline.get("deployment_version") if baseline else None,
+        "last_canary_ran_at": canary.get("ran_at") if canary else None,
+        "last_canary_all_passed": canary.get("all_passed") if canary else None,
+        "active_ranking_config": get_active_ranking_profile_version(),
+    }
+
+
+@app.get("/admin/search-quality/report")
+def admin_search_quality_report(days: int = 1, x_admin_token: str | None = Header(default=None)) -> dict:
+    """Section 62/128 - reads already-logged customer traces and
+    aggregates on the fly (cheap, no retrieval calls) - READ scope.
+    Honestly reports INSUFFICIENT_DATA rather than a fabricated verdict
+    when volume is too low (Section 34/73)."""
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
+    safe_days = max(1, min(int(days or 1), 30))
+    return _generate_search_quality_report(days=safe_days, ranking_config_version=get_active_ranking_profile_version())
+
+
+@app.get("/admin/search-quality/anomalies")
+def admin_search_quality_anomalies(days: int = 1, x_admin_token: str | None = Header(default=None)) -> dict:
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
+    safe_days = max(1, min(int(days or 1), 30))
+    report = _generate_search_quality_report(days=safe_days, ranking_config_version=get_active_ranking_profile_version())
+    return {"generated_at": report["generated_at"], "deployment_version": report["deployment_version"], "anomalies": report["anomalies"]}
+
+
+@app.get("/admin/search-quality/canary")
+def admin_search_quality_canary_status(x_admin_token: str | None = Header(default=None)) -> dict:
+    """Section 62 - READ scope, returns the LAST STORED canary result.
+    Does not execute a fresh run (see POST .../run for that, Section 63 -
+    expensive/state-changing operations require OPERATIONS)."""
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
+    result = _load_last_search_quality_canary()
+    if result is None:
+        return {"status": "never_run"}
+    return result
+
+
+@app.post("/admin/search-quality/run")
+def admin_search_quality_run(x_admin_token: str | None = Header(default=None)) -> dict:
+    """Section 63/106 - manual/post-deploy execution: runs the hard
+    canary set through the real retrieval path in ADMIN_TEST execution
+    mode (never CUSTOMER, Section 39/103) and persists the result.
+    OPERATIONS scope - this is a state-changing, non-trivial-cost call,
+    not a plain read."""
+    _require_admin_scope(x_admin_token, _SCOPE_OPERATIONS)
+    cases = _load_search_quality_canary_cases(_SEARCH_QUALITY_CANARY_PATH)
+    deployment_version = _search_quality_deployment_version()
+    if not cases:
+        return {"status": "no_canary_cases_defined", "path": _SEARCH_QUALITY_CANARY_PATH}
+    results = _run_search_quality_canaries(
+        cases,
+        chat_fn=_search_quality_chat_fn,
+        classify_product_family=_search_quality_classify_product_family,
+    )
+    anomalies = _search_quality_canary_anomalies(results, deployment_version)
+    _save_last_search_quality_canary(results, anomalies, deployment_version)
+    report = _generate_search_quality_report(days=1, ranking_config_version=get_active_ranking_profile_version())
+    return {
+        "canary_pass_count": sum(1 for r in results if r.passed),
+        "canary_total_count": len(results),
+        "canary_all_passed": all(r.passed for r in results),
+        "canary_anomalies": [a.__dict__ for a in anomalies],
+        "report": report,
+    }
 
 
 def session_memory_key(session_id: str, client_key: str) -> str:
@@ -3992,6 +4118,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     # until every internal caller passes one explicitly).
     if execution_context is None:
         execution_context = _customer_context() if isinstance(request, Request) else _evaluation_context()
+    _reset_search_quality_decision()
 
     client_key = get_client_key(request)
     # V2.12 fix, now generalized by execution_context.apply_rate_limit
@@ -5013,8 +5140,34 @@ def _compute_answered(response: dict) -> bool:
 
 
 def _chat_internal(chat_request: ChatRequest, request: Request, execution_context: _ExecutionContext | None = None) -> dict:
+    # V2.12.4: resolved locally (mirrors _chat_impl's own resolution,
+    # Section 59 precedent) so the quality-trace gate below sees the
+    # REAL resolved context even when the caller passed None.
+    _resolved_context = execution_context if execution_context is not None else (
+        _customer_context() if isinstance(request, Request) else _evaluation_context()
+    )
+    _quality_start = time.perf_counter()
     response = _chat_impl(chat_request, request, execution_context=execution_context)
     response["answered"] = _compute_answered(response)
+    if _resolved_context.emit_customer_analytics:
+        try:
+            _trace = _build_search_quality_trace(
+                session_id=getattr(chat_request, "session_id", "") or "",
+                salt=os.getenv("ANALYTICS_SALT", ""),
+                execution_mode=_resolved_context.mode.value,
+                intent=response.get("intent") or "",
+                visible_product_count=len(response.get("products") or []),
+                no_result=not response["answered"],
+                answered=response["answered"],
+                latency_ms=(time.perf_counter() - _quality_start) * 1000,
+                deployment_version=_search_quality_deployment_version(),
+                ranking_config_version=get_active_ranking_profile_version(),
+                taxonomy_version=TAXONOMY_VERSION,
+                retrieval_decision=_pop_search_quality_decision(),
+            )
+            _record_search_quality_trace(_trace)
+        except Exception:
+            logger.warning("Failed to record search quality trace", exc_info=True)
     return response
 
 

@@ -123,3 +123,12 @@ test_evaluation_golden.py` (1 test): kritická sada integrovaná priamo do
 python -m pytest tests/test_evaluation_engine.py tests/test_evaluation_golden.py -q
 python scripts/run_evaluation.py --full
 ```
+
+## Vzťah k V2.12.4 (Search Quality Observability)
+
+V2.10 zostáva autoritou pre kontrolovanú, deterministickú golden pravdu
+(fixný dataset, fixná sada regresných prípadov). V2.12.4 pridáva
+komplementárny, nie konkurenčný zdroj: skutočný produkčný dôkaz
+(`search_quality.jsonl`, agregácie, hard canary). Žiadny z nich
+nenahrádza druhý — produkčné správanie je evidencia, nie golden pravda
+(V2.12.4 Invariant #3/#4). Pozri `docs/search-quality-observability.md`.

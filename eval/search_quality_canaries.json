@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "note": "V2.12.4 hard semantic canary set (Section 37/100). Expected/must_not_family values grounded in app.query_constraints.parse_structured_query() output verified directly against the real catalog at authoring time (2026-08-20, commit cfffaba) - not guessed. Changing an expectation requires explicit semantic justification (Section 101), not silently syncing to whatever the app currently outputs.",
+  "cases": [
+    {
+      "id": "jazminova_ryza",
+      "language": "sk",
+      "query": "jazmínová ryža",
+      "expected_family": "rice",
+      "must_not_family": ["tea"],
+      "criticality": "CRITICAL"
+    },
+    {
+      "id": "basmati_ryza",
+      "language": "sk",
+      "query": "basmati ryža",
+      "expected_family": "rice",
+      "must_not_family": ["noodles", "vinegar", "kitchenware"],
+      "criticality": "CRITICAL"
+    },
+    {
+      "id": "ryzove_rezance",
+      "language": "sk",
+      "query": "ryžové rezance",
+      "expected_family": "noodles",
+      "must_not_family": ["instant_food"],
+      "criticality": "CRITICAL"
+    },
+    {
+      "id": "ryzovy_ocot",
+      "language": "sk",
+      "query": "ryžový ocot",
+      "expected_family": "vinegar",
+      "must_not_family": ["noodles", "kitchenware"],
+      "criticality": "CRITICAL"
+    },
+    {
+      "id": "sushi_ryza",
+      "language": "sk",
+      "query": "sushi ryža",
+      "expected_family": "rice",
+      "must_not_family": ["seaweed", "kitchenware", "vinegar"],
+      "criticality": "CRITICAL"
+    },
+    {
+      "id": "rybacia_omacka",
+      "language": "sk",
+      "query": "rybacia omáčka",
+      "expected_family": "sauce",
+      "must_not_family": [],
+      "criticality": "WARN"
+    },
+    {
+      "id": "tmava_sojova_omacka",
+      "language": "sk",
+      "query": "tmavá sójová omáčka",
+      "expected_family": "sauce",
+      "must_not_family": ["instant_food"],
+      "criticality": "CRITICAL"
+    },
+    {
+      "id": "kokosove_mlieko",
+      "language": "sk",
+      "query": "kokosové mlieko",
+      "expected_family": "coconut_product",
+      "must_not_family": ["oil"],
+      "criticality": "CRITICAL"
+    },
+    {
+      "id": "shin_ramyun",
+      "language": "en",
+      "query": "Shin Ramyun",
+      "expected_family": "instant_food",
+      "must_not_family": [],
+      "criticality": "WARN"
+    },
+    {
+      "id": "kikkoman",
+      "language": "en",
+      "query": "Kikkoman",
+      "expected_family": null,
+      "must_not_family": [],
+      "criticality": "WARN"
+    }
+  ]
+}

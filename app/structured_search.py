@@ -209,17 +209,33 @@ def format_result_set_products(products: list[Product], product_ids: list[str]) 
 
 def _log_shadow(result: RetrievalResult, *, legacy_fallback_used: bool) -> None:
     """Section 61 analytics fields, as a structured log line - no PII, just
-    the shape of the retrieval decision."""
+    the shape of the retrieval decision. V2.12.4: the same fields are also
+    stashed (not written anywhere yet - a plain ContextVar assignment,
+    Section 68 near-zero overhead) for app.main to durably record as a
+    SearchQualityTrace, but ONLY for real customer requests - that gate
+    lives entirely in app.main, this function has no execution-context
+    awareness and must not decide it (Invariant #5)."""
     query: StructuredProductQuery = result.interpretation
+    family = getattr(query, "family", None)
+    constraint_count = len(getattr(query, "explicit_constraints", ()) or ())
+    exact_count = len(result.exact_match_ids)
+    valid_count = len(result.valid_match_ids)
+    nearest_count = len(result.nearest_match_ids)
+    zero_exact_match = not result.exact_match_ids and bool(result.valid_match_ids)
     logger.info(
         "structured_retrieval mode=%s family=%s constraint_count=%d exact=%d valid=%d nearest=%d "
         "legacy_fallback_used=%s zero_exact_match=%s",
-        result.retrieval_mode,
-        getattr(query, "family", None),
-        len(getattr(query, "explicit_constraints", ()) or ()),
-        len(result.exact_match_ids),
-        len(result.valid_match_ids),
-        len(result.nearest_match_ids),
-        legacy_fallback_used,
-        not result.exact_match_ids and bool(result.valid_match_ids),
+        result.retrieval_mode, family, constraint_count, exact_count, valid_count, nearest_count,
+        legacy_fallback_used, zero_exact_match,
+    )
+    from app.search_quality import stash_retrieval_decision
+    stash_retrieval_decision(
+        mode=result.retrieval_mode,
+        family=family,
+        constraint_count=constraint_count,
+        exact_count=exact_count,
+        valid_count=valid_count,
+        nearest_count=nearest_count,
+        legacy_fallback_used=legacy_fallback_used,
+        zero_exact_match=zero_exact_match,
     )
