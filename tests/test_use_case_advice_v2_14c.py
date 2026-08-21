@@ -286,6 +286,73 @@ class TestCaseM_RecipeInteraction:
         assert r.get("intent") == "use_case_advice"
 
 
+class TestCaseN_PadThaiTomKhaReachability:
+    """V2.14d Part C (Sections 27-34, docs/use-case-recipe-data-quality-
+    v2.14d.md) - Pad Thai/Tom Kha are hardcoded bare dish-name entries in
+    app.main.RECIPE_INTENT_MARKERS (V2.9/V2.8 era), so is_recipe_intent()
+    matched ANY message naming them regardless of surrounding action
+    language, making this module's real, tested evidence for pad_thai/
+    tom_kha SHADOW_ONLY (customer-unreachable) as of V2.14c. Fixed
+    generically in app.main._recipe_intent_is_bare_dish_marker_only()
+    (Section 62 - reuses this module's resolve_use_case()/resolve_role()
+    rather than duplicating them, applies to any current/future bare-
+    dish-only marker, not hardcoded to these two dish names) - a specific,
+    resolvable use-case/attribute question now outranks a bare dish-name-
+    only recipe trigger, while every explicit recipe/shopping-list
+    phrasing for the SAME dish remains completely unaffected."""
+
+    def test_pad_thai_attribute_question_now_reachable(self):
+        r = _chat("ake rezance na pad thai", "v214d-caseN-1")
+        assert r.get("intent") == "use_case_advice"
+        assert r.get("use_case_resolved") == "pad_thai"
+
+    def test_pad_thai_comparative_attribute_question_now_reachable(self):
+        r = _chat("ktore rezance su najlepsie na pad thai", "v214d-caseN-2")
+        assert r.get("intent") == "use_case_advice"
+        assert r.get("use_case_resolved") == "pad_thai"
+
+    def test_tom_kha_attribute_question_now_reachable(self):
+        r = _chat("ake kokosove mlieko na tom kha gai", "v214d-caseN-3")
+        assert r.get("intent") == "use_case_advice"
+        assert r.get("use_case_resolved") == "tom_kha"
+
+    def test_bare_pad_thai_mention_still_goes_to_recipe(self):
+        r = _chat("pad thai", "v214d-caseN-4")
+        assert r.get("intent") == "recipe"
+
+    def test_bare_tom_kha_mention_still_goes_to_recipe(self):
+        r = _chat("tom kha gai", "v214d-caseN-5")
+        assert r.get("intent") == "recipe"
+
+    def test_explicit_recipe_request_for_pad_thai_still_protected(self):
+        r = _chat("recept na pad thai", "v214d-caseN-6")
+        assert r.get("intent") == "recipe"
+
+    def test_explicit_recipe_request_for_tom_kha_still_protected(self):
+        r = _chat("recept na tom kha gai", "v214d-caseN-7")
+        assert r.get("intent") == "recipe"
+
+    def test_shopping_list_language_for_pad_thai_still_goes_to_recipe_shopping(self):
+        # The exact historical bug-fix scenario RECIPE_INTENT_MARKERS'
+        # bare "pad thai"/"tom kha" entries were added for - must remain
+        # completely unaffected by the new precedence check.
+        r = _chat("co potrebujem na pad thai", "v214d-caseN-8")
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
+
+    def test_shopping_list_language_for_tom_kha_still_goes_to_recipe_shopping(self):
+        r = _chat("co potrebujem na tom kha gai", "v214d-caseN-9")
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
+
+    def test_has_resolvable_role_true_for_specific_attribute_question(self):
+        assert uca.has_resolvable_role("ake rezance na pad thai") is True
+
+    def test_has_resolvable_role_false_for_bare_dish_mention(self):
+        assert uca.has_resolvable_role("pad thai") is False
+
+    def test_has_resolvable_role_false_for_non_live_use_case(self):
+        assert uca.has_resolvable_role("ake rezance na ramen") is False
+
+
 # --- permanent regression controls (rt0004/rt0010/rt0011) -------------------
 
 class TestEvaluationRegressionLocks:

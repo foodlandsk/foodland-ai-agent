@@ -276,6 +276,67 @@ class TestInstantFood:
         assert tax.canonical_subfamily == "instant_soup"
 
 
+class TestRamenTablewareCollision:
+    """V2.14d - real production collision found during V2.14c's per-use-case
+    data audit and reconfirmed live in V2.14d: bare title-only "ramen"/
+    "rezance" matches (MEDIUM confidence, no category corroboration) swept
+    9 real serving-bowl/utensil products into instant_noodles. Fixed with a
+    new category-only "tableware" FamilyRule (family=kitchenware) positioned
+    before instant_noodles - the same category-precedence pattern already
+    used by rice_cooker."""
+
+    def test_ramen_bowl_set_is_tableware_not_food(self):
+        p = make_product(
+            title="Japonské Ramen misky sada 2 ks Aurora Ø20,5 cm | H8 cm 6051082",
+            product_type="Darčekové sety > Jedálenské súpravy > Dekorácie a darčeky > Stolový riad > Kuchynské potreby",
+        )
+        tax = classify_product(p)
+        assert tax.canonical_family == "kitchenware"
+        assert tax.canonical_subfamily == "tableware"
+        assert tax.canonical_family != "instant_food"
+
+    def test_ramen_serving_bowl_is_tableware_not_food(self):
+        p = make_product(
+            title="Japonská Miska Ramen Set Dragon Ø20,5 cm | H8 cm 6051099",
+            product_type="Misy a misky > Stolový riad > Kuchynské potreby",
+        )
+        tax = classify_product(p)
+        assert tax.canonical_family == "kitchenware"
+        assert tax.canonical_subfamily == "tableware"
+
+    def test_ramen_bamboo_spoon_is_tableware_not_food(self):
+        p = make_product(
+            title="Ramen lyžica bambusová | 18 cm 6006294",
+            product_type="Paličky a lyžičky > Stolový riad > Kuchynské potreby",
+        )
+        tax = classify_product(p)
+        assert tax.canonical_family == "kitchenware"
+        assert tax.canonical_subfamily == "tableware"
+
+    def test_real_instant_ramen_food_unaffected(self):
+        # Real edible instant noodles must remain instant_food/instant_noodles
+        # - the tableware rule must not overreach into food categories.
+        p = make_product(
+            title="Kórejské rezance Shin Ramyun Gourmet Spicy NONGSHIM 120g",
+            product_type="Kórejské > Instantné polievky > Rezance, niťovky a cestoviny",
+        )
+        tax = classify_product(p)
+        assert tax.canonical_family == "instant_food"
+        assert tax.canonical_subfamily == "instant_noodles"
+
+    def test_unrelated_tableware_not_misfiled_as_instant_food(self):
+        # A completely unrelated tableware product (no "ramen"/"rezance" in
+        # title) must also land in kitchenware/tableware, not stay UNKNOWN -
+        # proving the fix is category-driven, not a "ramen"-specific patch.
+        p = make_product(
+            title="Bento box Black & Red 27,5 x 21,5 x 6 cm 6036005",
+            product_type="Stolový riad > Kuchynské potreby",
+        )
+        tax = classify_product(p)
+        assert tax.canonical_family == "kitchenware"
+        assert tax.canonical_subfamily == "tableware"
+
+
 class TestTea:
     def test_tea_classified(self):
         p = make_product(title="Čierny čaj Ceylon 100 % čistý čaj Cozy 1000g", product_type="Sušené produkty > Vegánske potraviny > Vegetariánske potraviny > BIO potraviny > Zdravé potraviny > Čaj")

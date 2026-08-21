@@ -166,6 +166,75 @@ class TestRoleGeneration:
         assert roles_for_use_case("nonexistent_use_case_xyz") == []
 
 
+class TestRecipeCompletionCoverageV214d:
+    """V2.14d - RECIPE_COMPLETION coverage/precision audit (Part B).
+
+    roles_for_recipe() only trusts app.query_constraints.parse_structured_query()
+    concept_id resolution, which reuses app.taxonomy.FAMILY_DEFINITIONS'
+    title_phrases - the SAME phrase list product classification uses. Two
+    real, safe recoveries were found: "banh pho" and bare "kari pasta"/
+    "curry pasta" both already have real, correctly-classified catalog
+    products (HIGH/MEDIUM confidence via category) but had no matching
+    title_phrase for QUERY-side (recipe ingredient) resolution - a pure
+    query-side gap, not a taxonomy family gap. Fixed by adding the missing
+    phrases to the EXISTING rice_noodles/curry_paste rules (no new family,
+    no new rule, zero risk to already-correct product classification).
+
+    Concepts with NO underlying taxonomy family at all (dashi, palm sugar,
+    peanuts, galangal, lemongrass, kaffir lime leaves, generic "pho spice
+    mix") are a genuine, separate data gap - deliberately NOT invented here
+    (Section 3/13 forbid broad taxonomy expansion in this sprint) and are
+    tracked as backlog debt instead."""
+
+    def test_banh_pho_resolves_to_rice_noodles(self):
+        from app.query_constraints import parse_structured_query
+        q = parse_structured_query("banh pho", known_brands=())
+        assert q.concept_id == "rice_noodles"
+
+    def test_bare_kari_pasta_resolves_to_generic_curry_paste(self):
+        from app.query_constraints import parse_structured_query
+        q = parse_structured_query("kari pasta", known_brands=())
+        assert q.concept_id == "curry_paste"
+
+    def test_variety_specific_curry_paste_precedence_unaffected(self):
+        # The new bare "kari pasta" phrase must not shadow the more
+        # specific, pre-existing variety rules (first-match-wins order).
+        from app.query_constraints import parse_structured_query
+        assert parse_structured_query("cervena kari pasta", known_brands=()).concept_id == "red_curry_paste"
+        assert parse_structured_query("zelena kari pasta", known_brands=()).concept_id == "green_curry_paste"
+        assert parse_structured_query("panang kari pasta", known_brands=()).concept_id == "panang_curry_paste"
+
+    def test_pho_recipe_completion_coverage_improved(self):
+        # 3/5 -> 4/5 after the "banh pho" recovery (Section 24 before/after).
+        roles = roles_for_recipe("pho")
+        assert "rice_noodles" in roles
+        assert "fish_sauce" in roles
+        assert "hoisin_sauce" in roles
+        assert "sriracha_sauce" in roles
+
+    def test_kari_recipe_completion_full_coverage(self):
+        # 3/4 -> 4/4 after the bare "kari pasta" recovery.
+        roles = roles_for_recipe("kari")
+        assert "curry_paste" in roles
+        assert "coconut_milk" in roles
+        assert "jasmine_rice" in roles
+        assert "fish_sauce" in roles
+
+    def test_tom_kha_aromatics_correctly_abstain_not_invented(self):
+        # galangal/lemongrass/kaffir lime leaves have real catalog products
+        # but NO taxonomy family - roles_for_recipe() must never invent one.
+        roles = roles_for_recipe("tom_kha")
+        assert "coconut_milk" in roles
+        assert "fish_sauce" in roles
+        assert len(roles) == 2  # aromatics deliberately absent (DATA_REQUIRED)
+
+    def test_pad_thai_untaxonomized_ingredients_correctly_abstain(self):
+        # palm sugar / peanuts have real catalog products but no taxonomy
+        # family - must not be guessed into an unrelated role.
+        roles = roles_for_recipe("pad_thai")
+        assert set(roles) == {"rice_noodles", "tamarind_pasta", "fish_sauce"}
+
+
 class TestFBTValidation:
     """Section 15-17/51/91/92 - FBT is evidence, never sole semantic truth."""
 

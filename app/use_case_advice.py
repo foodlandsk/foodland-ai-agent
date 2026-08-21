@@ -343,6 +343,22 @@ def is_companion_request(message: str) -> bool:
     return any(marker in normalized for marker in _COMPANION_REQUEST_MARKERS)
 
 
+def has_resolvable_role(message: str) -> bool:
+    """V2.14d (Section 27-34, docs/use-case-recipe-data-quality-v2.14d.md) -
+    True iff this message names a LIVE use case via an explicit "na X"/
+    "pre X" framing preposition AND a specific ingredient/product role
+    within it - i.e. this module has genuine, specific evidence to act
+    on, not just a bare dish-name mention. Used by app.main to arbitrate
+    the precedence conflict between a bare dish-name-only recipe trigger
+    (RECIPE_INTENT_MARKERS' "pad thai"/"tom kha" entries) and a specific
+    use-case/attribute question naming the same dish, without duplicating
+    this module's own alias/role resolution."""
+    use_case = resolve_use_case(message)
+    if use_case is None or use_case not in LIVE_USE_CASES:
+        return False
+    return resolve_role(use_case, message) is not None
+
+
 def decide_use_case_advice(
     message: str,
     products: list,

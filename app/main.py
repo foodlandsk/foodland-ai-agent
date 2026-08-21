@@ -138,6 +138,7 @@ from app.workflow_executor import execute_category_discovery as _execute_categor
 from app.workflow_executor import execute_recipe as _execute_recipe
 from app.workflow_executor import execute_comparison as _execute_comparison
 from app.workflow_executor import execute_use_case_advice as _execute_use_case_advice
+from app.use_case_advice import has_resolvable_role as _use_case_advice_has_resolvable_role
 from app.learning_cycle import run_learning_cycle as _run_learning_cycle
 from app.learning_cycle import REPORTS_DIR as _LEARNING_REPORTS_DIR
 from app.learning_cycle import LEARNING_ENGINE_ENABLED as _LEARNING_ENGINE_ENABLED
@@ -2599,6 +2600,18 @@ RECIPE_INTENT_MARKERS = (
     # same bare-dish-marker fix pattern as vindaloo/karaage/tom kha above.
     "pad thai",
 )
+# V2.14d (Section 27-34, docs/use-case-recipe-data-quality-v2.14d.md) -
+# the subset of RECIPE_INTENT_MARKERS above that are bare dish NAMES
+# rather than genuine recipe-action words ("recept"/"navod"/"ako
+# uvarim"/...). A message matching ONLY one of these (no other recipe
+# marker, no shopping-list language) is ambiguous between "show me a
+# recipe" and "answer a specific product/attribute question that
+# happens to name this dish" (e.g. "ake kokosove mlieko na tom kha
+# gai?") - see _recipe_intent_is_bare_dish_marker_only() below, which
+# lets a specific, resolvable use-case role win that narrow case
+# generically, without weakening recipe detection for every other
+# message (explicit "recept na X"/"co potrebujem na X" are unaffected).
+_BARE_DISH_RECIPE_MARKERS = ("tom kha", "pad thai")
 
 RANDOM_RECIPE_INTENT_MARKERS = (
     "co dnes varit",
@@ -4245,6 +4258,16 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     is_faq_query = is_faq_intent(chat_request.message)
     is_random_recipe_query = is_random_recipe_intent(chat_request.message)
     recipe_subject = detect_recipe_subject(contextual_message)
+    if recipe_subject and _recipe_intent_is_bare_dish_marker_only(contextual_message):
+        # V2.14d (Section 27-34) - a bare dish-name-only recipe trigger
+        # (e.g. "tom kha" inside "ake kokosove mlieko na tom kha gai?")
+        # must not outrank a specific, resolvable use-case/attribute
+        # question naming that same dish - defer to use_case_advice
+        # below instead of forcing recipe flow. Explicit recipe intent
+        # ("recept na X") and shopping-list intent ("co potrebujem na X")
+        # never reach this branch (excluded by the check above).
+        if _use_case_advice_has_resolvable_role(contextual_message):
+            recipe_subject = None
     needs_article_context = is_article_info_intent(chat_request.message)
     explicit_article_request = is_explicit_article_request(chat_request.message)
     query_language = detect_query_language(chat_request.message)
@@ -7302,6 +7325,30 @@ def is_recipe_intent(normalized_message: str) -> bool:
     if any(marker in normalized_message for marker in RECIPE_INTENT_MARKERS):
         return True
     return any(token.startswith("recept") for token in tokenize(normalized_message))
+
+
+def _recipe_intent_is_bare_dish_marker_only(message: str) -> bool:
+    """V2.14d (Section 27-34) - True iff the ONLY reason is_recipe_intent()
+    would match this message is a bare dish-name marker
+    (_BARE_DISH_RECIPE_MARKERS), with no genuine recipe-action language
+    ("recept"/"navod"/"ako uvarim"/"how to make"/...) and no shopping-list
+    language (wants_recipe_products()) present. Used to detect the narrow
+    conflict class where a more specific use-case/attribute question
+    should outrank a bare dish mention - never touches any other message,
+    including every existing recipe/shopping-list phrasing this dish name
+    already correctly triggers (Section 29 - explicit recipe intent and
+    shopping-list intent are both preserved unconditionally)."""
+    normalized_message = normalize(message)
+    if not any(marker in normalized_message for marker in _BARE_DISH_RECIPE_MARKERS):
+        return False
+    other_markers = tuple(m for m in RECIPE_INTENT_MARKERS if m not in _BARE_DISH_RECIPE_MARKERS)
+    if any(marker in normalized_message for marker in other_markers):
+        return False
+    if any(token.startswith("recept") for token in tokenize(normalized_message)):
+        return False
+    if wants_recipe_products(message):
+        return False
+    return True
 
 
 def is_random_recipe_intent(message: str) -> bool:

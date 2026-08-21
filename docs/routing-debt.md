@@ -192,6 +192,26 @@ nim) — dokumentované tu pre budúcu referenciu:
 1. **`app.main.RECIPE_INTENT_MARKERS` obsahuje doslovné `"pad thai"`/`"tom kha"`** (V2.9-éra) — akákoľvek správa obsahujúca tieto reťazce sa VŽDY vyrieši ako `recipe_subject`, bez ohľadu na kontext. Toto je zámerné, existujúce správanie (chráni recipe flow), ale znamená, že V2.14c's use-case-advice logika pre tieto 2 dishe je reálna a testovaná, no zákaznícky nedosiahnuteľná (SHADOW_ONLY).
 2. **`RELATED_SUBJECT_ALIASES["tom_yum"]` obsahuje `"tom kha"` ako synonym**, popri samostatnom `RELATED_SUBJECT_ALIASES["tom_kha"]` zázname — first-match-wins by teoreticky uprednostnil `tom_yum` pri doslovnej zhode "tom kha", v závislosti od poradia iterácie slovníka. Nezistený žiadny reálny customer-facing dopad (žiadny golden case naň naráža), zdokumentované ako potenciálne budúce riziko, nie aktívna chyba.
 
+## V2.14d aktualizácia — Pad Thai/Tom Kha precedenčný fakt #1 opravený
+
+Precedenčný fakt #1 vyššie (`RECIPE_INTENT_MARKERS` obsahuje "pad thai"/
+"tom kha") bol **generický opravený** v `app/main.py`
+(`_recipe_intent_is_bare_dish_marker_only()` + `app.use_case_advice.has_resolvable_role()`):
+bare dish-name marker už NEVYHRÁVA automaticky nad explicitnou,
+rozpoznateľnou use-case/atribútovou otázkou pomenujúcou to isté jedlo
+(napr. "aké kokosové mlieko na tom kha gai?" teraz ide do `use_case_advice`),
+zatiaľ čo explicitný recept/nákupný zoznam jazyk ("recept na X", "čo
+potrebujem na X") zostáva úplne nezmenený. Fakt #2 (RELATED_SUBJECT_ALIASES
+tom_yum/tom_kha poradie) zostáva nedotknutý, mimo rozsahu tejto sprinty.
+Pad Thai/Tom Kha per-use-case status: `SHADOW_ONLY` → `LIVE`. Detail:
+`docs/use-case-recipe-data-quality-v2.14d.md`.
+
+Zároveň V2.14d opravila samostatnú, nezávislú taxonomy kolíziu (ramen
+bare-title match vťahujúci nepotravinové servírovacie misky/lyžice do
+`instant_food/instant_noodles`) a 2 bezpečné RECIPE_COMPLETION query-side
+recovery (banh pho → rice_noodles, bare "kari pasta" → curry_paste) — obe
+mimo rozsahu routing precedencie ako takej, detail v tom istom dokumente.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným

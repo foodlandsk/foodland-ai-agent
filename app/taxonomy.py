@@ -232,7 +232,13 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         subfamily="rice_noodles",
         confidence="HIGH",
         category_terms=("ryzove rezance",),
-        title_phrases=("ryzove rezance", "ryzovymi rezancami", "ryzovych rezancov", "rice noodles"),
+        # "banh pho" (V2.14d) - the Vietnamese name for this exact noodle,
+        # already present on real catalog products in this category (e.g.
+        # "Ryzove rezance siroke Banh Pho BAMBOO TREE") so classify_product()
+        # already resolves those products HIGH via category - this phrase
+        # only closes the QUERY-side gap (recipe_graph's pho ingredient
+        # list uses this name and had no title_phrase to match against).
+        title_phrases=("ryzove rezance", "ryzovymi rezancami", "ryzovych rezancov", "rice noodles", "banh pho"),
         attributes=(("ingredient_base", "rice"),),
         display_label="Ryžové rezance",
     ),
@@ -545,6 +551,15 @@ FAMILY_DEFINITIONS += [
         subfamily=None,
         confidence="HIGH",
         category_terms=("kari pasty",),
+        # Bare "kari pasta"/"curry pasta" (V2.14d) - real products with no
+        # named variety already resolve here via category (e.g. "Kari
+        # pasta ASIAN HOME GOURMET"); this phrase only closes the
+        # QUERY-side gap for a colour-less recipe ingredient line (a
+        # recipe asking for "curry paste" with no variety is satisfied by
+        # any curry paste). Positioned after every variety-specific rule
+        # above, so "cervena kari pasta" etc. still match their own,
+        # more specific rule first (first-match-wins) - unaffected.
+        title_phrases=("kari pasta", "curry pasta"),
         display_label="Kari pasta",
     ),
     # --- fermented pastes -------------------------------------------------
@@ -690,6 +705,27 @@ FAMILY_DEFINITIONS += [
         category_terms=("sklenene rezance",),
         title_phrases=("sklenene rezance", "glass noodles"),
         display_label="Sklenené rezance",
+    ),
+    # V2.14d - "Stolovy riad" (tableware) is a narrow, exclusive leaf
+    # category (268 catalog products, none previously classified by any
+    # earlier rule here) used for bowls, chopsticks and spoons - including
+    # 9 "ramen"-branded serving bowl/spoon products (e.g. "Japonske Ramen
+    # misky sada 2 ks", "Ramen lyzica bambusova") that were being swept
+    # into instant_noodles below via its bare title-only "ramen" match
+    # (MEDIUM confidence, no category corroboration) - a real production
+    # collision found during V2.14c/V2.14d (docs/use-case-recipe-data-
+    # quality-v2.14d.md). Positioned before instant_noodles so any
+    # product carrying this category is classified as tableware first,
+    # regardless of what food-sounding word appears in its title -
+    # a category-based fix generalizes to any future non-food product in
+    # this category, not just today's known ramen-branded SKUs.
+    FamilyRule(
+        rule_id="tableware",
+        family="kitchenware",
+        subfamily="tableware",
+        confidence="HIGH",
+        category_terms=("stolovy riad",),
+        display_label="Stolový riad",
     ),
     # --- instant food -----------------------------------------------------
     FamilyRule(
