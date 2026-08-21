@@ -1620,3 +1620,19 @@ Committed fixture (2 140 produktov, pinned test suite): `classified=720`, `cover
 **Čestný výsledný stav**: **WORKFLOW_ARCHITECTURE_PARTIALLY_CLOSED**, nie CLOSED – `_chat_impl()` naďalej obsahuje ~9 vetiev nezávisle rozhodujúcich mimo `WorkflowResolver` (`LegacyWorkflowAdapter`, sankcionovaný už V2.13a/V2.13b, nie nová medzera). Detail: `docs/workflow-architecture.md`, `docs/workflow-inventory-v2.13c.md`, `docs/workflow-migration-v2.13c.md`.
 
 **Ďalší krok:** Úplné uzavretie (`WORKFLOW_ARCHITECTURE_CLOSED`) by vyžadovalo viacsprintovú migráciu zvyšných ~9 legacy vetiev s dôkladným charakterizačným pokrytím každej – kandidát na budúcu iteráciu, ak sa ukáže opodstatnený (nie automaticky V2.14).
+
+### Sprint V2.13d – Legacy Workflow Migration & Architecture Closure (partial)
+
+**Zadanie:** dokončiť migráciu zvyšných legacy vetiev do kanonického `app.workflow_executor` – cieľ `WORKFLOW_ARCHITECTURE_CLOSED`.
+
+**Kľúčové zistenie**: priame prečítanie aktuálneho kódu (nie opätovné použitie V2.13c dokumentácie) ukázalo, že V2.13c's odhad "~9 podobných vetiev" bol príliš zjednodušujúci. 6 z nich (`missing_composition`, `faq`, `random_recipe`, `reset`, `out_of_domain`, `category_discovery`) sú v skutočnosti PLNE samostatné, okamžité `return` bloky – rovnaký tvar ako `ALLERGEN_SAFETY`, ktorý V2.13c už úspešne migroval. Všetkých 6 migrovaných mechanickým presunom.
+
+**Skutočný nález počas regresného overovania** (nie súčasť pôvodného zadania): `_chat_impl()` lokálne prevíaže meno `log_question` na no-op lambdu pod `EVALUATION`/`LEARNING`/`SHADOW`/`ADMIN_TEST` kontextom – funguje pre pôvodných ~13 volacích miest v TEJ ISTEJ funkcii, ale NEPREŽIJE presun cez modulovú hranicu. Executor handler volajúci `m.log_question(...)` vždy zasiahol skutočnú, bezpodmienečnú funkciu, čím ticho porušil analytics-izoláciu neinteraktívnych kontextov – týkalo sa VŠETKÝCH 7 handlerov volajúcich `log_question()` (aj V2.13c's `execute_allergen_safety` retroaktívne). Odhalené plným pytest behom (`tests/test_execution_context.py`), nie code review. Opravené explicitným `emit_customer_analytics: bool` parametrom v každom handleri.
+
+**Rozsahové rozhodnutie**: zvyšné 2 jednotky (recipe stavový automat – reťaz vzájomne závislých early-return krokov, kde poradie a presné podmienky SÚ sémantika; commerce matches-dispatch pipeline vrátane `RELATED_PRODUCTS`'s vykonania – ~30+ vzájomne závislých lokálnych premenných, zistené priamym pokusom o extrakciu, nie predpokladom) zostávajú nemigrované. `BLOCKED_WITH_REASON`, nie prehliadnuté.
+
+**Výsledky:** V2.10 **53/58 nezmenené**. Canary **10/10**. Testy: `tests/test_workflow_executor_v2_13d.py` (16). Plný beh: **1287/1287** (1271 + 16 nových), 0 regresií po oprave.
+
+**Čestný výsledný stav**: **WORKFLOW_ARCHITECTURE_PARTIALLY_CLOSED**, nie CLOSED – ale s výrazne menším, presnejšie vymedzeným zvyškovým dlhom (2 jednotky namiesto 9 vetiev). Detail: `docs/workflow-architecture.md`, `docs/workflow-migration-v2.13d.md`.
+
+**Ďalší krok:** Úplné uzavretie by vyžadovalo dedikovanú, dôkladne charakterizovanú migráciu recipe stavového automatu a commerce matches-dispatch pipeline – vzhľadom na ich preukázanú zložitosť (30+ premenných, stavovo závislé early-returny) kandidát na samostatný budúci sprint s rozsiahlym testovacím pokrytím pred akýmkoľvek presunom kódu, nie na pokračovanie súčasným tempom.

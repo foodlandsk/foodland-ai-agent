@@ -201,3 +201,44 @@ vyžadovalo rozsiahlejšiu, viacsprintovú migráciu s dôkladným
 charakterizačným pokrytím každej vetvy — mimo rozsahu jedného sedenia
 bez neprimeraného rizika (Section 36 zadania V2.13c: "no big-bang
 rewrite... migrate incrementally").
+
+## V2.13d — 6 ďalších migrovaných vetiev + kľúčový nález
+
+Priame prečítanie aktuálneho kódu (nie opätovné použitie V2.13c's
+dokumentácie) ukázalo, že V2.13c's "9 podobných vetiev" bolo príliš
+zjednodušujúce. Skutočnosť: 6 z nich (`missing_composition`, `faq`,
+`random_recipe`, `reset`, `out_of_domain`, `category_discovery`) sú
+PLNE samostatné, okamžité `return` bloky — presne v tom istom tvare ako
+`ALLERGEN_SAFETY`, ktorý V2.13c už úspešne migroval. Migrované do
+`app/workflow_executor.py` (`execute_missing_composition()`,
+`execute_faq()`, `execute_random_recipe()`, `execute_reset()`,
+`execute_out_of_domain()`, `execute_category_discovery()`).
+
+**Kľúčový nález** (odhalený plným pytest behom, nie code review):
+`_chat_impl()` lokálne prevíaže meno `log_question` na no-op lambdu,
+keď `execution_context.emit_customer_analytics` je `False` — funguje
+pre všetkých ~13 pôvodných volacích miest v TEJ ISTEJ funkcii, ale
+NEPREŽIJE presun cez modulovú hranicu. Executor handler volajúci
+`m.log_question(...)` vždy zasiahne SKUTOČNÚ, bezpodmienečnú funkciu,
+čím ticho poruší `EVALUATION`/`LEARNING`/`SHADOW`/`ADMIN_TEST` izoláciu
+od `question_analytics.jsonl`. Týkalo sa VŠETKÝCH 7 handlerov
+volajúcich `log_question()` (V2.13c's `execute_allergen_safety` +
+V2.13d's 6 nových) — opravené explicitným `emit_customer_analytics: bool`
+parametrom, ktorý každý handler sám kontroluje. Detail:
+`docs/workflow-migration-v2.13d.md`.
+
+**Nemigrované aj po V2.13d** (2 zostávajúce jednotky, presnejšie
+vymedzené než V2.13c's odhad): (1) recipe stavový automat
+(`recipe_followup`/ordinal-reference/orphaned-followup pre-checks +
+hlavný `recipe_subject` blok — reťaz vzájomne závislých krokov, nie
+sekvencia nezávislých blokov), (2) zdieľaná commerce matches-dispatch
+pipeline (`already_have_subject`, `special_subject` bundly,
+`replacement_subject`, `article_product_subject`, `cross_sell_matches`
+fallback, `related_subject` fallback, plochý `product_search`, +
+`RELATED_PRODUCTS`'s vlastné vykonanie — ~30+ vzájomne závislých
+lokálnych premenných, zistené priamym pokusom o extrakciu). Plné
+zdôvodnenie: `docs/workflow-migration-v2.13d.md`.
+
+**Stav po V2.13d**: `WORKFLOW_ARCHITECTURE_PARTIALLY_CLOSED` (nie
+`CLOSED`) — ale s výrazne menším, presnejšie vymedzeným zvyškovým
+dlhom (2 jednotky namiesto 9 vetiev).

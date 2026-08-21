@@ -167,5 +167,16 @@ inline v `_chat_impl()` — zámerné, zdokumentované rozhodnutie
 
 Plná architektúra, presné poradie precedencie a Workflow Execution Map:
 `docs/workflow-architecture.md`, `docs/workflow-precedence-v2.13b.md`.
+
+## V2.13d — 6 ďalších migrovaných vetiev (aktualizácia)
+
+`AdvisorEngine` naďalej nezmenený. `app.workflow_executor` teraz
+vykonáva 8 z pôvodných ~11 vetiev `_chat_impl()`'s kaskády (2 z V2.13c
++ 6 z V2.13d: `missing_composition`, `faq`, `random_recipe`, `reset`,
+`out_of_domain`, `category_discovery`). Recipe stavový automat a
+zdieľaná commerce matches-dispatch pipeline (vrátane `RELATED_PRODUCTS`'s
+vykonania) zostávajú `BLOCKED_WITH_REASON` — priamo overená vysoká
+vzájomná previazanosť, nie neochota. Detail:
+`docs/workflow-migration-v2.13d.md`.
 `rt0004`/`rt0010` stav: `docs/routing-debt.md` (**FIXED_V2_13B**, oba
 generickým fixom, nie hardcoded na tieto dve konkrétne frázy).

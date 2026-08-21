@@ -73,6 +73,7 @@ class TestAllergenSafetyHandlerUnit:
             client_key="127.0.0.1",
             session_id="wf-unit-safety",
             query_language="sk",
+            emit_customer_analytics=True,
         )
         assert result["intent"] == "allergen_safety"
         assert result["products"] == []

@@ -108,13 +108,24 @@ zvolí", ale "kde sa vykoná, keď je už zvolený". Register:
 | `RESULTSET_CONTINUATION` | ÁNO (V2.13b) | **ÁNO (V2.13c)** |
 | `ALLERGEN_SAFETY` | ÁNO (V2.13b) | **ÁNO (V2.13c)** |
 | `RELATED_PRODUCTS` | ÁNO (V2.13b) | NIE — zdieľa prezentačnú pipeline s legacy vetvami |
-| `LEGACY_FALLBACK` (~9 vetiev: FAQ, recept, replacement, article, category discovery, out-of-domain, reset, missing-composition, random-recipe) | NIE — vlastné legacy detektory | NIE |
+| `LEGACY_FALLBACK` — `missing_composition`, `faq`, `random_recipe`, `reset`, `out_of_domain`, `category_discovery` | NIE — vlastné legacy detektory | **ÁNO (V2.13d)** |
+| `LEGACY_FALLBACK` — recipe stavový automat, commerce matches-dispatch pipeline | NIE — vlastné legacy detektory | NIE (`BLOCKED_WITH_REASON`, `docs/workflow-migration-v2.13d.md`) |
 
 Toto **nie je nová routing ambiguita** — každá z `LEGACY_FALLBACK`
 vetiev má vlastný, disjunktný detektor bežiaci v pevnom poradí, žiadne
 dve nesúperia o ten istý ťah. Je to zdokumentovaný, zámerný rozsah
 (`LegacyWorkflowAdapter`, sankcionovaný V2.13a/V2.13b), nie prehliadnutá
-chyba. Detail: `docs/workflow-inventory-v2.13c.md`, `docs/workflow-migration-v2.13c.md`.
+chyba.
+
+**V2.13d aktualizácia**: 6 z pôvodných ~9 `LEGACY_FALLBACK` vetiev teraz
+vykonávaných cez `app.workflow_executor` (mechanický presun, nulová
+zmena logiky). Zvyšné 2 jednotky (recipe stavový automat, commerce
+matches-dispatch + `RELATED_PRODUCTS`'s vykonanie) zostávajú
+`BLOCKED_WITH_REASON` — nie prehliadnuté, ale priamo overený, evidovaný
+dôkaz vysokej vzájomnej previazanosti (recipe: reťaz závislých
+early-returnov; commerce: ~30+ vzájomne závislých lokálnych premenných).
+Detail: `docs/workflow-inventory-v2.13c.md`, `docs/workflow-migration-v2.13c.md`,
+`docs/workflow-migration-v2.13d.md`.
 
 ## Čo tento dokument NIE JE
 

@@ -129,6 +129,12 @@ from app.advisor_engine import advisor_engine as _advisor_engine
 from app.advisor_engine import AdvisorRequest as _AdvisorRequest
 from app.workflow_executor import execute_resultset_continuation as _execute_resultset_continuation
 from app.workflow_executor import execute_allergen_safety as _execute_allergen_safety
+from app.workflow_executor import execute_missing_composition as _execute_missing_composition
+from app.workflow_executor import execute_faq as _execute_faq
+from app.workflow_executor import execute_random_recipe as _execute_random_recipe
+from app.workflow_executor import execute_reset as _execute_reset
+from app.workflow_executor import execute_out_of_domain as _execute_out_of_domain
+from app.workflow_executor import execute_category_discovery as _execute_category_discovery
 from app.learning_cycle import run_learning_cycle as _run_learning_cycle
 from app.learning_cycle import REPORTS_DIR as _LEARNING_REPORTS_DIR
 from app.learning_cycle import LEARNING_ENGINE_ENABLED as _LEARNING_ENGINE_ENABLED
@@ -4255,18 +4261,18 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     articles = article_results(knowledge_matches, chat_request.limit) if "Magazine" in knowledge_sections else []
 
     if is_missing_composition_complaint(chat_request.message):
-        update_session_memory(memory_key, chat_request.message, "missing_composition", [], [], knowledge_matches)
-        updated_profile = update_user_memory(profile_key, chat_request.message, "missing_composition", [], [])
-        _ci = build_customer_intent(chat_request.message, "missing_composition", language=query_language)
-        log_question(chat_request.message, client_key, 0, intent="missing_composition", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
-        return {
-            "answer": missing_composition_answer(query_language),
-            "products": [],
-            "articles": articles,
-            "knowledge": knowledge_summary(knowledge_matches),
-            "memory": public_user_memory_summary(updated_profile),
-            "intent": "missing_composition",
-        }
+        # V2.13d: verbatim code motion into app.workflow_executor.
+        return _execute_missing_composition(
+            chat_request=chat_request,
+            memory_key=memory_key,
+            profile_key=profile_key,
+            articles=articles,
+            knowledge_matches=knowledge_matches,
+            client_key=client_key,
+            session_id=session_id,
+            query_language=query_language,
+            emit_customer_analytics=execution_context.emit_customer_analytics,
+        )
 
     # V2.13b (docs/workflow-precedence-before-v2.13b.md, rt0010): the
     # old inline condition treated allergen_product_query() returning ""
@@ -4302,60 +4308,57 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             client_key=client_key,
             session_id=session_id,
             query_language=query_language,
+            emit_customer_analytics=execution_context.emit_customer_analytics,
         )
 
     faq_answer = None
     if is_faq_query:
         faq_answer = best_direct_faq_answer(chat_request.message, knowledge) or best_faq_answer(knowledge_matches)
     if faq_answer and is_faq_query:
-        update_session_memory(memory_key, chat_request.message, "faq", [], [], knowledge_matches)
-        updated_profile = update_user_memory(profile_key, chat_request.message, "faq", [], [])
-        _ci = build_customer_intent(chat_request.message, "faq", language=query_language)
-        log_question(chat_request.message, client_key, 0, intent="faq", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
-        return {
-            "answer": faq_answer,
-            "products": [],
-            "articles": articles,
-            "knowledge": knowledge_summary(knowledge_matches),
-            "memory": public_user_memory_summary(updated_profile),
-            "intent": "faq",
-        }
+        # V2.13d: verbatim code motion into app.workflow_executor.
+        return _execute_faq(
+            chat_request=chat_request,
+            memory_key=memory_key,
+            profile_key=profile_key,
+            articles=articles,
+            knowledge_matches=knowledge_matches,
+            client_key=client_key,
+            session_id=session_id,
+            query_language=query_language,
+            faq_answer=faq_answer,
+            emit_customer_analytics=execution_context.emit_customer_analytics,
+        )
 
     if is_random_recipe_query:
-        random_recipes = get_random_recipes_by_cuisine(knowledge, 3)
-        random_recipes = personalize_recipes(random_recipes, user_profile)
-        update_session_memory(memory_key, chat_request.message, "recipe", [], random_recipes, knowledge_matches)
-        updated_profile = update_user_memory(profile_key, chat_request.message, "recipe", [], random_recipes)
-        _ci = build_customer_intent(chat_request.message, "recipe", language=query_language)
-        log_question(chat_request.message, client_key, 0, intent="recipe", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
-        return {
-            "answer": random_recipes_answer(random_recipes, query_language),
-            "recipes": random_recipes,
-            "products": [],
-            "articles": articles,
-            "knowledge": knowledge_summary(knowledge_matches),
-            "memory": public_user_memory_summary(updated_profile),
-            "intent": "recipe",
-        }
+        # V2.13d: verbatim code motion into app.workflow_executor.
+        return _execute_random_recipe(
+            chat_request=chat_request,
+            memory_key=memory_key,
+            profile_key=profile_key,
+            user_profile=user_profile,
+            knowledge=knowledge,
+            articles=articles,
+            knowledge_matches=knowledge_matches,
+            client_key=client_key,
+            session_id=session_id,
+            query_language=query_language,
+            emit_customer_analytics=execution_context.emit_customer_analytics,
+        )
 
     # V2.9 (Section 30) - explicit reset clears shopping/task state and
     # answers immediately; never touches anything else (no account data
     # exists in this system to accidentally affect).
     if _detect_reset_request(chat_request.message):
-        _apply_session_reset(memory)
-        updated_profile = update_user_memory(profile_key, chat_request.message, "reset", [], [])
-        log_question(chat_request.message, client_key, 0, intent="reset", session_id=session_id, primary_intent="reset", subject="")
-        return {
-            "answer": (
-                "Starting fresh - what are you looking for?"
-                if query_language == "en"
-                else "Začíname odznova - čo hľadáte?"
-            ),
-            "products": [],
-            "knowledge": knowledge_summary({}),
-            "memory": public_user_memory_summary(updated_profile),
-            "intent": "reset",
-        }
+        # V2.13d: verbatim code motion into app.workflow_executor.
+        return _execute_reset(
+            chat_request=chat_request,
+            memory=memory,
+            profile_key=profile_key,
+            client_key=client_key,
+            session_id=session_id,
+            query_language=query_language,
+            emit_customer_analytics=execution_context.emit_customer_analytics,
+        )
 
     # V2.9 (Section 16/17/18/53) - a follow-up about an already-active
     # recipe ("aké rezance?", "tie druhé", "čo ešte potrebujem?") is
@@ -4590,35 +4593,31 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         }
 
     if detect_out_of_domain(chat_request.message):
-        update_session_memory(memory_key, chat_request.message, "unknown", [], [], knowledge_matches)
-        updated_profile = update_user_memory(profile_key, chat_request.message, "unknown", [], [])
-        _ci = build_customer_intent(chat_request.message, "unknown", language=query_language)
-        log_question(chat_request.message, client_key, 0, intent="unknown", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
-        return {
-            "answer": (
-                "I can't reliably answer that as the Foodland assistant. Try asking about products, "
-                "orders, delivery, or payment on Foodland.sk."
-                if query_language == "en"
-                else "Na toto neviem spoľahlivo odpovedať ako Foodland poradkyňa. Skúste sa opýtať na produkty, objednávku, dopravu alebo platbu na Foodland.sk."
-            ),
-            "products": [],
-            "knowledge": knowledge_summary(knowledge_matches),
-            "memory": public_user_memory_summary(updated_profile),
-            "intent": "unknown",
-        }
+        # V2.13d: verbatim code motion into app.workflow_executor.
+        return _execute_out_of_domain(
+            chat_request=chat_request,
+            memory_key=memory_key,
+            profile_key=profile_key,
+            knowledge_matches=knowledge_matches,
+            client_key=client_key,
+            session_id=session_id,
+            query_language=query_language,
+            emit_customer_analytics=execution_context.emit_customer_analytics,
+        )
 
     if is_category_discovery_query(chat_request.message):
-        update_session_memory(memory_key, chat_request.message, "category_discovery", [], [], knowledge_matches)
-        updated_profile = update_user_memory(profile_key, chat_request.message, "category_discovery", [], [])
-        _ci = build_customer_intent(chat_request.message, "category_discovery", language=query_language)
-        log_question(chat_request.message, client_key, 0, intent="category_discovery", session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
-        return {
-            "answer": category_discovery_answer(products, query_language),
-            "products": [],
-            "knowledge": knowledge_summary(knowledge_matches),
-            "memory": public_user_memory_summary(updated_profile),
-            "intent": "category_discovery",
-        }
+        # V2.13d: verbatim code motion into app.workflow_executor.
+        return _execute_category_discovery(
+            chat_request=chat_request,
+            memory_key=memory_key,
+            profile_key=profile_key,
+            products=products,
+            knowledge_matches=knowledge_matches,
+            client_key=client_key,
+            session_id=session_id,
+            query_language=query_language,
+            emit_customer_analytics=execution_context.emit_customer_analytics,
+        )
 
     already_have_subject = detect_already_have_subject(routing_message)
     special_subject = detect_special_product_subject(routing_message)
