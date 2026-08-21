@@ -67,10 +67,29 @@ pred opravou 259 UNKNOWN + 9 instant_noodles (presne náš problém) + **0**
 už inak správne klasifikovaných - matematicky bezpečná zmena (žiadny
 produkt nestratil existujúcu správnu klasifikáciu). Po oprave: HIGH
 531→799 (+268, presná zhoda), MEDIUM 197→188 (-9, presná zhoda), UNKNOWN
-1404→1145 (-259, presná zhoda). `"miska na ramen"`/`"ramen bowl"` legacy
-free-text search naďalej správne nájde servírovacie misky (nie je
-taxonomy-gated). Real edible instant ramen (Shin Ramyun, Buldak, ...)
-zostáva nezmenené `instant_food/instant_noodles`.
+1404→1145 (-259, presná zhoda). Real edible instant ramen (Shin Ramyun,
+Buldak, ...) zostáva nezmenené `instant_food/instant_noodles`.
+
+**Úprimné zistenie (A/B overené priamo, nie predpoklad)**: `"miska na
+ramen"`/`"ramen bowl"`/`"japonske ramen misky"` cez hlavnú zákaznícku
+vyhľadávaciu cestu (`hybrid_cached_search_products()`, ktorú používa
+`/chat` aj `/products/search`) **nenájdu misky ani PRED, ani PO tejto
+oprave** - priamo overené prepnutím na pred-V2.14d `taxonomy.py` a
+opakovaním identického dopytu (identický výsledok, 0 misiek v oboch
+prípadoch). Príčina je mimo rozsahu tejto opravy: `structured_search`'s
+QUERY-side rozlíšenie rodiny sa uzamkne na `family=instant_food` cez
+titulovú frázu "ramen" a nemá mechanizmus na rozpoznanie konkurenčného
+"toto je vlastne dopyt na riad" signálu zo slova "miska" - toto je
+PREDEXISTUJÚCE obmedzenie `structured_search`u (query-side family
+resolution), nie niečo, čo táto sprinta zaviedla alebo zhoršila. Misky
+zostávajú nájditeľné LEN cez holý lexikálny `cached_search_products()`
+(interný fallback, nie hlavná zákaznícka cesta) - Section 10 zadania
+("must NOT globally hide") je splnená v zmysle "žiadny produkt nebol
+skrytý/zmazaný", ale NIE v zmysle "zákazník ich ľahko nájde cez hlavné
+vyhľadávanie" - to zostáva reálny, zdokumentovaný dlh (Sekcia 28),
+vyžadujúci samostatnú opravu `structured_search`'s query-parsing (mimo
+rozsahu - Section 47 zadania zakazuje kompenzovať sémantickú chybu
+ranking úpravami v tejto sprinte).
 
 ## 8. RECIPE_COMPLETION baseline
 
@@ -303,9 +322,16 @@ mechanizmy sú slovenčina-only.
 2. **Vysoká priorita**: ramen bare-word taxonomy kolízia (instant_noodles
    vs. suché rezance na domácu polievku) - nevyriešená, `use_case_advice`
    pre ramen zostáva zámerne nezaregistrovaný.
-3. **Stredná priorita**: multi-jazyková podpora (SK-only mechanizmy
+3. **Stredná priorita**: `structured_search`'s QUERY-side family rozlíšenie
+   nemá mechanizmus na rozpoznanie konkurenčného signálu ("miska"/tableware
+   zámer) proti dominantnému slovu ("ramen") - `"miska na ramen"` cez
+   hlavnú zákaznícku cestu (`hybrid_cached_search_products`) nenájde
+   servírovacie misky ani po tejto oprave (predexistujúce obmedzenie,
+   priamo A/B overené, nezhoršené touto sprintou - Sekcia 7). Vyžaduje
+   samostatnú opravu query-parsing, mimo rozsahu V2.14d.
+4. **Stredná priorita**: multi-jazyková podpora (SK-only mechanizmy
    naprieč celou V2.14 sériou).
-4. **Nízka priorita**: `app.cross_sell.roles_for_recipe()`'s vlastná
+5. **Nízka priorita**: `app.cross_sell.roles_for_recipe()`'s vlastná
    architektonická medzera (dôveruje LEN taxonomy-backed konceptom,
    nikdy `RECIPE_CURATED` lexikálnym) zostáva - táto sprinta ju
    zmiernila (2 recovery), nie odstránila.
