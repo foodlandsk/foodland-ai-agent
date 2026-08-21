@@ -191,3 +191,16 @@ LEN commerce matches-dispatch pipeline. Detail:
 `docs/recipe-state-machine-v2.13e.md`.
 `rt0004`/`rt0010` stav: `docs/routing-debt.md` (**FIXED_V2_13B**, oba
 generickým fixom, nie hardcoded na tieto dve konkrétne frázy).
+
+## V2.13f-A — commerce pipeline charakterizovaná, `ACCEPT_PARTIALLY_CLOSED` (aktualizácia)
+
+`AdvisorEngine` nezmenený, `_chat_impl()` nezmenený (CHARACTERIZATION
+ONLY sprint, žiadny kód sa nepresúval). Formálny CFG/DFG/side-effect-map
+a 14-kritériový GO/STOP scorecard nad zostávajúcou commerce
+matches-dispatch pipeline (34 vzájomne závislých lokálnych premenných,
+8 terminálnych return miest, 2 novo-nájdené nekonzistencie tvaru
+odpovede) skončil rozhodnutím **`ACCEPT_PARTIALLY_CLOSED`** — platný,
+úspešný výsledok podľa zadania, nie zlyhanie. Architektúra ostáva
+`WORKFLOW_ARCHITECTURE_PARTIALLY_CLOSED`: 9 z ~11 pôvodných vetiev na
+`app.workflow_executor`, táto jedna pipeline zostáva vedome, s
+dôkazmi, na legacy ceste. Detail: `docs/commerce-pipeline-v2.13f-a.md`.

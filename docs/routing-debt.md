@@ -110,7 +110,7 @@ zvolí", ale "kde sa vykoná, keď je už zvolený". Register:
 | `RELATED_PRODUCTS` | ÁNO (V2.13b) | NIE — zdieľa prezentačnú pipeline s legacy vetvami |
 | `LEGACY_FALLBACK` — `missing_composition`, `faq`, `random_recipe`, `reset`, `out_of_domain`, `category_discovery` | NIE — vlastné legacy detektory | **ÁNO (V2.13d)** |
 | `LEGACY_FALLBACK` — recipe stavový automat (`recipe_subject` + `recipe_followup_result`) | NIE — vlastný `detect_recipe_subject`/`_resolve_recipe_followup` | **ÁNO (V2.13e)** |
-| `LEGACY_FALLBACK` — commerce matches-dispatch pipeline | NIE — vlastné legacy detektory | NIE (`BLOCKED_WITH_REASON`, mimo rozsahu V2.13e Section 54) |
+| `LEGACY_FALLBACK` — commerce matches-dispatch pipeline | NIE — vlastné legacy detektory | NIE (`ACCEPT_PARTIALLY_CLOSED`, formálne charakterizované a rozhodnuté V2.13f-A) |
 
 Toto **nie je nová routing ambiguita** — každá z `LEGACY_FALLBACK`
 vetiev má vlastný, disjunktný detektor bežiaci v pevnom poradí, žiadne
@@ -127,6 +127,22 @@ dôkaz vysokej vzájomnej previazanosti (recipe: reťaz závislých
 early-returnov; commerce: ~30+ vzájomne závislých lokálnych premenných).
 Detail: `docs/workflow-inventory-v2.13c.md`, `docs/workflow-migration-v2.13c.md`,
 `docs/workflow-migration-v2.13d.md`.
+
+**V2.13e aktualizácia**: recipe stavový automat teraz vykonávaný cez
+`app.workflow_executor.execute_recipe()`. Zostáva presne JEDNA
+jednotka: commerce matches-dispatch pipeline. Detail:
+`docs/recipe-state-machine-v2.13e.md`.
+
+**V2.13f-A aktualizácia (finálna, pre commerce pipeline)**:
+CHARACTERIZATION ONLY sprint formálne dokázala (CFG, data-dependency
+graf pre 34 premenných, side-effect map, 14-kritériový GO/STOP
+scorecard), že táto posledná jednotka nespĺňa latku na bezpečnú
+extrakciu (6× FAIL zo 14 kritérií, vrátane všetkých s najvyššou váhou
+pre riziko). Rozhodnutie: **`ACCEPT_PARTIALLY_CLOSED`** — explicitne
+platný, úspešný koncový stav podľa zadania, nie prehliadnutie. Naviac
+nájdené (nie opravené — mimo rozsahu) 2 nezávislé nekonzistencie tvaru
+odpovede v 2 z 8 terminálnych `return` miest. Detail:
+`docs/commerce-pipeline-v2.13f-a.md`.
 
 ## Čo tento dokument NIE JE
 

@@ -284,3 +284,43 @@ JEDNA jednotka (commerce matches-dispatch pipeline vrátane
 `RELATED_PRODUCTS`'s vykonania), dole z 2 pred V2.13e. Commerce pipeline
 zostáva explicitne MIMO rozsahu tohto sprintu (zadanie V2.13e Section
 54 — "must not be extracted or refactored in this sprint").
+
+## V2.13f-A — commerce pipeline charakterizácia, `ACCEPT_PARTIALLY_CLOSED`
+
+CHARACTERIZATION ONLY sprint (Section 1–3 invariant zadania: žiadna
+extrakcia, refaktor ani presun vykonávacej logiky). Cieľ: formálny
+CFG/data-dependency graf/side-effect map/coupling klasifikácia/money-path
+analýza poslednej zostávajúcej `legacy_primary_execution_branch_count`
+jednotky, ukončený explicitným 14-kritériovým GO/STOP scorecard
+rozhodnutím. Plný audit: `docs/commerce-pipeline-v2.13f-a.md`.
+
+**Zistenie**: 34 lokálnych premenných (31 s reálnym fan-in do
+terminálneho rozhodnutia), 8 vzájomne sa vylučujúcich terminálnych
+`return` miest (oproti 2 u recipe stavového automatu v V2.13e), 6 z 9
+vedľajších efektov bezpodmienečné a vykonané PRED terminálnym
+rozhodnutím, 3 polia (`cross_sell_*`, `workflow_selection`) vypočítané
+výhradne v jednej z 8 vetiev. Naviac nájdené (nie predpokladané) 2
+nekonzistencie tvaru odpovede: 2 z 8 terminálnych vetiev (OpenAI
+transient-error, generický exception handler) vynechávajú kľúče
+`"memory"`/`"intent"`, ktoré má každá iná vetva; `"response_mode"`
+chýba v 4 z 8. Oba nálezy priamo reprodukované charakterizačnými
+testami, NEOPRAVENÉ touto sprintou (mimo rozsahu — CHARACTERIZATION
+ONLY), zdokumentované ako nezávislý budúci low-risk bugfix kandidát.
+
+**Scorecard výsledok**: 6× FAIL, 4× PASS, 3× PARTIAL/LOW, 1× HIGH-risk
+zo 14 kritérií — vrátane FAIL na všetkých kritériách s najvyššou váhou
+pre extrakčnú bezpečnosť (jednotný návratový kontrakt, ohraničený
+lokálny stav, izolácia vedľajších efektov, redukovateľnosť na čistú
+funkciu, dokázateľnosť mechanickým presunom).
+
+**Rozhodnutie**: **`ACCEPT_PARTIALLY_CLOSED`** — explicitne platný,
+úspešný výsledok podľa zadania (nie zlyhanie, dôkazné bremeno bolo na
+extrakcii). Architektonický stav zostáva
+`WORKFLOW_ARCHITECTURE_PARTIALLY_CLOSED`: 9 z ~11 pôvodných vetiev na
+`app.workflow_executor`, táto jedna pipeline zostáva vedome na legacy
+ceste, teraz s úplnou formálnou charakterizáciou namiesto
+neformálneho odhadu. 13 nových charakterizačných testov
+(`tests/test_commerce_pipeline_v2_13f_a.py`) zamrazujú súčasné
+správanie ako regresnú sieť pre akúkoľvek budúcu zmenu tejto pipeline.
+Žiadna ďalšia extrakcia sa po tomto rozhodnutí v tejto sprinte
+nepokúša (zadanie to explicitne zakazuje po STOP rozhodnutí).
