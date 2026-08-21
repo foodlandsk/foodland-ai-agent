@@ -25,6 +25,16 @@ overenú klasifikáciu.
 | `regbug_rt0002` | "potrebujem niečo bez lepku k sushi" | `product_search` | — | (zhoda s očakávaním) | RETRIEVAL_MISS | golden case očakáva anglický prepis `'sushi ryža'`, katalóg/produkty používajú slovenský `'Suši ryža'` | — | — | **CLOSED — evaluation/text normalization artifact, nie routing** |
 | `regbug_rt0006` | "čo k červenej kari paste?" | `related_products` | — | (zhoda s očakávaním) | RETRIEVAL_MISS | golden case očakáva `'rybia omáčka'`, katalóg má `'Rybacia omáčka'` (iný gramatický tvar) — produkt je fakticky prítomný | — | — | **CLOSED — lexical/evaluation wording mismatch, nie routing** |
 | `regbug_rt0022` | "potrebujem recept na kimchi" | `recipe` | `RECIPE_SHOPPING` | (zhoda s očakávaním, intent aj workflow správne) | GROUNDING_ERROR | AI-generovaný text neobsahuje presne očakávané slová `'kapustu'`/`'fermentovat'` | — | — | **CLOSED — generated-answer textual variance, nie routing** |
+
+**V2.14a poznámka k rt0013 (bez zmeny stavu)**: recommendation-evidence
+audit (`docs/recommendation-intelligence-v2.14a.md`) objavil, že
+`app.recipe_graph` má presne JEDNU substitučnú hranu v celom systéme —
+fish_sauce→soy_sauce, context=vegan — čo sa priamo prekrýva s rt0013's
+dopytom. Budúci evidence/confidence framework by mal prirodzené miesto
+na reprezentáciu tohto rozhodnutia (INFERRED evidencia z reálnej
+substitučnej hrany vs. plochý `product_search`), ale **rt0013 sa touto
+poznámkou NERIEŠI** — zostáva `PENDING_SEMANTIC_PRODUCT_DECISION`,
+vyžaduje ľudské rozhodnutie, nie automatické odvodenie.
 | `regbug_rt0024` | "ako môžem zaplatiť?" | `faq` | — | (zhoda s očakávaním, intent správny) | GROUNDING_ERROR | FAQ odpoveď neobsahuje presne slovo `'Dobierka'` | — | — | **CLOSED — generated-answer textual variance, nie routing** |
 
 ## V2.13b — mandátne prípady VYRIEŠENÉ (Invariant #4/#5 zo zadania V2.13a)
