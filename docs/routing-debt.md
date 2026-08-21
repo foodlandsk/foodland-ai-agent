@@ -183,6 +183,15 @@ dôvod. Detail: `docs/response-contract-v2.13g.md`.
   `search_quality.jsonl`) môže časom odhaliť ďalšie, akonáhle sa
   nahromadí dostatočný objem.
 
+## V2.14c poznámka — 2 nové, zdokumentované (nie opravené) precedenčné fakty
+
+Objavené počas V2.14c use-case-advice auditu (`docs/use-case-intelligence-v2.14c.md`),
+nie routing medzery v zmysle vyššie (žiadny golden case zlyháva kvôli
+nim) — dokumentované tu pre budúcu referenciu:
+
+1. **`app.main.RECIPE_INTENT_MARKERS` obsahuje doslovné `"pad thai"`/`"tom kha"`** (V2.9-éra) — akákoľvek správa obsahujúca tieto reťazce sa VŽDY vyrieši ako `recipe_subject`, bez ohľadu na kontext. Toto je zámerné, existujúce správanie (chráni recipe flow), ale znamená, že V2.14c's use-case-advice logika pre tieto 2 dishe je reálna a testovaná, no zákaznícky nedosiahnuteľná (SHADOW_ONLY).
+2. **`RELATED_SUBJECT_ALIASES["tom_yum"]` obsahuje `"tom kha"` ako synonym**, popri samostatnom `RELATED_SUBJECT_ALIASES["tom_kha"]` zázname — first-match-wins by teoreticky uprednostnil `tom_yum` pri doslovnej zhode "tom kha", v závislosti od poradia iterácie slovníka. Nezistený žiadny reálny customer-facing dopad (žiadny golden case naň naráža), zdokumentované ako potenciálne budúce riziko, nie aktívna chyba.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným

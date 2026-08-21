@@ -642,3 +642,71 @@ def execute_comparison(
         "comparison_goal": decision.goal,
         "comparison_confidence": decision.confidence,
     }
+
+
+def execute_use_case_advice(
+    *,
+    chat_request: Any,
+    recipe_subject: str | None,
+    memory_key: str,
+    profile_key: str,
+    products: list,
+    product_taxonomy_index: dict,
+    client_key: str,
+    session_id: str,
+    query_language: str,
+    emit_customer_analytics: bool,
+) -> WorkflowResult | None:
+    """V2.14c - docs/use-case-intelligence-v2.14c.md. Activates the V2.7
+    USE_CASE_ADVICE workflow_id label (app.workflow_registry) as a NEW,
+    independent, deterministic execution path for a narrow set of
+    audited-safe use cases (app.use_case_advice.LIVE_USE_CASES) -
+    exactly like execute_comparison() reused the COMPARISON label in
+    V2.14b, app.workflow_registry itself is NOT modified.
+
+    Returns None when app.use_case_advice.decide_use_case_advice()
+    returns None - i.e. the message does not name one of this sprint's
+    LIVE_USE_CASES at all, or names one but explicitly excludes the
+    exact role this module would recommend (Section 19 conflict
+    handling). The caller must then fall through to the normal cascade
+    unchanged - same contract as execute_recipe()/execute_comparison().
+
+    Deterministic end-to-end (Section 81): no LLM call anywhere in
+    app.use_case_advice's resolution/evidence/decision/composition
+    path, and none added here.
+    """
+    import app.main as m
+    from app.use_case_advice import compose_use_case_answer, decide_use_case_advice
+
+    decision = decide_use_case_advice(
+        chat_request.message, products, product_taxonomy_index, chat_request.limit,
+        recipe_subject=recipe_subject,
+    )
+    if decision is None:
+        return None
+
+    products_by_id = {p.id: p for p in products}
+    matched_products = [m.format_product(products_by_id[pid]) for pid in decision.candidate_product_ids if pid in products_by_id]
+    answer_text = compose_use_case_answer(decision, matched_products, query_language)
+
+    m.update_session_memory(memory_key, chat_request.message, "use_case_advice", matched_products, [], {})
+    updated_profile = m.update_user_memory(profile_key, chat_request.message, "use_case_advice", matched_products, [])
+    _ci = m.build_customer_intent(chat_request.message, "use_case_advice", language=query_language)
+    if emit_customer_analytics:
+        m.log_question(
+            chat_request.message, client_key, len(matched_products), intent="use_case_advice",
+            session_id=session_id, primary_intent=_ci.primary_intent, subject=f"{decision.use_case}:{decision.state}",
+        )
+    return {
+        "answer": answer_text,
+        "products": matched_products,
+        "articles": [],
+        "knowledge": m.knowledge_summary({}),
+        "memory": m.public_user_memory_summary(updated_profile),
+        "intent": "use_case_advice",
+        "response_mode": "use_case_advice",
+        "workflow_id": "USE_CASE_ADVICE",
+        "use_case_resolved": decision.use_case,
+        "use_case_decision": decision.state,
+        "use_case_confidence": decision.confidence,
+    }

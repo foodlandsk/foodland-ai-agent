@@ -137,6 +137,7 @@ from app.workflow_executor import execute_out_of_domain as _execute_out_of_domai
 from app.workflow_executor import execute_category_discovery as _execute_category_discovery
 from app.workflow_executor import execute_recipe as _execute_recipe
 from app.workflow_executor import execute_comparison as _execute_comparison
+from app.workflow_executor import execute_use_case_advice as _execute_use_case_advice
 from app.learning_cycle import run_learning_cycle as _run_learning_cycle
 from app.learning_cycle import REPORTS_DIR as _LEARNING_REPORTS_DIR
 from app.learning_cycle import LEARNING_ENGINE_ENABLED as _LEARNING_ENGINE_ENABLED
@@ -4386,6 +4387,31 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     )
     if _comparison_result is not None:
         return _comparison_result
+
+    # V2.14c (docs/use-case-intelligence-v2.14c.md) - activates the V2.7
+    # USE_CASE_ADVICE workflow_id label for a narrow, audited-safe set of
+    # culinary use cases (app.use_case_advice.LIVE_USE_CASES). Placed at the
+    # same precedence tier as V2.14b comparison (after allergen-safety/FAQ/
+    # random-recipe/reset, before recipe detection) - naturally disjoint from
+    # comparison by construction (comparison requires 2 resolved targets,
+    # this requires exactly 1 named use-case+role). Returns None whenever the
+    # message does not name a LIVE use case at all, or explicitly excludes
+    # the exact role this module would recommend - every other branch below
+    # is completely unaffected for any other turn.
+    _use_case_advice_result = _execute_use_case_advice(
+        chat_request=chat_request,
+        recipe_subject=recipe_subject,
+        memory_key=memory_key,
+        profile_key=profile_key,
+        products=products,
+        product_taxonomy_index=product_taxonomy_index,
+        client_key=client_key,
+        session_id=session_id,
+        query_language=query_language,
+        emit_customer_analytics=execution_context.emit_customer_analytics,
+    )
+    if _use_case_advice_result is not None:
+        return _use_case_advice_result
 
     # V2.9 (Section 16/17/18/53) - a follow-up about an already-active
     # recipe ("aké rezance?", "tie druhé", "čo ešte potrebujem?") is
