@@ -242,3 +242,45 @@ zdôvodnenie: `docs/workflow-migration-v2.13d.md`.
 **Stav po V2.13d**: `WORKFLOW_ARCHITECTURE_PARTIALLY_CLOSED` (nie
 `CLOSED`) — ale s výrazne menším, presnejšie vymedzeným zvyškovým
 dlhom (2 jednotky namiesto 9 vetiev).
+
+## V2.13e — recipe stavový automat extrahovaný
+
+Postup presne podľa OBSERVE→MAP→CHARACTERIZE→TEST→FREEZE→FORMALIZE→
+EXTRACT→COMPARE→REGRESSION disciplíny (žiadne presúvanie kódu pred
+charakterizáciou). Plný audit: `docs/recipe-state-machine-v2.13e.md`.
+
+**Kľúčové architektonické zistenie**: recipe logika v `_chat_impl()`
+pozostávala z 5 blokov (A: setup `_recipe_followup_result`; B: ordinálna
+referencia; C: osirelý follow-up; D: hlavný `recipe_subject` blok; E:
+`recipe_followup_result` handling), ale **B a C NIE SÚ recipe-špecifické**
+— sú to všeobecné session-continuity clarifikačné vzory (ordinálna
+referencia na AKÝKOĽVEK naposledy zobrazený zoznam, nie len recept),
+ktoré recipe stav používajú LEN ako súčasť gate podmienky. Priamy dôkaz:
+podmienky B/C (`_recipe_followup_result is None AND not recipe_subject`)
+sú PÁROVO VYLUČUJÚCE sa s D's (`recipe_subject` truthy) a E's
+(`_recipe_followup_result is not None`) podmienkami — pre daný ťah môže
+platiť najviac jedna z {B, C, D, E}, čo umožňuje presunúť D+E do JEDNEJ
+funkcie volanej HNEĎ PO bloku A (namiesto ich pôvodného preloženia MEDZI
+B a C) bez zmeny pozorovateľného správania — dokázané, nie predpokladané.
+
+**Implementácia**: `app.workflow_executor.execute_recipe()` — Blok D
+(hlavný `recipe_subject` handler, V2.8 recipe graph) a Blok E
+(`recipe_followup_result` handler, 3 druhy: `_RF_INGREDIENT`,
+`_RF_SELECTED`, `.plan`) zlúčené do jednej funkcie, mechanicky presunuté
+(nie duplikované). Bloky B (ordinálna referencia) a C (osirelý
+follow-up) zostávajú nezmenené, na svojom pôvodnom mieste v
+`_chat_impl()` — správne klasifikované ako `SESSION_CONTINUATION_FALLBACK`,
+nie recipe execution.
+
+**Charakterizácia pred extrakciou**: 19 nových testov
+(`tests/test_recipe_state_machine_v2_13e.py`) napísaných a spustených
+PROTI PRED-extrakčnej implementácii (všetkých 19 prešlo), až POTOM
+extrakcia, potom ROVNAKÝCH 19 testov znova PROTI po-extrakčnej
+implementácii (identický výsledok — dôkaz behaviorálnej parity).
+
+**Stav**: `RECIPE_STATE_MACHINE_EXTRACTED`. Celkový architektonický
+stav zostáva `WORKFLOW_ARCHITECTURE_PARTIALLY_CLOSED` — zvyšný dlh:
+JEDNA jednotka (commerce matches-dispatch pipeline vrátane
+`RELATED_PRODUCTS`'s vykonania), dole z 2 pred V2.13e. Commerce pipeline
+zostáva explicitne MIMO rozsahu tohto sprintu (zadanie V2.13e Section
+54 — "must not be extracted or refactored in this sprint").

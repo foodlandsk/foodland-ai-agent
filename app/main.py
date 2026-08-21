@@ -135,6 +135,7 @@ from app.workflow_executor import execute_random_recipe as _execute_random_recip
 from app.workflow_executor import execute_reset as _execute_reset
 from app.workflow_executor import execute_out_of_domain as _execute_out_of_domain
 from app.workflow_executor import execute_category_discovery as _execute_category_discovery
+from app.workflow_executor import execute_recipe as _execute_recipe
 from app.learning_cycle import run_learning_cycle as _run_learning_cycle
 from app.learning_cycle import REPORTS_DIR as _LEARNING_REPORTS_DIR
 from app.learning_cycle import LEARNING_ENGINE_ENABLED as _LEARNING_ENGINE_ENABLED
@@ -4380,6 +4381,40 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         if _recipe_followup_result is None:
             _clear_recipe_state(memory)
 
+    # V2.13e: recipe execution boundary (app.workflow_executor.execute_recipe)
+    # - Block D (main recipe_subject handler) and Block E (recipe_followup_result
+    # handler) moved verbatim, docs/recipe-state-machine-v2.13e.md. Called
+    # HERE, ahead of the ordinal-reference/orphaned-followup blocks below,
+    # instead of interleaved between them as in the original source order -
+    # proven behaviorally identical because recipe_subject/_recipe_followup_result
+    # are pairwise disjoint with those two blocks' own gating conditions
+    # (mutual-exclusivity proof in the state-machine doc), so no turn can
+    # ever reach both.
+    _recipe_result = _execute_recipe(
+        chat_request=chat_request,
+        recipe_subject=recipe_subject,
+        recipe_followup_result=_recipe_followup_result,
+        contextual_message=contextual_message,
+        knowledge=knowledge,
+        knowledge_matches=knowledge_matches,
+        knowledge_sections=knowledge_sections,
+        articles=articles,
+        user_profile=user_profile,
+        products=products,
+        recipe_graph_index=recipe_graph_index,
+        product_taxonomy_index=product_taxonomy_index,
+        normalized_product_index=normalized_product_index,
+        memory=memory,
+        memory_key=memory_key,
+        profile_key=profile_key,
+        client_key=client_key,
+        session_id=session_id,
+        query_language=query_language,
+        emit_customer_analytics=execution_context.emit_customer_analytics,
+    )
+    if _recipe_result is not None:
+        return _recipe_result
+
     # V2.9 (Section 11/13/60/61) - a short, bare ordinal reference ("ten
     # druhý") with no recipe follow-up match is resolved against
     # whatever was most recently shown to THIS session, or answered with
@@ -4447,150 +4482,6 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             "intent": "product_search",
         }
 
-    if recipe_subject:
-        recipes = recipe_results(knowledge_matches, chat_request.limit, contextual_message, knowledge)
-        recipes = personalize_recipes(recipes, user_profile)
-        recipes = prioritize_recipes_for_phrase(recipes, contextual_message)
-        recipe_articles = (
-            recipe_article_results(articles, contextual_message, knowledge, chat_request.limit)
-            if "Magazine" in knowledge_sections
-            else []
-        )
-        recipe_product_subject = recipe_related_product_subject(contextual_message, recipe_subject, recipes)
-        recipe_products = (
-            related_products_for_subject(products, knowledge, recipe_product_subject, max(chat_request.limit, 8))
-            if wants_recipe_products(contextual_message) and recipe_product_subject
-            else []
-        )
-        recipe_products = personalize_products(recipe_products, user_profile)
-        if recipe_products and recipe_product_subject == "sushi":
-            recipe_products = sushi_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
-        if recipe_products and recipe_product_subject == "tom_yum":
-            recipe_products = tom_yum_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
-        if recipe_products and recipe_product_subject == "kimchi_ramen":
-            recipe_products = kimchi_ramen_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
-        recipe_shopping_plan = None
-        if recipe_products and recipe_product_subject not in {"sushi", "tom_yum", "kimchi_ramen"}:
-            # V2.8 (Section 46) - the 47 curated dishes app.recipe_graph
-            # covers get their shopping list from the real structured
-            # RecipeShoppingPlan, not generic search or the flat legacy
-            # candidate list. Any dish outside the graph, or any internal
-            # error, falls back to the pre-V2.8 legacy path unchanged
-            # (Section 123 - V2.8 failure must never break recipe shopping).
-            if V2_STRUCTURED_RETRIEVAL_ENABLED and recipe_product_subject in recipe_graph_index.dishes_by_id:
-                try:
-                    recipe_shopping_plan = _build_recipe_shopping_plan(
-                        recipe_graph_index,
-                        recipe_product_subject,
-                        products,
-                        product_taxonomy_index,
-                        normalized_product_index,
-                        # lenient: recipe_subject is already confirmed here, so a bare
-                        # "pre 4" (no trailing "ludi"/"osob") is unambiguous (Section 16).
-                        servings=_extract_requested_servings_lenient(chat_request.message),
-                    )
-                except Exception:
-                    logger.warning("V2.8 recipe shopping plan failed for dish=%s", recipe_product_subject, exc_info=True)
-                    recipe_shopping_plan = None
-            if recipe_shopping_plan is not None:
-                _products_by_id = {product.id: product for product in products}
-                _plan_product_ids = [
-                    ing.selected_product_id for ing in recipe_shopping_plan.ingredients if ing.selected_product_id
-                ]
-                recipe_products = [
-                    format_product(_products_by_id[pid]) for pid in _plan_product_ids if pid in _products_by_id
-                ]
-            else:
-                recipe_products = recipe_shopping_core_products(products, recipe_product_subject, recipe_products, max(chat_request.limit, 8))
-        # V2.9 (Section 16) - persist which recipe is active only when a
-        # real V2.8 plan was built (Section 39 - continuity only for what
-        # V2.8 actually understands); a different dish than before drops
-        # the previous dish's selections (app.session_state.set_active_recipe).
-        if recipe_shopping_plan is not None:
-            _set_active_recipe(memory, recipe_product_subject, recipe_shopping_plan.requested_servings)
-        intent = "recipe_to_products" if recipe_products else "recipe"
-        if recipe_products:
-            annotate_recommendations(
-                recipe_products,
-                intent,
-                related_subject=recipe_product_subject,
-                query=contextual_message,
-            )
-        recipe_cart_candidates = cart_candidates_for_response(recipe_products, intent, recipe_product_subject)
-        missing_ingredients = missing_ingredients_for_subject(recipe_product_subject, recipes)
-        shopping_list = shopping_list_for_response(recipe_cart_candidates, missing_ingredients) if recipe_products else {}
-        update_session_memory(memory_key, chat_request.message, intent, recipe_products, recipes, knowledge_matches)
-        updated_profile = update_user_memory(profile_key, chat_request.message, intent, recipe_products, recipes)
-        _ci = build_customer_intent(
-            chat_request.message, intent,
-            subject=recipe_subject, recipe=recipe_subject,
-            use_case=recipe_product_subject or None,
-            language=query_language,
-        )
-        log_question(chat_request.message, client_key, 0, intent=intent, session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
-        if recipe_products:
-            recipe_answer_text = recipe_products_answer(recipe_product_subject, recipes, query_language)
-        elif recipes:
-            recipe_answer_text = recipe_answer(recipe_subject, recipes, query_language)
-        else:
-            # Nic v databaze Foodlandu - skus kratku vseobecnu kulinarsku
-            # odpoved namiesto len "skuste napisat recept na kimchi...".
-            recipe_answer_text = general_ai_recipe_answer(chat_request.message) or recipe_answer(recipe_subject, recipes, query_language)
-        _recipe_workflow = _select_workflow(_RoutingSignals(
-            message=chat_request.message,
-            recipe_subject=recipe_subject,
-            recipe_shopping_plan_used=recipe_shopping_plan is not None,
-        ))
-        return {
-            "answer": recipe_answer_text,
-            "recipes": recipes,
-            "products": recipe_products,
-            "articles": recipe_articles,
-            "cart_candidates": recipe_cart_candidates,
-            "missing_ingredients": missing_ingredients if recipe_products else [],
-            "shopping_list": shopping_list,
-            "knowledge": knowledge_summary(knowledge_matches),
-            "memory": public_user_memory_summary(updated_profile),
-            "intent": intent,
-            "workflow_id": _recipe_workflow.workflow_id,
-            "workflow_confidence": _recipe_workflow.confidence,
-            "recipe_shopping_plan": _summarize_recipe_shopping_plan(recipe_shopping_plan) if recipe_shopping_plan else None,
-        }
-
-    if _recipe_followup_result is not None:
-        _products_by_id = {product.id: product for product in products}
-        if _recipe_followup_result.kind == _RF_INGREDIENT:
-            _followup_products = [
-                format_product(_products_by_id[pid])
-                for pid in _recipe_followup_result.candidate_product_ids
-                if pid in _products_by_id
-            ][: chat_request.limit]
-        elif _recipe_followup_result.kind == _RF_SELECTED and _recipe_followup_result.selected_product_id in _products_by_id:
-            _followup_products = [format_product(_products_by_id[_recipe_followup_result.selected_product_id])]
-        elif _recipe_followup_result.plan is not None:
-            _remaining_ids = [
-                ing.selected_product_id
-                for ing in _recipe_followup_result.plan.ingredients
-                if ing.status == _RF_STATUS_AVAILABLE and ing.selected_product_id
-            ]
-            _followup_products = [format_product(_products_by_id[pid]) for pid in _remaining_ids if pid in _products_by_id]
-        else:
-            _followup_products = []
-        _followup_answer = _compose_recipe_followup_answer(_recipe_followup_result, recipe_graph_index, _products_by_id, query_language)
-        update_session_memory(memory_key, chat_request.message, "recipe_to_products", _followup_products, [], knowledge_matches)
-        updated_profile = update_user_memory(profile_key, chat_request.message, "recipe_to_products", _followup_products, [])
-        log_question(chat_request.message, client_key, 0, intent="recipe_to_products", session_id=session_id, primary_intent="recipe_to_products", subject=_recipe_followup_result.dish_id)
-        return {
-            "answer": _followup_answer,
-            "products": _followup_products,
-            "articles": [],
-            "recipe_shopping_plan": _summarize_recipe_shopping_plan(_recipe_followup_result.plan) if _recipe_followup_result.plan else None,
-            "knowledge": knowledge_summary(knowledge_matches),
-            "memory": public_user_memory_summary(updated_profile),
-            "intent": "recipe_to_products",
-            "workflow_id": "RECIPE_SHOPPING",
-            "workflow_confidence": 0.9,
-        }
 
     if detect_out_of_domain(chat_request.message):
         # V2.13d: verbatim code motion into app.workflow_executor.

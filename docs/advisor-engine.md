@@ -178,5 +178,16 @@ zdieľaná commerce matches-dispatch pipeline (vrátane `RELATED_PRODUCTS`'s
 vykonania) zostávajú `BLOCKED_WITH_REASON` — priamo overená vysoká
 vzájomná previazanosť, nie neochota. Detail:
 `docs/workflow-migration-v2.13d.md`.
+
+## V2.13e — recipe stavový automat extrahovaný (aktualizácia)
+
+`AdvisorEngine` naďalej nezmenený. `app.workflow_executor.execute_recipe()`
+teraz vykonáva recipe stavový automat (hlavný `recipe_subject` handler +
+`recipe_followup_result` handler) — 9 z pôvodných ~11 vetiev je teraz na
+kanonickom executore. Zistené, že ordinálna referencia a osirelý
+follow-up NIE SÚ recipe-špecifické (všeobecné session-continuity
+fallbacky), takže zostávajú nezmenené v `_chat_impl()`. Zvyšný dlh:
+LEN commerce matches-dispatch pipeline. Detail:
+`docs/recipe-state-machine-v2.13e.md`.
 `rt0004`/`rt0010` stav: `docs/routing-debt.md` (**FIXED_V2_13B**, oba
 generickým fixom, nie hardcoded na tieto dve konkrétne frázy).

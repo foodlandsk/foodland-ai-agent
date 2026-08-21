@@ -1636,3 +1636,17 @@ Committed fixture (2 140 produktov, pinned test suite): `classified=720`, `cover
 **Čestný výsledný stav**: **WORKFLOW_ARCHITECTURE_PARTIALLY_CLOSED**, nie CLOSED – ale s výrazne menším, presnejšie vymedzeným zvyškovým dlhom (2 jednotky namiesto 9 vetiev). Detail: `docs/workflow-architecture.md`, `docs/workflow-migration-v2.13d.md`.
 
 **Ďalší krok:** Úplné uzavretie by vyžadovalo dedikovanú, dôkladne charakterizovanú migráciu recipe stavového automatu a commerce matches-dispatch pipeline – vzhľadom na ich preukázanú zložitosť (30+ premenných, stavovo závislé early-returny) kandidát na samostatný budúci sprint s rozsiahlym testovacím pokrytím pred akýmkoľvek presunom kódu, nie na pokračovanie súčasným tempom.
+
+### Sprint V2.13e – Recipe State Machine Extraction
+
+**Zadanie:** dokončiť migráciu recipe stavového automatu do kanonického `app.workflow_executor` – prísne podľa disciplíny OBSERVE→MAP→CHARACTERIZE→TEST→FREEZE→FORMALIZE→EXTRACT→COMPARE→REGRESSION, žiadne presúvanie kódu pred charakterizáciou.
+
+**Kľúčové architektonické zistenie**: recipe logika v `_chat_impl()` pozostávala z 5 blokov (setup recipe-followup, ordinálna referencia, osirelý follow-up, hlavný `recipe_subject` handler, `recipe_followup_result` handler), ale 2 z nich (ordinálna referencia, osirelý follow-up) **nie sú recipe-špecifické** – sú to všeobecné session-continuity clarifikačné vzory, ktoré recipe stav používajú len ako súčasť gate podmienky. Priamy dôkaz: tieto 2 bloky majú podmienky PÁROVO VYLUČUJÚCE sa s recipe-vykonávajúcimi blokmi – pre daný ťah platí najviac jeden zo 4 blokov, čo umožnilo bezpečne presunúť len 2 skutočne recipe-špecifické terminálne bloky.
+
+**Implementácia:** `app.workflow_executor.execute_recipe()` – hlavný `recipe_subject` handler (V2.8 recipe graph) + `recipe_followup_result` handler zlúčené do jednej funkcie, mechanicky presunuté. Charakterizácia PRED extrakciou: 19 testov (`tests/test_recipe_state_machine_v2_13e.py`) napísaných a spustených proti PRED-extrakčnej implementácii (19/19), potom extrakcia, potom rovnaké testy znova proti PO-extrakčnej implementácii (identický výsledok – dôkaz behaviorálnej parity).
+
+**Výsledky:** V2.10 **53/58 nezmenené**. Canary **10/10**. Performance: 38,8 ms/volanie pred vs. 39,4 ms/volanie po (zanedbateľný rozdiel).
+
+**Čestný výsledný stav**: **RECIPE_STATE_MACHINE_EXTRACTED**. Celkový architektonický stav zostáva **WORKFLOW_ARCHITECTURE_PARTIALLY_CLOSED** – zvyšný dlh znížený z 2 jednotiek na **1** (LEN commerce matches-dispatch pipeline). Detail: `docs/recipe-state-machine-v2.13e.md`, `docs/workflow-architecture.md`.
+
+**Ďalší krok:** V2.13f-A – Commerce Pipeline Characterization (LEN charakterizácia, nie extrakcia) je kandidát na budúci sprint, ak sa ukáže opodstatnený. Neodporúča sa automaticky spustiť.

@@ -109,7 +109,8 @@ zvolí", ale "kde sa vykoná, keď je už zvolený". Register:
 | `ALLERGEN_SAFETY` | ÁNO (V2.13b) | **ÁNO (V2.13c)** |
 | `RELATED_PRODUCTS` | ÁNO (V2.13b) | NIE — zdieľa prezentačnú pipeline s legacy vetvami |
 | `LEGACY_FALLBACK` — `missing_composition`, `faq`, `random_recipe`, `reset`, `out_of_domain`, `category_discovery` | NIE — vlastné legacy detektory | **ÁNO (V2.13d)** |
-| `LEGACY_FALLBACK` — recipe stavový automat, commerce matches-dispatch pipeline | NIE — vlastné legacy detektory | NIE (`BLOCKED_WITH_REASON`, `docs/workflow-migration-v2.13d.md`) |
+| `LEGACY_FALLBACK` — recipe stavový automat (`recipe_subject` + `recipe_followup_result`) | NIE — vlastný `detect_recipe_subject`/`_resolve_recipe_followup` | **ÁNO (V2.13e)** |
+| `LEGACY_FALLBACK` — commerce matches-dispatch pipeline | NIE — vlastné legacy detektory | NIE (`BLOCKED_WITH_REASON`, mimo rozsahu V2.13e Section 54) |
 
 Toto **nie je nová routing ambiguita** — každá z `LEGACY_FALLBACK`
 vetiev má vlastný, disjunktný detektor bežiaci v pevnom poradí, žiadne

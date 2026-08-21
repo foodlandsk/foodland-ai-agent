@@ -34,6 +34,23 @@ presentation pipeline) are NOT migrated in V2.13d - see
 docs/workflow-migration-v2.13d.md for the evidenced reasoning
 (BLOCKED_WITH_REASON, not silently skipped).
 
+V2.13e migrates recipe execution (execute_recipe(), see
+docs/recipe-state-machine-v2.13e.md for the full state-machine audit).
+The recipe-followup/ordinal-reference/orphaned-followup PRE-CHECKS stay
+inline in app.main._chat_impl() - direct code tracing showed the
+ordinal-reference and orphaned-followup blocks are NOT recipe-specific
+at all (they are general session-continuity clarification fallbacks
+that merely check recipe state as part of their own gating condition to
+avoid double-handling a turn recipe already resolved). Only the two
+genuinely recipe-specific TERMINAL blocks - the main recipe_subject
+handler and the recipe_followup_result handler - are recipe execution
+in the WorkflowExecutor sense, and they are proven mutually exclusive
+with the ordinal/orphaned-followup blocks by construction (their gating
+conditions are pairwise disjoint), so combining them into one function
+called immediately after the pre-check setup, ahead of the ordinal/
+orphaned-followup blocks, is behaviorally identical to the original
+interleaved order - not a reordering that changes what can fire when.
+
 WorkflowResult is intentionally `dict[str, Any]`, not a new wrapper
 class - same reasoning as app.advisor_engine.AdvisorResponse (V2.13a):
 these handlers already produce the exact, stable /chat response shape
@@ -365,3 +382,180 @@ def execute_category_discovery(
         "memory": m.public_user_memory_summary(updated_profile),
         "intent": "category_discovery",
     }
+
+
+def execute_recipe(
+    *,
+    chat_request: Any,
+    recipe_subject: str | None,
+    recipe_followup_result: Any,
+    contextual_message: str,
+    knowledge: dict,
+    knowledge_matches: dict,
+    knowledge_sections: Any,
+    articles: list,
+    user_profile: dict,
+    products: list,
+    recipe_graph_index: Any,
+    product_taxonomy_index: Any,
+    normalized_product_index: Any,
+    memory: dict,
+    memory_key: str,
+    profile_key: str,
+    client_key: str,
+    session_id: str,
+    query_language: str,
+    emit_customer_analytics: bool,
+) -> WorkflowResult | None:
+    """V2.13e - moved verbatim from its former two inline locations
+    (docs/recipe-state-machine-v2.13e.md's "Block D" and "Block E").
+    Returns None if neither recipe_subject nor recipe_followup_result
+    applies, in which case the caller falls through to the unchanged
+    ordinal-reference/orphaned-followup blocks exactly as before -
+    proven behaviorally identical to the original interleaved order
+    because those two blocks' gating conditions are pairwise disjoint
+    with recipe_subject/recipe_followup_result (see the state-machine
+    doc's mutual-exclusivity proof), not merely reordered by
+    convenience.
+
+    recipe_subject and recipe_followup_result are passed in already
+    computed by the caller - this function does not rediscover them
+    (Invariant #4/#40 of the V2.13e spec: the recipe engine resolves
+    recipe-INTERNAL state transitions, it does not re-run global
+    routing detection)."""
+    import app.main as m
+
+    if recipe_subject:
+        recipes = m.recipe_results(knowledge_matches, chat_request.limit, contextual_message, knowledge)
+        recipes = m.personalize_recipes(recipes, user_profile)
+        recipes = m.prioritize_recipes_for_phrase(recipes, contextual_message)
+        recipe_articles = (
+            m.recipe_article_results(articles, contextual_message, knowledge, chat_request.limit)
+            if "Magazine" in knowledge_sections
+            else []
+        )
+        recipe_product_subject = m.recipe_related_product_subject(contextual_message, recipe_subject, recipes)
+        recipe_products = (
+            m.related_products_for_subject(products, knowledge, recipe_product_subject, max(chat_request.limit, 8))
+            if m.wants_recipe_products(contextual_message) and recipe_product_subject
+            else []
+        )
+        recipe_products = m.personalize_products(recipe_products, user_profile)
+        if recipe_products and recipe_product_subject == "sushi":
+            recipe_products = m.sushi_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
+        if recipe_products and recipe_product_subject == "tom_yum":
+            recipe_products = m.tom_yum_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
+        if recipe_products and recipe_product_subject == "kimchi_ramen":
+            recipe_products = m.kimchi_ramen_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
+        recipe_shopping_plan = None
+        if recipe_products and recipe_product_subject not in {"sushi", "tom_yum", "kimchi_ramen"}:
+            if m.V2_STRUCTURED_RETRIEVAL_ENABLED and recipe_product_subject in recipe_graph_index.dishes_by_id:
+                try:
+                    recipe_shopping_plan = m._build_recipe_shopping_plan(
+                        recipe_graph_index,
+                        recipe_product_subject,
+                        products,
+                        product_taxonomy_index,
+                        normalized_product_index,
+                        servings=m._extract_requested_servings_lenient(chat_request.message),
+                    )
+                except Exception:
+                    m.logger.warning("V2.8 recipe shopping plan failed for dish=%s", recipe_product_subject, exc_info=True)
+                    recipe_shopping_plan = None
+            if recipe_shopping_plan is not None:
+                _products_by_id = {product.id: product for product in products}
+                _plan_product_ids = [
+                    ing.selected_product_id for ing in recipe_shopping_plan.ingredients if ing.selected_product_id
+                ]
+                recipe_products = [
+                    m.format_product(_products_by_id[pid]) for pid in _plan_product_ids if pid in _products_by_id
+                ]
+            else:
+                recipe_products = m.recipe_shopping_core_products(products, recipe_product_subject, recipe_products, max(chat_request.limit, 8))
+        if recipe_shopping_plan is not None:
+            m._set_active_recipe(memory, recipe_product_subject, recipe_shopping_plan.requested_servings)
+        intent = "recipe_to_products" if recipe_products else "recipe"
+        if recipe_products:
+            m.annotate_recommendations(
+                recipe_products,
+                intent,
+                related_subject=recipe_product_subject,
+                query=contextual_message,
+            )
+        recipe_cart_candidates = m.cart_candidates_for_response(recipe_products, intent, recipe_product_subject)
+        missing_ingredients = m.missing_ingredients_for_subject(recipe_product_subject, recipes)
+        shopping_list = m.shopping_list_for_response(recipe_cart_candidates, missing_ingredients) if recipe_products else {}
+        m.update_session_memory(memory_key, chat_request.message, intent, recipe_products, recipes, knowledge_matches)
+        updated_profile = m.update_user_memory(profile_key, chat_request.message, intent, recipe_products, recipes)
+        _ci = m.build_customer_intent(
+            chat_request.message, intent,
+            subject=recipe_subject, recipe=recipe_subject,
+            use_case=recipe_product_subject or None,
+            language=query_language,
+        )
+        if emit_customer_analytics:
+            m.log_question(chat_request.message, client_key, 0, intent=intent, session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
+        if recipe_products:
+            recipe_answer_text = m.recipe_products_answer(recipe_product_subject, recipes, query_language)
+        elif recipes:
+            recipe_answer_text = m.recipe_answer(recipe_subject, recipes, query_language)
+        else:
+            recipe_answer_text = m.general_ai_recipe_answer(chat_request.message) or m.recipe_answer(recipe_subject, recipes, query_language)
+        _recipe_workflow = m._select_workflow(m._RoutingSignals(
+            message=chat_request.message,
+            recipe_subject=recipe_subject,
+            recipe_shopping_plan_used=recipe_shopping_plan is not None,
+        ))
+        return {
+            "answer": recipe_answer_text,
+            "recipes": recipes,
+            "products": recipe_products,
+            "articles": recipe_articles,
+            "cart_candidates": recipe_cart_candidates,
+            "missing_ingredients": missing_ingredients if recipe_products else [],
+            "shopping_list": shopping_list,
+            "knowledge": m.knowledge_summary(knowledge_matches),
+            "memory": m.public_user_memory_summary(updated_profile),
+            "intent": intent,
+            "workflow_id": _recipe_workflow.workflow_id,
+            "workflow_confidence": _recipe_workflow.confidence,
+            "recipe_shopping_plan": m._summarize_recipe_shopping_plan(recipe_shopping_plan) if recipe_shopping_plan else None,
+        }
+
+    if recipe_followup_result is not None:
+        _products_by_id = {product.id: product for product in products}
+        if recipe_followup_result.kind == m._RF_INGREDIENT:
+            _followup_products = [
+                m.format_product(_products_by_id[pid])
+                for pid in recipe_followup_result.candidate_product_ids
+                if pid in _products_by_id
+            ][: chat_request.limit]
+        elif recipe_followup_result.kind == m._RF_SELECTED and recipe_followup_result.selected_product_id in _products_by_id:
+            _followup_products = [m.format_product(_products_by_id[recipe_followup_result.selected_product_id])]
+        elif recipe_followup_result.plan is not None:
+            _remaining_ids = [
+                ing.selected_product_id
+                for ing in recipe_followup_result.plan.ingredients
+                if ing.status == m._RF_STATUS_AVAILABLE and ing.selected_product_id
+            ]
+            _followup_products = [m.format_product(_products_by_id[pid]) for pid in _remaining_ids if pid in _products_by_id]
+        else:
+            _followup_products = []
+        _followup_answer = m._compose_recipe_followup_answer(recipe_followup_result, recipe_graph_index, _products_by_id, query_language)
+        m.update_session_memory(memory_key, chat_request.message, "recipe_to_products", _followup_products, [], knowledge_matches)
+        updated_profile = m.update_user_memory(profile_key, chat_request.message, "recipe_to_products", _followup_products, [])
+        if emit_customer_analytics:
+            m.log_question(chat_request.message, client_key, 0, intent="recipe_to_products", session_id=session_id, primary_intent="recipe_to_products", subject=recipe_followup_result.dish_id)
+        return {
+            "answer": _followup_answer,
+            "products": _followup_products,
+            "articles": [],
+            "recipe_shopping_plan": m._summarize_recipe_shopping_plan(recipe_followup_result.plan) if recipe_followup_result.plan else None,
+            "knowledge": m.knowledge_summary(knowledge_matches),
+            "memory": m.public_user_memory_summary(updated_profile),
+            "intent": "recipe_to_products",
+            "workflow_id": "RECIPE_SHOPPING",
+            "workflow_confidence": 0.9,
+        }
+
+    return None
