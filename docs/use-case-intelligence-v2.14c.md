@@ -189,8 +189,8 @@ fall-through kontrakt ako `execute_recipe()`.
 ## 19. Cross-sell relationship
 
 `app.cross_sell` sa nemenil. Use-case-advice odpovedá na INÚ otázku
-("ktorý produkt VYHOVUJE tomuto použitiu") než cross-sell ("čo
-DOPĹŇA tento produkt") — žiadne zlúčenie sémantiky (Section 36).
+("ktorý produkt VYHOVUJE tomuto použitiu") než cross-sell ("aké sú
+DOPLNKY k tomuto produktu") — žiadne zlúčenie sémantiky (Section 36).
 
 ## 20. Implementované zmeny
 
