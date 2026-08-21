@@ -29,7 +29,7 @@ zmeniť vykonanie, klasifikovaná podľa taxonómie zo zadania V2.13c
 | 5 | 4326-4333 | Random recipe | `is_random_recipe_intent` | NIE | NIE | ÁNO | NIE | `LEGACY_ROUTING`/`LEGACY_EXECUTION` |
 | 6 | 4346-4350 | Reset request | `_detect_reset_request` | NIE | NIE | `_clear_use_case_state`/reset | NIE | `LEGACY_ROUTING` (session-state operácia, nie commerce workflow) |
 | 7 | 4371-4413 | Recipe orphaned-followup edge cases | `_active_recipe_id_before`, viacero podmienok | NIE | ČIASTOČNE | ÁNO | ČIASTOČNE | `LEGACY_ROUTING`/`LEGACY_EXECUTION` |
-| 8 | 4449-4543 | Recipe subject (`recipe_subject`) | `detect_recipe_subject(contextual_message)` | NIE | ÁNO — `recipe_results`/`recipe_graph` | ÁNO | NIE (recipe má vlastný shopping plán) | `LEGACY_ROUTING`/`LEGACY_EXECUTION` — **NAJVÄČŠÍ, najkomplexnejší blok** (V2.8 recipe graph integrácia) |
+| 8 | 4449-4543 | Recipe subject (`recipe_subject`) | `detect_recipe_subject(contextual_message)` | NIE | ÁNO — `recipe_results`/`recipe_graph` | ÁNO | NIE (recipe má vlastný shopping plán) | `LEGACY_ROUTING`/`LEGACY_EXECUTION` — **najrozsiahlejší, najkomplikovanejší blok** (V2.8 recipe graph integrácia) |
 | 9 | 4559-4582 | Recipe followup (`_recipe_followup_result`) | `resolve_recipe_followup()` (V2.9) | NIE | ÁNO | ÁNO | NIE | `LEGACY_ROUTING`/`LEGACY_EXECUTION` |
 | 10 | 4594-4599 | Out-of-domain | `detect_out_of_domain` | NIE | NIE | ÁNO | NIE | `LEGACY_ROUTING` |
 | 11 | 4612-4617 | Category discovery | `is_category_discovery_query` | NIE | NIE — agreguje `product_type` | ÁNO | NIE | `LEGACY_ROUTING`/`LEGACY_EXECUTION` |
