@@ -144,6 +144,24 @@ nájdené (nie opravené — mimo rozsahu) 2 nezávislé nekonzistencie tvaru
 odpovede v 2 z 8 terminálnych `return` miest. Detail:
 `docs/commerce-pipeline-v2.13f-a.md`.
 
+**V2.13g aktualizácia (formálne uzavretie V2.13 programu)**: NIE
+extrakčná sprinta — opravila 2 nekonzistencie tvaru odpovede, ktoré
+V2.13f-A našla vo vnútri commerce pipeline (chýbajúce `memory`/`intent`
+v 2 z 8 terminálnych vetiev, chýbajúci `response_mode` v 4 z 8),
+bez zmeny umiestnenia vykonávacej logiky — pipeline zostáva presne tam,
+kde bola. Extrakčné rozhodnutie z V2.13f-A sa NEOTVÁRA znova:
+**`V2.13f-B = STOPPED_BY_GO_STOP_DECISION`** zostáva v platnosti.
+Formálny koncový stav celého V2.13 programu:
+**`WORKFLOW_ARCHITECTURE_PARTIALLY_CLOSED_ACCEPTED`** — vedomé
+architektonické rozhodnutie založené na meranom riziku, nie
+nedokončená úloha čakajúca na automatické pokračovanie. Budúca
+extrakcia commerce matches-dispatch pipeline je prípustná LEN pri
+novom dôkaze (opakované defekty spôsobené inline architektúrou,
+preukázaná neschopnosť bezpečne implementovať požadovanú funkciu,
+podstatne silnejšie charakterizačné pokrytie, alebo nová architektúra
+znižujúca blast radius) — "čistejší kód" samotný nie je dostatočný
+dôvod. Detail: `docs/response-contract-v2.13g.md`.
+
 ## Čo tento dokument NIE JE
 
 - Nie je zoznam vecí opravených v V2.13a (V2.13a routing nemení vôbec).

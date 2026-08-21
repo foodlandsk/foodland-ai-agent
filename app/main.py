@@ -4936,7 +4936,13 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     if not matches and not knowledge_matches:
         general_recipe_answer = general_ai_recipe_answer(chat_request.message)
         if general_recipe_answer:
-            return {"answer": general_recipe_answer, "products": [], "intent": "recipe"}
+            return {
+                "answer": general_recipe_answer,
+                "products": [],
+                "intent": "recipe",
+                "memory": public_user_memory_summary(updated_profile),
+                "response_mode": "no_match",
+            }
         return {
             "answer": (
                 "I couldn't find an exact product match. Try writing the name, brand, or category a bit differently."
@@ -4944,6 +4950,9 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
                 else "Nenašla som presný produkt. Skúste napísať názov, značku alebo kategóriu trochu inak."
             ),
             "products": [],
+            "intent": intent,
+            "memory": public_user_memory_summary(updated_profile),
+            "response_mode": "no_match",
         }
 
     if should_use_fast_chat_answer(intent, matches, knowledge_matches, needs_composition_caution):
@@ -4987,6 +4996,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             "knowledge": knowledge_summary(knowledge_matches),
             "memory": public_user_memory_summary(updated_profile),
             "intent": intent,
+            "response_mode": "fallback",
         }
 
     try:
@@ -5062,6 +5072,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             "knowledge": knowledge_summary(knowledge_matches),
             "memory": public_user_memory_summary(updated_profile),
             "intent": intent,
+            "response_mode": "llm",
         }
     except (RateLimitError, APITimeoutError, APIConnectionError) as exc:
         logger.warning("OpenAI transient error after retries: %s", exc)
@@ -5074,6 +5085,9 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             "missing_ingredients": missing_ingredients,
             "shopping_list": shopping_list,
             "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": intent,
+            "response_mode": "fallback",
             "warning": (
                 "The service is currently overloaded, showing the products we found."
                 if query_language == "en"
@@ -5091,6 +5105,9 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             "missing_ingredients": missing_ingredients,
             "shopping_list": shopping_list,
             "knowledge": knowledge_summary(knowledge_matches),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": intent,
+            "response_mode": "fallback",
             "warning": (
                 "Could not generate a written answer, showing the products we found."
                 if query_language == "en"
