@@ -559,3 +559,86 @@ def execute_recipe(
         }
 
     return None
+
+
+def execute_comparison(
+    *,
+    chat_request: Any,
+    memory: dict,
+    memory_key: str,
+    profile_key: str,
+    products: list,
+    product_taxonomy_index: dict,
+    client_key: str,
+    session_id: str,
+    query_language: str,
+    emit_customer_analytics: bool,
+) -> WorkflowResult | None:
+    """V2.14b - docs/recommendation-comparison-v2.14b.md. Activates the
+    V2.7 COMPARISON workflow_id (app.workflow_registry), previously
+    SHADOW-only (labeled for analytics, never causally executed).
+
+    Returns None when the message does not look like a comparison
+    request at all (Section 8/19: no comparison language, no
+    multi-ordinal reference) - the caller (app.main._chat_impl()) must
+    then fall through to its normal cascade unchanged, exactly like
+    execute_recipe()'s own None contract.
+
+    When the message DOES look like a comparison request but target
+    resolution is ambiguous (e.g. a bare cross-category two-brand
+    query like "Kikkoman alebo Yamasa?"), this returns a real CLARIFY
+    decision to the customer instead of silently deferring - Section
+    39 Case G requires ambiguous targets to CLARIFY, not to be dropped.
+
+    Deterministic end-to-end (Section 44): app.comparison never calls
+    an LLM, and this handler adds none either - target resolution,
+    evidence, decision, and answer composition are all computed from
+    already-loaded catalog/taxonomy/session data.
+    """
+    import app.main as m
+    from app.comparison import (
+        ComparisonDecision,
+        STATE_CLARIFY,
+        compose_comparison_answer,
+        decide_comparison,
+        looks_like_comparison_request,
+        resolve_comparison_goal,
+        resolve_comparison_targets,
+    )
+    from app.recommendation_evidence import CONFIDENCE_INSUFFICIENT
+
+    if not looks_like_comparison_request(chat_request.message):
+        return None
+
+    targets = resolve_comparison_targets(chat_request.message, memory, products)
+    if targets is None:
+        decision = ComparisonDecision(state=STATE_CLARIFY, goal="UNKNOWN", winner_product_id=None, confidence=CONFIDENCE_INSUFFICIENT)
+        answer_text = compose_comparison_answer(decision, None, query_language)
+        result_products: list = []
+    else:
+        goal = resolve_comparison_goal(chat_request.message)
+        decision = decide_comparison(targets, goal, product_taxonomy_index=product_taxonomy_index)
+        answer_text = compose_comparison_answer(decision, targets, query_language)
+        result_products = [targets.product_a, targets.product_b]
+
+    m.update_session_memory(memory_key, chat_request.message, "product_comparison", result_products, [], {})
+    updated_profile = m.update_user_memory(profile_key, chat_request.message, "product_comparison", result_products, [])
+    _ci = m.build_customer_intent(chat_request.message, "product_comparison", language=query_language)
+    if emit_customer_analytics:
+        m.log_question(
+            chat_request.message, client_key, len(result_products), intent="product_comparison",
+            session_id=session_id, primary_intent=_ci.primary_intent, subject=decision.state,
+        )
+    return {
+        "answer": answer_text,
+        "products": result_products,
+        "articles": [],
+        "knowledge": m.knowledge_summary({}),
+        "memory": m.public_user_memory_summary(updated_profile),
+        "intent": "product_comparison",
+        "response_mode": "comparison",
+        "workflow_id": "COMPARISON",
+        "comparison_decision": decision.state,
+        "comparison_goal": decision.goal,
+        "comparison_confidence": decision.confidence,
+    }

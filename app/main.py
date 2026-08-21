@@ -136,6 +136,7 @@ from app.workflow_executor import execute_reset as _execute_reset
 from app.workflow_executor import execute_out_of_domain as _execute_out_of_domain
 from app.workflow_executor import execute_category_discovery as _execute_category_discovery
 from app.workflow_executor import execute_recipe as _execute_recipe
+from app.workflow_executor import execute_comparison as _execute_comparison
 from app.learning_cycle import run_learning_cycle as _run_learning_cycle
 from app.learning_cycle import REPORTS_DIR as _LEARNING_REPORTS_DIR
 from app.learning_cycle import LEARNING_ENGINE_ENABLED as _LEARNING_ENGINE_ENABLED
@@ -4360,6 +4361,31 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             query_language=query_language,
             emit_customer_analytics=execution_context.emit_customer_analytics,
         )
+
+    # V2.14b (docs/recommendation-comparison-v2.14b.md) - activates the
+    # V2.7 COMPARISON workflow_id (previously SHADOW-only). Placed after
+    # the allergen-safety/FAQ/random-recipe/reset early returns above (so
+    # safety and those other self-contained workflows always take
+    # precedence, Section 31 - allergen safety must never be bypassed by
+    # comparison language) and before recipe detection below. Returns None
+    # (not a dict) whenever the message does not look like a comparison
+    # request at all, so every other branch below is completely unaffected
+    # for any non-comparison turn - same fall-through contract as
+    # execute_recipe().
+    _comparison_result = _execute_comparison(
+        chat_request=chat_request,
+        memory=memory,
+        memory_key=memory_key,
+        profile_key=profile_key,
+        products=products,
+        product_taxonomy_index=product_taxonomy_index,
+        client_key=client_key,
+        session_id=session_id,
+        query_language=query_language,
+        emit_customer_analytics=execution_context.emit_customer_analytics,
+    )
+    if _comparison_result is not None:
+        return _comparison_result
 
     # V2.9 (Section 16/17/18/53) - a follow-up about an already-active
     # recipe ("aké rezance?", "tie druhé", "čo ešte potrebujem?") is
