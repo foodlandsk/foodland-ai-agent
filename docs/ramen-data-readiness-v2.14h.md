@@ -80,11 +80,13 @@ lexikálny/curated cross-sell mechanizmus), zatiaľ čo `use_case_advice`'s
 striktnejší `concept_id`-based mechanizmus by ich (správne) nikdy
 nepoužil ako evidenciu — presne tak, ako má.
 
-**Rozhodnutie**: dashi rola sa NEPRIDÁVA do `_ROLE_TABLE["ramen"]`.
-Autorstvo novej `dashi` `FamilyRule` je reálna taxonomy zmena vyžadujúca
-vlastný blast-radius audit — mimo rozsahu tejto sprinty. Zdokumentované
-ako presný, akčný `DATA_REQUIRED` bod (Section 7), nie fabrikovaná rola
-z `UNKNOWN` evidencie (čo by porušilo confidence gate tohto modulu).
+**Pôvodné rozhodnutie V2.14h**: dashi rola sa NEPRIDÁVA do
+`_ROLE_TABLE["ramen"]` v rámci tejto sprinty — autorstvo novej `dashi`
+`FamilyRule` je reálna taxonomy zmena vyžadujúca vlastný blast-radius
+audit, mimo pôvodného rozsahu. **Aktualizácia (follow-up)**: `dashi`
+`FamilyRule` bola následne autorovaná (Section 7, položka 1) s vlastným
+blast-radius auditom a následne aj zapojená do
+`_ROLE_TABLE["ramen"]` — pozri Section 7 pre detail.
 
 ## 5. Charakterizácia 8 zákazníckych zámerov (Section 14 zadania)
 
@@ -138,12 +140,15 @@ sauce_soy→`soy_sauce`, topping_wakame→`wakame`), všetky
    (4, vrátane negatívneho testu proti false-positive zo zdieľanej
    kategórie). Plný beh **1582/1582** (1578+4), 0 regresií, V2.10
    **34/39** nezmenené (taxonomy coverage 46,5%→46,7%), canary 10/10,
-   consistency 0, trust 0. **Zámerne NEROZŠÍRENÉ do
-   `app.use_case_advice._ROLE_TABLE["ramen"]`** v tomto kroku — bola to
-   samostatná, úzko ohraničená požiadavka (autorovať FamilyRule), nie
-   žiadosť rozšíriť customer-facing ramen role advice; wiring dashi do
-   role advice zostáva ďalší, samostatný, vedomý krok (rovnaká DATA_DERIVED/
-   MEDIUM evidencia by teraz bola bezpečne pripravená naň).
+   consistency 0, trust 0. **Následne zapojené aj do
+   `app.use_case_advice._ROLE_TABLE["ramen"]`** (samostatný, vedomý
+   follow-up krok): nová `RoleEvidence("ramen", "stock_dashi", ...,
+   "stock", "dashi", PROVENANCE_DATA_DERIVED, 0.6, ("dashi",))`. Živo
+   overené: "aký dashi na ramen?" → `use_case_advice`/`RECOMMEND`,
+   správne vracia presne 3 reálne dashi produkty; negácia správne
+   defer-uje. `roles_for_recipe("ramen")` teraz plne súhlasí s
+   `_ROLE_TABLE["ramen"]` (5 rolí v oboch). Testy rozšírené o
+   `test_dashi_role` (unit) + `test_dashi_role_advice` (end-to-end).
 2. **"Domáce ramen rezance" rola z `wheat_noodles`**: 4 reálne, HIGH
    confidence SKU identifikované (Section 3) — vyžaduje title-substring
    koncept + vlastný blast-radius audit pred pridaním ako samostatná rola.

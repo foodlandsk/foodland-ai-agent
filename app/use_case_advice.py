@@ -87,16 +87,18 @@ triple, not an assumption:
   products) are thin stock, entirely MEDIUM - included per the same
   policy, expected to legitimately ABSTAIN/return few candidates rather
   than fabricate a false "well-stocked" impression.
-  dashi is DELIBERATELY EXCLUDED, for a different reason than the
-  original ramen exclusion: 3 real catalog SKUs exist (SHIMAYA Dashi
-  Bonito Stock, Dashinomoto bonito powder, PAKU PAKU dashima kelp) but
-  all three are taxonomically UNKNOWN (no FamilyRule/concept_id claims
-  them) - real data, zero structured evidence. Authoring a "dashi"
-  FamilyRule is a real taxonomy change requiring its own blast-radius
-  review and is explicitly out of scope for this sprint; guessing a
-  dashi role from UNKNOWN-confidence products would violate this
-  module's own confidence gate. Documented as a specific, actionable
-  DATA_REQUIRED backlog item, not vague TODO debt.
+  dashi WAS deliberately excluded at first, for a different reason than
+  the original ramen exclusion: 3 real catalog SKUs existed (SHIMAYA
+  Dashi Bonito Stock, Dashinomoto bonito powder, PAKU PAKU dashima kelp)
+  but all three were taxonomically UNKNOWN (no FamilyRule/concept_id
+  claimed them) - real data, zero structured evidence, and guessing a
+  role from UNKNOWN-confidence products would have violated this
+  module's own confidence gate. A follow-up authored a dedicated "dashi"
+  FamilyRule (family=stock, subfamily=dashi, app/taxonomy.py) with its
+  own blast-radius review (exactly 3 products UNKNOWN -> MEDIUM, 0 other
+  products touched, verified before/after against the full 2140-product
+  catalog) - dashi now has the same DATA_DERIVED/MEDIUM evidence tier as
+  miso/soy_sauce/wakame and is included below.
 - Aromatics with real but extremely thin stock (galangal: 1 SKU
   catalog-wide; kaffir lime leaves: 3; lemongrass: 4) are excluded from
   tom_kha's role table for this sprint - not because the evidence is
@@ -263,6 +265,9 @@ _ROLE_TABLE: dict[str, tuple[RoleEvidence, ...]] = {
         RoleEvidence("ramen", "topping_wakame", "product_type_fit", "seaweed", "wakame",
                      PROVENANCE_DATA_DERIVED, 0.5, ("wakame",),
                      display_label_sk="wakame riasy"),
+        RoleEvidence("ramen", "stock_dashi", "product_type_fit", "stock", "dashi",
+                     PROVENANCE_DATA_DERIVED, 0.6, ("dashi",),
+                     display_label_sk="dashi vývar"),
     ),
 }
 

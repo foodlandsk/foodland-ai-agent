@@ -11,13 +11,18 @@ reusing only already-proven, unmodified mechanisms:
 - the same negation/allergen/recipe-shopping/companion-request precedence
   the cascade already applies to every other live use case.
 
-No new taxonomy, no new routing hack, no basket_completion change (basket
-readiness is an independent dimension - see
+No new routing hack, no basket_completion change (basket readiness is an
+independent dimension - see
 tests/test_basket_completion_v2_14e.py::TestBasketV1EligibleUseCases::test_ramen_not_eligible,
-still true and untouched by this sprint). dashi is deliberately excluded:
-3 real catalog SKUs exist but are taxonomically UNKNOWN (no FamilyRule) -
-this module's confidence gate would silently guess a role from
-UNKNOWN-confidence products if it were included, so it is not.
+still true and untouched by this sprint).
+
+dashi was initially excluded (3 real catalog SKUs existed but were
+taxonomically UNKNOWN - no FamilyRule, so including it would have meant
+guessing a role from unclassified evidence). A follow-up authored a
+dedicated "dashi" FamilyRule (app/taxonomy.py, family=stock/subfamily=dashi)
+with its own blast-radius review (3 products UNKNOWN -> MEDIUM, 0 other
+products touched), then wired the resulting DATA_DERIVED/MEDIUM evidence
+into this module's ramen role table - see TestRamenRoleResolution.test_dashi_role.
 """
 from __future__ import annotations
 
@@ -76,11 +81,16 @@ class TestRamenRoleResolution:
         role = uca.resolve_role("ramen", "wakame na ramen")
         assert role is not None and role.canonical_subfamily == "wakame"
 
-    def test_dashi_has_no_role_never_guessed(self):
-        # 3 real dashi SKUs exist in the catalog but are taxonomically
-        # UNKNOWN (no FamilyRule claims them) - this module must not
-        # fabricate a dashi role from unclassified evidence.
-        assert all(r.canonical_subfamily != "dashi" for r in uca._ROLE_TABLE["ramen"])
+    def test_dashi_role(self):
+        # A dashi FamilyRule (family=stock, subfamily=dashi) was authored
+        # as a V2.14h follow-up, with its own blast-radius review (3 real
+        # catalog SKUs UNKNOWN -> MEDIUM, 0 other products touched) -
+        # dashi now has the same DATA_DERIVED/MEDIUM evidence tier as
+        # miso/soy_sauce/wakame and is a real, resolvable role here.
+        role = uca.resolve_role("ramen", "dashi na ramen")
+        assert role is not None and role.canonical_subfamily == "dashi"
+        assert role.canonical_family == "stock"
+        assert role.provenance == PROVENANCE_DATA_DERIVED
 
     def test_bare_use_case_no_role_returns_none(self):
         assert uca.resolve_role("ramen", "chcem nieco na ramen") is None
@@ -94,6 +104,13 @@ class TestRamenRoleAdviceEndToEnd:
         assert r.get("intent") == "use_case_advice"
         assert r.get("use_case_decision") == "RECOMMEND"
         assert len(r.get("products") or []) > 0
+
+    def test_dashi_role_advice(self):
+        r = _chat("aky dashi na ramen?", "v214h-dashi")
+        assert r.get("intent") == "use_case_advice"
+        assert r.get("use_case_decision") == "RECOMMEND"
+        titles = [p.get("title", "").lower() for p in (r.get("products") or [])]
+        assert any("dashi" in t for t in titles)
 
     def test_soy_sauce_role_advice_was_broken_before_v2_14h(self):
         # Real, reproduced-before-fix defect: this phrasing used to fall
