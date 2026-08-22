@@ -202,7 +202,7 @@
       "query_type": "REGRESSION_BUG",
       "source": "regression_bug",
       "critical": true,
-      "expected_intent": "product_search",
+      "expected_intent": "replacement_products",
       "must_include_title_substrings": [
         "sójová omáčka",
         "tamari",
@@ -214,7 +214,7 @@
         "miska",
         "obal"
       ],
-      "note": "Vegan náhrada za rybiu omáčku má odporúčať dochucovadlá, nie obaly na omáčku. (converted from tests/regression_training_cases.jsonl, id=RT0013)"
+      "note": "Vegan náhrada za rybiu omáčku má odporúčať dochucovadlá, nie obaly na omáčku. (converted from tests/regression_training_cases.jsonl, id=RT0013). CLOSED_BY_HUMAN_SEMANTIC_DECISION: ACTION=replacement, TARGET=fish_sauce, CONSTRAINT=vegan -> canonical workflow is replacement_products, not product_search. Runtime already resolved this correctly (via detect_replacement_subject()'s existing 'nahrad'/REPLACEMENT_SUBJECT_ALIASES['rybacia omacka'] mechanism) - this was GOLDEN_EXPECTATION_OUTDATED, not a routing defect. See docs/routing-debt.md."
     },
     {
       "id": "regbug_rt0014",

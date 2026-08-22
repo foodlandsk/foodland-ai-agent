@@ -6,8 +6,18 @@ Central rule (Section 5): OLD APPLICATION BEHAVIOR and NEW ADVISORENGINE
 BEHAVIOR must be equivalent - even for known routing defects. This file
 proves that equivalence empirically (not just architecturally), and
 separately characterizes the two known routing defects (rt0004, rt0010)
-plus one case pending human semantic review (rt0013) WITHOUT fixing any
-of them (Invariant #2/#3).
+plus, at the time, one case pending human semantic review (rt0013)
+WITHOUT fixing any of them (Invariant #2/#3).
+
+rt0013 UPDATE (rt0013 semantic closure): the human product decision has
+since been made (ACTION=replacement, TARGET=fish_sauce, CONSTRAINT=vegan
+-> replacement_products) and the golden case
+(eval/golden/regression_bugs.json::regbug_rt0013) updated accordingly -
+runtime code was never changed, since it already resolved this query
+correctly (GOLDEN_EXPECTATION_OUTDATED, not a routing defect). See
+docs/routing-debt.md. The equivalence test below is left in place
+unmodified - it never asserted a specific intent value, only that legacy
+and AdvisorEngine agree, which remains true and still worth locking in.
 """
 from __future__ import annotations
 
@@ -326,9 +336,12 @@ class TestInternalTrafficPoisoning:
         assert sq._read_raw_traces(days=1, path=str(log_path)) == []
 
 
-class TestCharacterization_rt0013_HUMAN_SEMANTIC_REVIEW_REQUIRED:
+class TestCharacterization_rt0013_CLOSED_BY_HUMAN_SEMANTIC_DECISION:
     """Section 30 - captured for equivalence only, NOT used as a
-    migration acceptance criterion beyond "AdvisorEngine == legacy"."""
+    migration acceptance criterion beyond "AdvisorEngine == legacy".
+    rt0013 itself is now CLOSED (see module docstring) - this class name
+    reflects that, but the test body is unchanged since it never
+    encoded the old, now-corrected golden expectation."""
 
     QUERY = "náhrada za rybiu omáčku"
 
