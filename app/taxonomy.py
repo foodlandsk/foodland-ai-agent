@@ -580,6 +580,23 @@ FAMILY_DEFINITIONS += [
         title_phrases=("gochujang",),
         display_label="Gochujang",
     ),
+    # --- stock/broth bases --------------------------------------------------
+    FamilyRule(
+        rule_id="dashi",
+        family="stock",
+        subfamily="dashi",
+        confidence="HIGH",
+        # No safe category_terms (V2.14h data audit): the 3 known dashi
+        # products in the catalog sit in 3 different, broad categories
+        # ("Koreniny a ochucovadla" seasoning mix shared with hundreds of
+        # unrelated spices, "Morske riasy > Sushi ingrediencie") - title
+        # is the only signal specific enough to avoid false positives.
+        # "dashima" (dried kelp used specifically to make dashi stock) is
+        # caught by the same substring intentionally - it is a real dashi
+        # ingredient, not a collision.
+        title_phrases=("dashi",),
+        display_label="Dashi vývar",
+    ),
     # --- coconut products ---------------------------------------------------
     FamilyRule(
         rule_id="coconut_milk",

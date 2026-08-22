@@ -372,6 +372,50 @@ class TestSeaweed:
         assert classify_product(wakame).canonical_subfamily == "wakame"
 
 
+class TestDashi:
+    """V2.14h - dashi was DATA_REQUIRED (real catalog SKUs, but no
+    FamilyRule) at the end of the ramen data-readiness audit. 3 real
+    products, 3 different broad categories shared with hundreds of
+    unrelated products (seasoning-mix, HORECA seasoning-mix, seaweed) -
+    title is the only signal specific enough to classify them without
+    a category-driven false-positive risk, so confidence downgrades to
+    MEDIUM (title-only match), consistent with wakame/nori/soy_sauce's
+    own real-world confidence distribution."""
+
+    def test_bonito_stock_is_dashi(self):
+        p = make_product(title="Dashi Bonito Stock SHIMAYA 40 g", product_type="Zdravé potraviny > Bezlepkové potraviny > Zmes korenia a ochucovadlá > Koreniny a ochucovadlá")
+        tax = classify_product(p)
+        assert tax.canonical_family == "stock"
+        assert tax.canonical_subfamily == "dashi"
+        assert tax.confidence == "MEDIUM"
+
+    def test_bonito_powder_is_dashi(self):
+        p = make_product(title="Dashinomoto bonito rybací prášok pre Dashi 1kg", product_type="HORECA - Pre Hotely, Reštaurácie, catering > Zmes korenia a ochucovadlá > Koreniny a ochucovadlá")
+        tax = classify_product(p)
+        assert tax.canonical_family == "stock"
+        assert tax.canonical_subfamily == "dashi"
+
+    def test_dashi_kelp_is_dashi_not_wakame_or_nori(self):
+        # "dashima" (dried kelp specifically used to make dashi stock) is a
+        # real, intentional dashi ingredient, not a false-positive
+        # collision - it must land in dashi, not be swept into the
+        # unrelated seaweed/nori/wakame subfamilies it shares a parent
+        # category with.
+        p = make_product(title="Dashima sušený kelp PAKU PAKU 100g", product_type="Morské riasy > Sushi ingrediencie")
+        tax = classify_product(p)
+        assert tax.canonical_family == "stock"
+        assert tax.canonical_subfamily == "dashi"
+
+    def test_unrelated_seasoning_mix_product_not_misfiled_as_dashi(self):
+        # A completely unrelated product from the SAME broad "Koreniny a
+        # ochucovadla" category (shared with dashi's own 2 seasoning-mix
+        # SKUs) must not be swept in just by category proximity - proving
+        # the rule is title-driven, not category-driven.
+        p = make_product(title="Mleté čierne korenie KOTANYI 50g", product_type="Zdravé potraviny > Bezlepkové potraviny > Zmes korenia a ochucovadlá > Koreniny a ochucovadlá")
+        tax = classify_product(p)
+        assert tax.canonical_subfamily != "dashi"
+
+
 class TestFrozenFood:
     def test_gyoza(self):
         p = make_product(title="Gyoza knedlíky Bravčové a zelenina CJ BIBIGO 600g", product_type="Mrazené hotové jedlá > Mrazené potraviny > Hotové jedlá > Balíčky na prípravu jedál")

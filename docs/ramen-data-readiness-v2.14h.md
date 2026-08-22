@@ -124,9 +124,26 @@ sauce_soy→`soy_sauce`, topping_wakame→`wakame`), všetky
 
 ## 7. Zvyšný dátový dlh (presné, akčné položky — nie vágne TODO)
 
-1. **Dashi FamilyRule**: 3 reálne SKU (Section 4), `UNKNOWN` confidence.
-   Autorovanie novej `FamilyRule` + blast-radius audit — konkrétny,
-   ohraničený budúci krok.
+1. ~~**Dashi FamilyRule**~~ — **VYRIEŠENÉ** (samostatný follow-up po
+   V2.14h): nová `FamilyRule(rule_id="dashi", family="stock",
+   subfamily="dashi")` v `app/taxonomy.py`, title-only match
+   (`title_phrases=("dashi",)`) — žiadne bezpečné `category_terms`
+   dostupné, keďže všetky 3 reálne SKU zdieľajú kategórie so stovkami
+   nesúvisiacich produktov (`Koreniny a ochucovadlá`, `Morské riasy`).
+   Blast radius: presne 3 produkty `UNKNOWN → MEDIUM`, 0 iných zásahov
+   (overené pred/po porovnaním celej taxonomy — `HIGH`/`LOW` nezmenené,
+   `UNKNOWN` 1144→1141, `MEDIUM` 190→193). `roles_for_recipe("ramen")`
+   teraz vracia `[instant_noodles, dashi, miso, soy_sauce, wakame]` —
+   5 rolí namiesto 4. Testy: `tests/test_taxonomy_v23.py::TestDashi`
+   (4, vrátane negatívneho testu proti false-positive zo zdieľanej
+   kategórie). Plný beh **1582/1582** (1578+4), 0 regresií, V2.10
+   **34/39** nezmenené (taxonomy coverage 46,5%→46,7%), canary 10/10,
+   consistency 0, trust 0. **Zámerne NEROZŠÍRENÉ do
+   `app.use_case_advice._ROLE_TABLE["ramen"]`** v tomto kroku — bola to
+   samostatná, úzko ohraničená požiadavka (autorovať FamilyRule), nie
+   žiadosť rozšíriť customer-facing ramen role advice; wiring dashi do
+   role advice zostáva ďalší, samostatný, vedomý krok (rovnaká DATA_DERIVED/
+   MEDIUM evidencia by teraz bola bezpečne pripravená naň).
 2. **"Domáce ramen rezance" rola z `wheat_noodles`**: 4 reálne, HIGH
    confidence SKU identifikované (Section 3) — vyžaduje title-substring
    koncept + vlastný blast-radius audit pred pridaním ako samostatná rola.
