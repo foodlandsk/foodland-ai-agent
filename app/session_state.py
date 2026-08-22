@@ -40,6 +40,27 @@ def set_active_use_case(memory: dict, use_case: str | None) -> None:
     memory["active_use_case"] = use_case or ""
 
 
+def get_active_comparison_pair(memory: dict) -> tuple[str, str] | None:
+    """V2.14f - the two product IDs from the last SUCCESSFULLY resolved
+    comparison (2 real, distinct targets - never set for a CLARIFY),
+    so a bare follow-up criterion ("a lacnejšiu?", "je tá drahšia
+    lepšia?") can be re-evaluated against the same pair without the
+    customer re-naming both products. Same storage convention as
+    active_recipe_id/active_use_case above - a plain memory key, no new
+    storage mechanism."""
+    pair = memory.get("active_comparison_pair")
+    if not pair or len(pair) != 2:
+        return None
+    return pair[0], pair[1]
+
+
+def set_active_comparison_pair(memory: dict, product_id_a: str | None, product_id_b: str | None) -> None:
+    if product_id_a and product_id_b:
+        memory["active_comparison_pair"] = [product_id_a, product_id_b]
+    else:
+        memory["active_comparison_pair"] = []
+
+
 def get_active_recipe(memory: dict) -> tuple[str | None, int | None]:
     return memory.get("active_recipe_id") or None, memory.get("recipe_servings") or None
 
@@ -240,6 +261,7 @@ def apply_reset(memory: dict) -> None:
     memory["subjects"].clear()
     memory["diet_terms"].clear()
     memory["last_top_product_title"] = ""
+    memory["active_comparison_pair"] = []
 
 
 # ---------------------------------------------------------------------------

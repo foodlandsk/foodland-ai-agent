@@ -90,7 +90,19 @@ _UNIT_MEASURE_RE = re.compile(r"^\s*([\d.,]+)\s*([a-zA-Z]+)\s*$")
 # a module-load-order dependency on app.main's registration sequence).
 _PAIR_CONNECTORS = (" alebo ", " vs ", " verzus ", " a ")
 
-_CHEAPEST_MARKERS = ("lacnejsi", "lacnejsia", "lacnejsie", "cena", "drahsi", "drahsia", "cheaper")
+# V2.14f - "drahsi"/"drahsia" ("more expensive") were removed from this
+# tuple: a real defect found via characterization (Section 7 Case H,
+# not hypothetical) - "je ta drahsia lepsia?" ("is the pricier one
+# better?") matched here purely because "drahsia" is the ADJECTIVE
+# describing the item being asked about, not an ACTION goal like
+# "lacnejsia" ("I want the cheaper one") - it silently resolved to
+# GOAL_CHEAPEST and answered by recommending the cheap item, a
+# non-sequitur relative to the actual question asked (whether price
+# implies quality). Removing it lets this exact phrasing fall through
+# to GOAL_GENERAL_BEST, which only ever grounds its pick in verified
+# price/size dimensions and never asserts quality - the safe, honest
+# non-answer Section 12 requires.
+_CHEAPEST_MARKERS = ("lacnejsi", "lacnejsia", "lacnejsie", "cena", "cheaper")
 _BEST_VALUE_MARKERS = ("oplati", "vyhodnejsi", "vyhodnejsia", "vyhodnejsie", "value", "jednotkov")
 _LARGEST_PACK_MARKERS = ("vacsie balenie", "väčšie balenie", "viac", "objem", "väčší", "vacsi")
 _QUALITATIVE_MARKERS = (
@@ -98,6 +110,19 @@ _QUALITATIVE_MARKERS = (
     "autentick", "authentic", "premium", "kvalitnejsi", "kvalitnejsia",
     "zdravsi", "zdravsia", "healthier", "oblubenejsi", "popular",
 )
+# V2.14f (Section 12, flagship example) - "je ta drahsia lepsia?" ("is
+# the pricier one better?") explicitly asks whether PRICE implies
+# QUALITY - this combination (a price-direction word + a bare "better"
+# word, with no other qualifier) must resolve to UNSUPPORTED_QUALITATIVE,
+# not GOAL_CHEAPEST (the removed "drahsia" mapping) and not silently
+# GOAL_GENERAL_BEST either. A BARE "ktora je lepsia?" with no price
+# reference is deliberately left alone (still GOAL_GENERAL_BEST, its
+# pre-V2.14f behavior) - that already answers safely from grounded
+# price/size dimensions alone, never a taste/quality assertion, so
+# reclassifying it as ABSTAIN would only make the most common
+# comparison phrasing less helpful for no safety gain.
+_PRICE_DIRECTION_MARKERS = ("drahsi", "drahsia", "drahsie", "lacnejsi", "lacnejsia", "lacnejsie")
+_BARE_QUALITY_MARKERS = ("lepsi", "lepsia", "lepsie", "better")
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +156,11 @@ def resolve_comparison_goal(message: str) -> str:
 
     normalized = f" {normalize(message)} "
     if any(marker in normalized for marker in _QUALITATIVE_MARKERS):
+        return GOAL_UNSUPPORTED_QUALITATIVE
+    if (
+        any(marker in normalized for marker in _PRICE_DIRECTION_MARKERS)
+        and any(marker in normalized for marker in _BARE_QUALITY_MARKERS)
+    ):
         return GOAL_UNSUPPORTED_QUALITATIVE
     if any(marker in normalized for marker in _BEST_VALUE_MARKERS):
         return GOAL_BEST_VALUE
@@ -203,6 +233,52 @@ def normalize_for_check(message: str) -> str:
     from app.search import normalize
 
     return f" {normalize(message)} "
+
+
+# --- V2.14f: bare follow-up continuity ---------------------------------
+# Real, characterized gap (Section 24 of the V2.14f spec, not
+# hypothetical): a comparison decision was never remembered across
+# turns, so "a lacnejsiu?"/"je ta drahsia lepsia?" after a resolved
+# "Kikkoman alebo Yamasa?" fell straight through to generic product
+# search with zero reference to the products just compared. Fixed by
+# reusing the EXACT SAME decision/composition path
+# (decide_comparison()/compose_comparison_answer()) against the
+# session's last successfully resolved pair
+# (app.session_state.get_active_comparison_pair(), same storage
+# convention as active_recipe_id/active_use_case) - no new decision
+# logic, only a second, narrower way to obtain ComparisonTargets.
+
+def is_bare_comparison_followup(message: str) -> bool:
+    """True iff this message names a recognized comparison GOAL
+    (cheaper/best-value/size/qualitative) but is NOT itself a new,
+    self-contained comparison request (no pair connector, no
+    "porovnaj", no 2+ ordinals) - i.e. it can only be answered by
+    continuing an ALREADY active comparison, never by inventing one."""
+    if looks_like_comparison_request(message):
+        return False
+    normalized = normalize_for_check(message)
+    all_markers = (
+        _CHEAPEST_MARKERS + _BEST_VALUE_MARKERS + _LARGEST_PACK_MARKERS + _QUALITATIVE_MARKERS
+        + _PRICE_DIRECTION_MARKERS + _BARE_QUALITY_MARKERS
+    )
+    return any(marker in normalized for marker in all_markers)
+
+
+def resolve_comparison_targets_from_pair(product_id_a: str, product_id_b: str, products: list) -> ComparisonTargets | None:
+    """Rebuilds ComparisonTargets from two already-known product IDs
+    (the stored active pair) instead of re-resolving text fragments -
+    returns None only if either product has since left the in-memory
+    catalog (never fabricates a substitute)."""
+    from app.search import format_product
+
+    products_by_id = {p.id: p for p in products}
+    if product_id_a not in products_by_id or product_id_b not in products_by_id:
+        return None
+    return ComparisonTargets(
+        product_a=format_product(products_by_id[product_id_a]),
+        product_b=format_product(products_by_id[product_id_b]),
+        resolution_method="active_pair_followup",
+    )
 
 
 def resolve_comparison_targets(message: str, memory: dict, products: list) -> ComparisonTargets | None:

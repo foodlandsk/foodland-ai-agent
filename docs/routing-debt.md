@@ -225,6 +225,24 @@ príliš široký pre basket tvrdenie, opravené užším marker setom; (2)
 — opravené vylúčením tohto markera z basket-detekcie. Detail:
 `docs/basket-completion-v2.14e.md`.
 
+## V2.14f aktualizácia — trailing-punctuation resolution bug, comparison follow-up
+
+Reálny, charakterizáciou objavený defekt: `app.use_case_advice.resolve_use_case()`
+vyžadoval doslovnú medzeru hneď za use-case aliasom, takže akákoľvek
+otázka končiaca "?" alebo s čiarkou hneď za aliasom ("na pho?", "na
+sushi, ktorú...") sa vôbec nevyriešila — týkalo sa VŠETKÝCH 5 use cases
+(sushi/pho/kari/pad_thai/tom_kha), nielen jedného. Opravené novou
+`_padded_for_boundary_match()`, aplikovanou LEN na `resolve_use_case()`
+— rovnaká zmena na `resolve_role()` bola vyskúšaná a ZAMIETNUTÁ (spôsobila
+novú regresiu, čiarka ako sémantická hranica viet by sa stratila).
+Samostatne: `app.comparison`'s `_CHEAPEST_MARKERS` obsahovalo "drahšia",
+čím "je tá drahšia lepšia?" nezmyselne odpovedalo odporúčaním
+lacnejšieho produktu — opravené presunom do novej explicitnej
+cenový-smer + kvalita kombinovanej kontroly. Nová comparison follow-up
+continuity (`active_comparison_pair` session state) umožňuje "Chcem
+lacnejšiu."/"Máte väčšie balenie?" po úspešnom porovnaní. Detail:
+`docs/recommendation-decision-v2.14f.md`.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným

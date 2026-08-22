@@ -1774,3 +1774,19 @@ Committed fixture (2 140 produktov, pinned test suite): `classified=720`, `cover
 **Čestný výsledný stav**: **`BASKET_COMPLETION_LIVE_PARTIAL`**. Basket readiness (samostatné): 5 z 5 eligible use cases LIVE, heterogénna kvalita (40-100% coverage) explicitne akceptovaná – žiadny fake "kompletný košík" tam, kde reálna dátová medzera existuje (pho/pad_thai/tom_kha nikdy nevrátia `fully_resolved=True`). Detail: `docs/basket-completion-v2.14e.md`.
 
 **Ďalší krok:** cielené dátové obohatenie (rovnaký zoznam ako V2.14d) pred akýmkoľvek V2.14f rozšírením (cart mutation, viacjazyčnosť, self-deklarácia pre pad_thai/tom_kha v prvej správe). V2.14f sa nezačína automaticky.
+
+### Sprint V2.14f – Evidence-Grounded Recommendation Decision, Choice Explanation & Conversion Intelligence
+
+**Kľúčový audit nález**: `app/comparison.py` (V2.14b) už implementuje takmer celý požadovaný recommendation-decision model pre vyriešený pár produktov – rozhodovacie stavy (CLEAR_WINNER/CONDITIONAL_WINNER/TRADE_OFF/NO_MEANINGFUL_DIFFERENCE/CLARIFY/ABSTAIN), evidence-grounded `reason_codes`, a `GOAL_UNSUPPORTED_QUALITATIVE` už explicitne routuje chuť/autenticitu/prémiovosť na ABSTAIN. Sprinta je preto primárne audit + oprava 2 reálnych, charakterizáciou objavených defektov, plus 1 nová, úzko ohraničená funkcia.
+
+**2 reálne defekty nájdené a opravené**: (1) `app.use_case_advice.resolve_use_case()` vyžadoval doslovnú medzeru hneď za use-case aliasom – akákoľvek otázka končiaca "?" alebo s čiarkou hneď za aliasom sa vôbec nevyriešila (napr. "ktorá rybacia omáčka je najlepšia na pho?"). Oprava aplikovaná NA `resolve_use_case()`, ale zámerne NIE na `resolve_role()` – druhý reálny nález počas opravy ukázal, že rovnaká zmena tam spôsobuje NOVÚ regresiu (rolový marker preskočil cez čiarku ako sémantickú hranicu viet, unesúc `app.basket_completion`'s self-deklaračný ťah). (2) `"drahsia"` ("drahšia") bolo v `_CHEAPEST_MARKERS` – "je tá drahšia lepšia?" (Section 12 vlajkový príklad) sa vyriešilo ako GOAL_CHEAPEST a odpovedalo odporúčaním lacnejšieho produktu, nezmyselná odpoveď. Opravené odstránením + novou kombinovanou kontrolou (cenový smer + holé "lepšia") → GOAL_UNSUPPORTED_QUALITATIVE → čestný ABSTAIN.
+
+**Nová funkcia**: comparison follow-up continuity – `app.session_state.get_active_comparison_pair()`/`set_active_comparison_pair()` (rovnaký vzor ako `active_recipe_id`) + `app.comparison.is_bare_comparison_followup()`/`resolve_comparison_targets_from_pair()`. Bare ťah ("Chcem lacnejšiu.", "Máte väčšie balenie?", "Je tá drahšia lepšia?") po úspešne vyriešenom porovnaní teraz znovupoužíva PRESNE tú istú `decide_comparison()`/`compose_comparison_answer()` cestu nad uloženým párom – žiadna nová rozhodovacia logika. Aktívny pár sa čistí pri resete, hard topic switch funguje prirodzene (bez markerov nič nefiltruje).
+
+**Vedome NEIMPLEMENTOVANÉ**: bare "ktorú rybaciu omáčku mám kúpiť?" (žiadny pár, žiadny use-case rámec) zostáva `related_products` – klasifikované GATE A (audit only), keďže bezpečné riešenie by riskovalo zámenu ranking relevantnosti za recommendation nadradenosť bez samostatného dizajnu.
+
+**Výsledky:** Plný beh **1553/1553** (1517 + 36 nových), 0 regresií po oprave 2 nálezov. V2.10 fast-mode **34/39 nezmenené**. Canary **10/10**. Nameraná latencia comparison follow-upu ~5.4ms priemer. 0 nových LLM volaní. `app/learning_lifecycle.py` sa nemenil, AUTO_PROMOTION nedotknuté.
+
+**Čestný výsledný stav**: **`RECOMMENDATION_INTELLIGENCE_LIVE_PARTIAL`**. Detail: `docs/recommendation-decision-v2.14f.md`.
+
+**Ďalší krok:** V2.14g (Recommendation Learning Signals & Feedback Loop) je vecne pripravený z hľadiska stability rozhodnutí, ale existujúci `log_question()` mechanizmus už poskytuje dostatočné signály bez nových telemetria polí – AUTO_PROMOTION musí zostať `false` v akejkoľvek budúcej sprinte bez samostatného schválenia. V2.14g sa nezačína automaticky.

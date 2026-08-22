@@ -240,6 +240,26 @@ class UseCaseDecision:
 _USE_CASE_FRAMING_PREPOSITIONS = (" na ", " pre ")
 
 
+def _padded_for_boundary_match(message: str) -> str:
+    """V2.14f - real defect found via characterization (not hypothetical):
+    resolve_use_case()/resolve_role() require their target phrase to be
+    followed by a literal space (word-boundary-by-space, not by regex),
+    so "...na pho?" or "...na sushi, ktoru..." silently failed to
+    resolve at all - the alias/marker is followed by punctuation, not a
+    space, in extremely common natural questions ("Ktora rybacia
+    omacka je najlepsia na pho?"). Fixed generically here (not by
+    special-casing "?"/","): common sentence punctuation is replaced
+    with spaces before the existing wrapped-space boundary check runs,
+    for every current and future alias/marker, not just these two
+    examples."""
+    from app.search import normalize
+
+    normalized = normalize(message)
+    for char in "?!.,;:":
+        normalized = normalized.replace(char, " ")
+    return f" {normalized} "
+
+
 def resolve_use_case(message: str) -> str | None:
     """Deterministic alias lookup - no LLM, no fuzzy matching.
 
@@ -257,9 +277,7 @@ def resolve_use_case(message: str) -> str | None:
     ("ryza na sushi", "rybacia omacka na pho", "kari pasta na thajske
     kari") already naturally has this preposition, so requiring it
     costs nothing for the intended use case."""
-    from app.search import normalize
-
-    normalized = f" {normalize(message)} "
+    normalized = _padded_for_boundary_match(message)
     best: str | None = None
     best_len = 0
     for alias, canonical in _USE_CASE_ALIASES.items():
@@ -275,7 +293,22 @@ def resolve_role(use_case: str, message: str) -> RoleEvidence | None:
     lexical markers appear in the message. Returns None (-> CLARIFY at
     the caller) when the use case is named but no specific role can be
     identified - Section 18/86: do not guess which ingredient/role the
-    customer means."""
+    customer means.
+
+    Deliberately does NOT use _padded_for_boundary_match() (unlike
+    resolve_use_case() above) - a real regression found via the full
+    V2.10/pytest run during V2.14f (not hypothetical): normalizing a
+    mid-sentence comma to a space let a role marker immediately before
+    an unrelated clause ("mam ryzove rezance, co este potrebujem na
+    pho?") match across what is semantically a CLAUSE BOUNDARY,
+    hijacking a genuine app.basket_completion self-declaration turn
+    into a single-role use_case_advice answer instead
+    (tests/test_basket_completion_v2_14e.py::TestCaseG_AlreadyCoveredRole).
+    Trailing "?"/"." directly after a role marker at the very end of a
+    message remains a known, narrower residual gap (not reintroduced
+    here) - resolve_use_case()'s fix already covers the two mandatory
+    V2.14f characterization cases (B, J), neither of which needed this
+    function's marker match to change."""
     from app.search import normalize
 
     normalized = f" {normalize(message)} "

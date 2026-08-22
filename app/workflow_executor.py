@@ -601,25 +601,45 @@ def execute_comparison(
         STATE_CLARIFY,
         compose_comparison_answer,
         decide_comparison,
+        is_bare_comparison_followup,
         looks_like_comparison_request,
         resolve_comparison_goal,
         resolve_comparison_targets,
+        resolve_comparison_targets_from_pair,
     )
     from app.recommendation_evidence import CONFIDENCE_INSUFFICIENT
+    from app.session_state import get_active_comparison_pair, set_active_comparison_pair
 
-    if not looks_like_comparison_request(chat_request.message):
-        return None
-
-    targets = resolve_comparison_targets(chat_request.message, memory, products)
-    if targets is None:
-        decision = ComparisonDecision(state=STATE_CLARIFY, goal="UNKNOWN", winner_product_id=None, confidence=CONFIDENCE_INSUFFICIENT)
-        answer_text = compose_comparison_answer(decision, None, query_language)
-        result_products: list = []
-    else:
+    is_new_request = looks_like_comparison_request(chat_request.message)
+    # V2.14f - bare follow-up ("a lacnejsiu?", "je ta drahsia lepsia?")
+    # continues the LAST successfully resolved comparison instead of
+    # falling through to generic search - never fabricates a pair, only
+    # reuses one the customer already saw resolve.
+    if not is_new_request:
+        if not is_bare_comparison_followup(chat_request.message):
+            return None
+        active_pair = get_active_comparison_pair(memory)
+        if active_pair is None:
+            return None
+        targets = resolve_comparison_targets_from_pair(active_pair[0], active_pair[1], products)
+        if targets is None:
+            return None
         goal = resolve_comparison_goal(chat_request.message)
         decision = decide_comparison(targets, goal, product_taxonomy_index=product_taxonomy_index)
         answer_text = compose_comparison_answer(decision, targets, query_language)
         result_products = [targets.product_a, targets.product_b]
+    else:
+        targets = resolve_comparison_targets(chat_request.message, memory, products)
+        if targets is None:
+            decision = ComparisonDecision(state=STATE_CLARIFY, goal="UNKNOWN", winner_product_id=None, confidence=CONFIDENCE_INSUFFICIENT)
+            answer_text = compose_comparison_answer(decision, None, query_language)
+            result_products: list = []
+        else:
+            goal = resolve_comparison_goal(chat_request.message)
+            decision = decide_comparison(targets, goal, product_taxonomy_index=product_taxonomy_index)
+            answer_text = compose_comparison_answer(decision, targets, query_language)
+            result_products = [targets.product_a, targets.product_b]
+            set_active_comparison_pair(memory, targets.product_a.get("id"), targets.product_b.get("id"))
 
     m.update_session_memory(memory_key, chat_request.message, "product_comparison", result_products, [], {})
     updated_profile = m.update_user_memory(profile_key, chat_request.message, "product_comparison", result_products, [])
