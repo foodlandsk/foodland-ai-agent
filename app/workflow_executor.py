@@ -90,6 +90,7 @@ behavior exactly.
 """
 from __future__ import annotations
 
+import secrets
 import time
 from typing import Any
 
@@ -644,6 +645,14 @@ def execute_comparison(
     m.update_session_memory(memory_key, chat_request.message, "product_comparison", result_products, [], {})
     updated_profile = m.update_user_memory(profile_key, chat_request.message, "product_comparison", result_products, [])
     _ci = m.build_customer_intent(chat_request.message, "product_comparison", language=query_language)
+    # V2.15b (Section 9/23 of the readiness audit): a fresh, opaque id
+    # per resolved decision - closes part of the "no decision_id exists
+    # to later attach an interaction/outcome to" gap V2.15a found.
+    # Durable logging of the decision alongside its evidence is a
+    # separate, not-yet-done step (see docs/recommendation-signal-
+    # correlation-v2.15b.md) - this id is generated and returned, not
+    # yet persisted anywhere on its own.
+    _decision_id = secrets.token_hex(8)
     if emit_customer_analytics:
         m.log_question(
             chat_request.message, client_key, len(result_products), intent="product_comparison",
@@ -661,6 +670,7 @@ def execute_comparison(
         "comparison_decision": decision.state,
         "comparison_goal": decision.goal,
         "comparison_confidence": decision.confidence,
+        "comparison_decision_id": _decision_id,
     }
 
 
@@ -712,6 +722,8 @@ def execute_use_case_advice(
     m.update_session_memory(memory_key, chat_request.message, "use_case_advice", matched_products, [], {})
     updated_profile = m.update_user_memory(profile_key, chat_request.message, "use_case_advice", matched_products, [])
     _ci = m.build_customer_intent(chat_request.message, "use_case_advice", language=query_language)
+    # V2.15b (Section 9/24) - see execute_comparison()'s identical comment.
+    _decision_id = secrets.token_hex(8)
     if emit_customer_analytics:
         m.log_question(
             chat_request.message, client_key, len(matched_products), intent="use_case_advice",
@@ -729,6 +741,7 @@ def execute_use_case_advice(
         "use_case_resolved": decision.use_case,
         "use_case_decision": decision.state,
         "use_case_confidence": decision.confidence,
+        "use_case_advice_decision_id": _decision_id,
     }
 
 
@@ -779,6 +792,8 @@ def execute_basket_completion(
     m.update_session_memory(memory_key, chat_request.message, "basket_completion", matched_products, [], {})
     updated_profile = m.update_user_memory(profile_key, chat_request.message, "basket_completion", matched_products, [])
     _ci = m.build_customer_intent(chat_request.message, "basket_completion", language=query_language)
+    # V2.15b (Section 9/25) - see execute_comparison()'s identical comment.
+    _decision_id = secrets.token_hex(8)
     if emit_customer_analytics:
         m.log_question(
             chat_request.message, client_key, len(matched_products), intent="basket_completion",
@@ -793,6 +808,7 @@ def execute_basket_completion(
         "intent": "basket_completion",
         "response_mode": "basket_completion",
         "workflow_id": "BASKET_COMPLETION",
+        "basket_decision_id": _decision_id,
         "basket_use_case": decision.use_case,
         "basket_coverage": round(decision.coverage, 3),
         "basket_fully_resolved": decision.fully_resolved,

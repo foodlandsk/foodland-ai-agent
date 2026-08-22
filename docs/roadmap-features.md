@@ -1831,6 +1831,53 @@ kolízií, trust 0 nálezov.
 (role advice LIVE pre 4 role, dashi DATA_REQUIRED). Basket status
 nezmenené. Detail: `docs/ramen-data-readiness-v2.14h.md`.
 
+### Sprint V2.15b – Recommendation Signal Persistence, Correlation & Normalization Closure
+
+**Zadanie:** uzavrieť observability medzery z V2.15a v rámci prísnej
+bezpečnostnej hranice – žiadny learning, žiadna ranking mutácia,
+`AUTO_PROMOTION` nedotknuté, žiadna zmena zákazníckeho
+recommendation/retrieval správania.
+
+**Centrálna oprava**: `chat()` route teraz prijíma voliteľné
+`X-Execution-Context`/`X-Admin-Token` hlavičky – autorizovaný
+OPERATIONS/PROMOTION-scope token (ten istý store ako každý `/admin/*`
+endpoint) + presná hodnota `ADMIN_TEST` umožní volajúcemu deklarovať sa
+ako nezákaznícka prevádzka, fail-closed dokázané testom (chýbajúca/zlá/
+READ-scope hodnota necháva správanie úplne nedotknuté). Rieši
+najzávažnejší V2.15a nález: KAŽDÉ externé HTTP volanie na `/chat` –
+vrátane všetkých doterajších live production smoke testov v tejto aj
+predchádzajúcich sprintách – bolo dovtedy nerozlíšiteľné od zákazníka.
+
+**Korelácia**: nový `interaction_id` (generovaný raz v
+`_chat_internal()`, jedinom choke pointe pre KAŽDÚ `/chat` odpoveď)
+vložený do odpovede, `question_analytics.jsonl` a `SearchQualityTrace` –
+rieši "žiadny zdieľaný kľúč medzi log streamami" nález. Nový
+`comparison_decision_id`/`use_case_advice_decision_id`/`basket_decision_id`
+vrátený v odpovedi len keď daná schopnosť skutočne rozhodla.
+
+**Storage normalizácia**: `SEARCH_QUALITY_LOG_PATH`/`EVENTS_LOG_PATH`
+readery/`PRODUCT_EMBEDDINGS_PATH` prepojené na
+`app.storage_paths.resolve_path()`, uzatvárajúc riziko tichého
+rozídenia writer/reader ciest.
+
+**Zámerne nedotknuté**: `app/widget.js` (žiadna JS testovacia
+infraštruktúra, priame riziko pre živú stránku) – frontend
+inštrumentácia zostáva `CAN_BE_SAFELY_INSTRUMENTED`, konkrétny budúci
+krok. Durable decision_id+evidencia logging tiež nevykonaný (Gate A
+princíp – neforsírovať downstream atribúciu).
+
+**Výsledky:** Plný beh **1623/1623** (1599 + 24 nových), 0 regresií.
+V2.10 fast-mode **35/39 nezmenené**. Canary **10/10**. 0 nových LLM
+volaní, 0 nových search volaní.
+
+**Čestný výsledný stav**: **`SIGNAL_FOUNDATION_READY_WITH_LIMITATIONS`**,
+`LEARNING_READINESS_PARTIAL`, `AUTO_PROMOTION_STATUS=DISABLED_AND_UNCHANGED`.
+Detail: `docs/recommendation-signal-correlation-v2.15b.md`.
+
+**Ďalší krok:** pokračovanie V2.15b prác (durable decision_id+evidencia
+logging, frontend inštrumentácia `interaction_id`/`decision_id`), NIE
+V2.15c Learning Candidate Pipeline. V2.15c sa nezačína automaticky.
+
 **Ďalší krok:** dashi `FamilyRule` autorstvo a domáca-ramen-rezance
 rola z `wheat_noodles` sú konkrétne, dôkazmi podložené budúce kroky
 (oba by vyžadovali vlastný blast-radius audit) – žiadny z nich

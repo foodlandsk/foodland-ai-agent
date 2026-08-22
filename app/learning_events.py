@@ -37,15 +37,17 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
-EVENTS_PATH = os.getenv(
-    "EVENTS_LOG_PATH",
-    str(Path(tempfile.gettempdir()) / "foodland-ai-agent" / "events.jsonl"),
-)
+from app.storage_paths import resolve_path
+
+# V2.15b: resolved through the single FOODLAND_DATA_DIR knob instead of
+# an independently-hardcoded tempdir default, closing the V2.15a-documented
+# risk that this reader could silently desync from app.main.log_event()'s
+# writer if EVENTS_LOG_PATH's own explicit override were ever removed.
+EVENTS_PATH = str(resolve_path("EVENTS_LOG_PATH", "events.jsonl"))
 
 # Exactly EventRequest.event_type's Literal values (app/main.py) - the
 # real, observable vocabulary. Do not add types the system cannot emit.

@@ -14,16 +14,16 @@ from __future__ import annotations
 import json
 import math
 import os
-import tempfile
 from pathlib import Path
 
 from app.search import product_value
+from app.storage_paths import resolve_path
 
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-EMBEDDINGS_PATH = os.getenv(
-    "PRODUCT_EMBEDDINGS_PATH",
-    str(Path(tempfile.gettempdir()) / "foodland-ai-agent" / "product_embeddings.json"),
-)
+# V2.15b: resolved through the single FOODLAND_DATA_DIR knob instead of
+# an independently-hardcoded tempdir default (docs/durable-learning-storage.md
+# previously, incorrectly, claimed this was already automatic).
+EMBEDDINGS_PATH = str(resolve_path("PRODUCT_EMBEDDINGS_PATH", "product_embeddings.json"))
 _MAX_TEXT_CHARS = 800
 _DEFAULT_BATCH_SIZE = 100
 

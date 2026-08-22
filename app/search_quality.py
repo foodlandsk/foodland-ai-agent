@@ -41,11 +41,12 @@ import contextvars
 import hashlib
 import json
 import os
-import tempfile
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable
+
+from app.storage_paths import resolve_path
 
 # ---------------------------------------------------------------------
 # Search path taxonomy (Section 10) - the REAL retrieval_mode values
@@ -138,6 +139,14 @@ class SearchQualityTrace:
     taxonomy_version: int | None
     resolved_workflow: str | None = None
     resolver_reason: str | None = None
+    # V2.15b: opaque per-/chat-request correlation id (app.main
+    # generates it once in _chat_internal(), threads it through to
+    # log_question() and back into the response dict) - lets an
+    # offline analyst join a quality trace to the same request's
+    # question_analytics.jsonl record without timestamp guessing.
+    # None for any trace built before this field existed (Section 39
+    # legacy compatibility - readers already use dict.get()).
+    interaction_id: str | None = None
 
 
 def session_hash(session_id: str, salt: str) -> str:
@@ -162,6 +171,7 @@ def build_trace(
     retrieval_decision: dict | None,
     resolved_workflow: str | None = None,
     resolver_reason: str | None = None,
+    interaction_id: str | None = None,
 ) -> SearchQualityTrace:
     decision = retrieval_decision or {
         "mode": PATH_NON_STRUCTURED_WORKFLOW,
@@ -195,6 +205,7 @@ def build_trace(
         deployment_version=deployment_version,
         ranking_config_version=ranking_config_version,
         taxonomy_version=taxonomy_version,
+        interaction_id=interaction_id,
     )
 
 
@@ -204,10 +215,12 @@ def build_trace(
 # as app.learning_events.EVENTS_PATH) so this module has zero dependency
 # on app.main and cannot create a circular import.
 # ---------------------------------------------------------------------
-SEARCH_QUALITY_LOG_PATH = os.getenv(
-    "SEARCH_QUALITY_LOG_PATH",
-    str(Path(tempfile.gettempdir()) / "foodland-ai-agent" / "search_quality.jsonl"),
-)
+# V2.15b: resolved through the single FOODLAND_DATA_DIR knob instead
+# of an independently-hardcoded tempdir default - the baseline/canary
+# files in this same module already used app.storage_paths.resolve_path(),
+# this trace stream did not (V2.15a finding). app.storage_paths has no
+# dependency on app.main, so this does not reintroduce a circular import.
+SEARCH_QUALITY_LOG_PATH = str(resolve_path("SEARCH_QUALITY_LOG_PATH", "search_quality.jsonl"))
 
 
 def record_search_quality_trace(trace: SearchQualityTrace, path: str | None = None) -> bool:

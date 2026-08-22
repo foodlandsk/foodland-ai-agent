@@ -100,6 +100,7 @@ from app.admin_auth import require_admin_scope as _require_admin_scope
 from app.admin_auth import SCOPE_READ as _SCOPE_READ
 from app.admin_auth import SCOPE_OPERATIONS as _SCOPE_OPERATIONS
 from app.admin_auth import SCOPE_PROMOTION as _SCOPE_PROMOTION
+from app.admin_auth import resolve_token_scope as _resolve_admin_token_scope
 from app.execution_context import ExecutionContext as _ExecutionContext
 from app.execution_context import customer_context as _customer_context
 from app.execution_context import evaluation_context as _evaluation_context
@@ -4174,7 +4175,7 @@ def detect_query_language(message: str) -> str:
     return "en" if len(hits) >= 2 else "sk"
 
 
-def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _ExecutionContext | None = None) -> dict:
+def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _ExecutionContext | None = None, interaction_id: str | None = None) -> dict:
     # V2.12.1 Part D: explicit execution context replaces the old
     # isinstance(request, Request) hotfix (commit 8936188) as the
     # PREFERRED signal for "is this real customer traffic" - see
@@ -4221,6 +4222,13 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     # TestExecutionContextSuppressesTaxonomyShadow.
     if execution_context.emit_customer_analytics:
         log_taxonomy_shadow(chat_request.message, client_key, classify_rice_query(chat_request.message, normalize))
+    # V2.15b: opaque per-request correlation id - generated once by
+    # _chat_internal() and threaded down to every log_question() call
+    # site below (and, separately, into the SearchQualityTrace and the
+    # response dict by _chat_internal() itself). The fallback here only
+    # matters for a caller that invokes _chat_impl() directly without
+    # going through _chat_internal() - never leave it unset.
+    interaction_id = interaction_id or secrets.token_hex(8)
 
     session_id = getattr(chat_request, "session_id", "") or ""
     memory_key = session_memory_key(session_id, client_key)
@@ -4555,7 +4563,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
                 )
             )
             updated_profile = update_user_memory(profile_key, chat_request.message, "product_search", _ordinal_products, [])
-            log_question(chat_request.message, client_key, 0, intent="product_search", session_id=session_id, primary_intent="product_search", subject="")
+            log_question(chat_request.message, client_key, 0, intent="product_search", session_id=session_id, primary_intent="product_search", subject="", interaction_id=interaction_id)
             return {
                 "answer": _ordinal_answer,
                 "products": _ordinal_products,
@@ -4579,7 +4587,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     )
     if _orphaned_followup:
         updated_profile = update_user_memory(profile_key, chat_request.message, "product_search", [], [])
-        log_question(chat_request.message, client_key, 0, intent="product_search", session_id=session_id, primary_intent="product_search", subject="")
+        log_question(chat_request.message, client_key, 0, intent="product_search", session_id=session_id, primary_intent="product_search", subject="", interaction_id=interaction_id)
         return {
             "answer": (
                 "I don't have an active shopping list or search to refer that to - what are you looking for?"
@@ -4953,7 +4961,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         subject=related_subject or article_product_subject or special_subject or replacement_subject or already_have_subject,
         language=query_language,
     )
-    log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
+    log_question(chat_request.message, client_key, len(matches), intent=intent, session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "", interaction_id=interaction_id)
 
     if structured_presentation is not None:
         # V2.5 Result Presentation (Section 24/50): deterministic, template-
@@ -5264,9 +5272,15 @@ def _chat_internal(chat_request: ChatRequest, request: Request, execution_contex
     _resolved_context = execution_context if execution_context is not None else (
         _customer_context() if isinstance(request, Request) else _evaluation_context()
     )
+    # V2.15b: single choke point for every response _chat_impl() can
+    # produce (legacy inline branches and workflow_executor handlers
+    # alike), so this is the one place that can attach interaction_id
+    # to ALL of them without touching every individual return site.
+    _interaction_id = secrets.token_hex(8)
     _quality_start = time.perf_counter()
-    response = _chat_impl(chat_request, request, execution_context=execution_context)
+    response = _chat_impl(chat_request, request, execution_context=execution_context, interaction_id=_interaction_id)
     response["answered"] = _compute_answered(response)
+    response["interaction_id"] = _interaction_id
     if _resolved_context.emit_customer_analytics:
         try:
             _trace = _build_search_quality_trace(
@@ -5284,6 +5298,7 @@ def _chat_internal(chat_request: ChatRequest, request: Request, execution_contex
                 retrieval_decision=_pop_search_quality_decision(),
                 resolved_workflow=(_resolved_workflow := _pop_workflow_resolution()) and _resolved_workflow.workflow_id,
                 resolver_reason=_resolved_workflow.reason if _resolved_workflow else None,
+                interaction_id=_interaction_id,
             )
             _record_search_quality_trace(_trace)
         except Exception:
@@ -5292,7 +5307,12 @@ def _chat_internal(chat_request: ChatRequest, request: Request, execution_contex
 
 
 @app.post("/chat")
-def chat(chat_request: ChatRequest, request: Request) -> dict:
+def chat(
+    chat_request: ChatRequest,
+    request: Request,
+    x_admin_token: str | None = Header(default=None),
+    x_execution_context: str | None = Header(default=None),
+) -> dict:
     # V2.13a: thin AdvisorEngine adapter (app/advisor_engine.py) - HTTP
     # transport concerns (real vs. duck-typed Request, client_key
     # derivation) are resolved HERE, once, then handed to AdvisorEngine
@@ -5308,6 +5328,25 @@ def chat(chat_request: ChatRequest, request: Request) -> dict:
     # directly (see app.evaluation.adapter, app.ranking_shadow) rather
     # than route through this endpoint function.
     resolved_context = _customer_context() if isinstance(request, Request) else _evaluation_context()
+    # V2.15b (Section 8/11/12 of the readiness audit): the single most
+    # severe V2.15a finding was that ANY external HTTP call to /chat -
+    # including every live production smoke/verification test this
+    # project has ever run - was silently indistinguishable from a real
+    # customer, since isinstance(request, Request) is unconditionally
+    # True for real HTTP dispatch. This lets an authorized caller
+    # declare ADMIN_TEST explicitly, but FAILS CLOSED: a missing header,
+    # an unrecognized x_execution_context value, or a token that does
+    # not resolve to at least OPERATIONS scope leaves resolved_context
+    # completely untouched - a real customer request (which never sends
+    # these headers) is byte-for-byte unaffected. Does not weaken
+    # authentication: reuses the same admin token store every other
+    # /admin/* endpoint already validates against.
+    if (
+        resolved_context.is_customer_traffic
+        and x_execution_context == "ADMIN_TEST"
+        and _resolve_admin_token_scope(x_admin_token) in (_SCOPE_OPERATIONS, _SCOPE_PROMOTION)
+    ):
+        resolved_context = _admin_test_context()
     advisor_request = _AdvisorRequest(
         message=chat_request.message,
         session_id=chat_request.session_id,
@@ -6613,6 +6652,7 @@ def log_question(
     session_id: str = "",
     primary_intent: str = "",
     subject: str = "",
+    interaction_id: str = "",
 ) -> None:
     path = Path(os.getenv("ANALYTICS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "question_analytics.jsonl")))
     salt = os.getenv("ANALYTICS_SALT", "")
@@ -6627,6 +6667,10 @@ def log_question(
         # existing readers of this JSONL file are unaffected.
         "primary_intent": primary_intent,
         "subject": subject,
+        # V2.15b: opaque per-/chat-request correlation id, additive and
+        # optional (empty string default) for the same backward-
+        # compatibility reason as primary_intent/subject above.
+        "interaction_id": interaction_id,
     }
     if os.getenv("ANALYTICS_INCLUDE_IP", "false").lower() == "true":
         record["ip"] = client_key

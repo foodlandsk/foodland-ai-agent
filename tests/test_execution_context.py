@@ -198,6 +198,127 @@ class TestExecutionContextSuppressesTaxonomyShadow(object):
         assert self._read_shadow_lines(shadow_path) == []
 
 
+class TestChatHttpAdminTestOverride:
+    """V2.15b - closes the single most severe V2.15a finding: a real HTTP
+    request (isinstance(request, Request) is unconditionally True for any
+    live network call) was completely indistinguishable from a real
+    customer, so every production smoke/verification test ever run
+    against this project counted as customer traffic. app.main.chat()
+    now accepts an optional X-Execution-Context/X-Admin-Token header
+    pair, but the override must fail CLOSED - a missing header, wrong
+    value, missing token, wrong token, or insufficient scope (READ only)
+    must leave a real HTTP request exactly as customer traffic as before
+    this sprint. Only OPERATIONS/PROMOTION-scope tokens combined with the
+    exact "ADMIN_TEST" header value grant the override."""
+
+    _next_ip = [10]
+
+    def _real_request(self):
+        # Each call gets its own IP (-> its own rate-limit bucket, since
+        # get_client_key() derives from request.client.host) - reusing one
+        # IP across test methods would let an earlier method's calls
+        # silently count against a later method's rate-limit budget.
+        if m.Request is object:
+            pytest.skip("stub fastapi active in this session - Request is not real")
+        self._next_ip[0] += 1
+        scope = {
+            "type": "http", "method": "POST", "path": "/chat", "headers": [],
+            "client": (f"10.0.0.{self._next_ip[0]}", 4321), "query_string": b"", "server": ("test", 80), "scheme": "http",
+        }
+        return m.Request(scope)
+
+    def test_no_headers_still_rate_limits_real_request(self, monkeypatch):
+        monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "2")
+        request = self._real_request()
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="hdr-none")
+        m.chat(chat_request, request)
+        m.chat(chat_request, request)
+        with pytest.raises(m.HTTPException):
+            m.chat(chat_request, request)
+
+    def test_wrong_token_does_not_bypass_rate_limit(self, monkeypatch):
+        monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "2")
+        monkeypatch.setenv("ADMIN_OPERATIONS_TOKEN", "correct-ops-token")
+        request = self._real_request()
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="hdr-wrong-token")
+        m.chat(chat_request, request, x_admin_token="wrong-token", x_execution_context="ADMIN_TEST")
+        m.chat(chat_request, request, x_admin_token="wrong-token", x_execution_context="ADMIN_TEST")
+        with pytest.raises(m.HTTPException):
+            m.chat(chat_request, request, x_admin_token="wrong-token", x_execution_context="ADMIN_TEST")
+
+    def test_missing_token_does_not_bypass_rate_limit(self, monkeypatch):
+        monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "2")
+        monkeypatch.setenv("ADMIN_OPERATIONS_TOKEN", "correct-ops-token")
+        request = self._real_request()
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="hdr-missing-token")
+        m.chat(chat_request, request, x_admin_token=None, x_execution_context="ADMIN_TEST")
+        m.chat(chat_request, request, x_admin_token=None, x_execution_context="ADMIN_TEST")
+        with pytest.raises(m.HTTPException):
+            m.chat(chat_request, request, x_admin_token=None, x_execution_context="ADMIN_TEST")
+
+    def test_wrong_header_value_does_not_bypass_rate_limit(self, monkeypatch):
+        monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "2")
+        monkeypatch.setenv("ADMIN_OPERATIONS_TOKEN", "correct-ops-token")
+        request = self._real_request()
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="hdr-wrong-value")
+        m.chat(chat_request, request, x_admin_token="correct-ops-token", x_execution_context="CUSTOMER")
+        m.chat(chat_request, request, x_admin_token="correct-ops-token", x_execution_context="CUSTOMER")
+        with pytest.raises(m.HTTPException):
+            m.chat(chat_request, request, x_admin_token="correct-ops-token", x_execution_context="CUSTOMER")
+
+    def test_read_scope_token_does_not_bypass_rate_limit(self, monkeypatch):
+        monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "2")
+        monkeypatch.setenv("ADMIN_READ_TOKEN", "correct-read-token")
+        request = self._real_request()
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="hdr-read-scope")
+        m.chat(chat_request, request, x_admin_token="correct-read-token", x_execution_context="ADMIN_TEST")
+        m.chat(chat_request, request, x_admin_token="correct-read-token", x_execution_context="ADMIN_TEST")
+        with pytest.raises(m.HTTPException):
+            m.chat(chat_request, request, x_admin_token="correct-read-token", x_execution_context="ADMIN_TEST")
+
+    def test_operations_scope_token_bypasses_rate_limit(self, monkeypatch):
+        monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "2")
+        monkeypatch.setenv("ADMIN_OPERATIONS_TOKEN", "correct-ops-token")
+        request = self._real_request()
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="hdr-ops-scope")
+        for _ in range(5):
+            r = m.chat(chat_request, request, x_admin_token="correct-ops-token", x_execution_context="ADMIN_TEST")
+            assert r.get("intent") is not None
+
+    def test_promotion_scope_token_also_bypasses_rate_limit(self, monkeypatch):
+        monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "2")
+        monkeypatch.setenv("ADMIN_PROMOTION_TOKEN", "correct-promotion-token")
+        request = self._real_request()
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="hdr-promotion-scope")
+        for _ in range(5):
+            r = m.chat(chat_request, request, x_admin_token="correct-promotion-token", x_execution_context="ADMIN_TEST")
+            assert r.get("intent") is not None
+
+    def test_authorized_override_does_not_write_customer_analytics(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "100000")
+        monkeypatch.setenv("ADMIN_OPERATIONS_TOKEN", "correct-ops-token")
+        analytics_path = tmp_path / "question_analytics.jsonl"
+        monkeypatch.setenv("ANALYTICS_LOG_PATH", str(analytics_path))
+        request = self._real_request()
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="hdr-analytics-check")
+        m.chat(chat_request, request, x_admin_token="correct-ops-token", x_execution_context="ADMIN_TEST")
+        assert not analytics_path.exists()
+
+    def test_no_admin_token_configured_at_all_fails_closed(self, monkeypatch):
+        # any_admin_token_configured() is False in a fresh test env unless
+        # a token env var is explicitly set - resolve_token_scope() must
+        # return None here, not raise, and the override must not apply.
+        monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "2")
+        for var in ("ADMIN_PROMOTION_TOKEN", "ADMIN_OPERATIONS_TOKEN", "ADMIN_RELOAD_TOKEN", "ADMIN_READ_TOKEN", "ADMIN_ANALYTICS_TOKEN"):
+            monkeypatch.delenv(var, raising=False)
+        request = self._real_request()
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="hdr-no-admin-configured")
+        m.chat(chat_request, request, x_admin_token="anything", x_execution_context="ADMIN_TEST")
+        m.chat(chat_request, request, x_admin_token="anything", x_execution_context="ADMIN_TEST")
+        with pytest.raises(m.HTTPException):
+            m.chat(chat_request, request, x_admin_token="anything", x_execution_context="ADMIN_TEST")
+
+
 class TestAdapterAndShadowUseExplicitContexts:
     def test_make_chat_fn_defaults_to_evaluation_context(self):
         from app.evaluation.adapter import make_chat_fn

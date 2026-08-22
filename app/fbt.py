@@ -22,15 +22,20 @@ from __future__ import annotations
 
 import json
 import os
-import tempfile
 import time
 from collections import Counter, defaultdict
 from pathlib import Path
 
-EVENTS_PATH = os.getenv(
-    "EVENTS_LOG_PATH",
-    str(Path(tempfile.gettempdir()) / "foodland-ai-agent" / "events.jsonl"),
-)
+from app.storage_paths import resolve_path
+
+# V2.15b: was an independently-hardcoded tempdir default (duplicated
+# across this module, app.behavioral, app.learning_events, and the
+# app.main writer) - now resolved through the single FOODLAND_DATA_DIR
+# knob, same explicit-EVENTS_LOG_PATH-wins precedence as before, so a
+# deployment that already sets EVENTS_LOG_PATH is unaffected. Closes the
+# V2.15a-documented risk that consolidating onto FOODLAND_DATA_DIR alone
+# would silently desync this reader from app.main.log_event()'s writer.
+EVENTS_PATH = str(resolve_path("EVENTS_LOG_PATH", "events.jsonl"))
 DEFAULT_MIN_ADD_TO_CART_EVENTS = int(os.getenv("FBT_MIN_ADD_TO_CART_EVENTS", "200"))
 DEFAULT_MIN_PAIR_COUNT = int(os.getenv("FBT_MIN_PAIR_COUNT", "3"))
 DEFAULT_MAX_BASKET_SIZE = 25

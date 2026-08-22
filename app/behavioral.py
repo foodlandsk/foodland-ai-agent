@@ -29,15 +29,19 @@ from __future__ import annotations
 
 import json
 import os
-import tempfile
 import time
 from collections import Counter
 from pathlib import Path
 
-EVENTS_PATH = os.getenv(
-    "EVENTS_LOG_PATH",
-    str(Path(tempfile.gettempdir()) / "foodland-ai-agent" / "events.jsonl"),
-)
+from app.storage_paths import resolve_path
+
+# V2.15b: resolved through the single FOODLAND_DATA_DIR knob instead of
+# an independently-hardcoded tempdir default (app.storage_paths has no
+# dependency on app.main/app.search, so this does not reintroduce the
+# circular-import risk this module's docstring warns about). Explicit
+# EVENTS_LOG_PATH still wins, unchanged for any deployment that already
+# sets it.
+EVENTS_PATH = str(resolve_path("EVENTS_LOG_PATH", "events.jsonl"))
 DEFAULT_PRIOR_CLICKS = 1.0
 DEFAULT_PRIOR_IMPRESSIONS = 40.0
 DEFAULT_MIN_TOTAL_IMPRESSIONS = int(os.getenv("BEHAVIORAL_MIN_TOTAL_IMPRESSIONS", "1000"))
