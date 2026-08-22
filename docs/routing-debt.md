@@ -243,6 +243,22 @@ continuity (`active_comparison_pair` session state) umožňuje "Chcem
 lacnejšiu."/"Máte väčšie balenie?" po úspešnom porovnaní. Detail:
 `docs/recommendation-decision-v2.14f.md`.
 
+## V2.14h aktualizácia — ramen pridané do LIVE_USE_CASES, basket-independence latentný bug opravený
+
+Ramen re-auditovaný a pridaný do `app.use_case_advice.LIVE_USE_CASES`
+(role advice pre noodles/miso/soy_sauce/wakame) — žiadna nová routing
+logika, znovupoužíva ten istý `_USE_CASE_FRAMING_PREPOSITIONS` gate ako
+sushi/pho/kari. Reálny latentný precedenčný defekt odhalený týmto
+pridaním: `app.basket_completion.BASKET_V1_ELIGIBLE_USE_CASES` bol
+doslovný `tuple(LIVE_USE_CASES)` live-mirror — pridanie ramenu do
+`LIVE_USE_CASES` by ho TICHO urobilo aj basket-eligible, napriek tomu, že
+modul vlastný komentár tvrdil nezávislosť oboch registrov. Opravené
+explicitným, samostatne autorovaným tuple v `app/basket_completion.py`,
+nezávislým od `LIVE_USE_CASES`. `app.turn_resolver.resolve_action_target_signal()`
+nebol menený (ramen role advice ide cez tú istú, už existujúcu cestu ako
+ostatné use cases, žiadny nový special_subject/related_subject konflikt).
+Detail: `docs/ramen-data-readiness-v2.14h.md`.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným

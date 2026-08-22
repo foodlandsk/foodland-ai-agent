@@ -23,6 +23,7 @@ os.environ.setdefault("RATE_LIMIT_PER_MINUTE", "100000")
 
 import app.basket_completion as bc
 import app.main as m
+import app.use_case_advice as uca
 
 
 class _FakeRequest:
@@ -38,11 +39,24 @@ def _chat(message: str, session_id: str, limit: int = 8) -> dict:
 # --- unit tests: role resolution, candidates, action detection -------------
 
 class TestBasketV1EligibleUseCases:
-    def test_registry_matches_live_use_cases(self):
-        from app.use_case_advice import LIVE_USE_CASES
-        assert set(bc.BASKET_V1_ELIGIBLE_USE_CASES) == set(LIVE_USE_CASES)
+    def test_registry_is_subset_of_live_use_cases(self):
+        # V2.14h: these sets are no longer required to be equal - ramen
+        # became live in app.use_case_advice.LIVE_USE_CASES without
+        # gaining basket eligibility (basket readiness is an independent
+        # dimension, decided on its own evidence). A basket-eligible use
+        # case must still be a recognized live use case, so this remains
+        # a real invariant, just a subset rather than an equality.
+        assert set(bc.BASKET_V1_ELIGIBLE_USE_CASES) <= set(uca.LIVE_USE_CASES)
 
     def test_ramen_not_eligible(self):
+        # V2.14h: this used to hold vacuously (BASKET_V1_ELIGIBLE_USE_CASES
+        # was a bare tuple(LIVE_USE_CASES) alias, so the two sets could
+        # never actually diverge - see app.basket_completion's module
+        # docstring for the real latent defect this exposed). Now that
+        # the registry is independently authored, this is a real,
+        # meaningful assertion: ramen is live for use-case advice but
+        # deliberately not for basket completion.
+        assert "ramen" in uca.LIVE_USE_CASES
         assert "ramen" not in bc.BASKET_V1_ELIGIBLE_USE_CASES
 
 

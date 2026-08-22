@@ -1790,3 +1790,49 @@ Committed fixture (2 140 produktov, pinned test suite): `classified=720`, `cover
 **Čestný výsledný stav**: **`RECOMMENDATION_INTELLIGENCE_LIVE_PARTIAL`**. Detail: `docs/recommendation-decision-v2.14f.md`.
 
 **Ďalší krok:** V2.14g (Recommendation Learning Signals & Feedback Loop) je vecne pripravený z hľadiska stability rozhodnutí, ale existujúci `log_question()` mechanizmus už poskytuje dostatočné signály bez nových telemetria polí – AUTO_PROMOTION musí zostať `false` v akejkoľvek budúcej sprinte bez samostatného schválenia. V2.14g sa nezačína automaticky.
+
+### Sprint V2.14h – Ramen Data Readiness & Use-Case Closure
+
+**Zadanie:** audit-first re-overenie, či ramen môže byť bezpečne
+podporovaný existujúcou evidence-grounded architektúrou – zadanie
+explicitne zakazovalo predpokladať kladnú odpoveď; `RAMEN_DATA_REQUIRED_CONFIRMED`
+bol sankcionovaný ako rovnocenný, nie neúspešný výsledok.
+
+**Kľúčové nálezy re-auditu** (živo overené proti `983ed4a`, nie kopírované
+z V2.14c/d/e/f): pôvodný V2.14c dôvod vylúčenia ramenu (misky/riad v
+`instant_noodles`) bol nezávisle vyriešený V2.14d tableware `FamilyRule`
+– dnes 79 čistých produktov (76 HIGH/3 MEDIUM). Nový nález: samostatná
+`wheat_noodles` rodina (32, HIGH) obsahuje 4 reálne domáce ramen rezance
+oddelené od instantných balíčkov – bare-word taxonomy kolízia, ktorá
+pôvodne blokovala ramen, už neexistuje. Korekcia: "dashi" nemá 0 dát (3
+reálne SKU existujú), len 0 štruktúrovanej evidencie (`UNKNOWN` confidence,
+žiadny `FamilyRule`) – zámerne vynechané z role tabuľky namiesto
+fabrikovania role z neklasifikovanej evidencie.
+
+**Implementácia (Gate B – use-case-advice-only, bez zmeny basketu):**
+`"ramen"` pridané do `app.use_case_advice.LIVE_USE_CASES` + nová
+`_ROLE_TABLE["ramen"]` (4 role: instant_noodles/miso/soy_sauce/wakame,
+všetky `PROVENANCE_DATA_DERIVED`) – opravuje reálny, pred sprintou
+reprodukovaný defekt, kde "akú omáčku/zeleninu na ramen?" padalo na
+nepomáhajúci generický `product_search` dump. Basket completion pre
+ramen zostáva nezmenené (beží nezávisle cez V2.8 `app.recipe_shopping`).
+
+**Latentný defekt nájdený a opravený**: `BASKET_V1_ELIGIBLE_USE_CASES`
+bol doslovný `tuple(LIVE_USE_CASES)` live-mirror – pridanie ramenu do
+`LIVE_USE_CASES` by ho ticho urobilo aj basket-eligible, čo zadanie
+explicitne zakazovalo. Opravené explicitným, nezávisle autorovaným
+tuple v `app/basket_completion.py`.
+
+**Výsledky:** Plný beh **1578/1578** (1553 + 25 nových), 0 regresií.
+V2.10 fast-mode **34/39 nezmenené**. Canary **10/10**. Consistency 0
+kolízií, trust 0 nálezov.
+
+**Čestný výsledný stav**: **`RAMEN_USE_CASE_LIVE_WITH_LIMITATIONS`**
+(role advice LIVE pre 4 role, dashi DATA_REQUIRED). Basket status
+nezmenené. Detail: `docs/ramen-data-readiness-v2.14h.md`.
+
+**Ďalší krok:** dashi `FamilyRule` autorstvo a domáca-ramen-rezance
+rola z `wheat_noodles` sú konkrétne, dôkazmi podložené budúce kroky
+(oba by vyžadovali vlastný blast-radius audit) – žiadny z nich
+nezačatý touto sprintou. rt0013 zostáva nedotknuté a blokujúce pre
+akúkoľvek súvisiacu prácu.

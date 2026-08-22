@@ -57,20 +57,46 @@ triple, not an assumption:
   clean, taxonomy-backed roles (fish_sauce, rice_noodles, coconut_milk,
   curry_paste, hoisin_sauce, chili_sauce, tamarind_pasta) - these are
   included below.
-- ramen is DELIBERATELY EXCLUDED from the customer-facing use-case
-  table: the bare words "ramen"/"rezance" collide with the SAME
-  taxonomy family (instant_noodles, 89 products) regardless of whether
-  the customer means "instant ramen product" or "dry noodles for a
-  homemade broth" - and that family itself has a confirmed data-quality
-  defect (9 of its ~35 "ramen"-titled members are ramen BOWLS/kitchenware,
-  not noodles, due to a pre-existing exclude_title_phrases gap in
-  app.taxonomy - out of scope to fix here, see docs backlog). No
-  evidence dimension in this module can safely disambiguate that
-  collision, so ramen gets no live customer-facing role table entry
-  (SHADOW_ONLY - the resolver/evidence machinery below still handles it
-  structurally correctly, i.e. it would legitimately ABSTAIN, but the
-  canonical-use-case alias table simply never routes a real customer
-  message to "ramen" in this sprint).
+- ramen was added in V2.14h, re-auditing this original V2.14c
+  exclusion rather than assuming it still holds. The original blocker
+  (bowls/kitchenware polluting instant_noodles) was independently fixed
+  in V2.14d (a dedicated "tableware" FamilyRule now intercepts those 268
+  products before instant_noodles ever sees them; the family is 79
+  products, 76 HIGH/3 MEDIUM, live-verified against current HEAD). The
+  deeper "instant packet vs. dry noodles for a homemade broth" ambiguity
+  also does not hold at the taxonomy level: dry/fresh ramen-style wheat
+  noodles (e.g. HAKUBAKU, MISTER MIE, GOLDEN TURTLE, AYUKO) live in the
+  separate "wheat_noodles" family (32 products, HIGH), not
+  instant_noodles - the two are already cleanly split by the taxonomy,
+  not conflated. This module only claims the instant_noodles role
+  (matching the "ramen rezance" ingredient text already used by
+  app.main.RECIPE_SHOPPING_CORE_QUERIES["ramen"], reused for
+  consistency, not redefined); a separate "dry ramen noodle" role
+  carved out of wheat_noodles is NOT added here (would require a new
+  title-substring concept and its own blast-radius review - left as a
+  documented, evidence-backed future enhancement, not guessed at).
+  ramen also gets miso, soy_sauce, and wakame roles - the same three
+  reused, unmodified concept_ids app.cross_sell.roles_for_recipe("ramen")
+  has resolved since V2.8/V2.14c. soy_sauce is 100% MEDIUM confidence
+  catalog-wide (51 products, verified: not a variety-shadowing artifact
+  like curry_paste - every soy_sauce/dark_soy_sauce/light_soy_sauce
+  product is MEDIUM, a real structural ceiling from thin category-path
+  evidence in the feed, not a bug) - MEDIUM is an already-accepted
+  confidence tier for this module (see UNKNOWN TAXONOMY POLICY below),
+  so this does not block inclusion. miso (4 products) and wakame (5
+  products) are thin stock, entirely MEDIUM - included per the same
+  policy, expected to legitimately ABSTAIN/return few candidates rather
+  than fabricate a false "well-stocked" impression.
+  dashi is DELIBERATELY EXCLUDED, for a different reason than the
+  original ramen exclusion: 3 real catalog SKUs exist (SHIMAYA Dashi
+  Bonito Stock, Dashinomoto bonito powder, PAKU PAKU dashima kelp) but
+  all three are taxonomically UNKNOWN (no FamilyRule/concept_id claims
+  them) - real data, zero structured evidence. Authoring a "dashi"
+  FamilyRule is a real taxonomy change requiring its own blast-radius
+  review and is explicitly out of scope for this sprint; guessing a
+  dashi role from UNKNOWN-confidence products would violate this
+  module's own confidence gate. Documented as a specific, actionable
+  DATA_REQUIRED backlog item, not vague TODO debt.
 - Aromatics with real but extremely thin stock (galangal: 1 SKU
   catalog-wide; kaffir lime leaves: 3; lemongrass: 4) are excluded from
   tom_kha's role table for this sprint - not because the evidence is
@@ -120,8 +146,9 @@ from app.recommendation_evidence import (
 )
 
 # --- canonical use cases exposed to customers this sprint -------------------
-# ramen is intentionally NOT in this set - see module docstring.
-LIVE_USE_CASES = ("sushi", "pho", "pad_thai", "tom_kha", "kari")
+# ramen added in V2.14h - re-audited, not carried over by assumption; see
+# module docstring for the full evidence trail.
+LIVE_USE_CASES = ("sushi", "pho", "pad_thai", "tom_kha", "kari", "ramen")
 
 # alias (normalized) -> canonical_use_case. "thajske_kari"/"thai curry"
 # collapse into "kari" - the taxonomy has no real red/green/panang
@@ -135,6 +162,7 @@ _USE_CASE_ALIASES: dict[str, str] = {
     "tom kha": "tom_kha", "tom kha gai": "tom_kha",
     "kari": "kari", "curry": "kari", "thajske kari": "kari", "thajske curry": "kari",
     "thajsky curry": "kari", "thai curry": "kari",
+    "ramen": "ramen",
 }
 
 _NEGATION_MARKERS = ("nie ", "nechcem ", "bez ", "okrem ")
@@ -221,6 +249,20 @@ _ROLE_TABLE: dict[str, tuple[RoleEvidence, ...]] = {
         RoleEvidence("kari", "sauce_fish", "product_type_fit", "sauce", "fish_sauce",
                      PROVENANCE_DATA_DERIVED, 0.6, ("rybacia omacka", "rybaciu omacku", "omacku", "omacka"),
                      display_label_sk="rybacia omáčka"),
+    ),
+    "ramen": (
+        RoleEvidence("ramen", "noodles", "product_type_fit", "instant_food", "instant_noodles",
+                     PROVENANCE_DATA_DERIVED, 0.8, ("rezance", "rezancov", "nudle", "nudlov"),
+                     display_label_sk="ramen rezance"),
+        RoleEvidence("ramen", "paste_miso", "product_type_fit", "paste", "miso",
+                     PROVENANCE_DATA_DERIVED, 0.55, ("miso", "miso pasta", "miso pastu"),
+                     display_label_sk="miso pasta"),
+        RoleEvidence("ramen", "sauce_soy", "product_type_fit", "sauce", "soy_sauce",
+                     PROVENANCE_DATA_DERIVED, 0.6, ("sojova omacka", "sojovu omacku", "omacku", "omacka"),
+                     display_label_sk="sójová omáčka"),
+        RoleEvidence("ramen", "topping_wakame", "product_type_fit", "seaweed", "wakame",
+                     PROVENANCE_DATA_DERIVED, 0.5, ("wakame",),
+                     display_label_sk="wakame riasy"),
     ),
 }
 

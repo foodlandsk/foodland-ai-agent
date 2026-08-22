@@ -41,11 +41,20 @@ role".
   already comes with a real, resolved concept_id (no lexical_filter
   workaround needed - Section 46, no new taxonomy invented here).
 
-RAMEN EXCLUSION (Section 5): structural, not a special case. "ramen" is
-not in app.use_case_advice.LIVE_USE_CASES (a V2.14c decision, unchanged
-by this sprint - see docs/use-case-intelligence-v2.14c.md), so
-resolve_use_case() can never return "ramen" here, and BASKET_V1_ELIGIBLE_USE_CASES
-does not list it either. Two independent structural gates, not one.
+RAMEN EXCLUSION (Section 5, updated V2.14h): V2.14h made "ramen" live in
+app.use_case_advice.LIVE_USE_CASES (re-audited, not carried over by
+assumption - see that module's docstring), but ramen's basket behavior
+is INTENTIONALLY NOT changed here - basket readiness is an independent
+dimension from use-case readiness (V2.14h Section 20). This surfaced a
+real latent defect: BASKET_V1_ELIGIBLE_USE_CASES used to be defined as
+`tuple(LIVE_USE_CASES)`, a bare live mirror that would have silently
+granted ramen basket eligibility the moment it became a live use case,
+contradicting this very docstring's original claim of "two independent
+structural gates". Fixed by making BASKET_V1_ELIGIBLE_USE_CASES an
+explicit, hand-authored tuple that does not derive from LIVE_USE_CASES
+at all - a future LIVE_USE_CASES addition (or ramen's own basket
+readiness, decided on its own evidence) requires a deliberate edit here,
+not a side effect of that other module's registry.
 
 NO LLM anywhere in resolution/decision - identical safety posture to
 app.use_case_advice (V2.14c) and app.comparison (V2.14b). No new
@@ -62,14 +71,16 @@ from app.recommendation_evidence import (
     EvidenceItem,
     compute_confidence,
 )
-from app.use_case_advice import LIVE_USE_CASES, is_companion_request, resolve_use_case
+from app.use_case_advice import is_companion_request, resolve_use_case
 
-# Section 4 - explicit registry, kept separately named from LIVE_USE_CASES
-# even though they coincide today (all 5 V2.14c use cases happen to also
-# be basket-ready) - a future LIVE_USE_CASES addition is not automatically
-# basket-ready without its own role list, so this must not be a bare alias
-# a reader could mistake for "always identical by definition".
-BASKET_V1_ELIGIBLE_USE_CASES = tuple(LIVE_USE_CASES)
+# Section 4 - explicit registry, deliberately NOT derived from
+# app.use_case_advice.LIVE_USE_CASES (V2.14h: a bare tuple(LIVE_USE_CASES)
+# alias here previously would have silently granted ramen basket
+# eligibility the moment V2.14h made it a live use case - see this
+# module's docstring). Basket readiness is decided per use case on its
+# own evidence (a real role list backed by app.cross_sell), not
+# inherited from use-case-advice readiness.
+BASKET_V1_ELIGIBLE_USE_CASES = ("sushi", "pho", "pad_thai", "tom_kha", "kari")
 
 # app.use_case_advice's canonical use_case name -> app.main.RECIPE_SHOPPING_CORE_QUERIES
 # dish key. "kari" (not "thajske_kari") is the representative: it is the

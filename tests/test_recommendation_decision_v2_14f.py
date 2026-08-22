@@ -254,14 +254,26 @@ class TestCaseL_BasketVsRecommendationDistinct:
         assert r_compare.get("intent") == "product_comparison"
 
 
-class TestCaseM_RamenExcluded:
-    def test_ramen_use_case_never_resolves(self):
-        assert uca.resolve_use_case("najlepsie rezance na ramen?") is None
+class TestCaseM_RamenNowLive:
+    # V2.14h: ramen was re-audited and made live in app.use_case_advice
+    # (the original V2.14c/f exclusion reason was independently fixed by
+    # V2.14d's tableware FamilyRule - see that module's docstring). The
+    # safety property this class actually protects - a qualitative
+    # "najlepsie" ("best") phrasing must not fabricate a comparison
+    # result or an unsupported superlative claim - still holds: the
+    # query now resolves to an honest, non-superlative use_case_advice
+    # RECOMMEND rather than a fabricated comparison_decision.
+    def test_ramen_use_case_now_resolves_v2_14h(self):
+        assert uca.resolve_use_case("najlepsie rezance na ramen?") == "ramen"
 
-    def test_ramen_query_does_not_produce_recommendation_decision(self):
+    def test_ramen_query_produces_grounded_recommendation_not_comparison(self):
         r = _chat("najlepsie rezance na ramen?", "v214f-matrix-M")
-        assert r.get("intent") not in ("use_case_advice", "basket_completion")
+        assert r.get("intent") == "use_case_advice"
+        assert r.get("use_case_decision") == "RECOMMEND"
         assert r.get("comparison_decision") is None
+        answer = (r.get("answer") or "").lower()
+        for forbidden in ("najlepsi", "najlepšia", "najautentickejsi", "najautentickejšia", "most authentic"):
+            assert forbidden not in answer
 
 
 class TestCaseN_CrossSession:

@@ -64,11 +64,13 @@ class TestUseCaseResolution:
     def test_no_use_case_named_returns_none(self):
         assert uca.resolve_use_case("chcem kupit ryzu") is None
 
-    def test_ramen_alias_not_registered_as_live(self):
-        # The word "ramen" is not in _USE_CASE_ALIASES at all - it is
-        # deliberately excluded (see module docstring: taxonomy
-        # collision with instant_noodles kitchenware contamination).
-        assert uca.resolve_use_case("rezance na ramen") is None
+    def test_ramen_alias_registered_as_live_v2_14h(self):
+        # V2.14h: the original V2.14c exclusion reason (instant_noodles
+        # kitchenware contamination) was independently fixed by V2.14d's
+        # tableware FamilyRule - re-audited, not carried over by
+        # assumption, and ramen is now live. See module docstring for
+        # the full evidence trail.
+        assert uca.resolve_use_case("rezance na ramen") == "ramen"
 
 
 class TestRoleResolution:
@@ -183,9 +185,13 @@ class TestCaseB_Pho:
 
 
 class TestCaseC_Ramen:
-    def test_ramen_defers_to_normal_cascade(self):
+    def test_ramen_role_advice_now_live_v2_14h(self):
+        # V2.14h: ramen re-audited and made live (see module docstring).
+        # A resolvable role (noodles) now correctly reaches use_case_advice
+        # instead of deferring to the normal cascade.
         r = _chat("ake rezance mam pouzit na ramen", "v214c-caseC")
-        assert r.get("intent") != "use_case_advice"
+        assert r.get("intent") == "use_case_advice"
+        assert r.get("use_case_decision") == "RECOMMEND"
 
 
 class TestCaseD_Conflict:
@@ -246,10 +252,24 @@ class TestCaseI_SessionContamination:
 
 
 class TestCaseJ_WeakUseCase:
-    def test_ramen_never_reaches_use_case_advice(self):
-        for query in ("ramen rezance", "co potrebujem na ramen", "ake rezance na ramen"):
-            r = _chat(query, f"v214c-caseJ-{query}")
-            assert r.get("intent") != "use_case_advice", f"query={query!r} unexpectedly reached use_case_advice"
+    # V2.14h: ramen is now a live use case with a resolvable-role path
+    # (see module docstring), so this class was split: bare product
+    # names and recipe-shopping-list framing must still NOT be captured
+    # by this module (protecting the same golden cases as every other
+    # live use case), while genuine role-advice framing now correctly
+    # DOES reach use_case_advice.
+    def test_bare_product_name_does_not_reach_use_case_advice(self):
+        r = _chat("ramen rezance", "v214c-caseJ-bare")
+        assert r.get("intent") != "use_case_advice"
+
+    def test_recipe_shopping_list_framing_defers_to_recipe_shopping(self):
+        r = _chat("co potrebujem na ramen", "v214c-caseJ-recipe")
+        assert r.get("intent") != "use_case_advice"
+
+    def test_role_advice_framing_now_reaches_use_case_advice(self):
+        r = _chat("ake rezance na ramen", "v214c-caseJ-role")
+        assert r.get("intent") == "use_case_advice"
+        assert r.get("use_case_decision") == "RECOMMEND"
 
 
 class TestCaseK_LegitimateRefinement:
@@ -350,7 +370,12 @@ class TestCaseN_PadThaiTomKhaReachability:
         assert uca.has_resolvable_role("pad thai") is False
 
     def test_has_resolvable_role_false_for_non_live_use_case(self):
-        assert uca.has_resolvable_role("ake rezance na ramen") is False
+        # "tom yum" has no alias/role table entry at all (unlike ramen,
+        # which V2.14h made live - see test_has_resolvable_role_true_for_ramen).
+        assert uca.has_resolvable_role("ake rezance na tom yum") is False
+
+    def test_has_resolvable_role_true_for_ramen_v2_14h(self):
+        assert uca.has_resolvable_role("ake rezance na ramen") is True
 
 
 # --- permanent regression controls (rt0004/rt0010/rt0011) -------------------
