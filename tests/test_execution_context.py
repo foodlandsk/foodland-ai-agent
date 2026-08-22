@@ -130,6 +130,73 @@ class TestExecutionContextSuppressesCustomerAnalytics(object):
         m._chat_internal(chat_request, _FakeRequest(), execution_context=learning_context())
         assert self._read_analytics_lines(analytics_path) == []
 
+    def test_admin_test_context_never_writes_question_analytics(self, tmp_path, monkeypatch):
+        # V2.15a audit coverage gap: this class covered EVALUATION/SHADOW/
+        # LEARNING end-to-end but not ADMIN_TEST - the dataclass-field
+        # test (TestExecutionContextFactories) proves emit_customer_analytics
+        # is False for ADMIN_TEST, but never proved that actually stops a
+        # question_analytics.jsonl write through the real _chat_internal()
+        # path, the way the other three modes are proven here.
+        analytics_path = tmp_path / "question_analytics.jsonl"
+        monkeypatch.setenv("ANALYTICS_LOG_PATH", str(analytics_path))
+        chat_request = m.ChatRequest(message="doprava", limit=3, session_id="ctx-analytics-admintest")
+        m._chat_internal(chat_request, _FakeRequest(), execution_context=admin_test_context())
+        assert self._read_analytics_lines(analytics_path) == []
+
+
+class TestExecutionContextSuppressesTaxonomyShadow(object):
+    """V2.15a audit finding: log_taxonomy_shadow() (main.py:4216) is called
+    unconditionally, one line below the log_question local-rebind trick,
+    but is NOT itself rebound - it always hits the real, unconditional
+    module-level function regardless of execution_context. This is the
+    same class of gap the V2.13d fix addressed for log_question (a
+    logging call not wired to the emit_customer_analytics gate), just
+    never wired here in the first place rather than broken by a module
+    boundary. "jazminova ryza" is the same rice-family query already
+    used elsewhere in this file/test suite to guarantee a non-None
+    subfamily match (log_taxonomy_shadow() no-ops on match.subfamily is
+    None)."""
+
+    def _read_shadow_lines(self, path: Path) -> list[dict]:
+        if not path.exists():
+            return []
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    def test_customer_context_writes_taxonomy_shadow(self, tmp_path, monkeypatch):
+        shadow_path = tmp_path / "taxonomy_shadow.jsonl"
+        monkeypatch.setenv("TAXONOMY_SHADOW_LOG_PATH", str(shadow_path))
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="ctx-shadow-customer")
+        m._chat_internal(chat_request, _FakeRequest(), execution_context=customer_context())
+        assert len(self._read_shadow_lines(shadow_path)) >= 1
+
+    def test_evaluation_context_never_writes_taxonomy_shadow(self, tmp_path, monkeypatch):
+        shadow_path = tmp_path / "taxonomy_shadow.jsonl"
+        monkeypatch.setenv("TAXONOMY_SHADOW_LOG_PATH", str(shadow_path))
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="ctx-shadow-eval")
+        m._chat_internal(chat_request, _FakeRequest(), execution_context=evaluation_context())
+        assert self._read_shadow_lines(shadow_path) == []
+
+    def test_shadow_context_never_writes_taxonomy_shadow(self, tmp_path, monkeypatch):
+        shadow_path = tmp_path / "taxonomy_shadow.jsonl"
+        monkeypatch.setenv("TAXONOMY_SHADOW_LOG_PATH", str(shadow_path))
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="ctx-shadow-shadow")
+        m._chat_internal(chat_request, _FakeRequest(), execution_context=shadow_context())
+        assert self._read_shadow_lines(shadow_path) == []
+
+    def test_learning_context_never_writes_taxonomy_shadow(self, tmp_path, monkeypatch):
+        shadow_path = tmp_path / "taxonomy_shadow.jsonl"
+        monkeypatch.setenv("TAXONOMY_SHADOW_LOG_PATH", str(shadow_path))
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="ctx-shadow-learning")
+        m._chat_internal(chat_request, _FakeRequest(), execution_context=learning_context())
+        assert self._read_shadow_lines(shadow_path) == []
+
+    def test_admin_test_context_never_writes_taxonomy_shadow(self, tmp_path, monkeypatch):
+        shadow_path = tmp_path / "taxonomy_shadow.jsonl"
+        monkeypatch.setenv("TAXONOMY_SHADOW_LOG_PATH", str(shadow_path))
+        chat_request = m.ChatRequest(message="jazminova ryza", limit=3, session_id="ctx-shadow-admintest")
+        m._chat_internal(chat_request, _FakeRequest(), execution_context=admin_test_context())
+        assert self._read_shadow_lines(shadow_path) == []
+
 
 class TestAdapterAndShadowUseExplicitContexts:
     def test_make_chat_fn_defaults_to_evaluation_context(self):

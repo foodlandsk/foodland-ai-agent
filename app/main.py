@@ -4213,7 +4213,14 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     # (not-yet-assigned) local and raise UnboundLocalError.
     _real_log_question = globals()["log_question"]
     log_question = _real_log_question if execution_context.emit_customer_analytics else (lambda *args, **kwargs: None)  # noqa: E731
-    log_taxonomy_shadow(chat_request.message, client_key, classify_rice_query(chat_request.message, normalize))
+    # V2.15a audit: log_taxonomy_shadow() was never wired to this gate at
+    # all (predates app.execution_context - V2 catalog-first taxonomy is
+    # an earlier sprint) - every EVALUATION/LEARNING/SHADOW/ADMIN_TEST
+    # call was silently polluting taxonomy_shadow.jsonl exactly like a
+    # real customer message. See tests/test_execution_context.py::
+    # TestExecutionContextSuppressesTaxonomyShadow.
+    if execution_context.emit_customer_analytics:
+        log_taxonomy_shadow(chat_request.message, client_key, classify_rice_query(chat_request.message, normalize))
 
     session_id = getattr(chat_request, "session_id", "") or ""
     memory_key = session_memory_key(session_id, client_key)

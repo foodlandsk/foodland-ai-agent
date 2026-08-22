@@ -1836,3 +1836,54 @@ rola z `wheat_noodles` sú konkrétne, dôkazmi podložené budúce kroky
 (oba by vyžadovali vlastný blast-radius audit) – žiadny z nich
 nezačatý touto sprintou. rt0013 zostáva nedotknuté a blokujúce pre
 akúkoľvek súvisiacu prácu.
+
+*(rt0013 bolo následne uzavreté v samostatnom rt0013-closure kroku:
+`CLOSED_BY_HUMAN_SEMANTIC_DECISION` — pozri `docs/routing-debt.md`.
+Dashi `FamilyRule` bola tiež následne autorovaná a zapojená do
+`use_case_advice`'s ramen role tabuľky. Wheat_noodles rola bola
+auditovaná a uzavretá ako `NOT_SAFE_TO_IMPLEMENT` — pozri
+`docs/ramen-data-readiness-v2.14h.md`.)*
+
+### Sprint V2.15a – Recommendation Observability, Signal Semantics & Learning Readiness Audit
+
+**Zadanie:** audit-first zistenie, či existujúca infraštruktúra má dosť
+spoľahlivé, kauzálne, izolované a durable signály na budúci
+recommendation-learning pipeline. Explicitne NIE ranking-learning
+sprint, NIE auto-promotion sprint, žiadna zmena zákazníckeho
+recommendation/retrieval správania povolená.
+
+**Najzávažnejší nález**: `POST /chat` nemá žiadny spôsob odlíšiť
+externé HTTP volanie (curl/QA/monitoring/live smoke test) od reálneho
+zákazníka – `isinstance(request, Request)` je vždy `True` pre HTTP
+volanie, `ExecutionContext` mechanizmus je dosiahnuteľný len z
+interných Python volajúcich. Každé doterajšie live production
+overenie v tejto aj predchádzajúcich sprintách bolo teda
+nerozlíšiteľné od zákazníckej prevádzky – zdokumentované ako
+`OBSERVABILITY_GAP`, zámerne neopravené (vyžaduje novú architektúru).
+Druhý kľúčový nález: `question_analytics.jsonl` (decision state) a
+`events.jsonl` (produktové kliky/add_to_cart) nemajú zdieľaný kľúč –
+kauzálna atribúcia je dnes len nespoľahlivé session_id+čas hádanie.
+
+**AUTO_PROMOTION_ENABLED** dokázateľne `false` štrukturálne (nikdy
+nekonzultovaná v žiadnej podmienke v celom `app/`, nie len aktuálne
+nastavená) – `AUTO_PROMOTION_STATUS=DISABLED_AND_UNCHANGED`.
+
+**Jediná runtime zmena**: `log_taxonomy_shadow()` nebol nikdy zapojený
+do `execution_context` brány (na rozdiel od `log_question`) – každé
+EVALUATION/LEARNING/SHADOW/ADMIN_TEST volanie ticho kontaminovalo
+`taxonomy_shadow.jsonl`. Charakterizované testom PRED opravou (4/5
+FAILED), opravené `if execution_context.emit_customer_analytics:`
+guardom, byte-safe editované (main.py má mixné CRLF/LF).
+
+**Výsledky:** Plný beh **1599/1599** (1593 + 6 nových), 0 regresií.
+V2.10 fast-mode **35/39 nezmenené**. Canary **10/10**.
+
+**Čestný výsledný stav**: **`OBSERVABILITY_GAPS_REQUIRE_CLOSURE`** –
+`RANKING_LEARNING_READINESS=NOT_READY`,
+`RECOMMENDATION_LEARNING_READINESS=PARTIAL`. Detail:
+`docs/recommendation-learning-readiness-v2.15a.md`.
+
+**Ďalší krok:** **V2.15b – Signal Persistence & Normalization** (nie
+Learning Candidate Pipeline) – kľúčové medzery sú štrukturálne
+(chýbajúci zdieľaný kľúč, chýbajúca HTTP-úrovňová execution-context
+signalizácia), nie nedostatok dát. V2.15b sa nezačína automaticky.
