@@ -149,9 +149,36 @@ sauce_soy→`soy_sauce`, topping_wakame→`wakame`), všetky
    defer-uje. `roles_for_recipe("ramen")` teraz plne súhlasí s
    `_ROLE_TABLE["ramen"]` (5 rolí v oboch). Testy rozšírené o
    `test_dashi_role` (unit) + `test_dashi_role_advice` (end-to-end).
-2. **"Domáce ramen rezance" rola z `wheat_noodles`**: 4 reálne, HIGH
-   confidence SKU identifikované (Section 3) — vyžaduje title-substring
-   koncept + vlastný blast-radius audit pred pridaním ako samostatná rola.
+2. ~~**"Domáce ramen rezance" rola z `wheat_noodles`**~~ — **AUDITOVANÉ,
+   UZAVRETÉ AKO `NOT_SAFE_TO_IMPLEMENT`** (samostatný follow-up po
+   V2.14h). `wheat_noodles` = 32 produktov, všetky HIGH confidence,
+   klasifikované cez reálnu kategóriu `Pšeničné rezance` — 4 z nich majú
+   v názve "ramen" (HAKUBAKU, MISTER MIE, GOLDEN TURTLE, AYUKO), zvyšných
+   28 sú udon/somen/čínske/vaječné/yakisoba/jjajang/chajang rezance.
+   Produkty samotné sú už čisto oddelené (kategória, nie title) — žiadna
+   kolízia na produktovej úrovni. Kolízia existuje LEN na úrovni QUERY
+   rezolúcie: `wheat_noodles` FamilyRule je v `FAMILY_DEFINITIONS`
+   vyhodnotená PRED `instant_noodles`, ktorá už vlastní `"ramen"` ako
+   `title_phrase` pre query rezolúciu (`parse_structured_query()`
+   používa rovnaké pravidlá, first-match-wins, bez kategórie). Naivná
+   oprava (pridať `"ramen"` do `wheat_noodles.title_phrases`, rovnaký
+   vzor ako existujúce `"udon"`) bola **simulovaná (in-memory, nikdy
+   necommitnutá)** a preukázateľne NEBEZPEČNÁ: (a) query úroveň — bare
+   "ramen"/"ramen rezance"/"chcem ramen na večer"/"kimchi ramen" by sa
+   všetky preklopili z `instant_noodles` na `wheat_noodles`; (b) PRODUKT
+   úroveň — cca 24 reálnych, správne klasifikovaných instantných
+   produktov (Samyang/Nissin/Oyakata s "ramen" v názve) by sa nesprávne
+   preklasifikovalo z `instant_food/instant_noodles` do
+   `noodles/wheat_noodles` (`wheat_noodles` 32→56, `instant_noodles`
+   79→56, zmerané priamo). Na rozdiel od "udon", slovo "ramen" je v
+   tomto katalógu skutočne preťažené — pre drvivú väčšinu reálnej
+   prevádzky je dominantný, správny výklad "instantná polievka", nie
+   "suché rezance". Bezpečná verzia by vyžadovala oveľa užšie pravidlo
+   viazané na explicitnú viacslovnú frázu ("suché ramen rezance",
+   "domáce ramen rezance") — bez reálneho dôkazu zo zákazníckych
+   dopytov, že takáto fráza sa vôbec používa, by autorstvo takého
+   pravidla bolo špekulatívne rozširovanie pokrytia, nie dôkazmi
+   podložený krok. Ponechané zámerne neimplementované.
 3. **Zámer G (qualitative "najlepší")**: cross-cutting medzera cez celý
    katalóg (nie ramen-špecifická) — bare search na kvalitatívnu otázku
    vráti len zoznam bez tvrdenia (bezpečné, ale nepomáhajúce). Mimo
