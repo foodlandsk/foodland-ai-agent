@@ -139,6 +139,7 @@ from app.workflow_executor import execute_recipe as _execute_recipe
 from app.workflow_executor import execute_comparison as _execute_comparison
 from app.workflow_executor import execute_use_case_advice as _execute_use_case_advice
 from app.use_case_advice import has_resolvable_role as _use_case_advice_has_resolvable_role
+from app.workflow_executor import execute_basket_completion as _execute_basket_completion
 from app.learning_cycle import run_learning_cycle as _run_learning_cycle
 from app.learning_cycle import REPORTS_DIR as _LEARNING_REPORTS_DIR
 from app.learning_cycle import LEARNING_ENGINE_ENABLED as _LEARNING_ENGINE_ENABLED
@@ -4435,6 +4436,33 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     )
     if _use_case_advice_result is not None:
         return _use_case_advice_result
+
+    # V2.14e (docs/basket-completion-v2.14e.md) - goal-oriented
+    # shopping/basket completion for app.basket_completion.BASKET_V1_ELIGIBLE_USE_CASES
+    # (sushi/pho/kari - pad_thai/tom_kha already reach the existing,
+    # live app.recipe_shopping path via their bare RECIPE_INTENT_MARKERS
+    # entry, so decide_basket_completion() defers to it via the
+    # recipe_subject guard below and never double-handles them).
+    # Placed after use_case_advice (single-role Q&A stays distinct from
+    # a multi-role basket request) and before recipe detection, same
+    # precedence tier as V2.14b/c. Returns None whenever the message is
+    # not a basket request for an eligible use case at all - every
+    # other branch below is completely unaffected for any other turn.
+    _basket_completion_result = _execute_basket_completion(
+        chat_request=chat_request,
+        recipe_subject=recipe_subject,
+        memory=memory,
+        memory_key=memory_key,
+        profile_key=profile_key,
+        products=products,
+        product_taxonomy_index=product_taxonomy_index,
+        client_key=client_key,
+        session_id=session_id,
+        query_language=query_language,
+        emit_customer_analytics=execution_context.emit_customer_analytics,
+    )
+    if _basket_completion_result is not None:
+        return _basket_completion_result
 
     # V2.9 (Section 16/17/18/53) - a follow-up about an already-active
     # recipe ("aké rezance?", "tie druhé", "čo ešte potrebujem?") is

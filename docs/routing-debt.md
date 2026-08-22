@@ -212,6 +212,19 @@ bare-title match vťahujúci nepotravinové servírovacie misky/lyžice do
 recovery (banh pho → rice_noodles, bare "kari pasta" → curry_paste) — obe
 mimo rozsahu routing precedencie ako takej, detail v tom istom dokumente.
 
+## V2.14e aktualizácia — nová precedenčná vrstva (basket_completion), 2 opravené nálezy
+
+Nová vetva (`app.basket_completion`) pridaná do `_chat_impl()` PO
+`use_case_advice`, PRED recipe detekciou — vzdáva sa, keď `recipe_subject`
+je už nastavené (pad_thai/tom_kha teda vždy používajú existujúcu V2.8/V2.9
+cestu, nedotknutú). Počas implementácie našiel plný V2.10 beh/pytest 2
+reálne kolízie (nie routing medzery v zmysle vyššie — obe opravené, nie
+zdokumentované ako debt): (1) `regbug_rt0026` — bare "ingredien" marker bol
+príliš široký pre basket tvrdenie, opravené užším marker setom; (2)
+"nákupný zoznam na sushi" kolidoval s existujúcim `sushi_shopping_core_products()`
+— opravené vylúčením tohto markera z basket-detekcie. Detail:
+`docs/basket-completion-v2.14e.md`.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným

@@ -710,3 +710,82 @@ def execute_use_case_advice(
         "use_case_decision": decision.state,
         "use_case_confidence": decision.confidence,
     }
+
+
+def execute_basket_completion(
+    *,
+    chat_request,
+    recipe_subject,
+    memory,
+    memory_key,
+    profile_key,
+    products,
+    product_taxonomy_index,
+    client_key,
+    session_id,
+    query_language,
+    emit_customer_analytics,
+):
+    """V2.14e - docs/basket-completion-v2.14e.md. Activates the goal-
+    oriented shopping/basket path for app.basket_completion.BASKET_V1_ELIGIBLE_USE_CASES
+    (sushi/pho/kari - pad_thai/tom_kha already reach the existing, live
+    app.recipe_shopping.build_recipe_shopping_plan() path via their bare
+    RECIPE_INTENT_MARKERS entry, which this function defers to entirely
+    via the recipe_subject guard, exactly like execute_use_case_advice()
+    defers to execute_recipe()).
+
+    Returns None when app.basket_completion.decide_basket_completion()
+    returns None - the caller falls through to the normal cascade
+    unchanged, same contract as every other V2.14 executor added here.
+
+    Deterministic end-to-end: no LLM call anywhere in
+    app.basket_completion's resolution/decision/composition path.
+    """
+    import app.main as m
+    from app.basket_completion import compose_basket_answer, decide_basket_completion
+
+    decision = decide_basket_completion(
+        chat_request.message, products, product_taxonomy_index, memory,
+        recipe_subject=recipe_subject,
+    )
+    if decision is None:
+        return None
+
+    products_by_id = {p.id: p for p in products}
+    recommended_ids = [r.recommended_product_id for r in decision.roles if r.recommended_product_id]
+    matched_products = [m.format_product(products_by_id[pid]) for pid in recommended_ids if pid in products_by_id]
+    answer_text = compose_basket_answer(decision, products_by_id, query_language)
+
+    m.update_session_memory(memory_key, chat_request.message, "basket_completion", matched_products, [], {})
+    updated_profile = m.update_user_memory(profile_key, chat_request.message, "basket_completion", matched_products, [])
+    _ci = m.build_customer_intent(chat_request.message, "basket_completion", language=query_language)
+    if emit_customer_analytics:
+        m.log_question(
+            chat_request.message, client_key, len(matched_products), intent="basket_completion",
+            session_id=session_id, primary_intent=_ci.primary_intent, subject=decision.use_case,
+        )
+    return {
+        "answer": answer_text,
+        "products": matched_products,
+        "articles": [],
+        "knowledge": m.knowledge_summary({}),
+        "memory": m.public_user_memory_summary(updated_profile),
+        "intent": "basket_completion",
+        "response_mode": "basket_completion",
+        "workflow_id": "BASKET_COMPLETION",
+        "basket_use_case": decision.use_case,
+        "basket_coverage": round(decision.coverage, 3),
+        "basket_fully_resolved": decision.fully_resolved,
+        "basket_roles": [
+            {
+                "concept_id": r.concept_id,
+                "display_label_sk": r.display_label_sk,
+                "status": r.status,
+                "recommended_product_id": r.recommended_product_id,
+                "alternative_product_ids": list(r.alternative_product_ids),
+                "confidence": r.confidence,
+            }
+            for r in decision.roles
+        ],
+        "basket_unresolved_concepts": list(decision.unresolved_concepts),
+    }

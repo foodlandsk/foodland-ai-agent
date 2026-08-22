@@ -228,8 +228,14 @@ class TestFastAndShoppingListBranchesIncludeMemoryAndIntent:
         assert "intent" in r
 
     def test_shopping_list_path_shape(self):
+        # V2.14e (docs/basket-completion-v2.14e.md): "co potrebujem na
+        # sushi" is now intentionally answered by the new, richer
+        # role-based basket_completion path instead of falling through
+        # to a generic result_set/fast response - "basket_completion" is
+        # a deliberate, new, additional response_mode value (same
+        # precedent as V2.13g adding "llm"/"fallback"/"no_match").
         r = _chat("co potrebujem na sushi", "cpv213fa-shoppinglist-shape")
-        if r.get("response_mode") == "shopping_list":
+        if r.get("response_mode") in {"shopping_list", "basket_completion"}:
             assert "memory" in r
             assert "intent" in r
         else:
