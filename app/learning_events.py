@@ -117,7 +117,13 @@ def _read_raw_events(days: int, path: str | None = None) -> list[dict]:
                 except json.JSONDecodeError:
                     continue
                 ts = int(record.get("ts", 0) or 0)
-                if ts >= since:
+                # V2.15d.3 (docs/event-execution-context-isolation-v2.15d.3.md)
+                # - exclude synthetic/admin verification traffic from the
+                # learning-signal input. Missing execution_context means the
+                # record predates this field (V2.15d.2 and earlier) - treated
+                # as CUSTOMER since /events had no non-customer path before
+                # this sprint.
+                if ts >= since and record.get("execution_context") in (None, "CUSTOMER"):
                     events.append(record)
     except OSError:
         return []

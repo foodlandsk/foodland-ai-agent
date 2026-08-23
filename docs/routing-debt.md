@@ -341,6 +341,29 @@ korelovala frontend product-click/add-to-cart eventy s
 `FRONTEND_INTERACTION_CORRELATION_READY_CONFIRMED_CART_TEST_LIMITED`;
 V2.15e zostáva mimo automatického spustenia.
 
+## V2.15d.3 poznámka — historické syntetické eventy + store-location dáta
+
+**Historický artefakt zaznamenaný (Section 6 V2.15d.3 zadania)**: V2.15d.2
+produkčná verifikácia vytvorila 2 syntetické `/events` záznamy (`event_type`
+`add_to_cart_attempt`/`add_to_cart_confirmed`, `product_sku=SMOKE-TEST-SKU`,
+`session_id=live-v215d2-verify`) v produkčnom `events.jsonl`, keďže `/events`
+vtedy nemal execution-context izoláciu. **Klasifikácia**:
+`HISTORICAL_SYNTHETIC_EVENTS_LEFT_AS_DOCUMENTED_ARTIFACT` — žiadny
+deštruktívny prepis JSONL; dôkazmi podložené, že tieto 2 záznamy sú UŽ
+štrukturálne neviditeľné pre `app.behavioral`/`app.fbt`/`app.learning_events`
+(rozpoznávajú len legacy `"add_to_cart"` literál, nie tieto 2 nové V2.15d.2
+event_type reťazce). V2.15d.3 (`docs/event-execution-context-isolation-v2.15d.3.md`)
+uzatvára medzeru pre BUDÚCU prevádzku — `/events` teraz má rovnaký
+server-verifikovaný execution-context mechanizmus ako `/chat`.
+
+**STORE_LOCATION canonical data closure**: adresa aktualizovaná na
+autoritatívny tvar `Stará Vajnorská 3308/19, 831 04 Bratislava`
+(`data/knowledge.json`), kanonický Google Maps link
+`https://maps.app.goo.gl/3tFJ4P6w2pj88xAP8` teraz v PRVEJ odpovedi aj vo
+V2.15c follow-upe (jedna funkcia, žiadna duplicita). Žiadna zmena
+routovania — `tests/test_noncommerce_context_followup_v2_15c.py` a nový
+`tests/test_store_location_canonical_v2_15d_3.py` obe PASSED.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným

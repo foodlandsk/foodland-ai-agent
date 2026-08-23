@@ -3235,10 +3235,30 @@ def clear_user_memory(clear_request: MemoryClearRequest, request: Request) -> di
 
 
 @app.post("/events")
-def track_event(event_request: EventRequest, request: Request) -> dict:
+def track_event(
+    event_request: EventRequest,
+    request: Request,
+    x_admin_token: str | None = Header(default=None),
+    x_execution_context: str | None = Header(default=None),
+) -> dict:
+    # V2.15d.3 (docs/event-execution-context-isolation-v2.15d.3.md) -
+    # /events previously had NO execution-context mechanism at all
+    # (unlike /chat), so a live-verification smoke event was
+    # indistinguishable from real customer telemetry once durably
+    # logged. Reuses the EXACT same server-side-verified resolution as
+    # /chat (app.admin_auth token scope check) - a client cannot claim
+    # ADMIN_TEST merely by sending the header; it fails closed to
+    # CUSTOMER without a valid OPERATIONS/PROMOTION-scope admin token.
     client_key = get_client_key(request)
-    enforce_event_rate_limit(client_key)
-    log_event(event_request, client_key)
+    event_execution_context = _customer_context()
+    if (
+        x_execution_context == "ADMIN_TEST"
+        and _resolve_admin_token_scope(x_admin_token) in (_SCOPE_OPERATIONS, _SCOPE_PROMOTION)
+    ):
+        event_execution_context = _admin_test_context()
+    if event_execution_context.apply_rate_limit:
+        enforce_event_rate_limit(client_key)
+    log_event(event_request, client_key, execution_context=event_execution_context)
     return {"ok": True}
 
 
@@ -4388,6 +4408,17 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         # falling through to an unrelated product search - see
         # app.session_state.get_last_informational_question().
         _set_last_informational_question(memory, chat_request.message)
+        # V2.15d.3 (STORE_LOCATION canonical data closure) - the
+        # customer should not need a second turn just to receive the
+        # Maps link, so the SAME function that builds it for the V2.15c
+        # follow-up path also runs here, on the very first answer. No
+        # link is baked into data/knowledge.json itself, so there is a
+        # single place (_build_maps_link_from_faq_answer) deciding
+        # whether/which link to attach - never duplicated between the
+        # initial answer and a later follow-up recall of it.
+        _initial_maps_link = _build_maps_link_from_faq_answer(faq_answer)
+        if _initial_maps_link:
+            faq_answer = f"{faq_answer}\n\n{_initial_maps_link}"
         # V2.13d: verbatim code motion into app.workflow_executor.
         return _execute_faq(
             chat_request=chat_request,
@@ -6800,7 +6831,15 @@ def log_backend_error(event: str, detail: str) -> None:
         logger.error("Failed to log backend error: %s", exc, exc_info=True)
 
 
-def log_event(event_request: EventRequest, client_key: str) -> None:
+def log_event(event_request: EventRequest, client_key: str, execution_context: _ExecutionContext | None = None) -> None:
+    # V2.15d.3 - EVALUATION/LEARNING/SHADOW never reach this function
+    # from the real /events HTTP route (that route only ever resolves
+    # CUSTOMER or ADMIN_TEST), but internal callers could in principle
+    # pass one, so this stays honestly gated the same way
+    # log_recommendation_decision()'s should_log_decision already is:
+    # never durably logged for EVALUATION/LEARNING/SHADOW.
+    if execution_context is not None and execution_context.mode.value not in ("CUSTOMER", "ADMIN_TEST"):
+        return
     path = Path(os.getenv("EVENTS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "events.jsonl")))
     salt = os.getenv("ANALYTICS_SALT", "")
     record = {
@@ -6819,6 +6858,16 @@ def log_event(event_request: EventRequest, client_key: str) -> None:
         "interaction_id": event_request.interaction_id,
         "decision_id": event_request.decision_id,
         "event_id": event_request.event_id,
+        # V2.15d.3 (docs/event-execution-context-isolation-v2.15d.3.md)
+        # - server-RESOLVED context (never trusts a client-supplied
+        # field directly), so a synthetic/admin verification event can
+        # never be mistaken for genuine customer behavior by any
+        # downstream reader that checks this field. None/missing means
+        # the record predates this mechanism (V2.15d.2 and earlier) -
+        # downstream readers treat that the same as CUSTOMER, since
+        # /events had no non-customer path at all before this sprint.
+        "execution_context": execution_context.mode.value if execution_context is not None else None,
+        "learning_eligible": execution_context.is_customer_traffic if execution_context is not None else True,
     }
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -7272,23 +7321,40 @@ def is_faq_intent(message: str) -> bool:
 
 
 _ADDRESS_PATTERN = re.compile(
-    r"((?:[A-ZÁ\u00C4ČĎÉÍ\u0139ĽŇÓÔŔŠŤÚÝŽ][\wáäčďéíĺľňóôŕšťúýž]*\s){1,3}\d+[a-zA-Z]?,\s*\d{3}\s?\d{2}\s+"
+    r"((?:[A-ZÁ\u00C4ČĎÉÍ\u0139ĽŇÓÔŔŠŤÚÝŽ][\wáäčďéíĺľňóôŕšťúýž]*\s){1,3}\d+(?:/\d+)?[a-zA-Z]?,\s*\d{3}\s?\d{2}\s+"
     r"[A-ZÁ\u00C4ČĎÉÍ\u0139ĽŇÓÔŔŠŤÚÝŽ][\wáäčďéíĺľňóôŕšťúýž]+)"
 )
 
 
+# V2.15d.3 (docs/event-execution-context-isolation-v2.15d.3.md,
+# STORE_LOCATION canonical data closure subtask) - authoritative,
+# product-owner-supplied Foodland store address and Google Maps
+# destination. Preferred over a generated maps.google.com/search url
+# whenever the extracted address matches this exact canonical address
+# - the generated search-url fallback remains for any OTHER address
+# text this function might ever be asked to build a link for.
+_FOODLAND_CANONICAL_ADDRESS = "Stara Vajnorska 3308/19, 831 04 Bratislava"
+_FOODLAND_CANONICAL_MAPS_URL = "https://maps.app.goo.gl/3tFJ4P6w2pj88xAP8"
+
+
 def _build_maps_link_from_faq_answer(answer_text: str) -> str | None:
     """V2.15c (rt0014, closure spec Section 16) - constructs a Google
-    Maps SEARCH url (not a fabricated place ID/coordinate/route) from a
-    real, already-grounded street address substring extracted directly
-    from the FAQ answer text itself (data/knowledge.json), so a link is
-    never generated for an FAQ answer that has no address in it, and it
-    always reflects whatever address the knowledge base actually says
-    today rather than a separately hardcoded copy that could drift."""
+    Maps link from a real, already-grounded street address substring
+    extracted directly from the FAQ answer text itself (data/
+    knowledge.json), so a link is never generated for an FAQ answer
+    that has no address in it. Returns the authoritative canonical
+    Foodland Google Maps URL (V2.15d.3) when the extracted address is
+    the Foodland store's own address; otherwise falls back to a
+    generated Maps SEARCH url (never a fabricated place ID/coordinate/
+    route) that always reflects whatever the knowledge base currently
+    says, rather than a separately hardcoded copy that could drift."""
     match = _ADDRESS_PATTERN.search(answer_text)
     if not match:
         return None
-    return "https://www.google.com/maps/search/?api=1&query=" + quote_plus(match.group(1).strip())
+    extracted_address = match.group(1).strip()
+    if normalize(extracted_address) == normalize(_FOODLAND_CANONICAL_ADDRESS):
+        return _FOODLAND_CANONICAL_MAPS_URL
+    return "https://www.google.com/maps/search/?api=1&query=" + quote_plus(extracted_address)
 
 
 FAQ_CATEGORY_MARKERS = {

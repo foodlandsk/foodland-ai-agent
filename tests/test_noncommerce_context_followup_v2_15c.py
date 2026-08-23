@@ -76,7 +76,11 @@ def _chat(message: str, session_id: str, limit: int = 8) -> dict:
 
 STORE_QUESTION = "Kde sa nachadza kamenna predajna?"
 MAPS_FOLLOWUP = "Prilož mi Google link na adresu."
-ADDRESS_FRAGMENT = "Stará Vajnorská 19"
+# V2.15d.3 (STORE_LOCATION canonical data closure): authoritative,
+# product-owner-supplied address/Maps URL - see docs/event-execution-
+# context-isolation-v2.15d.3.md and app.main._FOODLAND_CANONICAL_ADDRESS.
+ADDRESS_FRAGMENT = "Stará Vajnorská 3308/19"
+CANONICAL_MAPS_URL = "https://maps.app.goo.gl/3tFJ4P6w2pj88xAP8"
 MAPS_URL_PREFIX = "https://www.google.com/maps/search/?api=1&query="
 
 
@@ -95,7 +99,7 @@ class TestRt0014PrimaryCase:
         assert r.get("intent") == "faq"
         assert r.get("products") == []
         assert ADDRESS_FRAGMENT in r.get("answer", "")
-        assert MAPS_URL_PREFIX in r.get("answer", "")
+        assert CANONICAL_MAPS_URL in r.get("answer", "")
 
 
 class TestRt0014Generalization:
@@ -122,7 +126,7 @@ class TestRt0014Generalization:
         _chat(STORE_QUESTION, sid)
         r = _chat("Das mi link na adresu?", sid)
         assert r.get("intent") == "faq"
-        assert MAPS_URL_PREFIX in r.get("answer", "")
+        assert CANONICAL_MAPS_URL in r.get("answer", "")
 
 
 class TestRt0014MapsLinkGrounding:
@@ -130,11 +134,16 @@ class TestRt0014MapsLinkGrounding:
     address text - never fabricated - and must be absent when the
     recalled topic has no address in it at all."""
 
-    def test_link_contains_urlencoded_real_address(self):
+    def test_link_is_the_authoritative_canonical_foodland_maps_url(self):
+        # V2.15d.3: the Foodland store's own address resolves to the
+        # authoritative, product-owner-supplied canonical Maps URL, not
+        # a generated/percent-encoded search URL (Section "CANONICAL
+        # MAPS LINK POLICY" of the closure spec).
         sid = "rt0014-grounding-address"
         _chat(STORE_QUESTION, sid)
         r = _chat(MAPS_FOLLOWUP, sid)
-        assert "Star%C3%A1+Vajnorsk%C3%A1+19" in r.get("answer", "")
+        assert CANONICAL_MAPS_URL in r.get("answer", "")
+        assert "google.com/maps/search" not in r.get("answer", "")
 
     def test_no_link_fabricated_when_recalled_topic_has_no_address(self):
         # Delivery FAQ answer contains no street address - the follow-up
