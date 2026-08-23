@@ -1907,6 +1907,23 @@ je `V2_15D_2_GO_WITH_LIMITATIONS` — teraz bezpečne recenzovateľná cez
 CI gate. V2.15e (Learning Candidate Pipeline) zostáva
 `STOP_CORRELATION_INSUFFICIENT`, nezačína sa automaticky.
 
+### Sprint V2.15d.2 – Frontend Recommendation Interaction & Confirmed Add-to-Cart Correlation
+
+Uzatvorená. `app/widget.js` teraz koreluje `click`/`add_to_cart_attempt`/
+`add_to_cart`/`add_to_cart_confirmed` s `interaction_id`/`decision_id`
+(stash-on-product mechanizmus, žiadna zmena signatúr/control flow).
+`add_to_cart_confirmed` fireuje LEN pri autoritatívnom host-potvrdení
+(nikdy z fallback-timera) — kritický architektonický nález a fix v
+`submitRealAddToCartForm()`. Backend: `EventRequest.event_type`
+rozšírený aditívne o oba nové literály, legacy `add_to_cart` nezmenené.
+Stav: **`FRONTEND_INTERACTION_CORRELATION_READY_CONFIRMED_CART_TEST_LIMITED`**.
+Detail: `docs/frontend-recommendation-correlation-v2.15d.2.md`.
+
+**Ďalší krok:** V2.15e zostáva mimo automatického spustenia — confirmed-
+cart live-test limitácia a chýbajúci purchase signál patria do
+samostatnej, budúcej sprinty predtým, než sa formálne posúdi
+pripravenosť datasetu.
+
 **Ďalší krok:** dashi `FamilyRule` autorstvo a domáca-ramen-rezance
 rola z `wheat_noodles` sú konkrétne, dôkazmi podložené budúce kroky
 (oba by vyžadovali vlastný blast-radius audit) – žiadny z nich

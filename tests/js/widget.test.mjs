@@ -1,11 +1,14 @@
-// tests/js/widget.test.mjs  -  V2.15d.1: frontend widget test tooling
-// foundation (docs/frontend-widget-test-foundation-v2.15d.1.md).
-//
-// This is NOT the V2.15d.2 instrumentation sprint. It adds zero
-// production telemetry and makes zero edits to app/widget.js. Its only
-// job is to make a FUTURE edit to app/widget.js safely reviewable: a
-// syntax error, or a new backend endpoint added without deliberate
-// review, now fails CI instead of silently reaching production.
+// tests/js/widget.test.mjs  -  V2.15d.1 test tooling foundation
+// (docs/frontend-widget-test-foundation-v2.15d.1.md), extended by
+// V2.15d.2 (docs/frontend-recommendation-correlation-v2.15d.2.md) to
+// cover the new interaction_id/decision_id correlation and the
+// PRODUCT_CLICK / ADD_TO_CART_ATTEMPT / ADD_TO_CART_CONFIRMED semantic
+// split. All checks here are STATIC source inspection - no Node.js is
+// available on the local dev machine that authored this file, so every
+// assertion is regex/string-based against the real app/widget.js
+// source rather than a runtime DOM execution. CI (Node 20) is the
+// authoritative oracle; every pattern below was cross-validated with
+// Python's `re` against the actual file before being committed.
 //
 // Uses only Node's built-in test runner (node:test) and standard
 // library modules - no package.json, no external npm dependency, per
@@ -122,13 +125,98 @@ test("app/widget.js's fetch() calls target exactly the known set of literal URLs
   assert.deepEqual(fetchLiteralUrls, ["https://www.foodland.sk/nakupny-kosik/"]);
 });
 
-test("app/widget.js does not reference interaction_id/decision_id (V2.15d.1 introduces no frontend correlation yet)", () => {
-  // Hard scope boundary (Section 1/22/23 of the closure spec): this
-  // sprint is tooling-only. If a future edit starts threading
-  // interaction_id/decision_id into widget.js, that is V2.15d.2's job,
-  // not this sprint's - this assertion documents the current, honest
-  // state and will need deliberate updating when V2.15d.2 begins.
+// ---------------------------------------------------------------------
+// V2.15d.2 - decision id resolution (Section 13/14 of the closure spec)
+// ---------------------------------------------------------------------
+
+test("decisionId resolution picks whichever capability-specific field the backend returned, never fabricates one", () => {
   const source = readWidgetSource();
-  assert.equal(source.includes("interaction_id"), false);
-  assert.equal(source.includes("decision_id"), false);
+  assert.ok(
+    source.includes(
+      "data.comparison_decision_id || data.basket_decision_id || data.use_case_advice_decision_id || null"
+    ),
+    "decisionId must fall back to null for ordinary product search (Section 41) - never invent an id"
+  );
+});
+
+test("product_id contract unchanged: fireEvent still keys product identity off product.id (Section 17)", () => {
+  const source = readWidgetSource();
+  assert.ok(source.includes("product_sku: product.id"));
+});
+
+// ---------------------------------------------------------------------
+// PRODUCT_CLICK / ADD_TO_CART_ATTEMPT / ADD_TO_CART_CONFIRMED
+// (Section 18-23 - these must remain three distinct, non-conflated events)
+// ---------------------------------------------------------------------
+
+test("the three cart-lifecycle event types are all distinct string literals in source", () => {
+  const source = readWidgetSource();
+  assert.ok(source.includes('"click"'));
+  assert.ok(source.includes('"add_to_cart_attempt"'));
+  assert.ok(source.includes('"add_to_cart_confirmed"'));
+});
+
+test("legacy \"add_to_cart\" event type is preserved unchanged (backward compat with app.fbt/app.behavioral/app.learning_signals)", () => {
+  const source = readWidgetSource();
+  assert.ok(source.includes('event_type: "add_to_cart"'));
+});
+
+test("ADD_TO_CART_ATTEMPT fires before the cart-mutation attempt begins (Section 20 - initiation, not outcome)", () => {
+  const source = readWidgetSource();
+  const attemptIdx = source.indexOf('event_type: "add_to_cart_attempt"');
+  const tryIdx = source.indexOf("try {", attemptIdx);
+  assert.ok(attemptIdx > -1 && tryIdx > attemptIdx, "add_to_cart_attempt must fire before the try{} that calls addToCart()");
+});
+
+test("ADD_TO_CART_CONFIRMED is gated on the authoritative flag, never fired unconditionally (Section 21-23)", () => {
+  const source = readWidgetSource();
+  const confirmedBlockMatch = source.match(/if \(cartResult && cartResult\.attempted && cartResult\.authoritative\) \{\s*fireEvent\(\{ event_type: "add_to_cart_confirmed"/);
+  assert.ok(confirmedBlockMatch, "add_to_cart_confirmed must be inside an `if (... .authoritative)` guard");
+});
+
+test("the fallback timeout path resolves with authoritative=false, the real XHR-confirmed path resolves with authoritative=true", () => {
+  // Section 22/23 - the highest-risk semantic point of this sprint.
+  // finish(null, false) is the fallback-timeout guess; finish(null, true)
+  // is reached ONLY inside the intercepted XHR's `data.success` branch.
+  const source = readWidgetSource();
+  assert.ok(source.includes("finish(null, false)"), "fallback timeout must resolve non-authoritative");
+  assert.ok(source.includes("finish(null, true)"), "real host confirmation must resolve authoritative");
+  const successBranch = source.match(/if \(data && data\.success\) finish\(null, true\);/);
+  assert.ok(successBranch, "authoritative=true must be directly gated on the host's own data.success flag");
+});
+
+test("addToCart() returns {attempted:false} when the cart mechanism was never even initiated (off-site/no product link)", () => {
+  const source = readWidgetSource();
+  assert.ok(source.includes("return { attempted: false, authoritative: false };"));
+});
+
+test("confirmed fireEvent call textually follows the awaited addToCart() call (causal ordering, Section 61)", () => {
+  const source = readWidgetSource();
+  const awaitIdx = source.indexOf("await addToCart(product)");
+  const confirmedIdx = source.indexOf('event_type: "add_to_cart_confirmed"');
+  assert.ok(awaitIdx > -1 && confirmedIdx > awaitIdx);
+});
+
+// ---------------------------------------------------------------------
+// Honesty / non-fabrication (Section 1/2/24/39)
+// ---------------------------------------------------------------------
+
+test("no PURCHASE/order-confirmation event is fabricated anywhere in source", () => {
+  const source = readWidgetSource();
+  assert.equal(/purchase|order_confirmed|order_complete/i.test(source), false);
+});
+
+test("no learning/ranking/promotion call was introduced (Sections 3/32/38 hard freeze)", () => {
+  const source = readWidgetSource();
+  assert.equal(/AUTO_PROMOTION|learning_lifecycle|ranking_optimizer|ranking_config/.test(source), false);
+});
+
+// ---------------------------------------------------------------------
+// Telemetry failure isolation (Section 29 - unchanged from V2.15d.1 baseline)
+// ---------------------------------------------------------------------
+
+test("fireEvent() still swallows every failure mode (sync throw + fetch rejection) - commerce must never depend on telemetry", () => {
+  const source = readWidgetSource();
+  assert.match(source, /function fireEvent\(payload\) \{\s*if \(demoMode\) return;\s*try \{/);
+  assert.ok(source.includes("}).catch(function () {});"), "fetch rejection must still be silently swallowed");
 });

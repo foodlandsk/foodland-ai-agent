@@ -272,6 +272,18 @@ class EventRequest(BaseModel):
         "impression",
         "click",
         "add_to_cart",
+        # V2.15d.2 (docs/frontend-recommendation-correlation-v2.15d.2.md)
+        # - additive, distinct from the legacy "add_to_cart" above
+        # (kept unchanged for backward compatibility with
+        # app.fbt/app.behavioral/app.learning_signals, which all key
+        # off that exact literal string). "add_to_cart_attempt" fires
+        # when the customer initiates the cart-add mechanism;
+        # "add_to_cart_confirmed" fires ONLY when the host site's own
+        # add-to-cart AJAX call authoritatively confirmed success (never
+        # from the widget's own fallback-timeout guess) - see
+        # app/widget.js submitRealAddToCartForm()'s `authoritative` flag.
+        "add_to_cart_attempt",
+        "add_to_cart_confirmed",
         "no_result",
         "autocomplete_select",
         "search_submit",
@@ -284,14 +296,11 @@ class EventRequest(BaseModel):
     position: int | None = Field(default=None, ge=0, le=1000)
     rating: int | None = Field(default=None, ge=-1, le=1)
     # V2.15d (docs/recommendation-conversion-correlation-v2.15d.md) -
-    # additive, optional correlation fields so a future frontend
-    # instrumentation sprint can thread interaction_id/decision_id
-    # through to a click/add_to_cart event without a breaking schema
-    # change. app/widget.js does NOT populate these yet (Section 19-21
-    # of the V2.15d closure spec - no JS test/verification tooling is
-    # available in this environment to safely edit the customer-facing
-    # widget, classified NOT_SAFE_TO_IMPLEMENT_THIS_SPRINT). Existing
-    # callers that omit them are completely unaffected.
+    # additive, optional correlation fields, additive schema evolution.
+    # Existing callers that omit them are completely unaffected.
+    # V2.15d.2 (docs/frontend-recommendation-correlation-v2.15d.2.md):
+    # app/widget.js now populates interaction_id/decision_id on
+    # click/add_to_cart*/impression/no_result events.
     interaction_id: str | None = Field(default=None, max_length=32)
     decision_id: str | None = Field(default=None, max_length=32)
     event_id: str | None = Field(default=None, max_length=64)

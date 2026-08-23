@@ -330,6 +330,17 @@ routing/backend zmena. Stav: V2.15d (backend decision logging) =
 V2.15d.2 (frontend korelácia) = `NOT STARTED`; V2.15e = `STOPPED`
 pending frontend correlation.
 
+## V2.15d.2 poznámka — žiadna zmena routovania
+
+V2.15d.2 (`docs/frontend-recommendation-correlation-v2.15d.2.md`)
+korelovala frontend product-click/add-to-cart eventy s
+`interaction_id`/`decision_id` a rozlíšila `add_to_cart_attempt` od
+`add_to_cart_confirmed` (autoritatívne, nie fallback-hádané) — nemenila
+žiadnu routing/intent/retrieval logiku. Stav: V2.15d.1 (JS tooling) =
+`DONE`; V2.15d.2 (frontend korelácia) =
+`FRONTEND_INTERACTION_CORRELATION_READY_CONFIRMED_CART_TEST_LIMITED`;
+V2.15e zostáva mimo automatického spustenia.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným

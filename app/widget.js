@@ -1546,12 +1546,16 @@
 
       let settled = false;
       let clicked = false;
-      function finish(err) {
+      function finish(err, authoritative) {
         if (settled) return;
         settled = true;
         window.clearTimeout(hardTimeout);
         iframe.remove();
-        if (err) reject(err); else resolve();
+        // V2.15d.2: `authoritative` distinguishes a real host-confirmed
+        // success from the rare fallback-timeout guess below, so the
+        // caller can honestly decide whether ADD_TO_CART_CONFIRMED may
+        // ever be fired for this resolution.
+        if (err) reject(err); else resolve({ authoritative: Boolean(authoritative) });
       }
 
       const hardTimeout = window.setTimeout(function () {
@@ -1588,7 +1592,7 @@
                     this.addEventListener("load", function () {
                       try {
                         const data = JSON.parse(this.responseText);
-                        if (data && data.success) finish();
+                        if (data && data.success) finish(null, true);
                         else finish(new Error("addToCart reported failure"));
                       } catch (e) {
                         finish(e);
@@ -1601,7 +1605,10 @@
                   return OrigOpen.apply(this, arguments);
                 };
               } catch (e) {
-                window.setTimeout(function () { finish(); }, 2500);
+                // V2.15d.2: this fallback is a guess, never a confirmed
+                // success - authoritative stays false so the caller
+                // cannot mistake it for a real host confirmation.
+                window.setTimeout(function () { finish(null, false); }, 2500);
               }
               btn.click();
               return;
@@ -1638,7 +1645,7 @@
 
     if (!isOnFoodland || !productLink) {
       window.open(productLink || "https://www.foodland.sk/", "_blank", "noopener");
-      return;
+      return { attempted: false, authoritative: false };
     }
 
     // The site's add-to-cart AJAX call needs a "description" string (SKU/EAN/
@@ -1650,10 +1657,14 @@
     //
     // submitRealAddToCartForm() only resolves once the site's own AJAX call
     // has confirmed success (or rejects on an explicit failure/timeout), so
-    // there's no need to compare cart counts before/after or retry here.
-    await submitRealAddToCartForm(productLink);
+    // there's no need to compare cart counts before/after or retry here. Its
+    // resolved `authoritative` flag (V2.15d.2) tells the caller whether this
+    // was a real host-confirmed success or the rare fallback-timeout guess -
+    // only the former may ever be reported as ADD_TO_CART_CONFIRMED.
+    const confirmResult = await submitRealAddToCartForm(productLink);
     const after = await getCartState();
     updateSiteCartDisplay(after);
+    return { attempted: true, authoritative: Boolean(confirmResult && confirmResult.authoritative) };
   }
 
   function addProducts(products, query, hasServerMore) {
@@ -1691,7 +1702,7 @@
       const actionsDiv = card.querySelector(".fl-ai-product-actions");
       const viewLink = card.querySelector(".fl-ai-product-link");
       viewLink.addEventListener("click", function () {
-        fireEvent({ event_type: "click", product_sku: product.id, query: query || null, position: position });
+        fireEvent({ event_type: "click", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null });
       });
       const cartBtn = document.createElement("button");
       cartBtn.type = "button";
@@ -1700,12 +1711,22 @@
       cartBtn.addEventListener("click", async function () {
         cartBtn.disabled = true;
         cartBtn.textContent = "Pridávam...";
-        fireEvent({ event_type: "click", product_sku: product.id, query: query || null, position: position });
+        fireEvent({ event_type: "click", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null });
+        // V2.15d.2 - the customer initiated the cart-add mechanism. This
+        // does NOT mean the cart mutation succeeded - see "add_to_cart"
+        // (unchanged, fired below only on believed success, kept for
+        // backward compatibility with app.fbt/app.behavioral/
+        // app.learning_signals) and "add_to_cart_confirmed" (fired only
+        // when the host site's own AJAX call authoritatively confirmed it).
+        fireEvent({ event_type: "add_to_cart_attempt", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null });
         try {
-          await addToCart(product);
+          const cartResult = await addToCart(product);
           cartBtn.textContent = "✓ Pridané";
           cartBtn.classList.add("is-added");
-          fireEvent({ event_type: "add_to_cart", product_sku: product.id, query: query || null, position: position });
+          fireEvent({ event_type: "add_to_cart", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null });
+          if (cartResult && cartResult.attempted && cartResult.authoritative) {
+            fireEvent({ event_type: "add_to_cart_confirmed", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null });
+          }
         } catch (e) {
           cartBtn.textContent = "Do košíka";
           cartBtn.disabled = false;
@@ -1987,6 +2008,13 @@
     try {
       const data = await askBackend(text);
       updateNotice(data);
+      // V2.15d.2 (docs/frontend-recommendation-correlation-v2.15d.2.md) -
+      // the backend exposes a CAPABILITY-SPECIFIC decision id field
+      // (comparison_decision_id/basket_decision_id/use_case_advice_decision_id),
+      // never more than one at once since _chat_impl() returns early from
+      // whichever single workflow resolved this turn - this only picks
+      // whichever one is present, it never fabricates an id of its own.
+      const decisionId = data.comparison_decision_id || data.basket_decision_id || data.use_case_advice_decision_id || null;
       const hasProducts = Array.isArray(data.products) && data.products.length > 0;
       const hasRecipes = Array.isArray(data.recipes) && data.recipes.length > 0;
       const hasArticles = Array.isArray(data.articles) && data.articles.length > 0;
@@ -1998,7 +2026,7 @@
       // correct shipping FAQ answer but fired no_result on every occurrence).
       const hasAnswer = data.answered === true;
       if (!hasProducts && !hasRecipes && !hasArticles && !hasAnswer) {
-        fireEvent({ event_type: "no_result", query: text });
+        fireEvent({ event_type: "no_result", query: text, interaction_id: data.interaction_id || null });
       }
       loading.innerHTML = renderText(
         cleanAnswerText(
@@ -2013,16 +2041,36 @@
       addRecipes(data.recipes);
       addArticles(data.articles);
       if (data.intent !== "recipe") {
+        // V2.15d.2 - stash correlation metadata directly onto each product
+        // object BEFORE rendering, since renderCard()/its click handlers
+        // only ever receive the individual product (plus plain query/
+        // position), never the parent `data` response - this is the
+        // smallest change that makes interaction_id/decision_id reachable
+        // from a product click without threading new arguments through
+        // addProducts()/renderCard().
+        if (Array.isArray(data.products)) {
+          data.products.forEach(function (p) {
+            p.interaction_id = data.interaction_id || null;
+            p.decision_id = decisionId;
+          });
+        }
         addProducts(data.products, text, Boolean(data.has_more));
         if (Array.isArray(data.products) && data.products.length > 0) {
           fireEvent({
             event_type: "impression",
             query: text,
             product_skus: data.products.map(function (p) { return p.id; }).filter(Boolean),
+            interaction_id: data.interaction_id || null,
+            decision_id: decisionId,
           });
         }
         if (!Array.isArray(data.products) || data.products.length === 0) {
-          addProducts(cartCandidatesToProducts(data.cart_candidates), text);
+          const candidateProducts = cartCandidatesToProducts(data.cart_candidates);
+          candidateProducts.forEach(function (p) {
+            p.interaction_id = data.interaction_id || null;
+            p.decision_id = decisionId;
+          });
+          addProducts(candidateProducts, text);
         }
         addMissingIngredients(data.missing_ingredients || data.shopping_list?.missing_ingredients);
       }
