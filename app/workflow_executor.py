@@ -574,6 +574,9 @@ def execute_comparison(
     session_id: str,
     query_language: str,
     emit_customer_analytics: bool,
+    interaction_id: str = "",
+    should_log_decision: bool = False,
+    learning_eligible: bool = False,
 ) -> WorkflowResult | None:
     """V2.14b - docs/recommendation-comparison-v2.14b.md. Activates the
     V2.7 COMPARISON workflow_id (app.workflow_registry), previously
@@ -657,6 +660,33 @@ def execute_comparison(
         m.log_question(
             chat_request.message, client_key, len(result_products), intent="product_comparison",
             session_id=session_id, primary_intent=_ci.primary_intent, subject=decision.state,
+            interaction_id=interaction_id,
+        )
+    # V2.15d (docs/recommendation-conversion-correlation-v2.15d.md) -
+    # durably persist the decision object alongside its evidence,
+    # closing the gap this same comment block flagged in V2.15b
+    # ("not yet persisted anywhere"). Gated on should_log_decision
+    # (True only for CUSTOMER/ADMIN_TEST, never EVALUATION/LEARNING/
+    # SHADOW - those run at test-suite scale and must not be written
+    # to disk on every call) - separate from emit_customer_analytics
+    # so an ADMIN_TEST live-verification smoke call can still produce
+    # a durable, honestly-tagged (learning_eligible=False) record.
+    if should_log_decision:
+        m.log_recommendation_decision(
+            interaction_id=interaction_id,
+            decision_id=_decision_id,
+            decision_type="comparison",
+            workflow_id="COMPARISON",
+            intent="product_comparison",
+            session_id=session_id,
+            client_key=client_key,
+            use_case=None,
+            state=decision.state,
+            candidate_product_ids=[p.get("id") for p in result_products if p.get("id")],
+            recommended_product_ids=[decision.winner_product_id] if decision.winner_product_id else [],
+            reason_codes=list(decision.reason_codes) if decision.reason_codes else [],
+            confidence=decision.confidence,
+            learning_eligible=learning_eligible,
         )
     return {
         "answer": answer_text,
@@ -686,6 +716,9 @@ def execute_use_case_advice(
     session_id: str,
     query_language: str,
     emit_customer_analytics: bool,
+    interaction_id: str = "",
+    should_log_decision: bool = False,
+    learning_eligible: bool = False,
 ) -> WorkflowResult | None:
     """V2.14c - docs/use-case-intelligence-v2.14c.md. Activates the V2.7
     USE_CASE_ADVICE workflow_id label (app.workflow_registry) as a NEW,
@@ -728,6 +761,25 @@ def execute_use_case_advice(
         m.log_question(
             chat_request.message, client_key, len(matched_products), intent="use_case_advice",
             session_id=session_id, primary_intent=_ci.primary_intent, subject=f"{decision.use_case}:{decision.state}",
+            interaction_id=interaction_id,
+        )
+    # V2.15d - see execute_comparison()'s identical durable-logging comment.
+    if should_log_decision:
+        m.log_recommendation_decision(
+            interaction_id=interaction_id,
+            decision_id=_decision_id,
+            decision_type="use_case_advice",
+            workflow_id="USE_CASE_ADVICE",
+            intent="use_case_advice",
+            session_id=session_id,
+            client_key=client_key,
+            use_case=decision.use_case,
+            state=decision.state,
+            candidate_product_ids=list(decision.candidate_product_ids),
+            recommended_product_ids=[p.get("id") for p in matched_products if p.get("id")],
+            reason_codes=[decision.reason] if decision.reason else [],
+            confidence=decision.confidence,
+            learning_eligible=learning_eligible,
         )
     return {
         "answer": answer_text,
@@ -758,6 +810,9 @@ def execute_basket_completion(
     session_id,
     query_language,
     emit_customer_analytics,
+    interaction_id="",
+    should_log_decision=False,
+    learning_eligible=False,
 ):
     """V2.14e - docs/basket-completion-v2.14e.md. Activates the goal-
     oriented shopping/basket path for app.basket_completion.BASKET_V1_ELIGIBLE_USE_CASES
@@ -798,6 +853,25 @@ def execute_basket_completion(
         m.log_question(
             chat_request.message, client_key, len(matched_products), intent="basket_completion",
             session_id=session_id, primary_intent=_ci.primary_intent, subject=decision.use_case,
+            interaction_id=interaction_id,
+        )
+    # V2.15d - see execute_comparison()'s identical durable-logging comment.
+    if should_log_decision:
+        m.log_recommendation_decision(
+            interaction_id=interaction_id,
+            decision_id=_decision_id,
+            decision_type="basket_completion",
+            workflow_id="BASKET_COMPLETION",
+            intent="basket_completion",
+            session_id=session_id,
+            client_key=client_key,
+            use_case=decision.use_case,
+            state="FULLY_RESOLVED" if decision.fully_resolved else "PARTIALLY_RESOLVED",
+            candidate_product_ids=[pid for r in decision.roles for pid in r.alternative_product_ids],
+            recommended_product_ids=recommended_ids,
+            reason_codes=sorted({r.status for r in decision.roles}),
+            confidence=None,
+            learning_eligible=learning_eligible,
         )
     return {
         "answer": answer_text,

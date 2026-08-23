@@ -311,6 +311,14 @@ rt0013 permanentné kontroly overené nezmenené. Detail:
 `docs/noncommerce-context-followup-v2.15c.md`,
 `tests/test_noncommerce_context_followup_v2_15c.py`.
 
+## V2.15d poznámka — žiadna zmena routovania
+
+V2.15d (`docs/recommendation-conversion-correlation-v2.15d.md`) je čisto
+observabilitná sprinta (durable decision logging pre comparison/
+use_case_advice/basket_completion) — nemenila žiadnu routing/intent/
+retrieval logiku ani precedenciu. Zaznamenané tu len pre úplnosť
+sledovania sprintov; žiadny nový riadok v registri vyššie.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným

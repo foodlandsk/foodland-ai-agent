@@ -95,6 +95,7 @@ from app.ranking_config import CONFIG_DIR as _RANKING_PROFILE_DIR
 from app.ranking_config import is_active_profile_degraded as _ranking_profile_degraded
 from app.storage_paths import data_dir as _foodland_data_dir
 from app.storage_paths import is_data_dir_configured as _foodland_data_dir_configured
+from app.storage_paths import resolve_path as _resolve_storage_path
 from app.durable_storage import atomic_write_json as _atomic_write_json
 from app.admin_auth import require_admin_scope as _require_admin_scope
 from app.admin_auth import SCOPE_READ as _SCOPE_READ
@@ -282,6 +283,18 @@ class EventRequest(BaseModel):
     product_skus: list[str] | None = Field(default=None, max_length=50)
     position: int | None = Field(default=None, ge=0, le=1000)
     rating: int | None = Field(default=None, ge=-1, le=1)
+    # V2.15d (docs/recommendation-conversion-correlation-v2.15d.md) -
+    # additive, optional correlation fields so a future frontend
+    # instrumentation sprint can thread interaction_id/decision_id
+    # through to a click/add_to_cart event without a breaking schema
+    # change. app/widget.js does NOT populate these yet (Section 19-21
+    # of the V2.15d closure spec - no JS test/verification tooling is
+    # available in this environment to safely edit the customer-facing
+    # widget, classified NOT_SAFE_TO_IMPLEMENT_THIS_SPRINT). Existing
+    # callers that omit them are completely unaffected.
+    interaction_id: str | None = Field(default=None, max_length=32)
+    decision_id: str | None = Field(default=None, max_length=32)
+    event_id: str | None = Field(default=None, max_length=64)
 
 
 class ApproveCandidateRequest(BaseModel):
@@ -4432,6 +4445,9 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         session_id=session_id,
         query_language=query_language,
         emit_customer_analytics=execution_context.emit_customer_analytics,
+        interaction_id=interaction_id or "",
+        should_log_decision=execution_context.mode.value in ("CUSTOMER", "ADMIN_TEST"),
+        learning_eligible=execution_context.is_customer_traffic,
     )
     if _comparison_result is not None:
         return _comparison_result
@@ -4457,6 +4473,9 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         session_id=session_id,
         query_language=query_language,
         emit_customer_analytics=execution_context.emit_customer_analytics,
+        interaction_id=interaction_id or "",
+        should_log_decision=execution_context.mode.value in ("CUSTOMER", "ADMIN_TEST"),
+        learning_eligible=execution_context.is_customer_traffic,
     )
     if _use_case_advice_result is not None:
         return _use_case_advice_result
@@ -4484,6 +4503,9 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         session_id=session_id,
         query_language=query_language,
         emit_customer_analytics=execution_context.emit_customer_analytics,
+        interaction_id=interaction_id or "",
+        should_log_decision=execution_context.mode.value in ("CUSTOMER", "ADMIN_TEST"),
+        learning_eligible=execution_context.is_customer_traffic,
     )
     if _basket_completion_result is not None:
         return _basket_completion_result
@@ -6782,6 +6804,12 @@ def log_event(event_request: EventRequest, client_key: str) -> None:
         "product_skus": event_request.product_skus[:50] if event_request.product_skus else None,
         "position": event_request.position,
         "rating": event_request.rating,
+        # V2.15d: additive, optional - None for every pre-V2.15d
+        # event and for every current app/widget.js submission (it
+        # does not populate these yet, see EventRequest above).
+        "interaction_id": event_request.interaction_id,
+        "decision_id": event_request.decision_id,
+        "event_id": event_request.event_id,
     }
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -6789,6 +6817,67 @@ def log_event(event_request: EventRequest, client_key: str) -> None:
             file.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception as exc:
         logger.error("Failed to log event: %s", exc, exc_info=True)
+
+
+def log_recommendation_decision(
+    *,
+    interaction_id: str,
+    decision_id: str,
+    decision_type: str,
+    workflow_id: str,
+    intent: str,
+    session_id: str,
+    client_key: str,
+    use_case: str | None,
+    state: str | None,
+    candidate_product_ids: list,
+    recommended_product_ids: list,
+    reason_codes: list,
+    confidence: str | None,
+    learning_eligible: bool,
+) -> None:
+    """V2.15d (docs/recommendation-conversion-correlation-v2.15d.md) -
+    durable, session-safe log of a recommendation DECISION object
+    (comparison/use_case_advice/basket_completion), correlating
+    interaction_id + decision_id + candidate/recommended product ids +
+    reason_codes/confidence with the execution context that produced
+    it. This is a SEPARATE stream from question_analytics.jsonl (which
+    stays customer-only, unchanged) - callers here also log for
+    ADMIN_TEST traffic (should_log_decision gate in app.workflow_executor)
+    so a live production smoke test can be read back durably, but every
+    record is explicitly tagged with learning_eligible=False unless the
+    traffic was genuine CUSTOMER traffic - no event becomes a training
+    label merely by existing here (Section 32 of the closure spec).
+    This function NEVER interprets clicks/impressions/reformulation as
+    preference - it only records the decision object itself, which is
+    already fully computed and returned to the customer by the time
+    this is called. Best-effort: any failure here is caught and must
+    never break the customer-facing response (Section 44/45)."""
+    try:
+        path = _resolve_storage_path("RECOMMENDATION_DECISIONS_LOG_PATH", "recommendation_decisions.jsonl")
+        salt = os.getenv("ANALYTICS_SALT", "")
+        record = {
+            "ts": int(time.time()),
+            "interaction_id": interaction_id or "",
+            "decision_id": decision_id,
+            "decision_type": decision_type,
+            "workflow_id": workflow_id,
+            "intent": intent,
+            "session_id": session_id,
+            "client_hash": hashlib.sha256(f"{salt}:{client_key}".encode("utf-8")).hexdigest()[:24],
+            "use_case": use_case,
+            "state": state,
+            "candidate_product_ids": list(candidate_product_ids or [])[:50],
+            "recommended_product_ids": list(recommended_product_ids or [])[:50],
+            "reason_codes": list(reason_codes or [])[:20],
+            "confidence": confidence,
+            "learning_eligible": learning_eligible,
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as file:
+            file.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as exc:
+        logger.error("Failed to log recommendation decision: %s", exc, exc_info=True)
 
 
 
