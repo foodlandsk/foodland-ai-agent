@@ -186,6 +186,9 @@ from app.session_state import detect_size_removal as _detect_size_removal
 from app.session_state import detect_brand_removal as _detect_brand_removal
 from app.session_state import detect_price_direction as _detect_price_direction
 from app.session_state import looks_like_recipe_followup as _looks_like_recipe_followup
+from app.session_state import get_last_informational_question as _get_last_informational_question
+from app.session_state import set_last_informational_question as _set_last_informational_question
+from app.session_state import looks_like_location_reference_followup as _looks_like_location_reference_followup
 
 
 logging.basicConfig(
@@ -4357,6 +4360,12 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     if is_faq_query:
         faq_answer = best_direct_faq_answer(chat_request.message, knowledge) or best_faq_answer(knowledge_matches)
     if faq_answer and is_faq_query:
+        # V2.15c (rt0014): remember the raw question text so a later,
+        # genuinely referential follow-up ("Prilož mi Google link na
+        # adresu.") can re-derive this SAME grounded answer instead of
+        # falling through to an unrelated product search - see
+        # app.session_state.get_last_informational_question().
+        _set_last_informational_question(memory, chat_request.message)
         # V2.13d: verbatim code motion into app.workflow_executor.
         return _execute_faq(
             chat_request=chat_request,
@@ -4600,6 +4609,43 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             "intent": "product_search",
         }
 
+
+    # V2.15c (rt0014 closure) - NON_COMMERCE_CONTEXTUAL_FOLLOWUP_TARGET_LOSS.
+    # Positioned as a last resort: reached only when safety, comparison,
+    # use_case_advice, basket_completion, recipe, the ordinal-reference
+    # clarification, and the recipe/result-set orphaned-followup check
+    # above have ALL already declined this turn, and BEFORE the generic
+    # special_subject/related_subject commerce cascade starts - so an
+    # explicit hard topic switch (a real product/brand/replacement/
+    # recipe/allergen mention) is resolved by its own, earlier, higher-
+    # precedence branch and never reaches here (Section 12 of the
+    # closure spec - explicit current-turn target always wins). Narrow
+    # by construction: _looks_like_location_reference_followup()'s
+    # vocabulary is location/navigation-specific (mapa/adresa/tam/
+    # dostanem), not a generic "any short follow-up inherits context"
+    # catch-all, so "Pošli mi link na Kikkoman" (an explicit product
+    # target) never matches it and is handled normally below.
+    _last_informational_question = _get_last_informational_question(memory)
+    if _last_informational_question and _looks_like_location_reference_followup(chat_request.message):
+        _followup_faq_answer = best_direct_faq_answer(_last_informational_question, knowledge) or best_faq_answer(
+            search_knowledge(knowledge, _last_informational_question, allowed_sections=("FAQ",))
+        )
+        if _followup_faq_answer:
+            _maps_link = _build_maps_link_from_faq_answer(_followup_faq_answer)
+            _followup_answer_text = f"{_followup_faq_answer}\n\n{_maps_link}" if _maps_link else _followup_faq_answer
+            updated_profile = update_user_memory(profile_key, chat_request.message, "faq", [], [])
+            log_question(
+                chat_request.message, client_key, 0, intent="faq", session_id=session_id,
+                primary_intent="faq", subject="location_reference_followup", interaction_id=interaction_id,
+            )
+            return {
+                "answer": _followup_answer_text,
+                "products": [],
+                "articles": [],
+                "knowledge": knowledge_summary({}),
+                "memory": public_user_memory_summary(updated_profile),
+                "intent": "faq",
+            }
 
     if detect_out_of_domain(chat_request.message):
         # V2.13d: verbatim code motion into app.workflow_executor.
@@ -7125,6 +7171,26 @@ def is_no_result_event(event: dict) -> bool:
 def is_faq_intent(message: str) -> bool:
     normalized_message = normalize(message)
     return any(marker in normalized_message for marker in FAQ_INTENT_MARKERS)
+
+
+_ADDRESS_PATTERN = re.compile(
+    r"((?:[A-ZÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ][\wáäčďéíĺľňóôŕšťúýž]*\s){1,3}\d+[a-zA-Z]?,\s*\d{3}\s?\d{2}\s+"
+    r"[A-ZÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ][\wáäčďéíĺľňóôŕšťúýž]+)"
+)
+
+
+def _build_maps_link_from_faq_answer(answer_text: str) -> str | None:
+    """V2.15c (rt0014, closure spec Section 16) - constructs a Google
+    Maps SEARCH url (not a fabricated place ID/coordinate/route) from a
+    real, already-grounded street address substring extracted directly
+    from the FAQ answer text itself (data/knowledge.json), so a link is
+    never generated for an FAQ answer that has no address in it, and it
+    always reflects whatever address the knowledge base actually says
+    today rather than a separately hardcoded copy that could drift."""
+    match = _ADDRESS_PATTERN.search(answer_text)
+    if not match:
+        return None
+    return "https://www.google.com/maps/search/?api=1&query=" + quote_plus(match.group(1).strip())
 
 
 FAQ_CATEGORY_MARKERS = {

@@ -61,6 +61,26 @@ def set_active_comparison_pair(memory: dict, product_id_a: str | None, product_i
         memory["active_comparison_pair"] = []
 
 
+def get_last_informational_question(memory: dict) -> str | None:
+    """V2.15c - the raw customer message text of the last SUCCESSFULLY
+    answered FAQ/informational query this session (store location,
+    opening hours, delivery, contact, ...), so a genuinely referential
+    follow-up ("Prilož mi Google link na adresu.") that names no new
+    subject of its own can re-resolve the SAME FAQ answer instead of
+    falling through to an unrelated product search (rt0014). Deliberately
+    stores only the RAW QUESTION TEXT, never the answer itself or any
+    assistant-generated content (Section 10 of the closure spec - do not
+    store entire assistant responses for routing) - re-running it through
+    the existing, unmodified best_direct_faq_answer()/best_faq_answer()
+    cascade re-derives the identical, already-grounded answer
+    deterministically."""
+    return memory.get("last_informational_question") or None
+
+
+def set_last_informational_question(memory: dict, message: str | None) -> None:
+    memory["last_informational_question"] = message or ""
+
+
 def get_active_recipe(memory: dict) -> tuple[str | None, int | None]:
     return memory.get("active_recipe_id") or None, memory.get("recipe_servings") or None
 
@@ -262,6 +282,7 @@ def apply_reset(memory: dict) -> None:
     memory["diet_terms"].clear()
     memory["last_top_product_title"] = ""
     memory["active_comparison_pair"] = []
+    memory["last_informational_question"] = ""
 
 
 # ---------------------------------------------------------------------------
@@ -282,6 +303,35 @@ _RECIPE_FOLLOWUP_QUESTION_MARKERS = (
 # recipe - a much stronger, less collision-prone signal than a bare
 # question word (Section 84 - a false positive here wrongly keeps a stale
 # recipe active).
+
+
+_LOCATION_REFERENCE_MARKERS = (
+    "mapa", "mapy", "mape", "mapu", "google maps", "google mapa", "google mape",
+    "navigacia", "navigaciu", "navigacie",
+    "dostanem sa", "dostat sa", "ako sa tam", "kade sa tam",
+    "adresu", "adresa", "adrese", "adresy",
+    "polohu", "poloha", "polohe",
+    "google link", "link na adresu", "link na predajnu", "link na obchod",
+    "na nu link", "na neho link",
+)
+
+
+def looks_like_location_reference_followup(message: str) -> bool:
+    """V2.15c (rt0014) - a narrow, evidence-backed vocabulary for "give me
+    more navigational detail about the physical location we were just
+    discussing" (e.g. "Prilož mi Google link na adresu.", "Pošli mi
+    Google Maps.", "Ako sa tam dostanem?"). Deliberately scoped to
+    location/navigation reference only - NOT a general "any follow-up
+    should inherit the last FAQ topic" mechanism, which the closure spec
+    explicitly warns against (a broad catch-all would risk hijacking
+    unrelated follow-ups, e.g. "Pošli mi link na Kikkoman" names its own
+    explicit product target and must never reach this path - it simply
+    contains none of these markers). The caller additionally requires a
+    stored last_informational_question before treating this as a
+    genuine follow-up (Section 12 - explicit current-turn target always
+    wins; there is nothing to fall back to if nothing was asked before)."""
+    normalized = normalize(message)
+    return any(marker in normalized for marker in _LOCATION_REFERENCE_MARKERS)
 
 
 def looks_like_recipe_followup(message: str) -> bool:

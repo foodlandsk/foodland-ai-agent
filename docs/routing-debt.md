@@ -268,6 +268,49 @@ nebol menený (ramen role advice ide cez tú istú, už existujúcu cestu ako
 ostatné use cases, žiadny nový special_subject/related_subject konflikt).
 Detail: `docs/ramen-data-readiness-v2.14h.md`.
 
+## V2.15c aktualizácia — rt0014 (non-commerce contextual follow-up) uzavreté
+
+**Poznámka k číslovaniu**: `rt0014` v tomto zázname je INTERNÉ označenie
+V2.15c zadania, nezávislé od existujúceho `regbug_rt0014` v
+`eval/golden/regression_bugs.json` ("chcem snack pre deti") — náhodná
+kolízia dvoch nezávislých číselných radov, overené že existujúci golden
+case zostáva nedotknutý. Detail: `docs/noncommerce-context-followup-v2.15c.md`
+Sekcia 9.
+
+`rt0014`: "Kde sa nachádza kamenná predajňa?" → "Prilož mi Google link na
+adresu." (rovnaká session) nesprávne strácalo kontext a spadlo do
+product-search správania namiesto zotrvania v informačnom kontexte.
+
+**root_cause**: architektonický, nie len chýbajúci marker — FAQ
+odpoveďová kaskáda (`is_faq_intent()` + `best_direct_faq_answer()`/
+`best_faq_answer()`) nemala žiadnu session pamäť predtým zodpovedanej
+témy, takže akčne formulovaný follow-up prepadol do všeobecného,
+irelevantného product-search fallbacku.
+
+`app.turn_resolver.resolve_action_target_signal()` vyhodnotený ako
+**NOT_SUITABLE** pre priame znovupoužitie (všetky jeho parametre sú
+commerce/product-family špecifické) — zvolená cesta:
+`WRAP_WITH_SMALL_INFORMATIONAL_RESOLVER`. Nová, samostatná session-state
+pamäť (`get_last_informational_question`/`set_last_informational_question`)
++ úzky location-špecifický slovník (`looks_like_location_reference_followup()`)
++ nový fallback blok v `_chat_impl()` umiestnený AŽ NA KONCI kaskády
+(po safety/FAQ/comparison/use_case_advice/basket_completion/recipe/
+ordinal-reference/orphaned-followup, pred generickou commerce kaskádou)
+— táto pozícia samotná garantuje "explicitný cieľ aktuálneho ťahu vždy
+vyhráva" bez runtime negociácie. Maps link zostrojený regex extrakciou
+reálnej adresy z recall-ovanej FAQ odpovede (nikdy fabrikované
+súradnice/place ID).
+
+**Status**: `RT0014_CLOSED_GENERALIZED_FIX` pre `store_location`
+(plná podpora vrátane follow-up generalizácie a hard-switch bezpečnosti).
+`delivery` zostáva `FOUNDATION_ONLY` (počiatočná otázka funguje, žiadny
+dedikovaný follow-up). `opening_hours`/`contact` zostávajú
+`NOT_REACHED_PRE_EXISTING_GAP` (nedosiahnu FAQ kaskádu vôbec, potvrdené
+ako existujúce pred touto sprintou, nie regresia). rt0004/rt0010/rt0011/
+rt0013 permanentné kontroly overené nezmenené. Detail:
+`docs/noncommerce-context-followup-v2.15c.md`,
+`tests/test_noncommerce_context_followup_v2_15c.py`.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným
