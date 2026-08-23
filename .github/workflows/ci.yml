@@ -16,6 +16,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
@@ -23,6 +27,20 @@ jobs:
 
       - name: Compile check (catches syntax/encoding errors early)
         run: python -m compileall app scripts
+
+      # V2.15d.1 (docs/frontend-widget-test-foundation-v2.15d.1.md) - the
+      # minimum JS safety foundation for app/widget.js: a deterministic
+      # syntax gate (node --check) plus node:test coverage proving that
+      # gate actually rejects invalid JS, an independent vm.Script parse
+      # check, and a static "no new backend endpoint" characterization
+      # assertion. No external npm dependency, no package.json - Node's
+      # built-in test runner discovers tests/js/*.test.mjs directly.
+      # Placed early, right after the Python compile check, so a broken
+      # widget.js fails fast before the expensive full pytest suite runs.
+      - name: JS syntax + widget test foundation (V2.15d.1)
+        run: |
+          node --check app/widget.js
+          node --test tests/js/
 
       # Deliberately no -k filter here. Local Windows dev runs sometimes
       # exclude a handful of tests (TestMerchandising, TestEmbeddings,

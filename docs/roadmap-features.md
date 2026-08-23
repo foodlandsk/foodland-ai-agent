@@ -1878,6 +1878,35 @@ Detail: `docs/recommendation-signal-correlation-v2.15b.md`.
 logging, frontend inštrumentácia `interaction_id`/`decision_id`), NIE
 V2.15c Learning Candidate Pipeline. V2.15c sa nezačína automaticky.
 
+### Sprint V2.15c – Non-Commerce Contextual Follow-up Resolution (rt0014)
+
+Uzavreté ako **`RT0014_CLOSED_GENERALIZED_FIX`** pre `store_location`
+follow-up ("Prilož mi Google link na adresu." po otázke na predajňu).
+Detail: `docs/noncommerce-context-followup-v2.15c.md`.
+
+### Sprint V2.15d – Durable Recommendation Decision Logging & Conversion Correlation
+
+Backend decision logging (comparison/use_case_advice/basket_completion)
+uzavreté ako **`DECISION_LOGGING_LIVE_FRONTEND_PARTIAL`** (GATE A).
+Frontend korelácia (`app/widget.js`) klasifikovaná
+`NOT_SAFE_TO_IMPLEMENT_THIS_SPRINT` — chýbajúci JS overovací nástroj.
+Detail: `docs/recommendation-conversion-correlation-v2.15d.md`.
+
+### Sprint V2.15d.1 – Frontend Widget Test Tooling Foundation
+
+Uzatvára presne tú medzeru, ktorú V2.15d nechala otvorenú: CI-vynútená
+JS syntax/parse validácia (`node --check` + `node:test`, 0 externých
+závislostí, Node cez `actions/setup-node` LEN v CI) pre `app/widget.js`
+— súbor samotný zostáva byte-identický. Stav:
+**`FRONTEND_SYNTAX_VALIDATION_ONLY`** (`TOOLING_GATE_B` dosiahnutý,
+runtime-load validácia zostáva `LOAD_VALIDATION_NOT_YET_AVAILABLE`).
+Detail: `docs/frontend-widget-test-foundation-v2.15d.1.md`.
+
+**Ďalší krok:** V2.15d.2 (frontend product-click/add-to-cart korelácia)
+je `V2_15D_2_GO_WITH_LIMITATIONS` — teraz bezpečne recenzovateľná cez
+CI gate. V2.15e (Learning Candidate Pipeline) zostáva
+`STOP_CORRELATION_INSUFFICIENT`, nezačína sa automaticky.
+
 **Ďalší krok:** dashi `FamilyRule` autorstvo a domáca-ramen-rezance
 rola z `wheat_noodles` sú konkrétne, dôkazmi podložené budúce kroky
 (oba by vyžadovali vlastný blast-radius audit) – žiadny z nich

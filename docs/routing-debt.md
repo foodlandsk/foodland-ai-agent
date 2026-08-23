@@ -319,6 +319,17 @@ use_case_advice/basket_completion) — nemenila žiadnu routing/intent/
 retrieval logiku ani precedenciu. Zaznamenané tu len pre úplnosť
 sledovania sprintov; žiadny nový riadok v registri vyššie.
 
+## V2.15d.1 poznámka — žiadna zmena routovania, JS tooling foundation
+
+V2.15d.1 (`docs/frontend-widget-test-foundation-v2.15d.1.md`) pridala
+CI-vynútenú JS syntax/parse validáciu pre `app/widget.js` (Node.js cez
+`actions/setup-node`, `node --check` + `node:test`, 0 externých
+závislostí) — `app/widget.js` samotný zostáva byte-identický, žiadna
+routing/backend zmena. Stav: V2.15d (backend decision logging) =
+`DONE / GATE A`; V2.15d.1 (JS tooling) = `DONE / TOOLING_GATE_B`;
+V2.15d.2 (frontend korelácia) = `NOT STARTED`; V2.15e = `STOPPED`
+pending frontend correlation.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným
