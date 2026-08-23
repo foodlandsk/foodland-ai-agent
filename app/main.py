@@ -3399,6 +3399,37 @@ def admin_analytics_events_summary(
     return events_summary(events)
 
 
+@app.get("/admin/analytics/events-detail")
+def admin_analytics_events_detail(
+    days: int = 1,
+    limit: int = 50,
+    session_id: str | None = None,
+    event_type: str | None = None,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """V2.15d.3 follow-up - closes the per-record readback gap the
+    aggregate-only events-summary endpoint could not: proves the exact
+    execution_context/learning_eligible value a specific durably-logged
+    event actually carries (e.g. after a live ADMIN_TEST /events smoke
+    verification), instead of only an aggregate count. READ scope, same
+    as events-summary - genuinely read-only, no side effects. Records
+    are already sanitized at write time (client_hash is a salted hash,
+    never raw client_key; query text is already PII-redacted by
+    log_event()) so returning full records here adds no new PII
+    exposure beyond what events-summary's own source data already is.
+    Most-recent-first, capped at 200 records regardless of the
+    requested limit to keep the response bounded."""
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
+    safe_limit = max(1, min(int(limit or 50), 200))
+    events = read_engagement_events(days)
+    if session_id:
+        events = [e for e in events if e.get("session_id") == session_id]
+    if event_type:
+        events = [e for e in events if e.get("event_type") == event_type]
+    events.sort(key=lambda e: e.get("ts", 0), reverse=True)
+    return {"count": len(events), "events": events[:safe_limit]}
+
+
 @app.post("/admin/embeddings/rebuild")
 def admin_rebuild_embeddings(x_admin_token: str | None = Header(default=None)) -> dict:
     _require_admin_scope(x_admin_token, _SCOPE_OPERATIONS)

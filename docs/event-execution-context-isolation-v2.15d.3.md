@@ -123,3 +123,23 @@ finálny report — použitý ADMIN_TEST kanál).
 ## 13. V2.15e
 
 Rozhodnutie vo finálnom reporte.
+
+## 14. Follow-up: `/admin/analytics/events-detail` (per-record readback)
+
+Live verifikácia po tejto sprinte odhalila, že `/admin/analytics/events-summary`
+poskytuje len agregáty — nemožno ním dokázať presnú `execution_context`/
+`learning_eligible` hodnotu KONKRÉTNEHO záznamu (napr. po ADMIN_TEST
+smoke teste na produkcii). Nový endpoint `/admin/analytics/events-detail`
+(READ scope, read-only, `days`/`limit`/`session_id`/`event_type` filtre,
+strop 200 záznamov) toto uzatvára — vracia plné, už-sanitizované záznamy
+(client_hash je salted hash, query je už PII-redaktovaný pri zápise).
+
+Živo overené na produkcii po rotácii `ADMIN_OPERATIONS_TOKEN`:
+- Nový token korektne rozpoznaný (200 na READ-scoped endpointe).
+- `AUTO_PROMOTION=false` priamo potvrdené cez `/admin/learning/status`.
+- Historický `SMOKE-TEST-SKU` artefakt potvrdený stále prítomný,
+  nedotknutý (`top_products_by_touches` v `events-summary`).
+- Per-record readback endpoint pridaný a otestovaný (11 nových testov,
+  `tests/test_events_detail_readback_v2_15d_3.py`), lokálne overuje
+  presné rozlíšenie CUSTOMER vs ADMIN_TEST vs spoofed-CUSTOMER na
+  úrovni jednotlivého záznamu.
