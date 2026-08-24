@@ -286,11 +286,107 @@ test("the impression event includes result_set_id sourced from data.result_set_i
 test("result_set_id is never hardcoded/fabricated as a string literal anywhere near the stash or fireEvent sites", () => {
   const source = readWidgetSource();
   // Every result_set_id assignment in the file must be a `|| null`
-  // fallback read off data/product, never a bare string literal - this
-  // rules out a stray hardcoded id sneaking into a fireEvent payload.
+  // fallback read off data/product/the feedback closure param, never a
+  // bare string literal - this rules out a stray hardcoded id sneaking
+  // into a fireEvent payload. `resultSetId` is the V2.15e.2 feedback
+  // vote()'s parameter name (passed in from data.result_set_id at the
+  // addFeedbackControls() call site, never recomputed inside vote()).
   const assignments = [...source.matchAll(/result_set_id:\s*([^,}\n]+)/g)].map((m) => m[1].trim());
-  assert.ok(assignments.length >= 6, "expected at least 6 result_set_id: ... sites (5 fireEvent + 1 impression)");
+  assert.ok(assignments.length >= 7, "expected at least 7 result_set_id: ... sites (5 fireEvent + 1 impression + 1 feedback)");
   assignments.forEach((expr) => {
-    assert.match(expr, /^(data|product)\.result_set_id \|\| null$/, `unexpected result_set_id expression: ${expr}`);
+    assert.match(expr, /^(data|product)\.result_set_id \|\| null$|^resultSetId \|\| null$/, `unexpected result_set_id expression: ${expr}`);
   });
+});
+
+// ---------------------------------------------------------------------
+// V2.15e.2 - explicit feedback decision correlation
+// (docs/feedback-decision-correlation-v2.15e.2.md)
+//
+// GATE B, widget-only: EventRequest/log_event() already carried generic
+// interaction_id/decision_id/result_set_id fields for ANY event_type
+// since V2.15d/V2.15e.1 - the gap was purely that addFeedbackControls()/
+// vote() never populated them for "feedback" events. A thumbs vote
+// rates the just-rendered assistant response as a whole (unchanged
+// semantics - the label text is untouched); decision_id is attached
+// only when that exact response legitimately owns a recommendation
+// decision, using the SAME response-local `decisionId` value V2.15d.2
+// already resolves for product-click correlation - never a second,
+// independently-computed value.
+// ---------------------------------------------------------------------
+
+test("addFeedbackControls() accepts interactionId/decisionId/resultSetId as explicit parameters", () => {
+  const source = readWidgetSource();
+  assert.ok(
+    source.includes("function addFeedbackControls(query, interactionId, decisionId, resultSetId) {"),
+    "addFeedbackControls() must take correlation metadata as parameters, not read from a global"
+  );
+});
+
+test("vote()'s fireEvent forwards interaction_id/decision_id/result_set_id from the closure parameters", () => {
+  const source = readWidgetSource();
+  assert.ok(
+    source.includes(
+      'fireEvent({ event_type: "feedback", rating: rating, query: query || null, interaction_id: interactionId || null, decision_id: decisionId || null, result_set_id: resultSetId || null });'
+    ),
+    "feedback fireEvent must forward all three correlation fields, each with a null fallback (never fabricated)"
+  );
+});
+
+test("the addFeedbackControls() call site passes the SAME response-local decisionId used for product-click correlation, not a re-derived value", () => {
+  const source = readWidgetSource();
+  assert.ok(
+    source.includes("addFeedbackControls(text, data.interaction_id || null, decisionId, data.result_set_id || null);"),
+    "must reuse the single decisionId already resolved once per turn (V2.15d.2), never recompute a second decision_id"
+  );
+});
+
+test("ordinary search / FAQ responses cannot fabricate a decision_id for feedback: decisionId is null unless a capability-specific field was present", () => {
+  const source = readWidgetSource();
+  assert.ok(
+    source.includes(
+      "const decisionId = data.comparison_decision_id || data.basket_decision_id || data.use_case_advice_decision_id || null;"
+    ),
+    "decisionId resolution (shared by both product clicks and feedback) must still fall back to null, never invent an id"
+  );
+});
+
+test("addFeedbackControls() call site is textually AFTER decisionId is resolved (causal ordering - cannot pass an undefined variable)", () => {
+  const source = readWidgetSource();
+  const decisionIdIdx = source.indexOf("const decisionId = data.comparison_decision_id");
+  const callSiteIdx = source.indexOf("addFeedbackControls(text, data.interaction_id || null, decisionId, data.result_set_id || null);");
+  assert.ok(decisionIdIdx > -1 && callSiteIdx > decisionIdIdx);
+});
+
+test("each addFeedbackControls() call is response-local: no module-level mutable variable holds the last decision/interaction id", () => {
+  const source = readWidgetSource();
+  // A regression here would look like a top-level `let lastDecisionId`/
+  // `let currentInteractionId` that vote() reads instead of its own
+  // closure parameters - that would let a NEWER response's feedback
+  // silently leak an OLDER response's id (or vice versa) once two
+  // addFeedbackControls() blocks exist on screen at once.
+  assert.equal(/\blet\s+(last|current|active)(Decision|Interaction|ResultSet)Id\b/i.test(source), false);
+});
+
+test("feedback vote is still gated by the single-vote `answered` flag (no behavior change to duplicate-vote prevention)", () => {
+  const source = readWidgetSource();
+  const voteBlock = source.match(/function vote\(rating\) \{\s*if \(answered\) return;\s*answered = true;/);
+  assert.ok(voteBlock, "vote() must still short-circuit on a second click for the same response");
+});
+
+test("no product_id/product_sku is introduced into the feedback payload (feedback rates the response, not a product)", () => {
+  const source = readWidgetSource();
+  const feedbackCallMatch = source.match(/fireEvent\(\{ event_type: "feedback"[^}]*\}\);/);
+  assert.ok(feedbackCallMatch);
+  assert.equal(/product_sku|product_id/.test(feedbackCallMatch[0]), false);
+});
+
+test("no learning/ranking/promotion call was introduced by the feedback correlation patch (Sections 2/38/78 hard freeze)", () => {
+  const source = readWidgetSource();
+  assert.equal(/AUTO_PROMOTION|learning_lifecycle|ranking_optimizer|ranking_config/.test(source), false);
+});
+
+test("existing click/cart event fireEvent calls are unchanged by the feedback patch (still exactly 5 renderCard calls)", () => {
+  const source = readWidgetSource();
+  const fireEventCalls = [...source.matchAll(/fireEvent\(\{ event_type: "(click|add_to_cart_attempt|add_to_cart|add_to_cart_confirmed)"[^}]*\}\);/g)];
+  assert.equal(fireEventCalls.length, 5);
 });

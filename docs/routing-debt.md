@@ -387,6 +387,14 @@ identifikátor, žiadna zmena zákazníckeho správania. Detail:
 čítaním produkčnej histórie — `PROVEN_OTHER_CAUSE` (obyčajné product_search
 nákupy bez recommendation decision), nie zlomená continuation atribúcia.
 
+**Aktualizácia (V2.15e.2)**: explicitná spätná väzba (👍/👎) uzavretá
+podobným spôsobom — `vote()` teraz posiela `interaction_id`/`decision_id`
+(len keď legitímny)/`result_set_id`, znovupoužívajúc presne tie isté
+response-local hodnoty, ktoré V2.15d.2/V2.15e.1 už počítajú. GATE B,
+widget-only, nulová zmena backend schémy (`EventRequest` už mala tieto
+polia generické pre akýkoľvek `event_type`). Detail:
+`docs/feedback-decision-correlation-v2.15e.2.md`.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným

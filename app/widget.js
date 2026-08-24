@@ -1423,7 +1423,7 @@
     scrollToBottom();
   }
 
-  function addFeedbackControls(query) {
+  function addFeedbackControls(query, interactionId, decisionId, resultSetId) {
     const wrap = document.createElement("div");
     wrap.className = "fl-ai-feedback";
     const label = document.createElement("span");
@@ -1435,7 +1435,21 @@
     function vote(rating) {
       if (answered) return;
       answered = true;
-      fireEvent({ event_type: "feedback", rating: rating, query: query || null });
+      // V2.15e.2 (docs/feedback-decision-correlation-v2.15e.2.md) - this
+      // vote rates the just-rendered assistant response as a whole (see
+      // the label above: "Bola tato odpoved uzitocna?"), never a specific
+      // product - decisionId/resultSetId/interactionId are the SAME
+      // response-local values already resolved once per turn in the
+      // submit handler (V2.15d.2/V2.15e.1), passed in as parameters at
+      // the addFeedbackControls() call site below rather than recomputed
+      // here. decisionId is correctly null whenever this exact response
+      // never carried a comparison/use_case_advice/basket_completion
+      // decision (ordinary search, FAQ, store_location) - never
+      // fabricated. A later response's addFeedbackControls() call gets
+      // its own fresh closure over these three parameters, so an older
+      // response's vote can never inherit a newer (or vice versa) one's
+      // correlation metadata.
+      fireEvent({ event_type: "feedback", rating: rating, query: query || null, interaction_id: interactionId || null, decision_id: decisionId || null, result_set_id: resultSetId || null });
       wrap.innerHTML = "";
       const thanks = document.createElement("span");
       thanks.className = "fl-ai-feedback-thanks";
@@ -2037,7 +2051,7 @@
       conversationHistory.push({role: "user", content: text});
       conversationHistory.push({role: "assistant", content: data.answer || ""});
       scrollToBottom();
-      addFeedbackControls(text);
+      addFeedbackControls(text, data.interaction_id || null, decisionId, data.result_set_id || null);
       addRecipes(data.recipes);
       addArticles(data.articles);
       if (data.intent !== "recipe") {

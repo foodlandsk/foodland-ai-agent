@@ -2033,3 +2033,27 @@ pozorovaní s `result_set_id` k dátumu nasadenia). Detail:
 feedback→decision_id korelácia a cross_sell/recipe_shopping/
 replacement_products decision-logging rozšírenie, oba mimo rozsahu tejto
 sprinty.
+
+---
+
+## V2.15e.2 — Explicit Feedback → Recommendation Decision Correlation & Signal Integrity Closure
+
+Uzavrela zostávajúci dlh z V2.15e.1: `app/widget.js`'s `vote()`
+(👍/👎) neposielalo `interaction_id`/`decision_id`/`result_set_id`.
+Audit zistil, že presne tieto tri hodnoty už boli response-local
+premenné v tej istej funkcii, kde sa `addFeedbackControls()` volala —
+a `EventRequest`/`log_event()` ich už podporovali pre AKÝKOĽVEK
+`event_type` od V2.15d/V2.15e.1. **GATE B — čisto widget patch, nulová
+zmena backend schémy.**
+
+Sémantika hlasovania sa nemení: 👍/👎 stále hodnotí celú práve
+vyrenderovanú odpoveď, nikdy konkrétny produkt. `decision_id` sa
+priraďuje len keď daná odpoveď legitímne vlastní recommendation
+rozhodnutie (comparison/use_case_advice/basket_completion) — nikdy
+fabrikovaný pre ordinary search/FAQ/store_location/continuation.
+
+**Výsledky**: pozri `docs/feedback-decision-correlation-v2.15e.2.md` pre
+plný test matrix a finálny Slovenský report pre CI/Railway/live
+verifikáciu. `AUTO_PROMOTION` nezmenené (`False`).
+
+**Ďalší krok**: V2.15f sa nezačína automaticky.
