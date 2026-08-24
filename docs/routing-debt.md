@@ -343,18 +343,30 @@ V2.15e zostáva mimo automatického spustenia.
 
 ## V2.15d.3 poznámka — historické syntetické eventy + store-location dáta
 
-**Historický artefakt zaznamenaný (Section 6 V2.15d.3 zadania)**: V2.15d.2
+**Historický artefakt — PÔVODNE zaznamenaný, ODVTEDY VYČISTENÝ**: V2.15d.2
 produkčná verifikácia vytvorila 2 syntetické `/events` záznamy (`event_type`
 `add_to_cart_attempt`/`add_to_cart_confirmed`, `product_sku=SMOKE-TEST-SKU`,
 `session_id=live-v215d2-verify`) v produkčnom `events.jsonl`, keďže `/events`
-vtedy nemal execution-context izoláciu. **Klasifikácia**:
-`HISTORICAL_SYNTHETIC_EVENTS_LEFT_AS_DOCUMENTED_ARTIFACT` — žiadny
-deštruktívny prepis JSONL; dôkazmi podložené, že tieto 2 záznamy sú UŽ
-štrukturálne neviditeľné pre `app.behavioral`/`app.fbt`/`app.learning_events`
-(rozpoznávajú len legacy `"add_to_cart"` literál, nie tieto 2 nové V2.15d.2
-event_type reťazce). V2.15d.3 (`docs/event-execution-context-isolation-v2.15d.3.md`)
-uzatvára medzeru pre BUDÚCU prevádzku — `/events` teraz má rovnaký
-server-verifikovaný execution-context mechanizmus ako `/chat`.
+vtedy nemal execution-context izoláciu. Pôvodná klasifikácia bola
+`HISTORICAL_SYNTHETIC_EVENTS_LEFT_AS_DOCUMENTED_ARTIFACT` (žiadny
+deštruktívny prepis JSONL v čase V2.15d.3; dôkazmi podložené, že tieto 2
+záznamy boli aj tak už štrukturálne neviditeľné pre
+`app.behavioral`/`app.fbt`/`app.learning_events`, keďže rozpoznávajú len
+legacy `"add_to_cart"` literál, nie tieto 2 V2.15d.2 event_type reťazce).
+
+**Aktualizácia (na žiadosť používateľa, po V2.15d.3)**: nový
+`/admin/analytics/events-purge` endpoint (PROMOTION scope, presné
+`session_id` porovnanie, atomický zápis) bol postavený a použitý naživo
+na odstránenie tohto artefaktu spolu s troma syntetickými záznamami z
+vlastnej live-verifikácie V2.15d.3 (`admin-verify-v215d3`,
+`spoof-verify-v215d3`, `admin-verify-v215d3-b`). Overené cez
+`/admin/analytics/events-detail` po zásahu: všetkých 5 záznamov
+potvrdene odstránených (`count: 0` pre každý `session_id`), zvyšné
+záznamy nedotknuté. **Finálny stav**:
+`HISTORICAL_SYNTHETIC_EVENTS_REMOVED`. `/events` navyše teraz má rovnaký
+server-verifikovaný execution-context mechanizmus ako `/chat`
+(`docs/event-execution-context-isolation-v2.15d.3.md`), takže táto
+konkrétna trieda artefaktu sa už nemôže zopakovať pre budúcu prevádzku.
 
 **STORE_LOCATION canonical data closure**: adresa aktualizovaná na
 autoritatívny tvar `Stará Vajnorská 3308/19, 831 04 Bratislava`

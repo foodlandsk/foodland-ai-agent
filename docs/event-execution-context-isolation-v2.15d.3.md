@@ -27,14 +27,21 @@ overenia pôvodu.
 
 ## 4. Historické 2 syntetické eventy — klasifikácia
 
-**`HISTORICAL_SYNTHETIC_EVENTS_LEFT_AS_DOCUMENTED_ARTIFACT`** — žiadny
-deštruktívny prepis JSONL (mimo rozsahu). Dôkazmi podložené zistenie:
+Pôvodná klasifikácia v čase tejto sprinty bola
+`HISTORICAL_SYNTHETIC_EVENTS_LEFT_AS_DOCUMENTED_ARTIFACT` — žiadny
+deštruktívny prepis JSONL bol vtedy v rozsahu. Dôkazmi podložené zistenie:
 tieto 2 záznamy (`event_type="add_to_cart_attempt"/"add_to_cart_confirmed"`,
-`product_sku="SMOKE-TEST-SKU"`) sú UŽ TERAZ štrukturálne neviditeľné pre
+`product_sku="SMOKE-TEST-SKU"`) boli UŽ TOTO štrukturálne neviditeľné pre
 všetkých 3 čitateľov — `app.behavioral`/`app.fbt`/`app.learning_events`
 rozpoznávajú výhradne literál `"add_to_cart"` (legacy), nie tieto 2
 nové V2.15d.2 event_type reťazce. Overené testom
 (`TestHistoricalSyntheticArtifact`).
+
+**Aktualizácia (na žiadosť používateľa, po tejto sprinte)**: artefakt bol
+napriek tomu aktívne odstránený cez nový `/admin/analytics/events-purge`
+endpoint (Section 14) — spolu s 3 syntetickými záznamami z vlastnej
+live-verifikácie tejto sprinty. Finálny stav:
+**`HISTORICAL_SYNTHETIC_EVENTS_REMOVED`**.
 
 ## 5. Execution-context trust model (reused, not reinvented)
 
@@ -137,9 +144,32 @@ strop 200 záznamov) toto uzatvára — vracia plné, už-sanitizované záznamy
 Živo overené na produkcii po rotácii `ADMIN_OPERATIONS_TOKEN`:
 - Nový token korektne rozpoznaný (200 na READ-scoped endpointe).
 - `AUTO_PROMOTION=false` priamo potvrdené cez `/admin/learning/status`.
-- Historický `SMOKE-TEST-SKU` artefakt potvrdený stále prítomný,
-  nedotknutý (`top_products_by_touches` v `events-summary`).
+- Historický `SMOKE-TEST-SKU` artefakt pôvodne potvrdený stále
+  prítomný (`top_products_by_touches` v `events-summary`) — odvtedy
+  odstránený, pozri Section 15.
 - Per-record readback endpoint pridaný a otestovaný (11 nových testov,
   `tests/test_events_detail_readback_v2_15d_3.py`), lokálne overuje
   presné rozlíšenie CUSTOMER vs ADMIN_TEST vs spoofed-CUSTOMER na
   úrovni jednotlivého záznamu.
+
+## 15. Follow-up: `/admin/analytics/events-purge` (na žiadosť používateľa)
+
+Po živej verifikácii používateľ požiadal o vyčistenie syntetických
+záznamov z produkcie. Nový endpoint `/admin/analytics/events-purge`
+(PROMOTION scope — najvyšší stupeň, na rozdiel od `events-detail`'s
+READ scope, keďže ide o deštruktívnu operáciu; presné `session_id`
+porovnanie, nikdy dátumový rozsah/vzor; atomický zápis cez dočasný
+súbor + rename; neparsovateľné riadky sa zachovávajú nedotknuté) bol
+postavený, otestovaný (12 nových testov,
+`tests/test_events_purge_v2_15d_3.py`) a nasadený.
+
+Živo použitý na odstránenie:
+- 3 syntetických záznamov z vlastnej live-verifikácie tejto sprinty
+  (`admin-verify-v215d3`, `spoof-verify-v215d3`, `admin-verify-v215d3-b`).
+- 2 historických V2.15d.2 `SMOKE-TEST-SKU` záznamov (`session_id=live-v215d2-verify`).
+
+Všetkých 5 odstránení overených cez `/admin/analytics/events-detail`
+(`count: 0` pre každý dotknutý `session_id` po zásahu). Zvyšné záznamy
+nedotknuté. **Finálny stav historického artefaktu**:
+`HISTORICAL_SYNTHETIC_EVENTS_REMOVED` (aktualizácia z pôvodného
+`HISTORICAL_SYNTHETIC_EVENTS_LEFT_AS_DOCUMENTED_ARTIFACT` v Section 4).
