@@ -306,6 +306,17 @@ class EventRequest(BaseModel):
     event_id: str | None = Field(default=None, max_length=64)
 
 
+class EventsPurgeRequest(BaseModel):
+    """V2.15d.3 follow-up - surgical removal of specific synthetic/
+    test events.jsonl records by EXACT session_id match only (never a
+    date-range or wildcard sweep, so this cannot accidentally remove
+    unrelated real customer data). `confirm` must be explicitly true -
+    a defensive requirement, not a technical necessity, since an empty
+    session_ids list is already rejected by min_length."""
+    session_ids: list[str] = Field(min_length=1, max_length=50)
+    confirm: bool = False
+
+
 class ApproveCandidateRequest(BaseModel):
     approved_by: str = Field(min_length=1, max_length=120)
     expected_current_config_version: str | None = Field(default=None, max_length=64)
@@ -3428,6 +3439,54 @@ def admin_analytics_events_detail(
         events = [e for e in events if e.get("event_type") == event_type]
     events.sort(key=lambda e: e.get("ts", 0), reverse=True)
     return {"count": len(events), "events": events[:safe_limit]}
+
+
+@app.post("/admin/analytics/events-purge")
+def admin_analytics_events_purge(
+    purge_request: EventsPurgeRequest,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """V2.15d.3 follow-up - surgical cleanup for specific synthetic/
+    test session_ids (e.g. a live ADMIN_TEST verification run that
+    fell back to CUSTOMER before a credential was correctly configured,
+    or a deliberate negative-control spoof test). PROMOTION scope
+    (highest tier) since this is destructive, matching the pattern used
+    by rollback_to_last_known_good() elsewhere in this file. Matches
+    ONLY by exact session_id equality - never a timestamp range or
+    pattern match - so it structurally cannot sweep up real customer
+    data by accident. Writes via a temp file + atomic rename so a mid-
+    write failure cannot leave events.jsonl truncated or corrupted;
+    a line that fails to parse as JSON is preserved untouched rather
+    than silently dropped."""
+    _require_admin_scope(x_admin_token, _SCOPE_PROMOTION)
+    if not purge_request.confirm:
+        raise HTTPException(status_code=400, detail="confirm must be true to purge events.")
+    target_ids = set(purge_request.session_ids)
+    path = Path(os.getenv("EVENTS_LOG_PATH", str(DEFAULT_RUNTIME_LOG_DIR / "events.jsonl")))
+    if not path.exists():
+        return {"removed": 0, "remaining": 0, "requested_session_ids": sorted(target_ids)}
+    kept_lines: list[str] = []
+    removed = 0
+    with path.open("r", encoding="utf-8") as file:
+        for raw_line in file:
+            line = raw_line.rstrip("\n")
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                kept_lines.append(line)
+                continue
+            if record.get("session_id") in target_ids:
+                removed += 1
+                continue
+            kept_lines.append(line)
+    tmp_path = path.with_name(path.name + ".purge.tmp")
+    with tmp_path.open("w", encoding="utf-8") as file:
+        for line in kept_lines:
+            file.write(line + "\n")
+    tmp_path.replace(path)
+    return {"removed": removed, "remaining": len(kept_lines), "requested_session_ids": sorted(target_ids)}
 
 
 @app.post("/admin/embeddings/rebuild")
