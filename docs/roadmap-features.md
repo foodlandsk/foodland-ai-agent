@@ -1924,6 +1924,23 @@ cart live-test limitácia a chýbajúci purchase signál patria do
 samostatnej, budúcej sprinty predtým, než sa formálne posúdi
 pripravenosť datasetu.
 
+### Sprint V2.15e – Recommendation Learning Dataset Readiness & Causal Signal Quality Gate
+
+Audit-only sprinta (GATE A) — formálne posúdila, či sú signály
+dostatočne dobre definované na budúci learning dataset. Žiadny dataset
+builder, žiadna zmena `app/widget.js`, `AUTO_PROMOTION` nezmenené.
+Kľúčové zistenie: štrukturálna korelácia existuje pre
+comparison/use_case_advice/basket_completion, chýba pre cross_sell/
+recipe_shopping/replacement_products/explicit-feedback; empiricky 0 z
+200 najnovších produkčných eventov malo nenulové `decision_id`. Stav:
+**`STRUCTURALLY_READY_EMPIRICALLY_INSUFFICIENT`**. Detail:
+`docs/recommendation-learning-dataset-readiness-v2.15e.md`.
+
+**Ďalší krok:** V2.15f (learning aktivácia) sa nezačína automaticky.
+Odporúčané: malý frontend fix pre feedback→decision_id koreláciu,
+prirodzený nárast objemu, prípadná samostatná cross_sell decision
+logging sprinta — predtým než sa V2.15f formálne posúdi.
+
 **Ďalší krok:** dashi `FamilyRule` autorstvo a domáca-ramen-rezance
 rola z `wheat_noodles` sú konkrétne, dôkazmi podložené budúce kroky
 (oba by vyžadovali vlastný blast-radius audit) – žiadny z nich
