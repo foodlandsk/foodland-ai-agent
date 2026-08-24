@@ -1997,3 +1997,39 @@ V2.10 fast-mode **35/39 nezmenené**. Canary **10/10**.
 Learning Candidate Pipeline) – kľúčové medzery sú štrukturálne
 (chýbajúci zdieľaný kľúč, chýbajúca HTTP-úrovňová execution-context
 signalizácia), nie nedostatok dát. V2.15b sa nezačína automaticky.
+
+---
+
+## V2.15e.1 — Resultset Continuation Attribution & Recommendation Causal Chain Closure
+
+V2.15e (`docs/recommendation-learning-dataset-readiness-v2.15e.md`)
+identifikoval jednu konkrétnu medzeru: resultset continuation ("Zobraz
+viac"/"Zobraz všetky") láme kauzálny reťazec, keďže `interaction_id` je
+čestne nový za každý `/chat` request. Táto sprinta vyhodnotila 5
+kandidátnych identity modelov (A–E) a zistila, že `app.result_sets.
+ResultSet.result_set_id` — existujúci, stabilný per-search identifikátor
+mintnutý raz a nikdy znova pri continuation — už rieši presne tento
+problém; jediná medzera bola, že `app/widget.js` ho nikdy nečítal.
+
+**GATE B** — minimálna propagačná oprava. `result_set_id` teraz prenesený
+end-to-end: backend `/chat` response → frontend stash (rovnaké miesto ako
+`interaction_id`/`decision_id`) → všetkých 5 `renderCard()` `fireEvent()`
+volaní + `impression` event → `EventRequest.result_set_id` → `log_event()`
+→ `events.jsonl`. `decision_id` zostáva null pre ordinary product_search
+(nikdy fabrikovaný). Historické 4 `add_to_cart_confirmed` eventy s
+`decision_id: None` vyšetrené priamo — `PROVEN_OTHER_CAUSE`, nie
+attribution break.
+
+**Výsledky**: Plný beh **1782/1782** (1758 + 24 nových), 0 regresií.
+V2.10 fast-mode **35/39 nezmenené**. Canary **10/10 nezmenené**. Trust
+audit 0 nálezov. `AUTO_PROMOTION_ENABLED` nezmenené (`False`).
+
+**Finálny stav**: `ATTRIBUTION_STRUCTURE_READY` +
+`EMPIRICAL_DATA_STILL_INSUFFICIENT` (funkcia je nová, 0 produkčných
+pozorovaní s `result_set_id` k dátumu nasadenia). Detail:
+`docs/resultset-continuation-attribution-v2.15e.1.md`.
+
+**Ďalší krok**: V2.15f sa nezačína automaticky. Zostávajúci dlh:
+feedback→decision_id korelácia a cross_sell/recipe_shopping/
+replacement_products decision-logging rozšírenie, oba mimo rozsahu tejto
+sprinty.

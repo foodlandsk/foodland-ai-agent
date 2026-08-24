@@ -1702,7 +1702,7 @@
       const actionsDiv = card.querySelector(".fl-ai-product-actions");
       const viewLink = card.querySelector(".fl-ai-product-link");
       viewLink.addEventListener("click", function () {
-        fireEvent({ event_type: "click", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null });
+        fireEvent({ event_type: "click", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null, result_set_id: product.result_set_id || null });
       });
       const cartBtn = document.createElement("button");
       cartBtn.type = "button";
@@ -1711,21 +1711,21 @@
       cartBtn.addEventListener("click", async function () {
         cartBtn.disabled = true;
         cartBtn.textContent = "Pridávam...";
-        fireEvent({ event_type: "click", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null });
+        fireEvent({ event_type: "click", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null, result_set_id: product.result_set_id || null });
         // V2.15d.2 - the customer initiated the cart-add mechanism. This
         // does NOT mean the cart mutation succeeded - see "add_to_cart"
         // (unchanged, fired below only on believed success, kept for
         // backward compatibility with app.fbt/app.behavioral/
         // app.learning_signals) and "add_to_cart_confirmed" (fired only
         // when the host site's own AJAX call authoritatively confirmed it).
-        fireEvent({ event_type: "add_to_cart_attempt", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null });
+        fireEvent({ event_type: "add_to_cart_attempt", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null, result_set_id: product.result_set_id || null });
         try {
           const cartResult = await addToCart(product);
           cartBtn.textContent = "✓ Pridané";
           cartBtn.classList.add("is-added");
-          fireEvent({ event_type: "add_to_cart", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null });
+          fireEvent({ event_type: "add_to_cart", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null, result_set_id: product.result_set_id || null });
           if (cartResult && cartResult.attempted && cartResult.authoritative) {
-            fireEvent({ event_type: "add_to_cart_confirmed", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null });
+            fireEvent({ event_type: "add_to_cart_confirmed", product_sku: product.id, query: query || null, position: position, interaction_id: product.interaction_id || null, decision_id: product.decision_id || null, result_set_id: product.result_set_id || null });
           }
         } catch (e) {
           cartBtn.textContent = "Do košíka";
@@ -2048,10 +2048,28 @@
         // smallest change that makes interaction_id/decision_id reachable
         // from a product click without threading new arguments through
         // addProducts()/renderCard().
+        // V2.15e.1 (docs/resultset-continuation-attribution-v2.15e.1.md)
+        // - result_set_id is the backend's already-existing, stable
+        // per-search identifier: unlike interaction_id (a fresh id every
+        // single /chat call, including a "Zobraz viac"/Show More
+        // continuation) it is generated ONCE when a search first runs
+        // and is returned UNCHANGED on every subsequent continuation of
+        // that same search (app.result_sets.create_result_set() mints it
+        // once; app.workflow_executor.execute_resultset_continuation()
+        // only mutates displayed_count on the SAME stored ResultSet, it
+        // never re-mints result_set_id). Stashing it here - the exact
+        // same place interaction_id/decision_id are already stashed -
+        // means a product revealed via Show More can still be traced
+        // back to the search that originally exposed it, even though
+        // its own interaction_id is legitimately a new one. This is
+        // additive: result_set_id is null for any response that never
+        // created/continued a ResultSet (comparison/use_case_advice/
+        // basket_completion never do), never fabricated.
         if (Array.isArray(data.products)) {
           data.products.forEach(function (p) {
             p.interaction_id = data.interaction_id || null;
             p.decision_id = decisionId;
+            p.result_set_id = data.result_set_id || null;
           });
         }
         addProducts(data.products, text, Boolean(data.has_more));
@@ -2062,6 +2080,7 @@
             product_skus: data.products.map(function (p) { return p.id; }).filter(Boolean),
             interaction_id: data.interaction_id || null,
             decision_id: decisionId,
+            result_set_id: data.result_set_id || null,
           });
         }
         if (!Array.isArray(data.products) || data.products.length === 0) {
@@ -2069,6 +2088,7 @@
           candidateProducts.forEach(function (p) {
             p.interaction_id = data.interaction_id || null;
             p.decision_id = decisionId;
+            p.result_set_id = data.result_set_id || null;
           });
           addProducts(candidateProducts, text);
         }

@@ -376,6 +376,17 @@ V2.15c follow-upe (jedna funkcia, žiadna duplicita). Žiadna zmena
 routovania — `tests/test_noncommerce_context_followup_v2_15c.py` a nový
 `tests/test_store_location_canonical_v2_15d_3.py` obe PASSED.
 
+**Aktualizácia (V2.15e.1)**: resultset continuation ("Zobraz viac"/
+"Zobraz všetky") attribution gap identifikovaná v V2.15e uzavretá.
+`result_set_id` (existujúci, stabilný per-search identifikátor v
+`app.result_sets.ResultSet`) je teraz prenesený cez `app/widget.js` do
+`fireEvent()` payloadov a `/events`→`log_event()`. GATE B — žiadny nový
+identifikátor, žiadna zmena zákazníckeho správania. Detail:
+`docs/resultset-continuation-attribution-v2.15e.1.md`. Historické 4
+`add_to_cart_confirmed` eventy s `decision_id: None` vyšetrené priamym
+čítaním produkčnej histórie — `PROVEN_OTHER_CAUSE` (obyčajné product_search
+nákupy bez recommendation decision), nie zlomená continuation atribúcia.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným

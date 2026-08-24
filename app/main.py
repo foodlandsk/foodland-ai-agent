@@ -304,6 +304,14 @@ class EventRequest(BaseModel):
     interaction_id: str | None = Field(default=None, max_length=32)
     decision_id: str | None = Field(default=None, max_length=32)
     event_id: str | None = Field(default=None, max_length=64)
+    # V2.15e.1 (docs/resultset-continuation-attribution-v2.15e.1.md) -
+    # additive, optional. Unlike interaction_id/decision_id (fresh/
+    # capability-specific per request), result_set_id is the backend's
+    # already-existing, STABLE per-search identifier (app.result_sets.
+    # ResultSet.result_set_id) that survives a "Show More"/"Show All"
+    # continuation unchanged - see app.workflow_executor.
+    # execute_resultset_continuation(), which never re-mints it.
+    result_set_id: str | None = Field(default=None, max_length=64)
 
 
 class EventsPurgeRequest(BaseModel):
@@ -6948,6 +6956,11 @@ def log_event(event_request: EventRequest, client_key: str, execution_context: _
         "interaction_id": event_request.interaction_id,
         "decision_id": event_request.decision_id,
         "event_id": event_request.event_id,
+        # V2.15e.1: additive, optional - None for every event that never
+        # involved a ResultSet (e.g. comparison/use_case_advice/
+        # basket_completion never create one) and for every pre-V2.15e.1
+        # app/widget.js submission (it did not populate this yet).
+        "result_set_id": event_request.result_set_id,
         # V2.15d.3 (docs/event-execution-context-isolation-v2.15d.3.md)
         # - server-RESOLVED context (never trusts a client-supplied
         # field directly), so a synthetic/admin verification event can

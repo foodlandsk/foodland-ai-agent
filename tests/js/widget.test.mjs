@@ -220,3 +220,77 @@ test("fireEvent() still swallows every failure mode (sync throw + fetch rejectio
   assert.match(source, /function fireEvent\(payload\) \{\s*if \(demoMode\) return;\s*try \{/);
   assert.ok(source.includes("}).catch(function () {});"), "fetch rejection must still be silently swallowed");
 });
+
+// ---------------------------------------------------------------------
+// V2.15e.1 - resultset continuation attribution
+// (docs/resultset-continuation-attribution-v2.15e.1.md)
+//
+// GATE B: result_set_id is the backend's already-existing, STABLE
+// per-search identifier (app.result_sets.ResultSet.result_set_id) that
+// survives a "Show More"/"Show All" continuation unchanged - unlike
+// interaction_id, which is legitimately fresh on every single /chat
+// call. The gap closed here is purely that app/widget.js never read or
+// forwarded it; the identity model itself required no new backend
+// concept.
+// ---------------------------------------------------------------------
+
+test("initial-response stash writes result_set_id onto every product object, alongside interaction_id/decision_id", () => {
+  const source = readWidgetSource();
+  assert.ok(
+    source.includes(
+      "p.interaction_id = data.interaction_id || null;\n            p.decision_id = decisionId;\n            p.result_set_id = data.result_set_id || null;"
+    ),
+    "the primary data.products stash block must set result_set_id from data.result_set_id, never fabricate it"
+  );
+});
+
+test("cart-candidate fallback stash also carries result_set_id (Section 32 - both product-bearing branches, not just the primary one)", () => {
+  const source = readWidgetSource();
+  const candidateBlock = source.match(
+    /candidateProducts\.forEach\(function \(p\) \{\s*p\.interaction_id = data\.interaction_id \|\| null;\s*p\.decision_id = decisionId;\s*p\.result_set_id = data\.result_set_id \|\| null;\s*\}\);/
+  );
+  assert.ok(candidateBlock, "cartCandidatesToProducts() branch must stash result_set_id identically to the primary branch");
+});
+
+test("continuation responses reuse the SAME stash code path as an initial search (no separate/bypassable branch for Show More)", () => {
+  // Characterization finding: a "zobraz viac"/"zobraz vsetky" response
+  // has intent product_search (never "recipe", the only branch this
+  // block excludes), so it is provably NOT possible for continuation to
+  // skip this stash logic - there is only one such block in the file.
+  const source = readWidgetSource();
+  const occurrences = source.match(/p\.result_set_id = data\.result_set_id \|\| null;/g) || [];
+  assert.equal(occurrences.length, 2, "exactly two stash sites (primary products + cart-candidate fallback), no third/duplicate continuation-only branch");
+});
+
+test("all 5 renderCard() fireEvent() calls (view click, cart click, attempt, legacy add_to_cart, confirmed) include result_set_id", () => {
+  const source = readWidgetSource();
+  const eventTypes = ["click", "click", "add_to_cart_attempt", "add_to_cart", "add_to_cart_confirmed"];
+  const fireEventCalls = [...source.matchAll(/fireEvent\(\{ event_type: "(click|add_to_cart_attempt|add_to_cart|add_to_cart_confirmed)"[^}]*\}\);/g)];
+  assert.equal(fireEventCalls.length, 5, `expected exactly 5 renderCard fireEvent() calls, found ${fireEventCalls.length}`);
+  fireEventCalls.forEach((m) => {
+    assert.ok(
+      m[0].includes("result_set_id: product.result_set_id || null"),
+      `fireEvent for event_type "${m[1]}" must forward product.result_set_id, never fabricate it: ${m[0]}`
+    );
+  });
+});
+
+test("the impression event includes result_set_id sourced from data.result_set_id, never from a product-level field", () => {
+  const source = readWidgetSource();
+  const impressionBlock = source.match(
+    /fireEvent\(\{\s*event_type: "impression",\s*query: text,\s*product_skus: data\.products\.map\(function \(p\) \{ return p\.id; \}\)\.filter\(Boolean\),\s*interaction_id: data\.interaction_id \|\| null,\s*decision_id: decisionId,\s*result_set_id: data\.result_set_id \|\| null,\s*\}\);/
+  );
+  assert.ok(impressionBlock, "impression event must include result_set_id: data.result_set_id || null");
+});
+
+test("result_set_id is never hardcoded/fabricated as a string literal anywhere near the stash or fireEvent sites", () => {
+  const source = readWidgetSource();
+  // Every result_set_id assignment in the file must be a `|| null`
+  // fallback read off data/product, never a bare string literal - this
+  // rules out a stray hardcoded id sneaking into a fireEvent payload.
+  const assignments = [...source.matchAll(/result_set_id:\s*([^,}\n]+)/g)].map((m) => m[1].trim());
+  assert.ok(assignments.length >= 6, "expected at least 6 result_set_id: ... sites (5 fireEvent + 1 impression)");
+  assignments.forEach((expr) => {
+    assert.match(expr, /^(data|product)\.result_set_id \|\| null$/, `unexpected result_set_id expression: ${expr}`);
+  });
+});
