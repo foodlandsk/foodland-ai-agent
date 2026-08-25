@@ -390,3 +390,42 @@ test("existing click/cart event fireEvent calls are unchanged by the feedback pa
   const fireEventCalls = [...source.matchAll(/fireEvent\(\{ event_type: "(click|add_to_cart_attempt|add_to_cart|add_to_cart_confirmed)"[^}]*\}\);/g)];
   assert.equal(fireEventCalls.length, 5);
 });
+
+// ---------------------------------------------------------------------
+// V2.15e.3 - decision observability expansion
+// (docs/decision-observability-expansion-v2.15e.3.md)
+//
+// Heterogeneous, evidence-backed outcome: cross_sell and
+// replacement_products stay STRUCTURAL_GAP_ACCEPTED (GATE A, no widget
+// change at all); recipe_shopping alone gets GATE C, since its products
+// already render via the primary data.products array (unlike cross_sell,
+// which app/widget.js never reads at all) and its plan carries genuine
+// per-role evidence (structurally identical to basket_completion's
+// existing decision, which already has basket_decision_id).
+// ---------------------------------------------------------------------
+
+test("decisionId resolution now also falls back to data.recipe_shopping_decision_id, still ending in null (never fabricated)", () => {
+  const source = readWidgetSource();
+  assert.ok(
+    source.includes(
+      "const decisionId = data.comparison_decision_id || data.basket_decision_id || data.use_case_advice_decision_id || data.recipe_shopping_decision_id || null;"
+    ),
+    "decisionId must add recipe_shopping_decision_id as one more fallback, preserving the existing chain and the null terminator"
+  );
+});
+
+test("app/widget.js still never reads data.cross_sell (GATE A characterization invariant for cross_sell)", () => {
+  const source = readWidgetSource();
+  assert.equal(source.includes("cross_sell"), false);
+});
+
+test("app/widget.js introduces no replacement_decision_id reference (GATE A - replacement_products stays uncorrelated)", () => {
+  const source = readWidgetSource();
+  assert.equal(source.includes("replacement_decision_id"), false);
+});
+
+test("decisionId is still resolved exactly once per response (single source of truth, no second computation)", () => {
+  const source = readWidgetSource();
+  const occurrences = source.match(/const decisionId = data\.comparison_decision_id/g) || [];
+  assert.equal(occurrences.length, 1);
+});

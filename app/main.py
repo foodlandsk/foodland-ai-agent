@@ -171,6 +171,7 @@ from app.recipe_shopping import resolve_recipe_followup as _resolve_recipe_follo
 from app.recipe_shopping import compose_recipe_followup_answer as _compose_recipe_followup_answer
 from app.recipe_shopping import RECIPE_FOLLOWUP_INGREDIENT as _RF_INGREDIENT
 from app.recipe_shopping import RECIPE_FOLLOWUP_SELECTED as _RF_SELECTED
+from app.recipe_shopping import RECIPE_FOLLOWUP_PLAN_UPDATE as _RF_PLAN_UPDATE
 from app.recipe_shopping import STATUS_AVAILABLE as _RF_STATUS_AVAILABLE
 from app.session_state import get_active_recipe as _get_active_recipe
 from app.session_state import set_active_recipe as _set_active_recipe
@@ -4698,6 +4699,9 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         session_id=session_id,
         query_language=query_language,
         emit_customer_analytics=execution_context.emit_customer_analytics,
+        interaction_id=interaction_id or "",
+        should_log_decision=execution_context.mode.value in ("CUSTOMER", "ADMIN_TEST"),
+        learning_eligible=execution_context.is_customer_traffic,
     )
     if _recipe_result is not None:
         return _recipe_result

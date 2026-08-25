@@ -2028,7 +2028,7 @@
       // never more than one at once since _chat_impl() returns early from
       // whichever single workflow resolved this turn - this only picks
       // whichever one is present, it never fabricates an id of its own.
-      const decisionId = data.comparison_decision_id || data.basket_decision_id || data.use_case_advice_decision_id || null;
+      const decisionId = data.comparison_decision_id || data.basket_decision_id || data.use_case_advice_decision_id || data.recipe_shopping_decision_id || null;
       const hasProducts = Array.isArray(data.products) && data.products.length > 0;
       const hasRecipes = Array.isArray(data.recipes) && data.recipes.length > 0;
       const hasArticles = Array.isArray(data.articles) && data.articles.length > 0;

@@ -395,6 +395,15 @@ widget-only, nulová zmena backend schémy (`EventRequest` už mala tieto
 polia generické pre akýkoľvek `event_type`). Detail:
 `docs/feedback-decision-correlation-v2.15e.2.md`.
 
+**Aktualizácia (V2.15e.3)**: decision observability rozšírená
+heterogénne — `recipe_shopping` teraz má `recipe_shopping_decision_id`
+(GATE C, mirror `basket_completion`'s existujúceho vzoru), `cross_sell`
+a `replacement_products` zostávajú `STRUCTURAL_GAP_ACCEPTED` z odlišných
+dôvodov (frontend rendering gap vs. data-quality/architecture risk —
+`app/widget.js` nikdy nečíta `data.cross_sell`; replacement je raw
+fallback kaskáda bez evidence štruktúry). rt0013 znovu-overené,
+NEOTVORENÉ. Detail: `docs/decision-observability-expansion-v2.15e.3.md`.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným

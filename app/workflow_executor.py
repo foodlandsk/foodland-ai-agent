@@ -407,6 +407,9 @@ def execute_recipe(
     session_id: str,
     query_language: str,
     emit_customer_analytics: bool,
+    interaction_id: str = "",
+    should_log_decision: bool = False,
+    learning_eligible: bool = False,
 ) -> WorkflowResult | None:
     """V2.13e - moved verbatim from its former two inline locations
     (docs/recipe-state-machine-v2.13e.md's "Block D" and "Block E").
@@ -473,8 +476,38 @@ def execute_recipe(
                 ]
             else:
                 recipe_products = m.recipe_shopping_core_products(products, recipe_product_subject, recipe_products, max(chat_request.limit, 8))
+        # V2.15e.3 (docs/decision-observability-expansion-v2.15e.3.md)
+        # - GATE C: recipe_shopping_plan already carries genuine per-
+        # role evidence (candidate_product_ids/selected_product_id/
+        # status), structurally identical in shape to
+        # app.basket_completion's existing decision - this mints ONE
+        # decision_id per computed plan, reusing log_recommendation_
+        # decision() exactly like execute_basket_completion() does.
+        # Only ever minted when a real V2.8 structured plan exists -
+        # the legacy (non-graph) recipe_shopping_core_products()
+        # fallback has no evidence/candidates to report, so it
+        # correctly stays decision_id=None, never fabricated.
+        _recipe_decision_id = None
         if recipe_shopping_plan is not None:
             m._set_active_recipe(memory, recipe_product_subject, recipe_shopping_plan.requested_servings)
+            _recipe_decision_id = secrets.token_hex(8)
+            if should_log_decision:
+                m.log_recommendation_decision(
+                    interaction_id=interaction_id,
+                    decision_id=_recipe_decision_id,
+                    decision_type="recipe_shopping",
+                    workflow_id="RECIPE_SHOPPING",
+                    intent="recipe_to_products",
+                    session_id=session_id,
+                    client_key=client_key,
+                    use_case=recipe_shopping_plan.dish_id,
+                    state="FULLY_RESOLVED" if recipe_shopping_plan.missing_required_count == 0 else "PARTIALLY_RESOLVED",
+                    candidate_product_ids=[pid for ing in recipe_shopping_plan.ingredients for pid in ing.candidate_product_ids],
+                    recommended_product_ids=_plan_product_ids,
+                    reason_codes=sorted({ing.status for ing in recipe_shopping_plan.ingredients}),
+                    confidence=None,
+                    learning_eligible=learning_eligible,
+                )
         intent = "recipe_to_products" if recipe_products else "recipe"
         if recipe_products:
             m.annotate_recommendations(
@@ -521,6 +554,7 @@ def execute_recipe(
             "workflow_id": _recipe_workflow.workflow_id,
             "workflow_confidence": _recipe_workflow.confidence,
             "recipe_shopping_plan": m._summarize_recipe_shopping_plan(recipe_shopping_plan) if recipe_shopping_plan else None,
+            "recipe_shopping_decision_id": _recipe_decision_id,
         }
 
     if recipe_followup_result is not None:
@@ -542,6 +576,27 @@ def execute_recipe(
             _followup_products = [m.format_product(_products_by_id[pid]) for pid in _remaining_ids if pid in _products_by_id]
         else:
             _followup_products = []
+        _recipe_followup_decision_id = None
+        if recipe_followup_result.kind == m._RF_PLAN_UPDATE and recipe_followup_result.plan is not None:
+            _recipe_followup_decision_id = secrets.token_hex(8)
+            if should_log_decision:
+                _plan = recipe_followup_result.plan
+                m.log_recommendation_decision(
+                    interaction_id=interaction_id,
+                    decision_id=_recipe_followup_decision_id,
+                    decision_type="recipe_shopping",
+                    workflow_id="RECIPE_SHOPPING",
+                    intent="recipe_to_products",
+                    session_id=session_id,
+                    client_key=client_key,
+                    use_case=_plan.dish_id,
+                    state="FULLY_RESOLVED" if _plan.missing_required_count == 0 else "PARTIALLY_RESOLVED",
+                    candidate_product_ids=[pid for ing in _plan.ingredients for pid in ing.candidate_product_ids],
+                    recommended_product_ids=[ing.selected_product_id for ing in _plan.ingredients if ing.selected_product_id],
+                    reason_codes=sorted({ing.status for ing in _plan.ingredients}),
+                    confidence=None,
+                    learning_eligible=learning_eligible,
+                )
         _followup_answer = m._compose_recipe_followup_answer(recipe_followup_result, recipe_graph_index, _products_by_id, query_language)
         m.update_session_memory(memory_key, chat_request.message, "recipe_to_products", _followup_products, [], knowledge_matches)
         updated_profile = m.update_user_memory(profile_key, chat_request.message, "recipe_to_products", _followup_products, [])
@@ -552,6 +607,7 @@ def execute_recipe(
             "products": _followup_products,
             "articles": [],
             "recipe_shopping_plan": m._summarize_recipe_shopping_plan(recipe_followup_result.plan) if recipe_followup_result.plan else None,
+            "recipe_shopping_decision_id": _recipe_followup_decision_id,
             "knowledge": m.knowledge_summary(knowledge_matches),
             "memory": m.public_user_memory_summary(updated_profile),
             "intent": "recipe_to_products",

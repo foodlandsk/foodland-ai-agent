@@ -2029,10 +2029,10 @@ audit 0 nálezov. `AUTO_PROMOTION_ENABLED` nezmenené (`False`).
 pozorovaní s `result_set_id` k dátumu nasadenia). Detail:
 `docs/resultset-continuation-attribution-v2.15e.1.md`.
 
-**Ďalší krok**: V2.15f sa nezačína automaticky. Zostávajúci dlh:
+**Ďalší krok (pôvodne)**: V2.15f sa nezačína automaticky. Zostávajúci dlh:
 feedback→decision_id korelácia a cross_sell/recipe_shopping/
 replacement_products decision-logging rozšírenie, oba mimo rozsahu tejto
-sprinty.
+sprinty. (Prvý bod uzavretý V2.15e.2, druhý V2.15e.3 — pozri nižšie.)
 
 ---
 
@@ -2057,3 +2057,41 @@ plný test matrix a finálny Slovenský report pre CI/Railway/live
 verifikáciu. `AUTO_PROMOTION` nezmenené (`False`).
 
 **Ďalší krok**: V2.15f sa nezačína automaticky.
+
+---
+
+## V2.15e.3 — Decision Observability Expansion (cross_sell / recipe_shopping / replacement_products)
+
+V2.15e.2 klasifikoval tieto tri kapacity ako `STRUCTURAL_GAP`. Táto
+sprinta ich audituje NEZÁVISLE (nie uniformne) — výsledok je zámerne
+heterogénny:
+
+- **cross_sell**: `GATE A / STRUCTURAL_GAP_ACCEPTED`. Decision logika
+  (`app.cross_sell.build_cross_sell()`) je reálna a dôkazmi podložená,
+  ale `app/widget.js` nikdy nečíta `data.cross_sell` (grep-overené: 0
+  výskytov) — zákazník tieto produkty nikdy neuvidí. Durably logovať
+  neviditeľné rozhodnutie by vytvorilo permanentne-nulové-engagement
+  záznamy s rizikom nesprávnej interpretácie ako negatívny signál.
+- **recipe_shopping**: `GATE C / DECISION_OBSERVABILITY_LIVE`. Produkty
+  sa už dnes zlučujú priamo do `data.products` a sú plne interaktívne;
+  `RecipeShoppingPlan` má rovnakú štruktúru ako `basket_completion`'s
+  existujúce rozhodnutie. Implementované mirror-ovaním presného vzoru
+  `execute_basket_completion()` — jeden `recipe_shopping_decision_id` za
+  vypočítaný plán.
+- **replacement_products**: `GATE A / STRUCTURAL_GAP_ACCEPTED`. Raw
+  3-vrstvová fallback kaskáda bez per-kandidát evidence;
+  `REPLACEMENT_QUALITY_DATA_LIMITATION` (vegan constraint sa
+  nefiltruje deterministicky) potvrdené testom. rt0013 znovu-overené,
+  NEOTVORENÉ.
+
+**Výsledky**: Plný beh **1838/1838** (1808 + 30 nových), 0 regresií
+(jeden tranzientný cross-file rate-limiter state leak identifikovaný a
+opravený scoped test fixture-om vo vlastnom test súbore, nesúvisí s
+produkčným kódom). V2.10 **35/39 nezmenené**. Canary **10/10 nezmenené**.
+Trust audit čistý. `AUTO_PROMOTION` nezmenené (`False`).
+
+**Finálny stav**: `DECISION_OBSERVABILITY_EXPANDED_WITH_LIMITATIONS`.
+Detail: `docs/decision-observability-expansion-v2.15e.3.md`.
+
+**NEXT_PROGRAM_PHASE = WAIT_FOR_EMPIRICAL_DATA.** V2.15f sa nezačína
+automaticky.
