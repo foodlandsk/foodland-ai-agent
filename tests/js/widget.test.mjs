@@ -133,7 +133,7 @@ test("decisionId resolution picks whichever capability-specific field the backen
   const source = readWidgetSource();
   assert.ok(
     source.includes(
-      "data.comparison_decision_id || data.basket_decision_id || data.use_case_advice_decision_id || null"
+      "data.comparison_decision_id || data.basket_decision_id || data.use_case_advice_decision_id || data.recipe_shopping_decision_id || null"
     ),
     "decisionId must fall back to null for ordinary product search (Section 41) - never invent an id"
   );
@@ -344,7 +344,7 @@ test("ordinary search / FAQ responses cannot fabricate a decision_id for feedbac
   const source = readWidgetSource();
   assert.ok(
     source.includes(
-      "const decisionId = data.comparison_decision_id || data.basket_decision_id || data.use_case_advice_decision_id || null;"
+      "const decisionId = data.comparison_decision_id || data.basket_decision_id || data.use_case_advice_decision_id || data.recipe_shopping_decision_id || null;"
     ),
     "decisionId resolution (shared by both product clicks and feedback) must still fall back to null, never invent an id"
   );
