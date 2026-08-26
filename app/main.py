@@ -191,6 +191,7 @@ from app.session_state import looks_like_recipe_followup as _looks_like_recipe_f
 from app.session_state import get_last_informational_question as _get_last_informational_question
 from app.session_state import set_last_informational_question as _set_last_informational_question
 from app.session_state import looks_like_location_reference_followup as _looks_like_location_reference_followup
+from app.session_state import looks_like_payment_method_followup as _looks_like_payment_method_followup
 
 
 logging.basicConfig(
@@ -4789,18 +4790,30 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     # dostanem), not a generic "any short follow-up inherits context"
     # catch-all, so "Pošli mi link na Kikkoman" (an explicit product
     # target) never matches it and is handled normally below.
+    # V2.16a - generalizes the same last-resort pattern to the
+    # payment-methods topic (Case I: "Ako môžem zaplatiť?" -> "A Apple
+    # Pay?" previously fell through into commerce product search). Same
+    # position, same hard-switch guarantees, same re-derivation via the
+    # unmodified FAQ cascade - see
+    # app.session_state.looks_like_payment_method_followup().
     _last_informational_question = _get_last_informational_question(memory)
-    if _last_informational_question and _looks_like_location_reference_followup(chat_request.message):
+    _is_location_followup = _last_informational_question and _looks_like_location_reference_followup(chat_request.message)
+    _is_payment_followup = _last_informational_question and not _is_location_followup and _looks_like_payment_method_followup(
+        _last_informational_question, chat_request.message
+    )
+    if _is_location_followup or _is_payment_followup:
         _followup_faq_answer = best_direct_faq_answer(_last_informational_question, knowledge) or best_faq_answer(
             search_knowledge(knowledge, _last_informational_question, allowed_sections=("FAQ",))
         )
         if _followup_faq_answer:
-            _maps_link = _build_maps_link_from_faq_answer(_followup_faq_answer)
+            _maps_link = _build_maps_link_from_faq_answer(_followup_faq_answer) if _is_location_followup else None
             _followup_answer_text = f"{_followup_faq_answer}\n\n{_maps_link}" if _maps_link else _followup_faq_answer
             updated_profile = update_user_memory(profile_key, chat_request.message, "faq", [], [])
             log_question(
                 chat_request.message, client_key, 0, intent="faq", session_id=session_id,
-                primary_intent="faq", subject="location_reference_followup", interaction_id=interaction_id,
+                primary_intent="faq",
+                subject="location_reference_followup" if _is_location_followup else "payment_method_followup",
+                interaction_id=interaction_id,
             )
             return {
                 "answer": _followup_answer_text,

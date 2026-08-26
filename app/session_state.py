@@ -334,6 +334,44 @@ def looks_like_location_reference_followup(message: str) -> bool:
     return any(marker in normalized for marker in _LOCATION_REFERENCE_MARKERS)
 
 
+_PAYMENT_METHOD_TOPIC_MARKERS = ("plat", "kartou", "hotovost")
+
+_PAYMENT_METHOD_FOLLOWUP_MARKERS = (
+    "apple pay", "google pay", "paypal", "gopay", "go pay",
+    "24-pay", "24 pay", "24pay", "tatrapay", "tatra pay",
+    "prevod", "dobierka",
+)
+
+
+def looks_like_payment_method_followup(last_informational_question: str, message: str) -> bool:
+    """V2.16a - generalizes the same NON_COMMERCE_CONTEXTUAL_FOLLOWUP
+    pattern V2.15c established for store_location
+    (looks_like_location_reference_followup) to the payment-methods
+    topic. Reproduced gap (V2.16a characterization, Case I): "Ako môžem
+    zaplatiť?" -> "A Apple Pay?" fell through the entire routing cascade
+    into commerce product search, which fuzzy-matched "apple" against
+    unrelated catalog items (e.g. "Lepkavá ryža APPLE BRAND"). Reuses the
+    SAME single last_informational_question field - no new topic enum, no
+    new session-state field, so reset/TTL/cross-session isolation are
+    inherited for free exactly as already proven for rt0014. The previous
+    question is classified as payment-topic in-line, at recall time, by
+    checking whether it itself contains one of the existing
+    FAQ_INTENT_MARKERS payment markers (plat/kartou/hotovost) - not a
+    persisted label. Deliberately narrow: bare "apple"/"pay"/"karta" are
+    NOT markers here (explicit current-turn target always wins - a
+    message about an actual product must never be swallowed by this
+    path), only specific named payment-method phrases a customer would
+    use to ask "does that one work too?" after a payment question. Data
+    evidence (data/knowledge.json): Apple Pay/Google Pay are not present
+    anywhere in the FAQ records, so this only ever re-derives the real,
+    already-grounded payment-methods answer (which does not list them) -
+    it never fabricates a yes/no claim about a specific provider."""
+    if not any(marker in normalize(last_informational_question) for marker in _PAYMENT_METHOD_TOPIC_MARKERS):
+        return False
+    normalized = normalize(message)
+    return any(marker in normalized for marker in _PAYMENT_METHOD_FOLLOWUP_MARKERS)
+
+
 def looks_like_recipe_followup(message: str) -> bool:
     """True when the message reads as a continuation question about an
     already-active recipe (Section 53: "aké rezance?", "čo ešte
