@@ -235,6 +235,49 @@ zodpovedá staršiemu, menšiemu `--fast` datasetu z commitu `2bb1ea5`
 - `app/learning_lifecycle.py` a všetky ranking/promotion súbory
   nezmenené. `AUTO_PROMOTION=False`. V2.15f nespustené.
 
+## 14a. Railway deployment a live production matrix
+
+Produkčný endpoint určený priamo z repozitára (`app/widget.js:3`,
+`README.md:250`), nie odhadnutý z historických aliasov:
+`https://foodland-ai-agent-production.up.railway.app`.
+
+`/health` pred aj po nasadení: `{"status":"ok","products":2140,...}`.
+
+Railway nasadzuje nezávisle od GitHub Actions CI (vlastná git-push
+integrácia) — nové správanie bolo live na produkcii ešte PRED
+dokončením CI behu (overené negatívnou kontrolou "Poslite mi Apple
+Brand ryzu" po payment téme, ktorá by pri STAROM kóde bola nesprávne
+zachytená; produkcia ju správne vrátila ako `product_search`).
+
+Live production matrix (rate-limit `RATE_LIMIT_PER_MINUTE=12`
+rešpektovaný, paced volania, žiadna cart mutácia, žiadne syntetické
+konverzie):
+
+| Kontrola | Výsledok |
+|---|---|
+| A. store_location initial | `faq`, adresa ✓ |
+| B. store → Maps followup | `faq`, adresa ✓ (nezmenené) |
+| C. opening_hours initial | `product_search` — potvrdzuje NOT_REACHED gap live |
+| E. contact initial | `product_search` — potvrdzuje NOT_REACHED gap live |
+| G. delivery initial | `faq`, krajiny ✓ |
+| G2. delivery → cena followup | `faq`, "49 €" ✓ |
+| I. payment initial | `faq`, karta/hotovosť ✓ |
+| I2. payment → Apple Pay followup | `faq`, recall payment answer, **žiadna zmienka "apple"** — presne nová kapabilita |
+| I3. payment → Google Pay followup | `faq`, rovnaké správanie ✓ |
+| K. hard switch → product_search | `product_search`, 4 produkty ✓ |
+| L. hard switch → replacement_products | `replacement_products` ✓ |
+| M. hard switch → recipe (aj ramen control) | `recipe` ✓ |
+| N. explicitná nová FAQ téma preváži starú | `faq` (delivery odpoveď, nie payment) ✓ |
+| P. rt0004 | `related_products` ✓ |
+| Q. rt0010 | `allergen_safety` ✓ |
+| R. rt0011 (2× rovnaký dopyt) | `product_search` oba razy ✓ |
+| S. rt0013 | `replacement_products` ✓ |
+| U. V2.15c store-location regresia | `faq` oba ťahy ✓ |
+| NEG. explicitný "Apple Brand" produkt po payment téme | `product_search`, 1 produkt (nie faq) ✓ |
+
+Všetky live výsledky presne zodpovedajú lokálnym testom a
+charakterizácii. Žiadna anomália.
+
 ## 15. Známe limity / mimo rozsahu
 
 - `opening_hours`/`contact` zostávajú `NOT_REACHED`/`DATA_REQUIRED` —
