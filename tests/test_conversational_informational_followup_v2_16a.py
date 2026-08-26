@@ -34,22 +34,36 @@ by tests below rather than merely asserted:
   reusing the exact same last_informational_question field (no new
   session-state field, no new topic enum - see the function's own
   docstring for the full rationale).
-- opening_hours, contact: reproduced PRE_EXISTING GAP, unchanged from the
-  V2.15c audit (docs/noncommerce-context-followup-v2.15c.md) - the
-  INITIAL question ("Kedy máte otvorené?", "Ako vás môžem kontaktovať?")
-  does not reach the FAQ cascade at all (no FAQ_INTENT_MARKERS entry
-  matches "otvoren"/"hodin"/"kontakt"/"telefon"). V2.16a explicitly did
-  NOT add markers for these: a blast-radius check against
-  data/products.json found "otvoren" collides with real product
-  description text ("po otvorení" storage/usage instructions on 5+
-  catalog items, e.g. Kikkoman Teriyaki BBQ omáčka), which would risk
-  hijacking a legitimate storage-instruction question into a wrong FAQ
-  answer (Section 26/46 - a fix that improves one topic but steals an
-  unrelated query is a failed fix). Per Section 26, NOT_REACHED_PRE_
-  EXISTING_GAP is an explicitly valid outcome; these are characterized,
-  not silently ignored, and are NOT claimed as V2.16a follow-up
-  capabilities (Section 27 - no capability may claim follow-up support
-  whose initial question cannot reliably resolve).
+- opening_hours, contact: at the time V2.16a was written, reproduced
+  PRE_EXISTING GAP, unchanged from the V2.15c audit (docs/noncommerce-
+  context-followup-v2.15c.md) - the INITIAL question ("Kedy máte
+  otvorené?", "Ako vás môžem kontaktovať?") did not reach the FAQ
+  cascade at all (no FAQ_INTENT_MARKERS entry matched "otvoren"/"hodin"/
+  "kontakt"/"telefon"). V2.16a explicitly did NOT add markers for these:
+  a blast-radius check against data/products.json found "otvoren"
+  collides with real product description text ("po otvorení"
+  storage/usage instructions on 5+ catalog items, e.g. Kikkoman Teriyaki
+  BBQ omáčka), which would risk hijacking a legitimate storage-
+  instruction question into a wrong FAQ answer (a fix that improves one
+  topic but steals an unrelated query is a failed fix).
+
+  CLOSED BY V2.16a.1 (docs/opening-hours-contact-grounding-v2.16a.1.md):
+  a follow-up data-grounding audit found (a) opening_hours can safely
+  reuse the EXISTING store-location FAQ record via a narrow, phrase/
+  token-based intent detector (app.session_state.is_opening_hours_query
+  - never a bare "otvoren" substring marker, so the blast-radius risk
+  above remains avoided) gated directly into is_faq_query, and (b) the
+  V2.16a claim that contact phone data was absent was WRONG - a real,
+  business-owner-confirmed phone number (+421 2 4468 1527) and support
+  email (eshop@foodland.sk) already existed live in production inside
+  app.main.missing_composition_answer(), just unreachable from a general
+  contact question; V2.16a.1 added one new FAQ record reusing that exact
+  grounded data (app.session_state.is_contact_query, same narrow-
+  detector discipline - never a bare "kontakt" substring marker, which a
+  re-verified blast radius found collides with "kontakt s potravinami"
+  packaging text). The TestOpeningHoursClosedByV2161a/
+  TestContactClosedByV2161a classes below lock in this closure; see
+  their docstrings/comments for the updated status.
 """
 from __future__ import annotations
 
@@ -108,50 +122,64 @@ class TestStoreLocationRegression:
 
 
 # ---------------------------------------------------------------------------
-# 3-4: opening_hours - PRE_EXISTING_GAP characterization (not a V2.16a
-# regression - proven not to reach FAQ at all, with or without a prior
-# turn).
+# 3-4: opening_hours - CLOSED BY V2.16a.1 (opening-hours-and-contact-
+# grounding closure). At the time V2.16a was written, FAQ_INTENT_MARKERS
+# had no entry matching "otvoren"/"hodin", so is_faq_intent() was False
+# and the query never reached best_direct_faq_answer/best_faq_answer at
+# all (PRE_EXISTING_GAP, not a V2.16a regression). V2.16a.1 closed this
+# via a narrow, evidence-backed detector
+# (app.session_state.is_opening_hours_query()) gated directly into
+# is_faq_query in app/main.py's _chat_impl() - NOT a broad "otvoren"
+# FAQ_INTENT_MARKERS entry, which a blast-radius check found unsafe
+# (collides with real product description text like "po otvorení").
+# These assertions are updated to lock in the NEW, correct behavior;
+# see docs/opening-hours-contact-grounding-v2.16a.1.md for the full
+# audit and gate decision.
 # ---------------------------------------------------------------------------
 
-class TestOpeningHoursPreExistingGap:
-    """PRE_EXISTING_GAP: FAQ_INTENT_MARKERS has no entry matching
-    "otvoren"/"hodin", so is_faq_intent() is False and the query never
-    reaches best_direct_faq_answer/best_faq_answer at all - confirmed by
-    intent != "faq" on the bare initial question. Saturday/Sunday
-    follow-ups therefore cannot be evaluated as follow-ups: there is no
-    informational topic ever established to follow up on."""
-
-    def test_initial_hours_question_does_not_reach_faq(self):
+class TestOpeningHoursClosedByV2161a:
+    def test_initial_hours_question_reaches_faq(self):
         r = _chat(HOURS_QUESTION, "v216a-hours-initial")
-        assert r.get("intent") != "faq"
+        assert r.get("intent") == "faq"
+        assert "8:00" in r.get("answer", "")
 
-    def test_saturday_followup_stays_pre_existing_gap(self):
+    def test_saturday_followup_resolves(self):
         sid = "v216a-hours-saturday"
         _chat(HOURS_QUESTION, sid)
         r = _chat("A v sobotu?", sid)
-        assert r.get("intent") != "faq"
+        assert r.get("intent") == "faq"
 
-    def test_sunday_followup_stays_pre_existing_gap(self):
+    def test_sunday_followup_resolves(self):
         sid = "v216a-hours-sunday"
         _chat(HOURS_QUESTION, sid)
         r = _chat("A v nedelu?", sid)
-        assert r.get("intent") != "faq"
+        assert r.get("intent") == "faq"
 
 
 # ---------------------------------------------------------------------------
-# 5: contact - PRE_EXISTING_GAP characterization.
+# 5: contact - CLOSED BY V2.16a.1. At the time V2.16a was written, no
+# generic "how do I contact you" FAQ record existed and no phone number
+# was known to be present anywhere in the repository (later found to be
+# WRONG by the V2.16a.1 audit - a real, business-owner-confirmed phone
+# number already existed live in production inside
+# missing_composition_answer(), just unreachable from a general contact
+# question). V2.16a.1 added one new FAQ record reusing that exact same
+# grounded phone/email - see docs/opening-hours-contact-grounding-
+# v2.16a.1.md.
 # ---------------------------------------------------------------------------
 
-class TestContactPreExistingGap:
-    def test_initial_contact_question_does_not_reach_faq(self):
+class TestContactClosedByV2161a:
+    def test_initial_contact_question_reaches_faq(self):
         r = _chat(CONTACT_QUESTION, "v216a-contact-initial")
-        assert r.get("intent") != "faq"
+        assert r.get("intent") == "faq"
+        assert "+421 2 4468 1527" in r.get("answer", "")
 
-    def test_phone_followup_stays_pre_existing_gap(self):
+    def test_phone_followup_resolves(self):
         sid = "v216a-contact-phone"
         _chat(CONTACT_QUESTION, sid)
-        r = _chat("Posli mi telefon.", sid)
-        assert r.get("intent") != "faq"
+        r = _chat("A telefon?", sid)
+        assert r.get("intent") == "faq"
+        assert "+421 2 4468 1527" in r.get("answer", "")
 
 
 # ---------------------------------------------------------------------------

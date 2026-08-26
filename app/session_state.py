@@ -372,6 +372,110 @@ def looks_like_payment_method_followup(last_informational_question: str, message
     return any(marker in normalized for marker in _PAYMENT_METHOD_FOLLOWUP_MARKERS)
 
 
+_OPENING_HOURS_TOPIC_PHRASE_MARKERS = (
+    "otvaracie hodiny", "otvorene hodiny", "prevadzkove hodiny",
+    "kedy mate otvorene", "kedy je otvorene", "kedy je predajna otvorena",
+    "kedy otvarate", "kedy zatvarate",
+    "dokedy mate otvorene", "dokedy je otvorene", "dokedy je predajna otvorena",
+    "ste otvoreni", "ste dnes otvoreni", "mate dnes otvorene",
+    "otvoreni v sobotu", "otvoreni v nedelu", "otvorene v sobotu", "otvorene v nedelu",
+    "opening hours", "business hours",
+)
+_OPENING_HOURS_CUE_TOKENS = frozenset({"kedy", "dokedy", "hodiny", "hodin"})
+
+
+def is_opening_hours_query(message: str) -> bool:
+    """V2.16a.1 - narrow, evidence-backed opening-hours intent detector.
+    Deliberately does NOT add a bare "otvoren" substring to the shared
+    FAQ_INTENT_MARKERS list: a blast-radius check against
+    data/products.json (V2.16a Section 6, re-verified here) found real
+    product description text containing "po otvorení" (storage/usage
+    instructions, e.g. Kikkoman Teriyaki BBQ sauce), "otvorenými" (a
+    decor item description), and "dotvorenie" (an unrelated word that
+    happens to contain the "otvoren" substring) - a bare substring
+    marker would misroute a legitimate storage-instruction question
+    into the hours FAQ. This detector instead requires either a full,
+    evidence-backed phrase match, OR a whole-TOKEN "otvoren*" root
+    (tokenize() already prevents mid-word false hits like "dotvorenie")
+    PLUS an interrogative/temporal cue token, with an explicit exclusion
+    for the exact "po otvoren" collision pattern found in the audit."""
+    normalized = normalize(message)
+    if "po otvoren" in normalized:
+        return False
+    if any(marker in normalized for marker in _OPENING_HOURS_TOPIC_PHRASE_MARKERS):
+        return True
+    tokens = tokenize(message)
+    has_otvoren_root = any(t.startswith("otvoren") for t in tokens)
+    return has_otvoren_root and bool(tokens & _OPENING_HOURS_CUE_TOKENS)
+
+
+_OPENING_HOURS_FOLLOWUP_DAY_MARKERS = (
+    "pondelok", "utorok", "streda", "stvrtok", "piatok", "sobota", "sobotu", "sobote",
+    "nedela", "nedelu", "nedeli", "vikend",
+)
+
+
+def looks_like_opening_hours_followup(last_informational_question: str, message: str) -> bool:
+    """V2.16a.1 - generalizes the V2.15c/V2.16a NON_COMMERCE_CONTEXTUAL_
+    FOLLOWUP pattern to opening_hours. Reuses the single
+    last_informational_question field (no new session state); the
+    previous question is classified as opening-hours-topic at recall
+    time via is_opening_hours_query(). Deliberately excludes "dnes"/
+    "zajtra" (today/tomorrow) from the cue set - resolving those would
+    require reliable timezone-aware "what day is it" reasoning this
+    codebase does not have; only unambiguous day-name words are used as
+    cues, since a bare "dnes"/"zajtra" is common inside unrelated
+    commerce queries (e.g. "mate dnes akciu na ryzu?") and would risk
+    hijacking them (explicit current-turn target must always win)."""
+    if not is_opening_hours_query(last_informational_question):
+        return False
+    normalized = normalize(message)
+    return any(marker in normalized for marker in _OPENING_HOURS_FOLLOWUP_DAY_MARKERS)
+
+
+_CONTACT_TOPIC_PHRASE_MARKERS = (
+    "ako vas mozem kontaktovat", "ako sa da kontaktovat", "ako vas kontaktovat",
+    "kontakt na foodland", "kontakt na predajnu", "kontakt na vas",
+    "kontaktne udaje", "kontaktny udaj",
+    "aky mate telefon", "vas telefon", "telefonne cislo", "telefonny kontakt",
+    "vas email", "mate email", "vasa emailova adresa", "vas e-mail",
+    "dajte mi kontakt", "posli mi kontakt", "chcem kontakt", "davate kontakt",
+)
+
+
+def is_contact_query(message: str) -> bool:
+    """V2.16a.1 - narrow, phrase-only contact-intent detector.
+    Deliberately does NOT match on the bare word "kontakt": a
+    blast-radius check against data/products.json found real product
+    description text using "kontakt s potravinami" (food-contact-safe
+    packaging material) and "priamy kontakt s foliou" (plastic wrap) -
+    a bare "kontakt" marker would misroute a legitimate
+    packaging-safety question into the contact FAQ. Only curated,
+    multi-word phrases a customer would actually use to ask "how do I
+    reach you" are matched, never the generic word alone."""
+    normalized = normalize(message)
+    return any(marker in normalized for marker in _CONTACT_TOPIC_PHRASE_MARKERS)
+
+
+_CONTACT_FOLLOWUP_MARKERS = (
+    "telefon", "telefonne cislo", "email", "e-mail", "emailova adresa",
+)
+
+
+def looks_like_contact_followup(last_informational_question: str, message: str) -> bool:
+    """V2.16a.1 - generalizes the same pattern to contact. Address/Maps
+    follow-ups ("Pošli mi adresu.", "A Google Maps?") after a contact
+    topic are already handled for free by the existing
+    looks_like_location_reference_followup() path (it is not gated on
+    which topic was previously discussed, only on a stored
+    last_informational_question existing at all) - this function only
+    adds the phone/email cues that path does not cover."""
+    if not is_contact_query(last_informational_question):
+        return False
+    normalized = normalize(message)
+    return any(marker in normalized for marker in _CONTACT_FOLLOWUP_MARKERS)
+
+
 def looks_like_recipe_followup(message: str) -> bool:
     """True when the message reads as a continuation question about an
     already-active recipe (Section 53: "aké rezance?", "čo ešte

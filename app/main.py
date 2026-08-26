@@ -192,6 +192,10 @@ from app.session_state import get_last_informational_question as _get_last_infor
 from app.session_state import set_last_informational_question as _set_last_informational_question
 from app.session_state import looks_like_location_reference_followup as _looks_like_location_reference_followup
 from app.session_state import looks_like_payment_method_followup as _looks_like_payment_method_followup
+from app.session_state import is_opening_hours_query as _is_opening_hours_query
+from app.session_state import looks_like_opening_hours_followup as _looks_like_opening_hours_followup
+from app.session_state import is_contact_query as _is_contact_query
+from app.session_state import looks_like_contact_followup as _looks_like_contact_followup
 
 
 logging.basicConfig(
@@ -4416,7 +4420,11 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     memory_subject = best_memory_subject(memory)
 
     allergen_term = detect_allergen_intent(chat_request.message)
-    is_faq_query = is_faq_intent(chat_request.message)
+    is_faq_query = (
+        is_faq_intent(chat_request.message)
+        or _is_opening_hours_query(chat_request.message)
+        or _is_contact_query(chat_request.message)
+    )
     is_random_recipe_query = is_random_recipe_intent(chat_request.message)
     recipe_subject = detect_recipe_subject(contextual_message)
     if recipe_subject and _recipe_intent_is_bare_dish_marker_only(contextual_message):
@@ -4796,23 +4804,52 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     # position, same hard-switch guarantees, same re-derivation via the
     # unmodified FAQ cascade - see
     # app.session_state.looks_like_payment_method_followup().
+    # V2.16a.1 - generalizes the same last-resort pattern to opening_hours
+    # and contact (opening-hours-and-contact-grounding closure). Same
+    # position, same hard-switch guarantees, same re-derivation via the
+    # unmodified FAQ cascade - see
+    # app.session_state.looks_like_opening_hours_followup() and
+    # app.session_state.looks_like_contact_followup(). Address/Maps
+    # follow-ups after a contact topic are already covered by the
+    # existing location-followup branch below (it is not topic-gated),
+    # so no separate handling is needed for those.
     _last_informational_question = _get_last_informational_question(memory)
     _is_location_followup = _last_informational_question and _looks_like_location_reference_followup(chat_request.message)
     _is_payment_followup = _last_informational_question and not _is_location_followup and _looks_like_payment_method_followup(
         _last_informational_question, chat_request.message
     )
-    if _is_location_followup or _is_payment_followup:
+    _is_opening_hours_followup = (
+        _last_informational_question and not _is_location_followup and not _is_payment_followup
+        and _looks_like_opening_hours_followup(_last_informational_question, chat_request.message)
+    )
+    _is_contact_followup = (
+        _last_informational_question and not _is_location_followup and not _is_payment_followup and not _is_opening_hours_followup
+        and _looks_like_contact_followup(_last_informational_question, chat_request.message)
+    )
+    if _is_location_followup or _is_payment_followup or _is_opening_hours_followup or _is_contact_followup:
         _followup_faq_answer = best_direct_faq_answer(_last_informational_question, knowledge) or best_faq_answer(
             search_knowledge(knowledge, _last_informational_question, allowed_sections=("FAQ",))
         )
         if _followup_faq_answer:
-            _maps_link = _build_maps_link_from_faq_answer(_followup_faq_answer) if _is_location_followup else None
+            _maps_link = (
+                _build_maps_link_from_faq_answer(_followup_faq_answer)
+                if (_is_location_followup or _is_opening_hours_followup or _is_contact_followup)
+                else None
+            )
             _followup_answer_text = f"{_followup_faq_answer}\n\n{_maps_link}" if _maps_link else _followup_faq_answer
             updated_profile = update_user_memory(profile_key, chat_request.message, "faq", [], [])
+            if _is_location_followup:
+                _followup_subject = "location_reference_followup"
+            elif _is_payment_followup:
+                _followup_subject = "payment_method_followup"
+            elif _is_opening_hours_followup:
+                _followup_subject = "opening_hours_followup"
+            else:
+                _followup_subject = "contact_followup"
             log_question(
                 chat_request.message, client_key, 0, intent="faq", session_id=session_id,
                 primary_intent="faq",
-                subject="location_reference_followup" if _is_location_followup else "payment_method_followup",
+                subject=_followup_subject,
                 interaction_id=interaction_id,
             )
             return {
@@ -7607,6 +7644,27 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         address_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("kamennu", "predajnu"))
         if address_answer:
             return address_answer
+    # V2.16a.1 - opening_hours has no standalone FAQ record (hours are
+    # only a sub-clause of the store-location answer, per the
+    # opening-hours source-of-truth audit); reuses the SAME existing
+    # store-location record/shortcut target as the "adresa"/bare
+    # "predajn" shortcuts above rather than duplicating the grounded
+    # text into a second copy (OH-B: EXTRACT_FROM_EXISTING_AUTHORITATIVE_
+    # SOURCE). is_opening_hours_query() is checked here (not folded into
+    # a FAQ_INTENT_MARKERS entry) precisely because it is a narrow,
+    # multi-signal detector, not a bare unsafe substring.
+    if _is_opening_hours_query(message):
+        hours_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("kamennu", "predajnu"))
+        if hours_answer:
+            return hours_answer
+    # V2.16a.1 - contact: grounded in the existing, business-owner-
+    # confirmed phone/email already live in missing_composition_answer()
+    # (eshop@foodland.sk, +421 2 4468 1527) - see the dedicated FAQ
+    # record added to data/knowledge.json for this closure.
+    if _is_contact_query(message):
+        contact_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("kontaktovat", "telefon"))
+        if contact_answer:
+            return contact_answer
     if "predajn" in normalized_message and len(tokenize(normalized_message)) <= 2:
         # Only a bare word like "Predajnu" defaults to the general store-info
         # FAQ - a longer sentence mentioning "predajni" (e.g. "can I pay by
