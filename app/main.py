@@ -5098,11 +5098,76 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         matches = _format_result_set_products(products, structured_presentation.initial_page_ids())
     elif special_subject:
         matches = special_products_for_subject(products, special_subject, chat_request.limit)
+        # V2.16c (Section 19/65) - detect_special_product_subject() is
+        # checked ahead of replacement_subject in this cascade and wins
+        # for 3 of 13 REPLACEMENT_SUBJECT_ALIASES entries (fish sauce/rice
+        # vinegar/sushi rice - confirmed via live audit, see docs/routing-
+        # debt.md), so an explicit replacement request for one of those 3
+        # never reached the gluten-free filter added below for the
+        # alternative_products_for_subject() path. The intent label
+        # itself (special_subject's own routing, incl. rt0013) is
+        # deliberately NOT changed here - only candidate quality, and only
+        # when this turn's own text also resolved a replacement_subject
+        # (i.e. this really is a substitution request the legacy
+        # special_subject path is silently servicing) and carries explicit
+        # gluten-free language. rt0013's locked vegan case has no
+        # gluten-free language and is unaffected (verified byte-identical).
+        # The primary candidate list here (unlike alternative_products_for_
+        # subject()'s Alternatives/REPLACEMENT_PRODUCT_QUERIES lookups) is a
+        # generic SPECIAL_PRODUCT_QUERIES bundle (e.g. "gluten_free_sushi" -
+        # soy sauce/nori/rice/wasabi/ginger together), never guaranteed to be
+        # specific to the named replacement_subject - reproduced live:
+        # "gluten_free_sushi" filtered to gluten-free soy sauce for an
+        # explicit "sushi ryza" (sushi rice) replacement request, which does
+        # not substitute for rice at all. Applying the same subject-name
+        # relevance check used below for the widen fallback.
+        if replacement_subject and is_gluten_free_search(chat_request.message):
+            gluten_free_matches = [
+                p for p in matches
+                if product_is_gluten_free(p)
+                and replacement_subject_matches_product(replacement_subject, str(p.get("title") or ""))
+            ]
+            if not gluten_free_matches:
+                widened = cached_search_products(products, f"bezlepkova {replacement_subject}", max(chat_request.limit, 8))
+                gluten_free_matches = [
+                    p for p in widened
+                    if product_is_gluten_free(p)
+                    and replacement_subject_matches_product(replacement_subject, str(p.get("title") or ""))
+                ]
+            matches = gluten_free_matches[: chat_request.limit]
     elif replacement_subject:
         mentioned_replacement_brand = detect_mentioned_replacement_brand(chat_request.message, products, replacement_subject)
         matches = alternative_products_for_subject(
             products, knowledge, replacement_subject, chat_request.limit, exclude_brand=mentioned_replacement_brand
         )
+        # V2.16c (Section 19, closure spec) - gluten-free is the one
+        # dietary constraint the V2.16b audit proved reliable enough to
+        # filter on (0 confirmed mistags across the full catalog, see
+        # app.taxonomy._DIETARY_CATEGORY_TERMS docstring); vegan/
+        # vegetarian remain unreliable (a real live false-positive was
+        # found and fixed in V2.16b) and are deliberately NOT filtered
+        # here - filtering on unverified data would risk silently
+        # excluding safe candidates while giving false confidence in
+        # whichever ones remain. Before this fix, "bez lepku"/"gluten
+        # free" in a replacement query had ZERO effect on candidates -
+        # reproduced live: "sojova omacka" and "sojova omacka bez lepku"
+        # returned byte-identical lists, with a non-gluten-free product
+        # ranked #1 either way.
+        if replacement_subject and is_gluten_free_search(chat_request.message):
+            gluten_free_matches = [m for m in matches if product_is_gluten_free(m)]
+            if not gluten_free_matches:
+                # Zero grounded candidates in the curated list - widen with
+                # a direct catalog search rather than silently keeping the
+                # unfiltered (unverified) list (Section 19/36: no unknown-
+                # as-negative shortcut, no silent constraint relaxation).
+                widened = cached_search_products(products, f"bezlepkova {replacement_subject}", max(chat_request.limit, 8))
+                gluten_free_matches = [
+                    p for p in widened
+                    if product_is_gluten_free(p)
+                    and replacement_subject_matches_product(replacement_subject, str(p.get("title") or ""))
+                    and not (mentioned_replacement_brand and normalize(str(p.get("brand") or "")) == normalize(mentioned_replacement_brand))
+                ]
+            matches = gluten_free_matches[: chat_request.limit]
     elif article_product_subject:
         matches = article_products_for_subject(products, article_product_subject, chat_request.limit)
     elif cross_sell_matches:
@@ -9416,8 +9481,19 @@ def is_article_relevant_product(product: dict, subject: str) -> bool:
 def detect_already_have_subject(message: str) -> str | None:
     """Detekuje vzor 'mám X / kúpil som X / vlastním X' a vracia kanonický kľúč subjektu."""
     normalized_message = normalize(message)
-    # Musí obsahovať marker 'mám' / 'kúpil som' / 'vlastním'
-    if not any(marker in normalized_message for marker in ALREADY_HAVE_MARKERS):
+    # V2.16c (root-caused during substitution-intelligence characterization):
+    # ALREADY_HAVE_MARKERS used bare substring containment ("mam " in text),
+    # which also matches inside "nemam " (I do NOT have) - the opposite
+    # meaning. "Nemam mirin, potrebujem nahradu bez lepku." (I don't have
+    # mirin, I need a gluten-free substitute) was silently classified as
+    # already_have_subject="mirin" and routed to complement_products_for_
+    # subject() (a "goes well with what you have" cross-sell), so
+    # replacement_subject was never reached at all - reproduced live.
+    # Padding both sides with a leading space enforces a real left word
+    # boundary before each marker while every legitimately space-preceded
+    # occurrence ("uz mam ", start-of-string "mam ") is unaffected.
+    padded_message = " " + normalized_message
+    if not any((" " + marker) in padded_message for marker in ALREADY_HAVE_MARKERS):
         return None
     for subject_key, aliases in ALREADY_HAVE_SUBJECT_MAP.items():
         if any(alias in normalized_message for alias in aliases):
@@ -9765,6 +9841,18 @@ def is_gluten_free_search(message_or_normalized: str) -> bool:
         or "bez lepku" in normalized_message
         or "bezlepkova" in normalized_message
     )
+
+
+def product_is_gluten_free(product: Product | dict) -> bool:
+    """V2.16c - same catalog-derived signal app.taxonomy._DIETARY_CATEGORY_
+    TERMS/app.query_constraints._DIETARY_QUERY_STEMS already use for
+    gluten_free (product_type breadcrumb contains "Bezlepkove potraviny"),
+    reused here rather than re-derived, for the replacement_products
+    gluten-free candidate filter. Deliberately does NOT have a vegan/
+    vegetarian counterpart - that breadcrumb mapping was proven unreliable
+    and removed in V2.16b (a real chicken product was tagged "vegan")."""
+    product_type = product.get("product_type") if isinstance(product, dict) else getattr(product, "product_type", "")
+    return "bezlepkov" in normalize(str(product_type or ""))
 
 
 def is_composition_caution_search(message: str) -> bool:

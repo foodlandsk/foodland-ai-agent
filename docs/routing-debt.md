@@ -44,6 +44,27 @@ správne, nie ako náhodu. Runtime sa nemenil (nepoužíva túto konkrétnu
 `recipe_graph` hranu — skutočný mechanizmus je `detect_replacement_subject()`
 + curated `Alternatives` knowledge lookup), len golden case bol opravený.
 Stav: `CLOSED_BY_HUMAN_SEMANTIC_DECISION` (pozri riadok v registri vyššie).
+
+**V2.16c korekcia (substitution-intelligence-v2.16c.md, bez zmeny
+stavu)**: live audit počas V2.16c ukázal, že vyššie uvedený opis
+“skutočný mechanizmus je `detect_replacement_subject()` + curated
+`Alternatives` knowledge lookup” je pre samotný rt0013 dopyt (“nahrada
+za rybiu omacku vegan”) nepresný. `detect_special_product_subject()`
+je v `_chat_impl()` vyhodnotený PRED `replacement_subject` a pre tento
+konkrétny dopyt vracia `special_subject="vegan_fish_sauce_replacement"`,
+ktorý má prednosť — skutočný zdroj kandidátov je teda
+`special_products_for_subject()` / `SPECIAL_PRODUCT_QUERIES`, nie
+`alternative_products_for_subject()` / `Alternatives`. To isté platí pre
+ďalšie 2 z 13 `REPLACEMENT_SUBJECT_ALIASES` (ryžový ocot, sushi ryža) —
+3 z 13 substitučných subjektov sú takto “tieňované” special_subject
+cestou. Toto NEMENÍ intent/routing (rt0013 zostáva `replacement_products`,
+test suite nezmenený, 10/10 passing) — len opravuje nepresný popis toho,
+KTORÁ funkcia kandidátov reálne dodáva. V2.16c pridal gluten-free
+post-filter (`product_is_gluten_free` + `replacement_subject_matches_
+product` relevance sanity check) do oboch ciest (`special_subject` aj
+`replacement_subject`), takže táto tieňovaná cesta teraz tiež správne
+reaguje na explicitnú bezlepkovú požiadavku namiesto toho, aby ju
+ticho ignorovala. Detail: `docs/substitution-intelligence-v2.16c.md`.
 | `regbug_rt0024` | "ako môžem zaplatiť?" | `faq` | — | (zhoda s očakávaním, intent správny) | GROUNDING_ERROR | FAQ odpoveď neobsahuje presne slovo `'Dobierka'` | — | — | **CLOSED — generated-answer textual variance, nie routing** |
 
 ## V2.13b — mandátne prípady VYRIEŠENÉ (Invariant #4/#5 zo zadania V2.13a)
