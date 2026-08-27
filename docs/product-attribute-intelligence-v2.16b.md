@@ -361,6 +361,25 @@ Nezmenené. `AUTO_PROMOTION_ENABLED` default `False`, netknuté.
   vlastným internым diskutovaním, nie fabrikáciou; budúca práca by
   mohla formálne prepojiť na `recommendation_evidence.EvidenceItem`.
 
+## 65a. Live verification — vedľajší, PRED-EXISTUJÚCI nález (mimo rozsahu)
+
+Live production matrix (Sekcia 46 finálneho reportu) odhalila, že
+`"Kde sa nachádza kamenná predajňa?"` (store_location dopyt) teraz
+niekedy vyhráva cez generický FAQ scorer proti CONTACT záznamu (V2.16a.1)
+namiesto pôvodného store_location záznamu — odpoveď obsahuje telefón/
+email NAVYŠE k adrese, nie namiesto nej (žiadny fabrikovaný ani chýbajúci
+fakt, len iný poradový víťaz medzi dvoma pravdivými FAQ záznamami).
+**Overené ako PRED-EXISTUJÚCE** — reprodukované na aktuálnom lokálnom
+kóde, ktorý V2.16b nezmenil v `app/main.py`/`data/knowledge.json` vôbec
+(len `app/taxonomy.py`/`app/query_constraints.py`). Príčina: V2.16a.1's
+nový contact FAQ záznam obsahuje plný adresný text vo svojej `Odpoveď`
+(zámerne, pre úplnosť kontaktnej odpovede), čo spôsobuje prekrytie
+tokenov s store_location dopytmi, ktoré netrafia žiadny dedikovaný
+skratkový blok. **Mimo rozsahu V2.16b** (Sekcia 5 zadania explicitne
+zakazuje broad zmeny informational FAQ routingu túto sprintu) — nie je
+to fabrikácia ani bezpečnostný problém, len UX polish príležitosť pre
+budúcu úzku uzávierku.
+
 ## 66. Recommended next step
 
 Žiadna ďalšia broad attribute-framework sprint nie je odporúčaná bez
