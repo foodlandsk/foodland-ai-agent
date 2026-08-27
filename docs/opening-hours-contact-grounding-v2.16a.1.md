@@ -336,11 +336,40 @@ nový routing-debt záznam vznikol touto sprintou).
 
 ## 43. COMMIT SHA(S)
 
-Viď finálny report (commit sa vytvorí po dokončení tohto dokumentu).
+Viď finálny report.
 
 ## 44. CI
 
-Viď finálny report.
+Prvý push (`9933d90`): **FAILURE** ("Full test suite" krok, exit code 1;
+GitHub annotations API nevrátila detailný log bez admin práv na
+repozitár - `403 Must have admin rights`). Diagnostický postup:
+
+1. Reprodukované KAŽDÝ krok CI workflow lokálne jednotlivo
+   (`python -m compileall`, `node --check`/`node --test`,
+   `run_evaluation.py --fast`, `consistency_audit.py --collisions`,
+   `trust_audit.py`, `check_deployment.py`) - všetky PASSED.
+2. Plný `pytest tests/ -q` (presne CI príkaz, bez `--basetemp`)
+   lokálne najprv ukázal `1 failed, 195 errors` - ale toto bol ZNOVA
+   ten istý Windows zdieľaný `pytest-of-UNIRIA` temp-adresár lock
+   artefakt zdokumentovaný vo V2.16a (Sekcia 40), potvrdené
+   opakovaním s izolovaným `--basetemp`: **1907 passed, 0 failed,
+   0 errors** (623.09s), čisto.
+3. Popri tom objavený a opravený reálny, nezávislý drobný bug:
+   `data/knowledge.json`'s top-level `counts.FAQ` metadata pole
+   zostalo na starej hodnote `51` po pridaní 52. FAQ záznamu (skript
+   aktualizoval `sections.FAQ` pole, ale nie samostatné `counts`
+   zhrnutie). Kozmetické (len diagnostický log riadok
+   `app.main.load_knowledge()` ho vypisuje, žiadna routing/test logika
+   naň nespolieha - overené `grep` naprieč `app/*.py` a `tests/`), ale
+   opravené pre konzistenciu (byte-presná 1-riadková oprava,
+   `counts.FAQ: 51 -> 52`).
+
+Keďže GitHub API neumožnil prístup k detailnému CI logu (403), a
+KAŽDÝ jednotlivý krok aj plný test suite reprodukovaný čisto lokálne,
+najpravdepodobnejšie vysvetlenie je buď (a) prechodná CI infraštruktúrna
+udalosť, alebo (b) drobná Ubuntu-špecifická odchýlka nezachytená týmto
+auditom. Druhý push (po `counts.FAQ` oprave) re-triggeruje CI - výsledok
+viď nižšie.
 
 ## 45. RAILWAY
 
