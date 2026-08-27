@@ -336,7 +336,8 @@ nový routing-debt záznam vznikol touto sprintou).
 
 ## 43. COMMIT SHA(S)
 
-Viď finálny report.
+`9933d90` (implementácia) + `b111f20` (fix: `counts.FAQ` sync + CI
+diagnostika).
 
 ## 44. CI
 
@@ -368,20 +369,58 @@ Keďže GitHub API neumožnil prístup k detailnému CI logu (403), a
 KAŽDÝ jednotlivý krok aj plný test suite reprodukovaný čisto lokálne,
 najpravdepodobnejšie vysvetlenie je buď (a) prechodná CI infraštruktúrna
 udalosť, alebo (b) drobná Ubuntu-špecifická odchýlka nezachytená týmto
-auditom. Druhý push (po `counts.FAQ` oprave) re-triggeruje CI - výsledok
-viď nižšie.
+auditom.
+
+Druhý push (`b111f20`, po `counts.FAQ` oprave): **SUCCESS** (~8m).
+CI je teraz zelené na finálnom commite.
 
 ## 45. RAILWAY
 
-Viď finálny report.
+`/health` po oboch pushoch: `{"status":"ok","products":2140,...}`.
+Railway nasadzuje nezávisle od CI (vlastná git-push integrácia) -
+nová kapabilita bola live na produkcii ešte pred dokončením prvého
+(zlyhaného) CI behu, potvrdené priamym `/chat` testom. Druhý push
+(cisto metadátová oprava, `counts.FAQ`, nulová zmena správania) overený
+spot-checkom po jeho nasadení - produkcia zostáva zdravá a odpovedá
+správne (`Ako vás môžem kontaktovať?` → reálny telefón/email/adresa).
 
 ## 46. LIVE PRODUCTION MATRIX
 
-Viď finálny report.
+18 kontrol vykonaných proti prvému nasadeniu (rate-limit `12/min`
+rešpektovaný, paced volania, žiadna cart mutácia):
+
+| Kontrola | Výsledok |
+|---|---|
+| A. store_location initial | `faq`, adresa ✓ |
+| B. store → Maps followup | `faq`, kanonický link ✓ (nezmenené) |
+| C. opening_hours initial | `faq`, reálne hodiny ✓ |
+| D. saturday | `faq` ✓ |
+| E. sunday | `faq` ✓ |
+| F. opening-hours → saturday followup | `faq` oba ťahy ✓ |
+| G. contact initial | `faq`, reálny telefón/email/adresa ✓ |
+| H. contact → address followup | `faq`, adresa ✓ |
+| I. contact phone | `faq`, `+421 2 4468 1527` ✓ |
+| J. contact email | `faq`, `eshop@foodland.sk` ✓ |
+| K. payment → Apple Pay followup (V2.16a regresia) | `faq`, nezmenené ✓ |
+| L. hours → product hard switch | `product_search`, 4 produkty ✓ |
+| M. contact → recipe hard switch | `recipe` ✓ |
+| N. rt0013 | `replacement_products` ✓ |
+| O. rt0004 | `related_products` ✓ |
+| P. rt0010 | `allergen_safety` ✓ |
+| Q. rt0011 (2× rovnaký dopyt) | `product_search` oba razy ✓ |
+
+Všetky live výsledky presne zodpovedajú lokálnym testom. Žiadna
+anomália.
 
 ## 47. LIVE CLAIM-SAFETY CHECK
 
-Viď finálny report.
+Priama inšpekcia produkčného textu odpovede: telefón `+421 2 4468 1527`,
+email `eshop@foodland.sk`, adresa `Stará Vajnorská 3308/19, 831 04
+Bratislava`, hodiny `Po–Pi 8:00–18:00, So 9:00–20:00, Ne 9:00–15:00` -
+všetko presne zodpovedá zdrojovým dátam, žiadna vymyslená hodnota.
+Žiadne tvrdenie o "otvorené práve teraz" nikde v odpovediach. Žiadny
+sviatočný nárok. Maps link = kanonický `maps.app.goo.gl/3tFJ4P6w2pj88xAP8`,
+nie generovaná search URL.
 
 ## 48. PER-CAPABILITY READINESS MATRIX
 
