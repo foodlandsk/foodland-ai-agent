@@ -57,11 +57,16 @@ INFERRED_MEDIUM = "INFERRED_MEDIUM"
 # derives from real category memberships (_DIETARY_CATEGORY_TERMS) - never
 # an invented health claim (Section 19). Matched as a normalized substring,
 # so both "bezlepkova"/"bezlepkove"/"bezlepkovej" hit "bezlepkov".
+#
+# V2.16b: "vegansk"/"vegetariansk" REMOVED - app.taxonomy._DIETARY_CATEGORY_
+# TERMS no longer produces "vegan"/"vegetarian" facets at all (proven
+# unreliable breadcrumb signal, see that module's docstring), so detecting
+# these stems here would only ever hard-filter against a permanently-empty
+# index, silently returning zero matches instead of falling through to
+# ordinary relevance search. Removed at the source instead.
 _DIETARY_QUERY_STEMS: dict[str, str] = {
     "bezlepkov": "gluten_free",
     "gluten free": "gluten_free",
-    "vegansk": "vegan",
-    "vegetariansk": "vegetarian",
     "bio ": "organic",
 }
 

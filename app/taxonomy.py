@@ -163,9 +163,27 @@ class CategoryRole:
 # memberships* across many unrelated families (Fáza 1 of the catalog audit:
 # "Vegánske potraviny", "Zdravé potraviny" etc. dominate by count but say
 # nothing about product identity). Roled as facets, never as canonical_family.
+#
+# V2.16b (product-attribute-intelligence audit): "veganske potraviny" and
+# "vegetarianske potraviny" were REMOVED from this map after a live,
+# reproduced false-positive proved this breadcrumb is not a reliable
+# per-SKU vegan/vegetarian signal - it is Foodland's own bulk merchandising
+# category, not an ingredient-audited claim. Concretely: FL_9996 ("Oyakata
+# Teriyaki kuracie instantne rezance" - a chicken-flavoured instant noodle
+# product, description literally says "chuti kurcata") carries
+# product_type "Veganske potraviny > Japonske > Vegetarianske potraviny >
+# ...", and before this fix a live customer query "vegánske rezance" (via
+# app.retrieval's dietary_facets hard-filter, comment: "Safety/relevance-
+# critical - hard-filtered, not scored") surfaced exactly this chicken
+# product as a top vegan match. gluten_free/organic were audited the same
+# way (full-catalog sweep against 563/2140 gluten-free-tagged products,
+# 0 confirmed wheat-noodle/soy-sauce mistags found) and are kept - see
+# docs/product-attribute-intelligence-v2.16b.md Section 22 for the full
+# blast-radius comparison. Missing a facet is UNKNOWN, never FALSE: a
+# product no longer gets a "vegan"/"vegetarian" facet at all now, so
+# vegan/vegetarian queries fall through to ordinary relevance search
+# instead of a false-confidence hard filter.
 _DIETARY_CATEGORY_TERMS = {
-    "veganske potraviny": "vegan",
-    "vegetarianske potraviny": "vegetarian",
     "bezlepkove potraviny": "gluten_free",
     "bio potraviny": "organic",
 }

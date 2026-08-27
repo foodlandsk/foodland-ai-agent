@@ -310,13 +310,35 @@ class TestUnknownProducts:
         assert isinstance(tax, ProductTaxonomy)
 
     def test_unknown_product_still_gets_dietary_facets(self):
+        # V2.16b: "Vegánske potraviny" no longer produces a "vegan" facet
+        # (see app.taxonomy._DIETARY_CATEGORY_TERMS docstring - proven
+        # unreliable breadcrumb signal) - this case is rewritten to use
+        # "Bezlepkové potraviny" (gluten_free), which remains, to keep
+        # proving the underlying "unknown family still gets dietary
+        # facets extracted" behavior this test was written for.
         p = make_product(
             title="Kimchi základ KIKKOMAN 1180g",
-            product_type="Vegánske potraviny > Kórejské > Pasty",
+            product_type="Bezlepkové potraviny > Kórejské > Pasty",
         )
         tax = classify_product(p)
         assert tax.canonical_family is None
-        assert "vegan" in tax.dietary_facets
+        assert "gluten_free" in tax.dietary_facets
+
+    def test_vegan_vegetarian_category_no_longer_produces_a_dietary_facet(self):
+        # V2.16b regression lock (product-attribute-intelligence audit):
+        # a live, reproduced false positive - FL_9996 "Oyakata Teriyaki
+        # kuracie instantne rezance" (a chicken-flavoured product) carries
+        # product_type "Veganske potraviny > Japonske > Vegetarianske
+        # potraviny > ..." - proved this breadcrumb is not a reliable
+        # per-SKU vegan/vegetarian signal. "vegan"/"vegetarian" must never
+        # be extracted as a dietary facet again, from any category text.
+        p = make_product(
+            title="Oyakata Teriyaki kuracie instantne rezance v kelimku AJ 96g",
+            product_type="Veganske potraviny > Japonske > Vegetarianske potraviny > Zdrave potraviny > Hotove jedla",
+        )
+        tax = classify_product(p)
+        assert "vegan" not in tax.dietary_facets
+        assert "vegetarian" not in tax.dietary_facets
 
 
 class TestBuildTaxonomyIndex:
