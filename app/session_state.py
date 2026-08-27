@@ -118,6 +118,35 @@ def clear_use_case_state(memory: dict) -> None:
     memory["active_use_case"] = ""
 
 
+def get_active_basket_use_case(memory: dict) -> str | None:
+    """V2.16d (Section 30 - core target) - which app.basket_completion
+    use case (pho/sushi/kari) the last successful basket_completion
+    answer was for, so a bare continuation ("co este potrebujem?") can
+    rebuild the same basket instead of falling through to a generic
+    "I don't understand" answer - same storage convention as
+    active_recipe_id/active_use_case above, no new storage mechanism.
+    Deliberately separate from active_use_case (app.use_case_advice's
+    own single-role-question state) - a basket request and a single-
+    role question are different workflows that must not share state.
+    """
+    return memory.get("active_basket_use_case") or None
+
+
+def set_active_basket_use_case(memory: dict, use_case: str | None) -> None:
+    memory["active_basket_use_case"] = use_case or ""
+
+
+def clear_basket_state(memory: dict) -> None:
+    """Hard-switch cleanup, same pattern as clear_recipe_state/
+    clear_use_case_state - selected_ingredient_products is intentionally
+    NOT cleared here (it is the same shared, concept_id-keyed store
+    app.recipe_shopping already owns and clears via clear_recipe_state;
+    a customer's self-declared/selected ingredient stays true regardless
+    of which workflow is currently active).
+    """
+    memory["active_basket_use_case"] = ""
+
+
 def get_last_recipe_ingredient_concept(memory: dict) -> str | None:
     return memory.get("last_recipe_ingredient_concept") or None
 
@@ -277,6 +306,7 @@ def apply_reset(memory: dict) -> None:
     memory["active_result_set_id"] = ""
     clear_recipe_state(memory)
     clear_use_case_state(memory)
+    clear_basket_state(memory)
     memory["recent_presentation_ids"] = []
     memory["subjects"].clear()
     memory["diet_terms"].clear()

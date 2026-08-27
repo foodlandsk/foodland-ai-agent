@@ -64,6 +64,7 @@ as app.use_case_advice does.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from app.recommendation_evidence import (
@@ -250,13 +251,36 @@ def _self_declared_concept_ids(message: str, required_concept_ids: list[str]) ->
     ingredient-phrase resolution (V2.14d fixed its 'banh pho'/bare 'kari
     pasta' gaps) - narrow and exact (only counts a role as covered when
     the message's own text resolves to that EXACT concept_id), never a
-    fuzzy/partial match."""
+    fuzzy/partial match.
+
+    V2.16d - parse_structured_query() on the WHOLE message returns at
+    most one concept_id, so a genuine multi-item declaration ("Mam
+    ryzove rezance A rybaciu omacku...") only ever credited the first
+    item - reproduced live during characterization. Splitting on
+    sentence punctuation and the conjunction " a " ("and") and parsing
+    each segment separately is a strict improvement (can only ADD
+    matches the single-call version already found) and needs no new
+    resolver - the existing single-item test
+    (tests/test_basket_completion_v2_14e.py::TestCaseG_AlreadyCoveredRole)
+    is still satisfied since its message parses identically as its own
+    lone segment. Still limited by parse_structured_query()'s own
+    nominative-leaning case coverage (a real, separate, pre-existing
+    data/architecture limitation of that shared primitive, e.g.
+    accusative "rybaciu omacku" does not resolve where nominative
+    "rybacia omacka" does) - documented as data debt, not fixed here
+    (Section 87 - no broad search/parsing redesign in this sprint)."""
     from app.query_constraints import parse_structured_query
 
-    resolved = parse_structured_query(message, known_brands=())
-    if resolved.concept_id and resolved.concept_id in required_concept_ids:
-        return {resolved.concept_id}
-    return set()
+    found: set[str] = set()
+    segments = re.split(r"[.,;]| a ", message)
+    for segment in segments:
+        segment = segment.strip()
+        if not segment:
+            continue
+        resolved = parse_structured_query(segment, known_brands=())
+        if resolved.concept_id and resolved.concept_id in required_concept_ids:
+            found.add(resolved.concept_id)
+    return found
 
 
 def decide_basket_completion(
@@ -296,6 +320,22 @@ def decide_basket_completion(
     if not _wants_basket_completion(message):
         return None
 
+    return _build_basket_decision(use_case, message, products, product_taxonomy_index, memory, limit_per_role)
+
+
+def _build_basket_decision(
+    use_case: str,
+    message: str,
+    products: list,
+    product_taxonomy_index: dict,
+    memory: dict | None,
+    limit_per_role: int,
+) -> BasketDecision | None:
+    """V2.16d - the role-resolution body shared by decide_basket_completion()
+    (fresh turn, use_case named+detected this turn) and
+    resolve_basket_followup() (continuation turn, use_case comes from
+    session state instead) - the two differ only in HOW use_case/gating
+    is determined, never in how a decision is built from one."""
     required_concept_ids = required_roles_for_use_case(use_case)
     if not required_concept_ids:
         return None
@@ -350,6 +390,68 @@ def decide_basket_completion(
         use_case=use_case, roles=tuple(roles), unresolved_concepts=tuple(unresolved),
         coverage=coverage, fully_resolved=fully_resolved,
     )
+
+
+def resolve_basket_followup(
+    message: str,
+    products: list,
+    product_taxonomy_index: dict,
+    memory: dict,
+    *,
+    recipe_subject: str | None = None,
+    limit_per_role: int = 5,
+) -> BasketDecision | None:
+    """V2.16d (Section 30 - core target) - a bare continuation of the
+    LAST successful basket_completion answer this session
+    ("co este potrebujem?", "dopln mi...") rebuilds the same basket
+    from session state instead of falling through to a generic "I
+    don't understand" answer, which was the confirmed live behavior
+    before this function existed (decide_basket_completion() alone has
+    no session memory of its own - every follow-up after its first
+    answer previously fell straight through).
+
+    Returns None (caller falls through to the normal cascade unchanged,
+    same fall-through contract as every other executor here) when:
+    - no basket use case is active for this session at all;
+    - the caller already resolved recipe_subject this turn (pad_thai/
+      tom_kha's own, separate continuity owns that path - Section 5);
+    - the message is a companion-products request (rt0004 protection,
+      reused verbatim);
+    - the message explicitly names a DIFFERENT use case than the active
+      one - a real hard switch (Section 39), not a continuation; the
+      caller's normal cascade (including a fresh decide_basket_completion()
+      call for the newly named use case) handles it from here;
+    - the message does not carry explicit basket-continuation action
+      language at all. A real regression was found and reverted here
+      during V2.16d testing: an earlier version of this function ALSO
+      treated a bare self-declared item alone (no action language) as a
+      continuation trigger, which reinterpreted an ordinary subsequent
+      product search ("sushi ryza", right after an earlier "co
+      potrebujem na sushi") as a basket self-declaration instead of a
+      new product_search/cross_sell turn, breaking
+      tests/test_decision_observability_expansion_v2_15e_3.py's
+      cross_sell characterization. Self-declaration alone, without an
+      explicit basket-action phrase, is intentionally left as a
+      documented gap (Section 31 - "do not guess" - not implemented
+      this sprint) rather than risk that class of false positive."""
+    from app.session_state import get_active_basket_use_case
+
+    active_use_case = get_active_basket_use_case(memory)
+    if not active_use_case:
+        return None
+    if recipe_subject:
+        return None
+    if is_companion_request(message):
+        return None
+
+    named_use_case = resolve_use_case(message)
+    if named_use_case and named_use_case != active_use_case:
+        return None
+
+    if not _wants_basket_completion(message):
+        return None
+
+    return _build_basket_decision(active_use_case, message, products, product_taxonomy_index, memory, limit_per_role)
 
 
 # --- deterministic answer composition (no LLM, mirrors app.use_case_advice) -

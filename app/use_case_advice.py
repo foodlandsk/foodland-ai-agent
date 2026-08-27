@@ -481,6 +481,29 @@ def decide_use_case_advice(
     if use_case is None or use_case not in LIVE_USE_CASES:
         return None
 
+    # V2.16d (Section 30 - core target) - a self-declared inventory +
+    # basket request for the same use case ("Mam ryzove rezance a
+    # rybaciu omacku. Co este potrebujem na pho?") must reach
+    # app.basket_completion's role-based, already-have-aware answer, not
+    # this module's single-role RECOMMEND. Before this guard, protection
+    # against that collision depended entirely on incidental sentence
+    # punctuation immediately after the self-declared marker breaking
+    # resolve_role()'s literal trailing-space requirement (see that
+    # function's own V2.14f docstring) - reproduced live during V2.16d
+    # characterization: "...rezance, co este..." (comma) correctly
+    # deferred by accident, but "...rezance a rybaciu omacku. Co este
+    # potrebujem na pho?" (a space before the next clause) did not,
+    # hijacking the turn into "ryzove rezance je vhodna volba", silently
+    # ignoring both self-declared items and the actual question.
+    # Deferring here is explicit and deterministic, no longer dependent
+    # on punctuation luck - reuses app.basket_completion's own existing
+    # action-language detector via a deferred import (avoids a circular
+    # top-level import; app.basket_completion already imports from this
+    # module), never duplicates or changes it.
+    from app.basket_completion import BASKET_V1_ELIGIBLE_USE_CASES, _wants_basket_completion
+    if use_case in BASKET_V1_ELIGIBLE_USE_CASES and _wants_basket_completion(message):
+        return None
+
     role_evidence = resolve_role(use_case, message)
     if role_evidence is None:
         return None

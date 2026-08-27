@@ -886,14 +886,36 @@ def execute_basket_completion(
     app.basket_completion's resolution/decision/composition path.
     """
     import app.main as m
-    from app.basket_completion import compose_basket_answer, decide_basket_completion
+    from app.basket_completion import compose_basket_answer, decide_basket_completion, resolve_basket_followup
+    from app.session_state import clear_basket_state, get_active_basket_use_case, set_active_basket_use_case
 
-    decision = decide_basket_completion(
-        chat_request.message, products, product_taxonomy_index, memory,
-        recipe_subject=recipe_subject,
-    )
+    # V2.16d (Section 30 - core target) - a bare continuation ("co este
+    # potrebujem?") of the last basket answer this session must rebuild
+    # the SAME basket, not fall through to a generic "I don't understand"
+    # (the confirmed live behavior before this - decide_basket_completion()
+    # alone has no session memory). Only attempted when a basket use case
+    # is already active (zero behavior change for every session's first
+    # basket-related turn, which never reaches this branch); a turn that
+    # does NOT continue it (hard switch, unrelated aside) clears the
+    # state immediately, same "not recognized -> drop it" policy
+    # app.main's own recipe-followup precedence already uses.
+    decision = None
+    if get_active_basket_use_case(memory):
+        decision = resolve_basket_followup(
+            chat_request.message, products, product_taxonomy_index, memory,
+            recipe_subject=recipe_subject,
+        )
+        if decision is None:
+            clear_basket_state(memory)
+    if decision is None:
+        decision = decide_basket_completion(
+            chat_request.message, products, product_taxonomy_index, memory,
+            recipe_subject=recipe_subject,
+        )
     if decision is None:
         return None
+
+    set_active_basket_use_case(memory, decision.use_case)
 
     products_by_id = {p.id: p for p in products}
     recommended_ids = [r.recommended_product_id for r in decision.roles if r.recommended_product_id]
