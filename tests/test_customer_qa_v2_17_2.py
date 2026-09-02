@@ -335,7 +335,23 @@ class TestAdminAuthorization:
         assert client.delete("/admin/qa/findings", headers={"x-admin-token": "test-read-token-v2172"}).status_code in (404, 405)
 
     def test_qa_routes_are_get_only(self):
-        qa_routes = [route for route in m.app.routes if getattr(route, "path", "").startswith("/admin/qa")]
+        # V2.17.2's own scope had no execution capability anywhere under
+        # /admin/qa - true when this test was written. V2.17.3 (docs/
+        # finding-review-reproduction-v2.17.3.md) deliberately, safely
+        # widened that by adding ONE explicitly-authorized, OPERATIONS-
+        # scoped, bounded execution route (POST /admin/qa/reproductions,
+        # forces ADMIN_TEST, accepts only {"qa_id": ...}, never creates a
+        # CUSTOMER audit record - exhaustively covered by
+        # tests/test_customer_qa_reproduction_v2_17_3.py, including its
+        # own test that this exact path is POST-only, never GET). Every
+        # QA *inspection* route (status/findings/conversations, and the
+        # OFFLINE reproduction preview) remains GET-only - this is the
+        # corrected, current invariant, not a weakening of it.
+        qa_routes = [
+            route for route in m.app.routes
+            if getattr(route, "path", "").startswith("/admin/qa")
+            and route.path != "/admin/qa/reproductions"
+        ]
         assert qa_routes
         for route in qa_routes:
             methods = getattr(route, "methods", set())

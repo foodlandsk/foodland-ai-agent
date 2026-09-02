@@ -111,6 +111,9 @@ from app.customer_audit import audit_status as _audit_status
 from app.customer_qa import qa_status as _qa_status
 from app.customer_qa import qa_findings as _qa_findings
 from app.customer_qa import qa_conversation as _qa_conversation
+from app.customer_qa_reproduction import reproduction_status as _reproduction_status
+from app.customer_qa_reproduction import reproduce_offline as _reproduce_offline
+from app.customer_qa_reproduction import reproduce_admin_test as _reproduce_admin_test
 from app.search_quality import reset_retrieval_decision as _reset_search_quality_decision
 from app.search_quality import pop_retrieval_decision as _pop_search_quality_decision
 from app.search_quality import build_trace as _build_search_quality_trace
@@ -3559,6 +3562,56 @@ def admin_qa_conversation(
     safe_days = max(1, min(int(days or 90), 90))
     results = _qa_conversation(conversation_hash, days=safe_days)
     return {"readonly": True, "conversation_hash": conversation_hash, "count": len(results), "turns": results}
+
+
+@app.get("/admin/qa/reproductions/status")
+def admin_qa_reproductions_status(
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """V2.17.3 - non-sensitive operational status for the finding
+    reproduction layer. READ scope."""
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
+    return _reproduction_status()
+
+
+@app.get("/admin/qa/reproductions/{qa_id}")
+def admin_qa_reproduction_offline(
+    qa_id: str,
+    days: int = 90,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """V2.17.3 - OFFLINE reproduction (Section 18/37): re-evaluates a
+    V2.17.2 finding's contract against the SAME immutable historical
+    audit turn it was originally computed from. Pure GET, no /chat
+    call, no side effects whatsoever - READ scope is sufficient
+    because this can never execute customer-facing behavior."""
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
+    safe_days = max(1, min(int(days or 90), 90))
+    return _reproduce_offline(qa_id, days=safe_days)
+
+
+class QaReproductionRequest(BaseModel):
+    qa_id: str = Field(..., min_length=1, max_length=64)
+
+
+@app.post("/admin/qa/reproductions")
+def admin_qa_reproduction_active(
+    reproduction_request: QaReproductionRequest,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """V2.17.3 - ACTIVE ADMIN_TEST reproduction (Section 19-23/38): the
+    only mode where NOT_REPRODUCED is a meaningful, evidence-grounded
+    outcome (does today's code/data still violate the same contract?).
+    Executes one isolated /chat-equivalent call - OPERATIONS scope
+    minimum (Section 23 hard security boundary: a READ-only token must
+    never be able to trigger execution). Accepts ONLY qa_id - the
+    server derives the sanitized reproduction input entirely from
+    trusted, already-redacted QA evidence (Section 38); execution_context
+    is never a request field, so CUSTOMER can never be requested by a
+    caller (Section 20/37) - admin_test_context() is forced internally
+    by app.customer_qa_reproduction.reproduce_admin_test()."""
+    _require_admin_scope(x_admin_token, _SCOPE_OPERATIONS)
+    return _reproduce_admin_test(reproduction_request.qa_id)
 
 
 @app.post("/admin/analytics/events-purge")
