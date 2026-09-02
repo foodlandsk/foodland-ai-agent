@@ -105,6 +105,9 @@ from app.admin_auth import resolve_token_scope as _resolve_admin_token_scope
 from app.execution_context import ExecutionContext as _ExecutionContext
 from app.execution_context import customer_context as _customer_context
 from app.execution_context import evaluation_context as _evaluation_context
+from app.customer_audit import capture_customer_turn as _capture_customer_turn
+from app.customer_audit import read_audit_turns as _read_audit_turns
+from app.customer_audit import audit_status as _audit_status
 from app.search_quality import reset_retrieval_decision as _reset_search_quality_decision
 from app.search_quality import pop_retrieval_decision as _pop_search_quality_decision
 from app.search_quality import build_trace as _build_search_quality_trace
@@ -3456,6 +3459,45 @@ def admin_analytics_events_detail(
     return {"count": len(events), "events": events[:safe_limit]}
 
 
+@app.get("/admin/audit/status")
+def admin_audit_status(
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """V2.17.1 - read-only operational status for the customer conversation
+    audit stream. READ scope, same as every other /admin/analytics/* GET.
+    Returns only non-sensitive counts/booleans - no filesystem paths, no
+    salts, no tokens, no customer identity (Section 15)."""
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
+    return _audit_status()
+
+
+@app.get("/admin/audit/conversations")
+def admin_audit_conversations(
+    days: int = 7,
+    limit: int = 100,
+    conversation_hash: str | None = None,
+    intent: str | None = None,
+    q: str | None = None,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """V2.17.1 - read-only human investigation API over customer_audit.jsonl
+    (app/customer_audit.py). READ scope. Reconstructs what a real customer
+    was shown - question/answer (already PII-redacted at write time),
+    correlation ids, and allowlisted product groups - without rerunning
+    any business logic. A GET here can never mutate ranking, learning,
+    profiles, sessions, events, or promotion state (Section 16)."""
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
+    safe_days = max(1, min(int(days or 7), 90))
+    turns = _read_audit_turns(
+        days=safe_days,
+        limit=limit,
+        conversation_hash=conversation_hash,
+        intent=intent,
+        q=q,
+    )
+    return {"readonly": True, "days": safe_days, "count": len(turns), "turns": turns}
+
+
 @app.post("/admin/analytics/events-purge")
 def admin_analytics_events_purge(
     purge_request: EventsPurgeRequest,
@@ -5629,6 +5671,26 @@ def _chat_internal(chat_request: ChatRequest, request: Request, execution_contex
     response = _chat_impl(chat_request, request, execution_context=execution_context, interaction_id=_interaction_id)
     response["answered"] = _compute_answered(response)
     response["interaction_id"] = _interaction_id
+    # V2.17.1: read-only customer conversation audit capture (Section 11 -
+    # observes the ALREADY-COMPLETED response, never reruns intent/search/
+    # ranking/cross-sell/LLM). Gated on the same is_customer_traffic signal
+    # the search-quality trace below already uses, so EVALUATION/LEARNING/
+    # SHADOW/ADMIN_TEST traffic never reaches customer_audit.jsonl.
+    # capture_customer_turn() never raises - see app.customer_audit
+    # docstring - but a call-site try/except stays here too anyway, the
+    # same double-safety pattern _record_search_quality_trace already
+    # uses just below, so a future change to that guarantee still cannot
+    # affect this response.
+    if _resolved_context.is_customer_traffic:
+        try:
+            _capture_customer_turn(
+                chat_request=chat_request,
+                client_key=get_client_key(request),
+                response=response,
+                latency_ms=(time.perf_counter() - _quality_start) * 1000,
+            )
+        except Exception:
+            logger.warning("Customer audit capture failed at call site (non-fatal)", exc_info=True)
     if _resolved_context.emit_customer_analytics:
         try:
             _trace = _build_search_quality_trace(
