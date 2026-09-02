@@ -115,12 +115,25 @@ class TestCrossSellStructuralGapCharacterization:
         assert r.get("cross_sell_eligible") is True
         assert "cross_sell_decision_id" not in r
 
-    def test_widget_never_reads_cross_sell_field(self):
+    def test_widget_now_reads_cross_sell_field_v2_17_closure(self):
+        # V2.17 (docs/conversational-commerce-ux-v2.17.md) deliberately
+        # retired this V2.15e.3-era GATE A characterization invariant -
+        # not a regression, an explicitly re-audited and authorized
+        # closure. Section 15 of the V2.17 spec required re-checking
+        # whether this gap still held at current HEAD (it did) before
+        # deciding whether to close it; all 5 Section 16 gates passed
+        # live-verified (explicit backend candidates, evidence-grounded,
+        # backend-deduplicated, no ranking mutation, customer-
+        # distinguishable heading), so GATE B was authorized. See
+        # tests/js/widget.test.mjs for the detailed JS-side assertions
+        # (gated rendering, dedup, no internal field leakage, etc.) -
+        # this Python-side test only re-confirms the field is read at
+        # all, matching the updated reality.
         widget_path = ROOT / "app" / "widget.js"
         source = widget_path.read_text(encoding="utf-8")
-        assert "cross_sell" not in source, (
-            "characterization invariant: app/widget.js must not read data.cross_sell "
-            "(this is the exact finding GATE A for cross_sell is based on)"
+        assert "data.cross_sell" in source, (
+            "V2.17 closure: app/widget.js must read data.cross_sell "
+            "(gated behind data.cross_sell_eligible, see tests/js/widget.test.mjs)"
         )
 
 

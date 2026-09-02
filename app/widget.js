@@ -1692,7 +1692,13 @@
       const price = typeof product.effective_price === "number"
         ? `${product.effective_price.toFixed(2)} ${product.currency || "EUR"}`
         : "Cena neuvedená";
-      const availability = product.availability === "in_stock" ? "Skladom" : "Overiť dostupnosť";
+      // V2.17 (Section 32/79) - "availability" in data/products.json is a
+      // static Google-Merchant-feed field, live-audited 2140/2140 records
+      // uniformly "in_stock" - it is CATALOG_PRESENCE_ONLY, never live
+      // stock, so this must not claim a verified in-stock status
+      // status the backend cannot actually prove (Section 104 - fake
+      // stock claim is a release blocker).
+      const availability = product.availability === "in_stock" ? "Dostupné na Foodland.sk" : "Overiť dostupnosť";
       const card = document.createElement("article");
       card.className = "fl-ai-product";
       card.innerHTML = `
@@ -1847,6 +1853,19 @@
     `;
     messages.appendChild(wrap);
     scrollToBottom();
+  }
+
+  function addSectionHeading(text) {
+    // V2.17 (Section 15-18) - a small, distinct heading so a
+    // customer-visible product group (e.g. cross-sell) is never
+    // visually collapsed into the primary matches above it. Reuses the
+    // existing .fl-ai-missing-title heading style (no new CSS) and
+    // plain text assignment (auto-escaping, no dynamic markup insertion).
+    if (!text) return;
+    const heading = document.createElement("p");
+    heading.className = "fl-ai-missing-title fl-ai-section-heading";
+    heading.textContent = text;
+    messages.appendChild(heading);
   }
 
     function scrollToBottom() {
@@ -2096,6 +2115,41 @@
             decision_id: decisionId,
             result_set_id: data.result_set_id || null,
           });
+        }
+        // V2.17 (Section 15/16 - cross-sell frontend closure). Backend
+        // already supplies an explicit, evidence-grounded, deduplicated
+        // (app.cross_sell.build_cross_sell excludes every primary-match
+        // id before generating candidates), non-reranking cross-sell
+        // list plus a natural-language intro (data.cross_sell_intro) -
+        // all 5 gates of Section 16 pass, live-verified during V2.17
+        // characterization. Rendered as its own heading + its own
+        // addProducts() call (same, already-tested card/cart-button/
+        // event-correlation code as primary matches - no parallel
+        // rendering path invented) in a visually separate section, never
+        // mixed into the primary grid or its Show More continuation.
+        // The primaryIds filter is a defensive, one-line frontend
+        // safety net on top of the backend guarantee (Section 18 -
+        // "prefer backend dedup", not a replacement for it).
+        if (data.cross_sell_eligible && Array.isArray(data.cross_sell) && data.cross_sell.length > 0) {
+          const primaryIds = new Set((Array.isArray(data.products) ? data.products : []).map(function (p) { return p.id; }));
+          const crossSellProducts = data.cross_sell.filter(function (p) { return p && !primaryIds.has(p.id); });
+          if (crossSellProducts.length > 0) {
+            crossSellProducts.forEach(function (p) {
+              p.interaction_id = data.interaction_id || null;
+              p.decision_id = decisionId;
+              p.result_set_id = data.result_set_id || null;
+            });
+            addSectionHeading(data.cross_sell_intro || "Hodí sa k tomu aj:");
+            addProducts(crossSellProducts, text, false);
+            fireEvent({
+              event_type: "impression",
+              query: text,
+              product_skus: crossSellProducts.map(function (p) { return p.id; }).filter(Boolean),
+              interaction_id: data.interaction_id || null,
+              decision_id: decisionId,
+              result_set_id: data.result_set_id || null,
+            });
+          }
         }
         if (!Array.isArray(data.products) || data.products.length === 0) {
           const candidateProducts = cartCandidatesToProducts(data.cart_candidates);

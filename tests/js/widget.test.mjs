@@ -257,9 +257,15 @@ test("continuation responses reuse the SAME stash code path as an initial search
   // has intent product_search (never "recipe", the only branch this
   // block excludes), so it is provably NOT possible for continuation to
   // skip this stash logic - there is only one such block in the file.
+  //
+  // V2.17 added a THIRD legitimate stash site (data.cross_sell, gated
+  // behind data.cross_sell_eligible) using the exact same expression -
+  // updated from 2 to 3 deliberately, not a regression: cross-sell
+  // products now need the same correlation stash as primary/cart-
+  // candidate products, via the same, unduplicated pattern.
   const source = readWidgetSource();
   const occurrences = source.match(/p\.result_set_id = data\.result_set_id \|\| null;/g) || [];
-  assert.equal(occurrences.length, 2, "exactly two stash sites (primary products + cart-candidate fallback), no third/duplicate continuation-only branch");
+  assert.equal(occurrences.length, 3, "three stash sites (primary products + cart-candidate fallback + V2.17 cross-sell), no fourth/duplicate branch");
 });
 
 test("all 5 renderCard() fireEvent() calls (view click, cart click, attempt, legacy add_to_cart, confirmed) include result_set_id", () => {
@@ -414,9 +420,82 @@ test("decisionId resolution now also falls back to data.recipe_shopping_decision
   );
 });
 
-test("app/widget.js still never reads data.cross_sell (GATE A characterization invariant for cross_sell)", () => {
+// ---------------------------------------------------------------------
+// V2.17 - cross-sell frontend closure
+// (docs/conversational-commerce-ux-v2.17.md)
+//
+// V2.15e.3's "app/widget.js never reads data.cross_sell" characterization
+// invariant is DELIBERATELY retired here, not broken by accident -
+// Section 15 of the V2.17 spec explicitly required re-auditing whether
+// that gap still held at current HEAD (it did) and, if all 5 Section 16
+// gates passed (backend supplies explicit/evidence-grounded/deduplicated/
+// non-reranking candidates the customer can distinguish from primary
+// matches - all live-verified true), authorized closing it. These tests
+// replace the old "never reads it" invariant with positive proof of the
+// new, gated behavior.
+// ---------------------------------------------------------------------
+
+test("cross-sell rendering is gated on cross_sell_eligible, never rendered merely because the array is non-empty", () => {
   const source = readWidgetSource();
-  assert.equal(source.includes("cross_sell"), false);
+  assert.ok(
+    source.includes("if (data.cross_sell_eligible && Array.isArray(data.cross_sell) && data.cross_sell.length > 0) {"),
+    "must check the backend's own eligibility flag, not just array presence"
+  );
+});
+
+test("cross-sell products are defensively filtered against primary product ids before rendering (Section 18 dedup)", () => {
+  const source = readWidgetSource();
+  assert.ok(source.includes("const primaryIds = new Set((Array.isArray(data.products) ? data.products : []).map(function (p) { return p.id; }));"));
+  assert.ok(source.includes("const crossSellProducts = data.cross_sell.filter(function (p) { return p && !primaryIds.has(p.id); });"));
+});
+
+test("cross-sell section renders via a distinct heading before the SAME, already-tested addProducts()/renderCard() path - no parallel card renderer", () => {
+  const source = readWidgetSource();
+  const headingIdx = source.indexOf('addSectionHeading(data.cross_sell_intro || "Hodí sa k tomu aj:");');
+  const addProductsIdx = source.indexOf("addProducts(crossSellProducts, text, false);");
+  assert.ok(headingIdx > -1 && addProductsIdx > headingIdx, "heading must render before the cross-sell card grid");
+});
+
+test("cross-sell Show More is disabled (hasServerMore=false) so continuation never mixes primary and cross-sell products", () => {
+  const source = readWidgetSource();
+  assert.ok(source.includes("addProducts(crossSellProducts, text, false);"), "cross-sell must pass hasServerMore=false explicitly");
+});
+
+test("cross-sell products receive the same interaction_id/decision_id/result_set_id stash as primary products, from the same response-local values", () => {
+  const source = readWidgetSource();
+  assert.ok(
+    source.includes(
+      "crossSellProducts.forEach(function (p) {\n              p.interaction_id = data.interaction_id || null;\n              p.decision_id = decisionId;\n              p.result_set_id = data.result_set_id || null;\n            });"
+    ),
+    "must reuse the same decisionId/data.interaction_id/data.result_set_id already resolved once per turn, never a second/fabricated id"
+  );
+});
+
+test("cross-sell fires its own impression event reusing the existing event schema (Section 82 - no new event semantics)", () => {
+  const source = readWidgetSource();
+  const impressionCalls = [...source.matchAll(/event_type: "impression"/g)];
+  assert.equal(impressionCalls.length, 2, "exactly two impression sites: primary products + V2.17 cross-sell, same event_type/shape");
+});
+
+test("addSectionHeading() uses textContent, never innerHTML, for the backend-supplied intro string (Section 51/69 DOM safety)", () => {
+  const source = readWidgetSource();
+  const fnMatch = source.match(/function addSectionHeading\(text\) \{[\s\S]*?\n  \}/);
+  assert.ok(fnMatch, "addSectionHeading() must exist");
+  assert.ok(fnMatch[0].includes("heading.textContent = text;"), "must assign via textContent (auto-escaping), never innerHTML, for untrusted backend text");
+  assert.equal(fnMatch[0].includes("innerHTML"), false, "addSectionHeading() must not use innerHTML anywhere");
+});
+
+test("no internal cross-sell field (cross_sell_role, cross_sell_evidence, context_type) is rendered as customer-visible text (Section 26)", () => {
+  const source = readWidgetSource();
+  assert.equal(source.includes("cross_sell_role"), false);
+  assert.equal(source.includes("cross_sell_evidence"), false);
+  assert.equal(source.includes("cross_sell_context_type"), false);
+});
+
+test("product card stock label no longer claims verified \"Skladom\" from the static catalog-presence feed field (Section 32/79/104)", () => {
+  const source = readWidgetSource();
+  assert.equal(source.includes('"Skladom"'), false, "must not claim verified in-stock status the backend cannot prove");
+  assert.ok(source.includes('"Dostupné na Foodland.sk"'), "must use catalog-presence-only wording instead");
 });
 
 test("app/widget.js introduces no replacement_decision_id reference (GATE A - replacement_products stays uncorrelated)", () => {

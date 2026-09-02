@@ -448,6 +448,15 @@ def build_cross_sell(
             product_dict["cross_sell_role"] = candidate.role
             product_dict["cross_sell_reason"] = _reason_text(candidate.role)
             product_dict["cross_sell_evidence"] = candidate.evidence
+            # V2.17 (Section 62 Gate B, Section 64) - mirrored onto the same
+            # recommendation_group/recommendation_reason fields
+            # app.main.annotate_recommendations() already sets on primary
+            # `products`, which app/widget.js's existing card template
+            # already renders (no new field name, no new widget rendering
+            # logic invented - reuses the proven mechanism instead of a
+            # parallel one).
+            product_dict["recommendation_group"] = "Hodí sa k tomu"
+            product_dict["recommendation_reason"] = product_dict["cross_sell_reason"]
         return decision, formatted
     except Exception:
         logger.warning("Cross-sell generation failed, suppressing section (Section 106).", exc_info=True)
