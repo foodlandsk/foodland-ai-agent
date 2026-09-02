@@ -207,9 +207,16 @@ znovu spustený, 0 nálezov (pozri Sekciu finálneho reportu).
 ## 15. Ranking invariance (Section 66)
 
 Živo overené: identické product ID/poradie pred a po zmene pre
-`"sushi ryza"` (primárne: `FL_1081, FL_1109, FL_11455, FL_11457`) a
-rt0013 (`FL_2764, FL_6600, FL_3321, FL_2765`) — **žiadna zmena**.
-Zamknuté ako permanentný regresný test.
+`"sushi ryza"` (primárne: `FL_1081, FL_1109, FL_11455, FL_11457`) —
+**žiadna zmena**, poradie je stabilné aj pri prázdnom personalizačnom
+profile (reálne skórové rozdiely, žiadne remízy).
+
+Pre rt0013 (`nahrada za rybiu omacku vegan`) platí len **množinová**
+invariancia — rovnaké 4 ID (`FL_2764, FL_6600, FL_3321, FL_2765`), ale
+**nie fixné poradie**. Dôvod zdokumentovaný v Sekcii 18 (CI diagnostika)
+— toto zistenie prišlo AŽ po pôvodnom napísaní tejto sekcie a opravuje
+skorší nesprávny predpoklad o poradí. Oboje zamknuté ako permanentné
+regresné testy so správnou (nie nadmerne prísnou) invarianciou.
 
 ## 16. AUTO_PROMOTION
 
@@ -228,3 +235,52 @@ nezmenené, V2.15f nezačaté.
 - Stock/availability zostáva `CATALOG_PRESENCE_ONLY` navždy, kým sa
   neintegruje reálny live-stock feed (business/dátový krok, mimo
   inžinierskeho rozsahu).
+
+## 18. CI diagnostika a oprava (post-push)
+
+Prvý push (`3db71f7`) zlyhal na CI (`pytest tests/ -q`, 1 z 1998 testov)
+napriek tomu, že KAŽDÝ krok CI pipeline reprodukoval lokálne 100%
+zeleno pred pushom. GitHub REST API neposkytovalo prístup k reálnym
+logom (`403 Must have admin rights`) ani k rerun endpointu
+(`401 Requires authentication`) bez zapisovacieho tokenu — `gh` CLI nie
+je v tomto prostredí nainštalované. Po tom, čo používateľ manuálne
+skopíroval log z GitHub Actions UI, sa ukázal skutočný failing test:
+
+```
+FAILED tests/test_conversational_commerce_ux_v2_17.py::
+  TestRankingInvariance::test_replacement_rt0013_ranking_unchanged
+AssertionError: assert ['FL_6600', 'FL_3321', 'FL_2765', 'FL_2764']
+              == ['FL_2764', 'FL_6600', 'FL_3321', 'FL_2765']
+```
+
+**Root cause** (živo izolované, nie hádané): dopyt `nahrada za rybiu
+omacku vegan` prechádza cez `special_products_for_subject()` →
+`personalize_products()` (`app/main.py`). `personalize_products()`
+zoraďuje remízy podľa `app.main.user_memories` — perzistentného,
+cross-request profilu viazaného na identitu klienta
+(`user_memory_path()`, súbor `user_memory.json`), ktorý sa akumuluje
+naprieč KAŽDÝM `/chat` volaním v rámci toho istého procesu. Všetkých
+1998 testov v jednom CI behu zdieľa tento súbor rovnako, ako ho
+zdieľajú mesiace lokálneho testovania na vývojárskom stroji.
+
+Živo overené (`USER_MEMORY_PATH` nastavený na neexistujúcu cestu):
+s čerstvým/prázdnym profilom dopyt vracia `['FL_6600', 'FL_3321',
+'FL_2764', 'FL_2765']` — INÚ permutáciu tých istých 4 ID, než akú mal
+pôvodne natvrdo očakávaný (a lokálne, s akumulovaným profilom, aj
+skutočne pozorovaný) test. Toto NIE JE regresia rankingu spôsobená
+V2.17 — táto sprinta sa vôbec nedotkla `search_products()`,
+`special_products_for_subject()` ani `personalize_products()`. Ide o
+chybu v NÁVRHU TESTU: tvrdil presné poradie pre cestu citlivú na
+ambientný, medzi-testový stav, ktorý nikdy nebol reprodukovateľnou
+vlastnosťou backendu. Súrodenský test pre `"sushi ryza"` bol overený
+ako NEohrozený rovnakým problémom (stabilný aj pri prázdnom profile —
+skutočné skórové rozdiely tam remízam zabraňujú).
+
+**Oprava** (`6d1b0c7`): `test_replacement_rt0013_ranking_unchanged`
+teraz overuje množinovú zhodu (`set(ids) == {...}`) namiesto presného
+poradia — skutočná invariancia, ktorú V2.17 potrebuje dokázať (rovnaká
+množina kandidátov), bez krehkosti na nesúvisiaci ambientný stav. Plná
+sada po oprave, s izolovaným `--basetemp` (kvôli známemu Windows
+`pytest-of-<user>` temp-dir konfliktu pri súbežných procesoch, nesúvisí
+s touto opravou): **1998 passed, 0 failed, 0 errors**. CI na `6d1b0c7`
+dokončené **zelené**.
