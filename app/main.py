@@ -142,6 +142,7 @@ from app.workflow_executor import execute_comparison as _execute_comparison
 from app.workflow_executor import execute_use_case_advice as _execute_use_case_advice
 from app.use_case_advice import has_resolvable_role as _use_case_advice_has_resolvable_role
 from app.workflow_executor import execute_basket_completion as _execute_basket_completion
+from app.workflow_executor import execute_why_followup as _execute_why_followup
 from app.learning_cycle import run_learning_cycle as _run_learning_cycle
 from app.learning_cycle import REPORTS_DIR as _LEARNING_REPORTS_DIR
 from app.learning_cycle import LEARNING_ENGINE_ENABLED as _LEARNING_ENGINE_ENABLED
@@ -4613,6 +4614,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     _use_case_advice_result = _execute_use_case_advice(
         chat_request=chat_request,
         recipe_subject=recipe_subject,
+        memory=memory,
         memory_key=memory_key,
         profile_key=profile_key,
         products=products,
@@ -4657,6 +4659,27 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     )
     if _basket_completion_result is not None:
         return _basket_completion_result
+
+    # V2.16e (Section 17/45 - "why this?" core capability) - checked
+    # after comparison/use_case_advice/basket_completion have all had
+    # their chance to fire FRESH for this turn (a why-followup has no
+    # demonstrative-free overlap with those - see app.explanation.
+    # looks_like_why_followup()'s narrow marker set), and before the
+    # recipe-followup/article-info cascade below, which is exactly
+    # where a bare "preco"/"why" was previously silently absorbed
+    # (is_article_info_intent()'s own broad marker) instead of
+    # re-explaining the customer's actual last recommendation -
+    # reproduced live during V2.16e characterization, not hypothetical.
+    _why_followup_result = _execute_why_followup(
+        chat_request=chat_request,
+        memory=memory,
+        memory_key=memory_key,
+        profile_key=profile_key,
+        products=products,
+        query_language=query_language,
+    )
+    if _why_followup_result is not None:
+        return _why_followup_result
 
     # V2.9 (Section 16/17/18/53) - a follow-up about an already-active
     # recipe ("aké rezance?", "tie druhé", "čo ešte potrebujem?") is

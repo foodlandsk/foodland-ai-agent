@@ -44,6 +44,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app import main as bot  # noqa: E402
+from app import knowledge as knowledge_module  # noqa: E402
 
 
 def check_empty_alternatives() -> list[str]:
@@ -83,14 +84,45 @@ def check_pii_leak() -> list[str]:
     return findings
 
 
+def check_broken_curation_content() -> list[str]:
+    """V2.16e - a real, live, severe finding during that sprint's
+    characterization work: 63/130 (48.5%) of the curated Products_AI
+    "Chutovy profil - SK"/"Kucharsky tip - SK" records contain
+    app.knowledge_builder's own AI-content-generation PROMPT TEMPLATE
+    text (e.g. literally "profil urci podla nazvu produktu, kategorie a
+    detailu na webe; nevymyslaj zlozenie" - an instruction TO an AI
+    author, not a sentence about a product) instead of real generated
+    content - one such record was reproduced live, verbatim, as a
+    customer-facing answer to "Preco prave tento?". Fixed at the two
+    customer/LLM-context read sites (app.knowledge.
+    best_product_advice_answer()/format_record(), guarded by
+    app.knowledge._is_broken_curation_placeholder()) - this is the
+    permanent regression check for that fix, run entirely offline
+    against the loaded knowledge base (no /chat, no OpenAI call),
+    matching this script's own established discipline."""
+    findings = []
+    for record in bot.knowledge["sections"]["Products_AI"]:
+        formatted = knowledge_module.format_record("Products_AI", record)
+        if knowledge_module._is_broken_curation_placeholder(formatted):
+            product_name = record.get("Produkt (URL)") or record.get("ID") or "?"
+            findings.append(
+                f'Products_AI record "{product_name}": format_record() output still contains a known-broken '
+                f"curation-template pattern - would leak into the LLM prompt context/best_product_advice_answer()"
+            )
+    return findings
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--empty-alternatives", action="store_true", help="only run the empty-alternatives check")
     parser.add_argument("--pii-leak", action="store_true", help="only run the PII-redaction check")
+    parser.add_argument("--broken-curation-content", action="store_true", help="only run the broken-curation-content check")
     args = parser.parse_args()
 
-    run_empty = args.empty_alternatives or not (args.empty_alternatives or args.pii_leak)
-    run_pii = args.pii_leak or not (args.empty_alternatives or args.pii_leak)
+    any_flag = args.empty_alternatives or args.pii_leak or args.broken_curation_content
+    run_empty = args.empty_alternatives or not any_flag
+    run_pii = args.pii_leak or not any_flag
+    run_curation = args.broken_curation_content or not any_flag
 
     exit_code = 0
 
@@ -108,6 +140,17 @@ def main() -> None:
     if run_pii:
         print("=== PII redaction leaks ===")
         findings = check_pii_leak()
+        if findings:
+            exit_code = 1
+            for line in findings:
+                print(" -", line)
+        else:
+            print(" (none found)")
+        print()
+
+    if run_curation:
+        print("=== Broken curation-template content leaking into customer/LLM context ===")
+        findings = check_broken_curation_content()
         if findings:
             exit_code = 1
             for line in findings:

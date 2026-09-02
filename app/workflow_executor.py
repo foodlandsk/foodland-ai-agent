@@ -668,7 +668,7 @@ def execute_comparison(
         resolve_comparison_targets_from_pair,
     )
     from app.recommendation_evidence import CONFIDENCE_INSUFFICIENT
-    from app.session_state import get_active_comparison_pair, set_active_comparison_pair
+    from app.session_state import get_active_comparison_pair, set_active_comparison_pair, set_last_explanation
 
     is_new_request = looks_like_comparison_request(chat_request.message)
     # V2.14f - bare follow-up ("a lacnejsiu?", "je ta drahsia lepsia?")
@@ -700,6 +700,21 @@ def execute_comparison(
             answer_text = compose_comparison_answer(decision, targets, query_language)
             result_products = [targets.product_a, targets.product_b]
             set_active_comparison_pair(memory, targets.product_a.get("id"), targets.product_b.get("id"))
+
+    # V2.16e (Section 17/44 - "why this?"/"why not the other?") - only
+    # recorded when targets actually resolved (a CLARIFY with no pair
+    # has nothing to explain and leaves any prior explanation
+    # untouched, same "don't overwrite with nothing" policy as
+    # active_comparison_pair above it not being touched on CLARIFY either).
+    if targets is not None:
+        set_last_explanation(memory, {
+            "workflow": "comparison",
+            "state": decision.state,
+            "reason_codes": list(decision.reason_codes),
+            "confidence": decision.confidence,
+            "winner_product_id": decision.winner_product_id,
+            "product_ids": [targets.product_a.get("id"), targets.product_b.get("id")],
+        })
 
     m.update_session_memory(memory_key, chat_request.message, "product_comparison", result_products, [], {})
     updated_profile = m.update_user_memory(profile_key, chat_request.message, "product_comparison", result_products, [])
@@ -764,6 +779,7 @@ def execute_use_case_advice(
     *,
     chat_request: Any,
     recipe_subject: str | None,
+    memory: dict,
     memory_key: str,
     profile_key: str,
     products: list,
@@ -796,6 +812,7 @@ def execute_use_case_advice(
     """
     import app.main as m
     from app.use_case_advice import compose_use_case_answer, decide_use_case_advice
+    from app.session_state import set_last_explanation
 
     decision = decide_use_case_advice(
         chat_request.message, products, product_taxonomy_index, chat_request.limit,
@@ -807,6 +824,21 @@ def execute_use_case_advice(
     products_by_id = {p.id: p for p in products}
     matched_products = [m.format_product(products_by_id[pid]) for pid in decision.candidate_product_ids if pid in products_by_id]
     answer_text = compose_use_case_answer(decision, matched_products, query_language)
+
+    # V2.16e (Section 17/44 - "why this?") - only recorded for an actual
+    # RECOMMEND (ABSTAIN has no candidate to explain; CLARIFY is
+    # documented as unreachable here, see decide_use_case_advice()'s
+    # own docstring).
+    if decision.state == "RECOMMEND" and decision.evidence:
+        set_last_explanation(memory, {
+            "workflow": "use_case_advice",
+            "use_case": decision.use_case,
+            "use_case_label_sk": decision.use_case,
+            "display_label_sk": decision.display_label_sk,
+            "reason_code": decision.evidence[0].reason_code,
+            "confidence": decision.confidence,
+            "product_ids": list(decision.candidate_product_ids),
+        })
 
     m.update_session_memory(memory_key, chat_request.message, "use_case_advice", matched_products, [], {})
     updated_profile = m.update_user_memory(profile_key, chat_request.message, "use_case_advice", matched_products, [])
@@ -887,7 +919,7 @@ def execute_basket_completion(
     """
     import app.main as m
     from app.basket_completion import compose_basket_answer, decide_basket_completion, resolve_basket_followup
-    from app.session_state import clear_basket_state, get_active_basket_use_case, set_active_basket_use_case
+    from app.session_state import clear_basket_state, get_active_basket_use_case, set_active_basket_use_case, set_last_explanation
 
     # V2.16d (Section 30 - core target) - a bare continuation ("co este
     # potrebujem?") of the last basket answer this session must rebuild
@@ -921,6 +953,26 @@ def execute_basket_completion(
     recommended_ids = [r.recommended_product_id for r in decision.roles if r.recommended_product_id]
     matched_products = [m.format_product(products_by_id[pid]) for pid in recommended_ids if pid in products_by_id]
     answer_text = compose_basket_answer(decision, products_by_id, query_language)
+
+    # V2.16e (Section 17/44 - "why this?") - roles kept small/serializable
+    # (no reason_code field on BasketRole itself - every role here shares
+    # the same implicit "product_type_fit" evidence, see decide_basket_
+    # completion()'s EvidenceItem construction, so app.explanation falls
+    # back to that constant rather than needing a per-role field).
+    set_last_explanation(memory, {
+        "workflow": "basket_completion",
+        "use_case": decision.use_case,
+        "roles": [
+            {
+                "concept_id": r.concept_id,
+                "display_label_sk": r.display_label_sk,
+                "status": r.status,
+                "confidence": r.confidence,
+                "product_id": r.recommended_product_id,
+            }
+            for r in decision.roles
+        ],
+    })
 
     m.update_session_memory(memory_key, chat_request.message, "basket_completion", matched_products, [], {})
     updated_profile = m.update_user_memory(profile_key, chat_request.message, "basket_completion", matched_products, [])
@@ -976,4 +1028,55 @@ def execute_basket_completion(
             for r in decision.roles
         ],
         "basket_unresolved_concepts": list(decision.unresolved_concepts),
+    }
+
+
+def execute_why_followup(
+    *,
+    chat_request: Any,
+    memory: dict,
+    memory_key: str,
+    profile_key: str,
+    products: list,
+    query_language: str,
+) -> WorkflowResult | None:
+    """V2.16e (Section 17 - "why this?" core capability). Returns None
+    (caller falls through to the normal cascade unchanged, same
+    contract as every other executor here) when the message does not
+    read as a why-followup at all (app.explanation.looks_like_why_
+    followup() - deliberately narrower than app.main.is_article_info_
+    intent()'s own bare "preco" marker, see that function's docstring
+    for the exact live-reproduced collision this avoids).
+
+    Deterministic end-to-end: composes only from the evidence already
+    stored by whichever of execute_comparison()/execute_use_case_advice()/
+    execute_basket_completion() produced the session's last decision
+    (app.session_state.get_last_explanation()) - never recomputes a
+    fresh recommendation, never calls an LLM (Section 15/66)."""
+    from app.explanation import compose_why_answer, looks_like_why_followup
+    from app.session_state import get_last_explanation
+
+    if not looks_like_why_followup(chat_request.message):
+        return None
+
+    import app.main as m
+
+    explanation = get_last_explanation(memory)
+    answer_text, explained_product_ids = compose_why_answer(explanation, chat_request.message, query_language)
+
+    products_by_id = {p.id: p for p in products}
+    matched_products = [m.format_product(products_by_id[pid]) for pid in explained_product_ids if pid in products_by_id]
+
+    m.update_session_memory(memory_key, chat_request.message, "why_followup", matched_products, [], {})
+    updated_profile = m.update_user_memory(profile_key, chat_request.message, "why_followup", matched_products, [])
+
+    return {
+        "answer": answer_text,
+        "products": matched_products,
+        "articles": [],
+        "knowledge": m.knowledge_summary({}),
+        "memory": m.public_user_memory_summary(updated_profile),
+        "intent": "why_followup",
+        "response_mode": "why_followup",
+        "workflow_id": "WHY_FOLLOWUP",
     }

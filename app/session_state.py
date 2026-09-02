@@ -147,6 +147,30 @@ def clear_basket_state(memory: dict) -> None:
     memory["active_basket_use_case"] = ""
 
 
+def get_last_explanation(memory: dict) -> dict | None:
+    """V2.16e (Section 17/44 - "why this?" core capability) - a small,
+    uniform snapshot of the evidence already computed by whichever of
+    app.use_case_advice/app.comparison/app.basket_completion produced
+    the customer's LAST recommendation/comparison/basket answer, so a
+    follow-up ("Preco mi odporucas tento?") can re-explain that REAL
+    decision instead of the previous confirmed-live behavior (no
+    session memory of any prior decision at all - a why-followup was
+    silently reinterpreted as an unrelated fresh product search or
+    article-info question). Same storage convention as active_recipe_id/
+    active_use_case/active_basket_use_case - a plain memory key, no new
+    storage mechanism, no new decision_id (Section 47 - this reuses the
+    source workflow's own decision, never invents a second one)."""
+    return memory.get("last_explanation") or None
+
+
+def set_last_explanation(memory: dict, explanation: dict | None) -> None:
+    memory["last_explanation"] = explanation or None
+
+
+def clear_last_explanation(memory: dict) -> None:
+    memory["last_explanation"] = None
+
+
 def get_last_recipe_ingredient_concept(memory: dict) -> str | None:
     return memory.get("last_recipe_ingredient_concept") or None
 
@@ -307,6 +331,7 @@ def apply_reset(memory: dict) -> None:
     clear_recipe_state(memory)
     clear_use_case_state(memory)
     clear_basket_state(memory)
+    clear_last_explanation(memory)
     memory["recent_presentation_ids"] = []
     memory["subjects"].clear()
     memory["diet_terms"].clear()

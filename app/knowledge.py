@@ -168,14 +168,20 @@ def format_record(section: str, record: dict[str, Any]) -> str:
         return join_parts([category, question, answer], " | ")
 
     if section == "Products_AI":
+        taste = first_value(record, ["taste", "Chutovy profil - SK"])
+        if _is_broken_curation_placeholder(taste):
+            taste = ""
+        kucharsky_tip = record.get("Kucharsky tip - SK")
+        if _is_broken_curation_placeholder(kucharsky_tip):
+            kucharsky_tip = ""
         return join_parts(
             [
                 first_value(record, ["product_name", "Produkt (URL)"]),
                 first_value(record, ["category", "Kategória"]),
                 first_value(record, ["usage", "Pouzitie v kuchyni - SK"]),
-                first_value(record, ["taste", "Chutovy profil - SK"]),
+                taste,
                 first_value(record, ["advisor_note", "Nakupne odporucanie - SK"]),
-                record.get("Kucharsky tip - SK"),
+                kucharsky_tip,
                 record.get("Kedy odporucit - SK"),
                 record.get("Pozor / overit - SK"),
             ],
@@ -270,11 +276,46 @@ def best_product_advice_answer(
     if record is None:
         return None
     taste = first_value(record, ["taste", "Chutovy profil - SK"])
+    if _is_broken_curation_placeholder(taste):
+        taste = ""
     usage = first_value(record, ["usage", "Pouzitie v kuchyni - SK"])
     parts = [part for part in (taste, usage) if part]
     if not parts:
         return None
     return " ".join(parts[:2])
+
+
+_BROKEN_CURATION_MARKERS = (
+    "nevymyslaj zlozenie",
+    "urci podla nazvu produktu",
+    "formuluj prirodzene",
+    "genericka ai odpoved",
+    "najprv zisti, ci zakaznik",
+)
+
+
+def _is_broken_curation_placeholder(text: str) -> bool:
+    """V2.16e (Section 58/59, explanation claim-safety audit) - the
+    Products_AI curated sheet's AI-content-generation pipeline
+    (app.knowledge_builder's own prompt template) left its instructional
+    template text in the cell instead of real generated content for a
+    large share of records - live-confirmed: "Chutovy profil - SK"/
+    "Kucharsky tip - SK" are broken for 63/130 (48.5%) records, e.g.
+    literally "profil urci podla nazvu produktu, kategorie a detailu na
+    webe; nevymyslaj zlozenie" (an instruction TO an AI author, not a
+    sentence ABOUT a product). One such record was reproduced live,
+    verbatim, as the customer-facing answer to "Preco prave tento?"
+    during V2.16e characterization. Fixing the source data belongs to
+    the curation pipeline (out of scope here, see
+    docs/recommendation-explanation-transparency-v2.16e.md) - this guard
+    only stops the known-broken pattern from being treated as real
+    content at its two customer/LLM-context read sites
+    (best_product_advice_answer(), format_record()); it does not
+    attempt to repair or regenerate it, and other Products_AI fields
+    (usage/advisor_note/Kedy odporucit/Pozor-overit) were live-audited
+    clean (0/130) and are left untouched."""
+    normalized_text = str(text or "").lower()
+    return any(marker in normalized_text for marker in _BROKEN_CURATION_MARKERS)
 
 
 def first_value(record: dict[str, Any], keys: list[str]) -> str:
