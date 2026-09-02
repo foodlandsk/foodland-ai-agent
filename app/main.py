@@ -108,6 +108,9 @@ from app.execution_context import evaluation_context as _evaluation_context
 from app.customer_audit import capture_customer_turn as _capture_customer_turn
 from app.customer_audit import read_audit_turns as _read_audit_turns
 from app.customer_audit import audit_status as _audit_status
+from app.customer_qa import qa_status as _qa_status
+from app.customer_qa import qa_findings as _qa_findings
+from app.customer_qa import qa_conversation as _qa_conversation
 from app.search_quality import reset_retrieval_decision as _reset_search_quality_decision
 from app.search_quality import pop_retrieval_decision as _pop_search_quality_decision
 from app.search_quality import build_trace as _build_search_quality_trace
@@ -3496,6 +3499,66 @@ def admin_audit_conversations(
         q=q,
     )
     return {"readonly": True, "days": safe_days, "count": len(turns), "turns": turns}
+
+
+@app.get("/admin/qa/status")
+def admin_qa_status(
+    days: int = 1,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """V2.17.2 - read-only aggregate QA status: how many analyzed
+    customer turns are PASS/FINDING/UNCERTAIN. READ scope. Runs the
+    deterministic app.customer_qa rules ON READ over sanitized
+    app.customer_audit turns - never writes to the audit stream, never
+    reruns intent/search/ranking/cross-sell/LLM (Section 22)."""
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
+    safe_days = max(1, min(int(days or 1), 90))
+    return _qa_status(days=safe_days)
+
+
+@app.get("/admin/qa/findings")
+def admin_qa_findings(
+    days: int = 7,
+    limit: int = 100,
+    classification: str | None = None,
+    severity: str | None = None,
+    conversation_hash: str | None = None,
+    q: str | None = None,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """V2.17.2 - read-only, evidence-backed QA findings over sanitized
+    customer_audit.jsonl turns. READ scope. A finding is a structural
+    or known-pattern contradiction in an ALREADY-COMPLETED response -
+    never a behavioral/preference judgment, never a training label, and
+    automatic_production_change is always false (Section 26 - this
+    endpoint can never mutate ranking, learning, promotion, or the
+    audit stream itself)."""
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
+    safe_days = max(1, min(int(days or 7), 90))
+    findings = _qa_findings(
+        days=safe_days,
+        limit=limit,
+        classification=classification,
+        severity=severity,
+        conversation_hash=conversation_hash,
+        q=q,
+    )
+    return {"readonly": True, "days": safe_days, "count": len(findings), "findings": findings}
+
+
+@app.get("/admin/qa/conversations/{conversation_hash}")
+def admin_qa_conversation(
+    conversation_hash: str,
+    days: int = 90,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """V2.17.2 - full PASS/FINDING/UNCERTAIN QA result for every turn of
+    one conversation (identified only by its already-hashed
+    conversation_hash - never a raw session_id). READ scope."""
+    _require_admin_scope(x_admin_token, _SCOPE_READ)
+    safe_days = max(1, min(int(days or 90), 90))
+    results = _qa_conversation(conversation_hash, days=safe_days)
+    return {"readonly": True, "conversation_hash": conversation_hash, "count": len(results), "turns": results}
 
 
 @app.post("/admin/analytics/events-purge")
