@@ -1,0 +1,13 @@
+{
+  "dataset_version": "1.0",
+  "domain": "v2_18_lifecycle_overlay",
+  "note": "V2.18a (Section 2/8) - additive, read-only-with-respect-to-source overlay that formalizes lifecycle status for existing eval/golden/*.json and eval/conversations/*.json cases WITHOUT modifying those files. Entries here are looked up by case_id; a case with no entry defaults to lifecycle_status=OPEN (app.intelligence_diagnostics.scenario_registry). This is purely additive metadata - never a substitute for, or edit to, the underlying golden case content, and it can never remove a case from the registry (Section 8/9 append-only philosophy).",
+  "entries": [
+    {
+      "case_id": "regbug_rt0013",
+      "status": "OPEN",
+      "reason": "Already correctly scored/passing as-is (see the case's own 'note' field in eval/golden/regression_bugs.json: 'CLOSED_BY_HUMAN_SEMANTIC_DECISION' - runtime resolves this correctly via detect_replacement_subject(), the original golden expectation was GOLDEN_EXPECTATION_OUTDATED not a routing defect). Recorded here as OPEN (not CLOSED) because the CASE ITSELF remains an active, scored regression guard going forward - it is the underlying V2.10-era ambiguity that was resolved, documented in docs/routing-debt.md, not the test case. This entry exists to make that distinction structurally explicit (a real lifecycle_status field) rather than leaving it as free text only.",
+      "closed_version": null
+    }
+  ]
+}
