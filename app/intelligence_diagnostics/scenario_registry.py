@@ -95,7 +95,25 @@ def _lifecycle_overlay() -> dict[str, dict]:
 def adapt_golden_case(case: GoldenCase, overlay: dict[str, dict] | None = None) -> Scenario:
     overlay = overlay if overlay is not None else _lifecycle_overlay()
     entry = overlay.get(case.id, {})
-    invariants: list[str] = ["products_nonempty"] if not case.must_include_title_substrings else []
+    invariants: list[str] = []
+    # V2.18d.1 fix - the ORIGINAL fallback ("no title substrings declared
+    # -> assume products_nonempty") ignored max_products=0, which is a
+    # real, deliberate contract for allergen_safety/faq/recipe-style cases
+    # where an EMPTY product list is the correct, safe answer (e.g.
+    # regbug_rt0010 - "bez soje" allergen question must never recommend a
+    # product by name alone). That mismatch only ever affected this
+    # scenario's SAFE_MUTATION children (mutate_scenario() inherits
+    # expected_invariants unchanged) - the unmutated EXISTING_GOLDEN/
+    # REGRESSION_BUG scenario itself is always scored by the real
+    # app.evaluation.runner.run_golden_case(), which already respects
+    # max_products correctly and was never affected. See docs/
+    # intelligence-diagnostic-loop-v2.18.1.md for the full diagnosis
+    # (this bug explained 36 of the 43 FAIL results in the V2.18a-c
+    # Intelligence Report's first generation).
+    if case.max_products == 0:
+        invariants.append("products_empty")
+    elif not case.must_include_title_substrings:
+        invariants.append("products_nonempty")
     if case.expected_intent:
         invariants.append(f"intent=={case.expected_intent}")
     source = SOURCE_REGRESSION_BUG if case.source == "regression_bug" else SOURCE_EXISTING_GOLDEN

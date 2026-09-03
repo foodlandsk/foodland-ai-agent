@@ -624,3 +624,92 @@ class TestRealBackendIntegration:
             golden_lookup={}, conversation_lookup={},
         )
         assert result.status == STATUS_PASS
+
+
+# ===================== V2.18d.1 permanent regression =====================
+
+
+class TestMaxProductsZeroInvariantFix:
+    """V2.18d.1 - diagnosed root cause of the 'regbug_rt0010 diacritics-
+    strip fragility' reported in the V2.18a-c Intelligence Report: NOT an
+    Advisor defect (the real /chat behavior for the diacritics-stripped
+    and original queries was byte-identical, both correctly honest
+    allergen-safety abstentions with zero products) - a bug in this
+    project's OWN scenario_registry.adapt_golden_case() fallback, which
+    defaulted every case with no must_include_title_substrings to
+    "products_nonempty" regardless of an explicit max_products=0 contract.
+    That fallback is only ever read for a case's SAFE_MUTATION children
+    (mutate_scenario() inherits expected_invariants unchanged) - the
+    unmutated case itself was always scored correctly via the real
+    app.evaluation.runner.run_golden_case(), so this was never a false
+    PASS, only a false FAIL on mutated variants. Fixed by deriving
+    "products_empty" instead whenever max_products == 0. 36 of the 43
+    FAIL results in the first Intelligence Report generation shared this
+    exact root cause across 10 distinct regression cases."""
+
+    def test_max_products_zero_case_derives_products_empty_invariant(self):
+        scenarios = sr.load_all_scenarios()
+        rt0010 = next(s for s in scenarios if s.scenario_id == "regbug_rt0010")
+        assert "products_empty" in rt0010.expected_invariants
+        assert "products_nonempty" not in rt0010.expected_invariants
+
+    def test_max_products_none_case_still_derives_products_nonempty(self):
+        scenarios = sr.load_all_scenarios()
+        rt0007 = next(s for s in scenarios if s.scenario_id == "regbug_rt0007")
+        assert "products_nonempty" in rt0007.expected_invariants
+        assert "products_empty" not in rt0007.expected_invariants
+
+    def test_products_empty_invariant_passes_for_empty_response(self):
+        from app.intelligence_diagnostics.invariant_evaluator import check_invariant
+
+        passed, reason = check_invariant("products_empty", {"products": []})
+        assert passed is True
+
+    def test_products_empty_invariant_fails_for_nonempty_response(self):
+        from app.intelligence_diagnostics.invariant_evaluator import check_invariant
+
+        passed, reason = check_invariant("products_empty", {"products": [{"id": "FL_1"}]})
+        assert passed is False
+
+    def test_all_ten_affected_regression_cases_now_derive_correct_invariant(self):
+        affected_ids = {
+            "regbug_rt0003", "regbug_rt0010", "regbug_rt0015", "regbug_rt0016",
+            "regbug_rt0022", "regbug_rt0023", "regbug_rt0024", "regbug_rt0025", "regbug_rt0027",
+        }
+        scenarios = {s.scenario_id: s for s in sr.load_all_scenarios()}
+        for sid in affected_ids:
+            s = scenarios[sid]
+            assert "products_empty" in s.expected_invariants, f"{sid} still missing products_empty"
+            assert "products_nonempty" not in s.expected_invariants, f"{sid} still has stale products_nonempty"
+
+    def test_rt0010_mutations_pass_live(self):
+        from app.evaluation.adapter import make_chat_fn, make_session_chat_fn, get_taxonomy_index
+        from app.intelligence_diagnostics.mutation_engine import generate_safe_mutations
+
+        scenarios = {s.scenario_id: s for s in sr.load_all_scenarios()}
+        target = scenarios["regbug_rt0010"]
+        mutations = generate_safe_mutations(target)
+        assert mutations
+
+        chat_fn = make_chat_fn()
+        session_chat_fn = make_session_chat_fn()
+        taxonomy_index = get_taxonomy_index()
+        for mutated in mutations:
+            result = run_scenario(
+                mutated, chat_fn=chat_fn, session_chat_fn=session_chat_fn,
+                taxonomy_index=taxonomy_index, golden_lookup={}, conversation_lookup={},
+            )
+            assert result.status == STATUS_PASS, f"{mutated.scenario_id} still fails: {result.reasons}"
+
+    def test_unmutated_rt0010_scoring_path_unaffected_by_this_fix(self):
+        # The unmutated case is scored via the real run_golden_case()
+        # path (source=REGRESSION_BUG, underlying_case_id set), which
+        # never reads expected_invariants at all - this fix cannot have
+        # changed its behavior. Regression-proofs the "only affects
+        # SAFE_MUTATION children" claim in this class's own docstring.
+        from app.intelligence_diagnostics.benchmark_runner import SOURCE_REGRESSION_BUG
+
+        scenarios = {s.scenario_id: s for s in sr.load_all_scenarios()}
+        rt0010 = scenarios["regbug_rt0010"]
+        assert rt0010.source == SOURCE_REGRESSION_BUG
+        assert rt0010.underlying_case_id == "regbug_rt0010"

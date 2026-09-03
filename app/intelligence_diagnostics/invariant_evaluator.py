@@ -33,6 +33,16 @@ def check_invariant(invariant: str, response: dict) -> tuple[bool, str]:
         products = response.get("products") or []
         return bool(products), f"products_nonempty: {len(products)} product(s) returned"
 
+    if invariant == "products_empty":
+        # V2.18d.1 - the honest-abstention counterpart to products_nonempty.
+        # A max_products=0 golden/regression case (e.g. allergen_safety/faq/
+        # recipe intents where recommending a product would be unsafe or
+        # simply wrong) has EMPTY products as its correct, safe behavior -
+        # scoring it against products_nonempty would flag correct abstention
+        # as a failure (see docs/intelligence-diagnostic-loop-v2.18.1.md).
+        products = response.get("products") or []
+        return not products, f"products_empty: {len(products)} product(s) returned (expected 0)"
+
     if invariant == "answer_nonempty":
         answer = str(response.get("answer") or "").strip()
         return bool(answer), f"answer_nonempty: {len(answer)} char(s)"
