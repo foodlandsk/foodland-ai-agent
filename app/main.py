@@ -9932,62 +9932,18 @@ def allergen_product_query(message: str) -> str:
         if product_query in normalized_message:
             return product_query
 
-    if is_generic_allergen_recommendation_tail(normalized_message):
-        return ""
-
-    after_question = message.rsplit("?", 1)[-1].strip()
-    if after_question and after_question != message.strip():
-        normalized_after_question = normalize(after_question)
-        if is_generic_allergen_recommendation_tail(normalized_after_question):
-            return ""
-        return after_question
-
-    cleanup_patterns = [
-        r"\bviete mi najst\b",
-        r"\bdobry den\b",
-        r"\bahoj\b",
-        r"\bprosim\b",
-        r"\bmoze to jest\b",
-        r"\balergik na arasidy\b",
-        r"\balergia na arasidy\b",
-        r"\bs alergiou na arasidy\b",
-        r"\bje\b",
-        r"\bsu\b",
-        r"\bma\b",
-        r"\bbez lepku\b",
-        r"\bbezlepk\w*\b",
-        r"\bobsahuje\b",
-        r"\bneobsahuje\b",
-        r"\balergeny\b",
-        r"\bvegan\b",
-        r"\bvhodn\w*\b",
-        r"\bpri celiakii\b",
-        r"\bceliak\w*\b",
-        r"\bintoleranc\w*\b",
-        r"\bco mam skontrolovat\b",
-        r"\bskontrolovat\b",
-        r"\bukazte produkt\b",
-        r"\boverte etiketu\b",
-        r"\betiketu\b",
-        r"\bnechcem vymyslene vlastnosti\b",
-        r"\bnehadajte\b",
-        r"\bupozornite ma na zlozenie\b",
-        r"\bchcem opatrnu odpoved\b",
-        r"\bopatrnu odpoved\b",
-        r"\bsoju\b",
-        r"\bsoja\b",
-        r"\blepok\b",
-        r"\bskladom\b",
-        r"\bza dobru cenu\b",
-    ]
-    cleaned = normalized_message
-    for pattern in cleanup_patterns:
-        cleaned = re.sub(pattern, " ", cleaned)
-    cleaned = re.sub(r"[^a-z0-9 ]+", " ", cleaned)
-    cleaned = " ".join(cleaned.split())
-    if is_generic_allergen_recommendation_tail(cleaned):
-        return ""
-    return cleaned
+    # V2.18d.3 (C2 allergen-safety product leakage): a general allergen
+    # question with no explicitly named product above must never fall back
+    # to a free-text catalog search built from whatever text is left after
+    # stripping a hand-maintained list of exact phrases - a single typo or
+    # word-order change breaks that exact-string matching (the residual
+    # text, sometimes still containing the allergen term itself, then
+    # became a live product query - e.g. "arasiidy" fuzzy-matched real
+    # peanut products). Returning "" here is the same deliberate
+    # zero-safe-product signal as the branches above, universally, for
+    # every case not already recognized as one of the specific named
+    # products handled earlier in this function.
+    return ""
 
 
 def is_generic_allergen_recommendation_tail(normalized_text: str) -> bool:

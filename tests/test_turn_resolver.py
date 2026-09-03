@@ -47,10 +47,20 @@ class TestSafetySignalExtraction:
         analysis = _safety("sojova omacka")
         assert analysis.safety_intent is None
 
-    def test_explicit_allergy_question_has_safety_intent_with_product_evidence(self):
+    def test_explicit_allergy_question_with_no_named_product_has_zero_product_signal(self):
+        # V2.18d.3 (C2): before the fix, allergen_product_query()'s free-
+        # text fallback returned the leftover message itself as a "query"
+        # whenever nothing else matched, so this bare allergy statement
+        # (no specific product named) incidentally produced
+        # has_product_evidence=True - an artifact of that fallback's
+        # fragility, not a deliberate signal (unlike the "bez sóje" case
+        # above, which has an explicit, documented zero-product design).
+        # Naming no product must behave the same as the explicit-zero
+        # case: no product evidence.
         analysis = _safety("mam alergiu na soju")
         assert analysis.safety_intent == "sóju"
-        assert analysis.safety_has_product_evidence is True
+        assert analysis.safety_zero_product_signal is True
+        assert analysis.safety_has_product_evidence is False
 
 
 class TestActionTargetSignalExtraction:

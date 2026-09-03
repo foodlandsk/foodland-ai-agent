@@ -350,3 +350,36 @@ class TestCharacterization_rt0013_CLOSED_BY_HUMAN_SEMANTIC_DECISION:
         engine = _engine_chat(self.QUERY, "ae-rt0013-engine", evaluation_context())
         assert legacy.get("intent") == engine.get("intent")
         assert _product_ids(legacy) == _product_ids(engine)
+
+
+class TestCharacterization_rt0003_rt0027_FIXED_C2_ALLERGEN_PRODUCT_LEAKAGE:
+    """V2.18d.3 (V2.18d.2 cluster C2) - end-to-end regression, through the
+    real AdvisorEngine boundary rather than just the allergen_product_query()
+    unit (see tests/test_core.py's
+    test_allergen_product_query_robust_to_surface_variation). A general
+    allergen-safety question (no specific product named) must return
+    intent=="allergen_safety" with an EMPTY products list even under a
+    single typo or a two-word reorder - previously, the query-builder
+    fallback's exact-phrase matching broke under that variation and
+    attached real catalog products (once, literally the allergen itself -
+    "arasiidy" fuzzy-matched real peanut products) to what should have
+    been a product-free safety disclaimer."""
+
+    CASES = (
+        "alergia na arašiidy, čo môžem kúpiť?",
+        "na alergia arašidy, čo môžem kúpiť?",
+        "mam alergiu na lepok, čo by ste dopuruučili?",
+    )
+
+    def test_no_products_attached_under_surface_variation(self):
+        for i, message in enumerate(self.CASES):
+            response = _engine_chat(message, f"ae-c2-{i}", evaluation_context())
+            assert response.get("intent") == "allergen_safety", (message, response.get("intent"))
+            assert _product_ids(response) == [], (message, _product_ids(response))
+
+    def test_canonical_allergen_cases_still_functional(self):
+        # Unaffected by the fix - a customer naming a specific known
+        # product alongside an allergy question must still get it back.
+        response = _engine_chat("je gochujang bez lepku?", "ae-c2-canonical", evaluation_context())
+        assert response.get("intent") == "allergen_safety"
+        assert _product_ids(response), "gochujang should still be attached"

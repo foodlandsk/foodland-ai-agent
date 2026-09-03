@@ -1540,6 +1540,27 @@ class TestIntentDetection:
     def test_allergen_product_query_avoids_generic_soy_free_guess(self):
         assert main.allergen_product_query("co mate bez soje?") == ""
 
+    def test_allergen_product_query_robust_to_surface_variation(self):
+        # V2.18d.3 (C2): a general allergen question with no specific
+        # product named must return "" (no product search) even under a
+        # typo or word-order change, not just under its exact canonical
+        # phrasing. Root cause: the old fallback tried to salvage a
+        # "specific product" from whatever text was left after stripping
+        # a hand-maintained list of exact phrases - a single doubled
+        # character or a two-word swap broke that exact-string matching,
+        # and the leftover text (sometimes still containing the allergen
+        # term itself, e.g. "arasiidy") became a live catalog search query
+        # instead of the safe empty result (reproduced live: 8 concrete
+        # peanut products attached to a supposedly product-free allergen
+        # disclaimer). See V2.18d.2 cluster C2 / regbug_rt0003, regbug_rt0027.
+        for message in (
+            "alergia na arašiidy, čo môžem kúpiť?",  # rt0003 + doubled-char typo
+            "na alergia arašidy, čo môžem kúpiť?",  # rt0003 + first-two-words swapped
+            "mam alergiu na lepok, čo by ste dopuruučili?",  # rt0027 + doubled-char typo
+        ):
+            assert main.allergen_product_query(message) == "", message
+            assert main.allergen_product_matches(message, 8) == [], message
+
     def test_allergen_product_matches_include_requested_product(self):
         titles = " | ".join(product["title"] for product in main.allergen_product_matches("je gochujang bez lepku?", 6))
         assert "gochujang" in nrm(titles)
