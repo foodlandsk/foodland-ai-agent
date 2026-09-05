@@ -87,6 +87,37 @@ def check_invariant(invariant: str, response: dict) -> tuple[bool, str]:
         present = needle.lower() in answer_lower
         return not present, f"answer_must_not_contain:{needle!r}: present={present}"
 
+    # --- V2.20a additions (docs/v2-20-scenario-factory.md) - additive
+    # only, no existing invariant string format is reinterpreted, so no
+    # V2.10/V2.18 scenario's scoring changes. All four are pure functions
+    # of a response dict, same as everything above - never call the
+    # Advisor themselves. -------------------------------------------------
+    if invariant.startswith("product_title_contains_any:"):
+        terms = [t for t in invariant.split(":", 1)[1].split("|") if t]
+        titles_lower = [_lower(p.get("title")) for p in (response.get("products") or [])]
+        hit = any(term.lower() in title for title in titles_lower for term in terms)
+        return hit, f"product_title_contains_any:{terms!r}: hit={hit}"
+
+    if invariant.startswith("product_title_forbidden:"):
+        term = invariant.split(":", 1)[1].lower()
+        offending = [p.get("title") for p in (response.get("products") or []) if term in _lower(p.get("title"))]
+        return not offending, f"product_title_forbidden:{term!r}: offending={offending}"
+
+    if invariant.startswith("min_products:"):
+        n = int(invariant.split(":", 1)[1])
+        count = len(response.get("products") or [])
+        return count >= n, f"min_products:{n}: actual={count}"
+
+    if invariant == "requires_uncertainty":
+        # Same disclaimer vocabulary this project's own allergen/dietary
+        # abstention answers already use in production (see app.main's
+        # gluten-free/allergen composition paths) - not a new concept,
+        # just a reusable check for it.
+        markers = ("overte zloženie", "overte zlozenie", "nemôžem potvrdiť", "nemozem potvrdit", "neviem overiť", "neviem overit", "nemám overené", "nemam overene")
+        answer_lower = _lower(response.get("answer"))
+        hit = any(m in answer_lower for m in markers)
+        return hit, f"requires_uncertainty: hit={hit}"
+
     return False, f"UNKNOWN_INVARIANT: {invariant!r} has no registered evaluator"
 
 

@@ -113,7 +113,62 @@ CAPABILITIES = (
     "FAQ",
     "AVAILABILITY_PRICE",
     "OUT_OF_DOMAIN",
+    # --- V2.20a additions (docs/v2-20-scenario-factory.md) - new labels
+    # needed for the independent challenge benchmark's wider capability
+    # taxonomy. Every existing label above is reused unchanged; nothing
+    # here is a synonym for one already in this tuple. -------------------
+    "CATEGORY_DISCOVERY",
+    "PRODUCT_TO_RECIPE",
+    "ALREADY_HAVE",
+    "BUDGET_REASONING",
+    "QUANTITY_REASONING",
+    "MULTI_CONSTRAINT",
+    "NEGATION",
+    "AMBIGUITY",
+    "CONSTRAINT_CHANGE",
+    "PREFERENCE",
+    "PERSONALIZATION",
+    "DIETARY_SAFETY",
+    "INSUFFICIENT_DATA",
+    "CULTURAL_AUTHENTICITY",
 )
+
+# --- V2.20a difficulty model (docs/v2-20-scenario-factory.md Section E).
+# Deterministic, assigned by the scenario author at authoring time (not
+# derived from Advisor performance - Section 16 forbids downgrading
+# difficulty to satisfy a quota). ---------------------------------------
+DIFFICULTY_L1_DIRECT = "L1"
+DIFFICULTY_L2_COMPOSED = "L2"
+DIFFICULTY_L3_MULTI_CONSTRAINT = "L3"
+DIFFICULTY_L4_CONTEXTUAL = "L4"
+DIFFICULTY_L5_ADVERSARIAL_REALISTIC = "L5"
+
+DIFFICULTIES = (
+    DIFFICULTY_L1_DIRECT,
+    DIFFICULTY_L2_COMPOSED,
+    DIFFICULTY_L3_MULTI_CONSTRAINT,
+    DIFFICULTY_L4_CONTEXTUAL,
+    DIFFICULTY_L5_ADVERSARIAL_REALISTIC,
+)
+
+# --- V2.20a language coverage - restricted to what app.main actually
+# detects/handles in conversation (app.main.detect_query_language() is a
+# binary sk/en heuristic; CZ/DE/PL/HU/VI exist only as Products_AI
+# marketing copy, never as conversational language handling - verified
+# by repository inspection during V2.20a, not assumed). ------------------
+LANGUAGE_SK = "sk"
+LANGUAGE_EN = "en"
+
+LANGUAGES = (LANGUAGE_SK, LANGUAGE_EN)
+
+# --- V2.20a DEV/HOLDOUT governance (docs/v2-20-scenario-factory.md
+# Section N). HOLDOUT_IS_NOT_SECRET = TRUE - both splits live in the same
+# repository; this is a governance boundary (no casual re-inspection
+# after every fix), not cryptographic secrecy. ---------------------------
+SPLIT_DEV = "DEV"
+SPLIT_HOLDOUT = "HOLDOUT"
+
+SPLITS = (SPLIT_DEV, SPLIT_HOLDOUT)
 
 # --- persona dimensions (Section 14) - testing instruments, never
 # demographic/personal attributes. -------------------------------------
@@ -203,6 +258,19 @@ class Scenario:
     closed_version: str | None = None
     underlying_case_id: str | None = None
     critical: bool = False
+    # --- V2.20a additions - all optional/default-safe, so constructing
+    # an existing V2.10/V2.18 scenario without setting any of these is
+    # byte-for-byte unaffected (Section 100: additive only, never
+    # changes scoring of the old 310). None means "not yet classified
+    # under the V2.20 taxonomy," not "invalid." -----------------------
+    secondary_capabilities: tuple[str, ...] = ()
+    difficulty: str | None = None
+    language: str = LANGUAGE_SK
+    split: str | None = None
+    catalog_dependency: bool = False
+    safety_sensitive: bool = False
+    catalog_snapshot_id: str | None = None
+    review_flags: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.source not in SCENARIO_SOURCES:
@@ -213,6 +281,12 @@ class Scenario:
             raise ValueError(f"invalid lifecycle_status: {self.lifecycle_status!r}")
         if not self.turns:
             raise ValueError("scenario must have at least one turn")
+        if self.difficulty is not None and self.difficulty not in DIFFICULTIES:
+            raise ValueError(f"invalid difficulty: {self.difficulty!r}")
+        if self.language not in LANGUAGES:
+            raise ValueError(f"invalid language: {self.language!r}")
+        if self.split is not None and self.split not in SPLITS:
+            raise ValueError(f"invalid split: {self.split!r}")
         # Section 5 hard guard - the one line that makes
         # CURRENT_MODEL_OUTPUT structurally impossible as an authority:
         # it simply is not a member of GROUND_TRUTH_AUTHORITIES, so any
