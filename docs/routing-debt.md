@@ -425,6 +425,61 @@ dôvodov (frontend rendering gap vs. data-quality/architecture risk —
 fallback kaskáda bez evidence štruktúry). rt0013 znovu-overené,
 NEOTVORENÉ. Detail: `docs/decision-observability-expansion-v2.15e.3.md`.
 
+## V2.18d.6 poznámka — nová fragilita objavená (rt0002 word-order), PENDING_HUMAN_REVIEW
+
+Objavené počas C6 diagnostického mandátu (V2.18d.6, `app.intelligence_diagnostics`
+benchmark). **NIE JE** ten istý problém ako uzavretý `regbug_rt0002` riadok
+vyššie (ten sa týka kanonickej formy dopytu a lexikálneho RETRIEVAL_MISS
+medzi golden expectation "sushi ryža" a katalógovým "Suši ryža" — uzavreté,
+nesúvisiace s týmto nálezom).
+
+Nový nález: topicalizovaná (predmet-najprv) preformulácia TEJ ISTEJ
+kanonickej otázky mení intent aj CELÝ typ generovanej odpovede:
+
+- Kanonický dopyt: "potrebujem niečo bez lepku k sushi" → `intent=product_search`,
+  odpoveď = konkrétny zoznam produktov + explicitné upozornenie overiť
+  bezlepkové zloženie.
+- Topicalizovaná preformulácia (sémanticky identická, gramaticky správna
+  slovenčina — bežné predsunutie predmetu pre dôraz): "niečo potrebujem
+  bez lepku k sushi" → `intent=related_products`, odpoveď = úplne iný
+  "nákupný zoznam pre sushi" text, ktorý **vynecháva zmienku o
+  bezlepkovej podmienke**.
+
+**Dôkaz izolovanosti**: identická transformácia (zámena prvých dvoch slov,
+`app.intelligence_diagnostics.mutation_engine.apply_word_order()`)
+aplikovaná na všetkých 61 scored kanonických scenárov — 60/61 prešlo
+nezmenene (vrátane 6 ďalších sloveso-úvodných dopytov: "chcem niečo...",
+"potrebujem recept...", "mám rád...", "dá sa...", "ako môžem...", "mam
+alergiu..."), zlyhal výlučne tento jeden prípad. Nejde teda o všeobecnú
+chybu diagnostického mutátora (mechanicky bezchybný, scenár-nezávislý —
+overené), ale o lokalizovanú Advisor-side fragilitu.
+
+**Pravdepodobná lokalita** (nedotrasovaná do úplného detailu — mimo
+rozsahu diagnostického mandátu, vyžaduje samostatný root-cause audit):
+`app/main.py`, vetva rozhodujúca medzi `special_subject`/`related_subject`/
+`is_shopping_list_request` (~riadok 5417-5433), citlivá na poradie/frázovú
+susednosť slov práve pri kombinácii "niečo ... k sushi" + bezlepková
+podmienka.
+
+**Riziko v produkcii**: NÍZKE — syntetický nález (1/61 v diagnostickom
+benchmarku), žiadna zhoda s reálnym zaznamenaným zákazníckym dopytom k
+dátumu tohto zápisu (2026-09-05).
+
+**Status**: `PENDING_HUMAN_REVIEW` (analogicky k `rt0013`'s
+`PENDING_SEMANTIC_PRODUCT_DECISION` vzoru pred jeho uzavretím) — vyžaduje
+ľudské rozhodnutie, či:
+(a) je toto akceptovateľná hranica citlivosti (dopyty s predmetom na
+začiatku sú v zákazníckej praxi zriedkavé), alebo
+(b) si zaslúži samostatný Advisor-fix mandát (napr. rozšírenie
+`special_subject`/`related_subject` detekcie o poradie-nezávislé
+frázové rozpoznávanie).
+
+Plná diagnostika (61-scenárový sweep, determinizmus, sémantický audit,
+klasifikácia B = ADVISOR_DEFECT nie EVALUATOR_DEFECT): benchmark
+generation_id `08a6b08d3d5450e4c4e66d2e` (git_sha `96a7fb2c...`).
+Žiadna zmena kódu vykonaná v V2.18d.6 — diagnostický mandát bol striktne
+diagnostic-tool-only a Advisor-side opravy explicitne nepovoľoval.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným
