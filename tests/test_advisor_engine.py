@@ -426,3 +426,21 @@ class TestCharacterization_rt0002_FIXED_C6_WORD_ORDER_FRAGILITY:
     def test_object_fronted_phrasing_still_attaches_gluten_free_products(self):
         response = _engine_chat("Niečo potrebujem bez lepku k sushi", "ae-c6-fronted-products", evaluation_context())
         assert _product_ids(response), "gluten-free sushi products should still be attached"
+
+
+class TestCharacterization_V219A01_FIXED_SHOPPING_LIST_CO_BOUNDARY:
+    """V2.19b (V2.19a finding V219A-01) - end-to-end regression through
+    the real AdvisorEngine boundary. Same root cause and same fix shape
+    as C6/V2.18d.8, but in the sibling function wants_shopping_list() /
+    SHOPPING_LIST_MARKERS, which that narrower fix deliberately left
+    untouched. Both phrasings of the rt0002 pair must now be
+    byte-identical in answer text, not just intent (see
+    tests/test_core.py::TestV2_19b_ShoppingListCoBoundary for the
+    marker-level unit coverage)."""
+
+    def test_object_fronted_phrasing_produces_identical_answer_text(self):
+        canonical = _engine_chat("Potrebujem niečo bez lepku k sushi", "ae-v219a01-canonical", evaluation_context())
+        fronted = _engine_chat("Niečo potrebujem bez lepku k sushi", "ae-v219a01-fronted", evaluation_context())
+        assert canonical.get("intent") == fronted.get("intent") == "product_search"
+        assert canonical.get("answer") == fronted.get("answer")
+        assert _product_ids(canonical) == _product_ids(fronted)

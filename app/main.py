@@ -6792,8 +6792,24 @@ def cart_candidates_for_response(matches: list[dict], intent: str, context: str 
 
 
 def wants_shopping_list(message: str) -> bool:
+    # V2.19b (V2.19a finding V219A-01, same root cause as the V2.18d.8
+    # C6 fix): a bare substring check let "co potrebujem"/"co treba"/
+    # "co kupit"/"co mi chyba"/"co chyba" match INSIDE a preceding word,
+    # not just as the standalone word "co" (what). Slovak "nieco"
+    # (something) ends in "co", so "nieco potrebujem bez lepku k sushi"
+    # (a perfectly natural word order) silently satisfied "co potrebujem"
+    # and forced shopping-list-style presentation for an ordinary
+    # product question. Fix is boundary-aware only for markers starting
+    # with "co " - every other marker in this tuple (e.g. "suroviny",
+    # "ingrediencie", "do kosika") keeps its original substring match.
     normalized_message = normalize(message)
-    return any(marker in normalized_message for marker in SHOPPING_LIST_MARKERS)
+    for marker in SHOPPING_LIST_MARKERS:
+        if marker.startswith("co "):
+            if re.search(r"(?:^|\s)" + re.escape(marker), normalized_message):
+                return True
+        elif marker in normalized_message:
+            return True
+    return False
 
 
 def missing_ingredients_for_subject(subject: str | None, recipes: list[dict] | None = None) -> list[str]:

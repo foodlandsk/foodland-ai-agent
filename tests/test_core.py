@@ -4392,3 +4392,54 @@ class TestV2_18d8_RecipeShoppingLanguageWordBoundary:
         word_order_variant = main._has_recipe_shopping_language("niečo potrebujem bez lepku k sushi")
         assert canonical == word_order_variant == False
 
+
+class TestV2_19b_ShoppingListCoBoundary:
+    """V2.19b - V219A-01 (found by the V2.19a read-only forensic audit,
+    docs/routing-debt.md). Same root cause and same fix shape as
+    V2.18d.8/C6, but in the SIBLING function wants_shopping_list() /
+    SHOPPING_LIST_MARKERS, which the narrow C6 fix deliberately did not
+    touch. "co potrebujem"/"co treba"/"co kupit"/"co mi chyba"/"co chyba"
+    matched INSIDE "nieco ..." (Slovak "nieco" = something, ends in
+    "co"), forcing shopping-list-style presentation for an ordinary
+    product question. Repository reality found a 5th live "co "-prefixed
+    marker ("co chyba") beyond the 4 named in the V2.19a summary - the
+    fix is a generic per-marker-prefix rule (identical to V2.18d.8's),
+    not a hardcoded list, so it protects all 5 without special-casing.
+    """
+
+    def test_word_glued_before_co_marker_no_longer_matches(self):
+        assert main.wants_shopping_list("nieco potrebujem bez lepku k sushi") is False
+
+    def test_other_co_ending_words_also_protected(self):
+        assert main.wants_shopping_list("vselico treba kupit dnes") is False
+        assert main.wants_shopping_list("nieco chyba do polievky") is False
+
+    def test_fifth_marker_not_named_in_v219a_summary_also_protected(self):
+        # "co chyba" (not just "co mi chyba") is also a live marker in
+        # SHOPPING_LIST_MARKERS - repository reality beyond the V2.19a
+        # finding's literal 4-marker list, covered because the fix is a
+        # general rule, not a hardcoded enumeration.
+        assert main.wants_shopping_list("nieco chyba na recept") is False
+
+    def test_standalone_co_markers_still_match(self):
+        assert main.wants_shopping_list("co potrebujem k sushi") is True
+        assert main.wants_shopping_list("co treba na sushi") is True
+        assert main.wants_shopping_list("co kupit na sushi") is True
+        assert main.wants_shopping_list("co mi chyba") is True
+        assert main.wants_shopping_list("co chyba do polievky") is True
+
+    def test_co_marker_with_leading_punctuation_or_capitalization_still_matches(self):
+        assert main.wants_shopping_list("Co potrebujem?") is True
+        assert main.wants_shopping_list("prosim, co potrebujem k sushi?") is True
+
+    def test_non_co_markers_keep_original_substring_matching(self):
+        # "suroviny"/"ingrediencie"/"do kosika" never had this bug and
+        # must keep matching unchanged.
+        assert main.wants_shopping_list("aké suroviny mám kúpiť") is True
+        assert main.wants_shopping_list("pridaj ingrediencie do kosika") is True
+
+    def test_canonical_and_word_order_variant_now_agree(self):
+        canonical = main.wants_shopping_list("potrebujem niečo bez lepku k sushi")
+        word_order_variant = main.wants_shopping_list("niečo potrebujem bez lepku k sushi")
+        assert canonical == word_order_variant == False
+
