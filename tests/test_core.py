@@ -4348,3 +4348,47 @@ def test_audit_no_pii_leak_in_redaction():
     findings = check_pii_leak()
     assert not findings, "redact_pii() left PII in the output, see scripts/trust_audit.py:\n" + "\n".join(findings)
 
+
+class TestV2_18d8_RecipeShoppingLanguageWordBoundary:
+    """V2.18d.8 - C6 word-order fragility root cause (docs/routing-debt.md
+    rt0002 entry). "co potrebujem"/"co treba"/"co k tomu"/"co pridat" are
+    meant to detect the standalone word "co" ("čo" = "what"), but a bare
+    substring check also matched INSIDE a preceding word: Slovak "nieco"
+    (something) ends in "co", so "nieco potrebujem" (something I need - a
+    perfectly natural word order) silently satisfied "co potrebujem"
+    (what do I need), forcing ACTION-language detection where none was
+    intended. _has_recipe_shopping_language() now requires a word
+    boundary before markers starting with "co ", while every other marker
+    keeps its original, deliberately loose stem-substring match.
+    """
+
+    def test_word_glued_before_co_marker_no_longer_matches(self):
+        assert main._has_recipe_shopping_language("nieco potrebujem bez lepku k sushi") is False
+
+    def test_other_co_ending_words_also_protected(self):
+        # Not a one-word special case - any word ending in "co" is affected.
+        assert main._has_recipe_shopping_language("vselico potrebujem") is False
+        assert main._has_recipe_shopping_language("to nieco treba kupit") is False
+
+    def test_standalone_co_marker_still_matches(self):
+        assert main._has_recipe_shopping_language("co potrebujem na wok?") is True
+        assert main._has_recipe_shopping_language("co treba na kimchi?") is True
+        assert main._has_recipe_shopping_language("co k tomu pasuje?") is True
+        assert main._has_recipe_shopping_language("co pridat do kosika?") is True
+
+    def test_co_marker_at_start_of_message_still_matches(self):
+        assert main._has_recipe_shopping_language("Co potrebujem na wok?") is True
+
+    def test_non_co_markers_keep_loose_stem_matching(self):
+        # "ingredien" must still match inflected forms like "ingredienciu" -
+        # the boundary fix must not spread to markers that never had this bug.
+        assert main._has_recipe_shopping_language("aku mate ingredienciu na sushi") is True
+        assert main._has_recipe_shopping_language("recept na kimchi") is True
+
+    def test_canonical_and_word_order_variant_now_agree(self):
+        # The actual regbug_rt0002 pair (docs/routing-debt.md) - both must
+        # resolve to the same has_recipe_shopping_language() verdict now.
+        canonical = main._has_recipe_shopping_language("potrebujem niečo bez lepku k sushi")
+        word_order_variant = main._has_recipe_shopping_language("niečo potrebujem bez lepku k sushi")
+        assert canonical == word_order_variant == False
+

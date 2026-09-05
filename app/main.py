@@ -9509,8 +9509,26 @@ RECIPE_SHOPPING_LANGUAGE_MARKERS = (
 
 
 def _has_recipe_shopping_language(message: str) -> bool:
+    # V2.18d.8 (C6 word-order fragility root cause, confirmed via
+    # docs/routing-debt.md rt0002 entry): a bare substring check let
+    # "co potrebujem"/"co treba"/"co k tomu"/"co pridat" match INSIDE a
+    # preceding word, not just as the standalone word "co" (what). Slovak
+    # "nieco" (something) ends in "co", so "nieco potrebujem" (something
+    # I need - a perfectly natural word order) silently satisfied the
+    # "co potrebujem" (what do I need) trigger, forcing ACTION-language
+    # detection where none was intended. Fix is boundary-aware only for
+    # markers starting with "co " (the short token actually at risk of
+    # being swallowed by a preceding word) - every other marker in this
+    # tuple keeps its original, deliberately loose stem-substring match
+    # (e.g. "ingredien" must still match "ingrediencie").
     normalized_message = normalize(message)
-    return any(marker in normalized_message for marker in RECIPE_SHOPPING_LANGUAGE_MARKERS)
+    for marker in RECIPE_SHOPPING_LANGUAGE_MARKERS:
+        if marker.startswith("co "):
+            if re.search(r"(?:^|\s)" + re.escape(marker), normalized_message):
+                return True
+        elif marker in normalized_message:
+            return True
+    return False
 
 
 def _query_resolves_to_confident_product_family(message: str) -> bool:

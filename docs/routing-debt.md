@@ -465,20 +465,51 @@ podmienka.
 benchmarku), žiadna zhoda s reálnym zaznamenaným zákazníckym dopytom k
 dátumu tohto zápisu (2026-09-05).
 
-**Status**: `PENDING_HUMAN_REVIEW` (analogicky k `rt0013`'s
-`PENDING_SEMANTIC_PRODUCT_DECISION` vzoru pred jeho uzavretím) — vyžaduje
-ľudské rozhodnutie, či:
-(a) je toto akceptovateľná hranica citlivosti (dopyty s predmetom na
-začiatku sú v zákazníckej praxi zriedkavé), alebo
-(b) si zaslúži samostatný Advisor-fix mandát (napr. rozšírenie
-`special_subject`/`related_subject` detekcie o poradie-nezávislé
-frázové rozpoznávanie).
-
-Plná diagnostika (61-scenárový sweep, determinizmus, sémantický audit,
+**Status**: `PENDING_HUMAN_REVIEW` v čase V2.18d.6 (analogicky k `rt0013`'s
+`PENDING_SEMANTIC_PRODUCT_DECISION` vzoru pred jeho uzavretím). Plná
+diagnostika (61-scenárový sweep, determinizmus, sémantický audit,
 klasifikácia B = ADVISOR_DEFECT nie EVALUATOR_DEFECT): benchmark
-generation_id `08a6b08d3d5450e4c4e66d2e` (git_sha `96a7fb2c...`).
-Žiadna zmena kódu vykonaná v V2.18d.6 — diagnostický mandát bol striktne
+generation_id `08a6b08d3d5450e4c4e66d2e` (git_sha `96a7fb2c...`). Žiadna
+zmena kódu vykonaná v V2.18d.6 — ten mandát bol striktne
 diagnostic-tool-only a Advisor-side opravy explicitne nepovoľoval.
+
+**V2.18d.8 aktualizácia — root cause nájdený a opravený**: ľudský review
+(na explicitnú žiadosť) vysledoval presný mechanizmus. `app.main._has_recipe_shopping_language()`
+kontroluje marker `"co potrebujem"` (má zachytiť "čo potrebujem?" = "what
+do I need?") ako holý substring, bez ohľadu na hranicu slova. Slovenské
+"niečo" (something) sa normalizuje na "nieco" — končí na "co" — takže
+fráza "nieco potrebujem" (something I need, prirodzený a bežný slovosled)
+NÁHODNE obsahuje presne substring "co potrebujem", čím falošne spustí
+ACTION-language signál (`has_recipe_shopping_language=True`), ktorý cez
+`app.turn_resolver.resolve_action_target_signal()` prebije `special_subject`
+v prospech `related_subject` → `intent=related_products` namiesto
+`product_search`, aj so zmenou celého typu odpovede. **Toto NIE JE len
+syntetický mutátorový okrajový prípad (1/61)** — je to reálna, prirodzenou
+formuláciou dosiahnuteľná chyba (slovosled "niečo X" je v hovorovej
+slovenčine bežný, nie zriedkavý).
+
+**Oprava** (`app/main.py::_has_recipe_shopping_language()`): pre 4 markery
+začínajúce na `"co "` (`"co potrebujem"`, `"co treba"`, `"co k tomu"`,
+`"co pridat"`) sa teraz vyžaduje hranica slova pred "co" (medzera alebo
+začiatok reťazca) — `"nieco potrebujem"` už nevyhovuje, `"co potrebujem
+na wok?"` áno. Ostatné markery v zozname (napr. `"ingredien"`) si
+zachovávajú pôvodné, zámerne voľné stem-matching správanie nezmenené.
+
+**Rozsah**: rovnaký `"co X"` substring vzor (= slovo "čo") sa vyskytuje
+na desiatkach ďalších miest v `app/main.py` (iné marker zoznamy) so
+štrukturálne rovnakým teoretickým rizikom — táto oprava rieši VÝLUČNE
+funkciu preukázateľne zodpovednú za tento reprodukovaný nález, nie
+plošný refaktor. Širší audit všetkých `"co "` markerov zostáva mimo
+rozsahu, kandidát na budúcu samostatnú sprintu.
+
+**Overenie**: `regbug_rt0002__mut_word_order_v1` teraz PASS živo aj v
+benchmarku — plný V2.18 beh **310/310, 0 FAIL**, `overall_score`/
+`stable_core_score`/`mutation_score` všetky `1.0`. Nové permanentné testy:
+`tests/test_core.py::TestV2_18d8_RecipeShoppingLanguageWordBoundary`,
+`tests/test_advisor_engine.py::TestCharacterization_rt0002_FIXED_C6_WORD_ORDER_FRAGILITY`.
+Plná Python sada 2305 passed, canary 10/10, trust audit čistý.
+
+**Status**: `CLOSED_BY_HUMAN_REVIEW_V2_18D_8`.
 
 ## Ako pridávať nové záznamy
 

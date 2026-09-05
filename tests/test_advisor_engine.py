@@ -405,3 +405,24 @@ class TestCharacterization_rt0024_FIXED_C3_FAQ_TOPIC_MISMATCH:
         response = _engine_chat("Mozem zaplatit kartou priamo v predajni?", "ae-c3-instore", evaluation_context())
         assert response.get("intent") == "faq"
         assert "predajni" in m.normalize(response.get("answer") or "")
+
+
+class TestCharacterization_rt0002_FIXED_C6_WORD_ORDER_FRAGILITY:
+    """V2.18d.8 (V2.18d.6 cluster C6) - end-to-end regression through the
+    real AdvisorEngine boundary. "Niečo potrebujem bez lepku k sushi"
+    (object-fronted, natural Slovak word order) must resolve identically
+    to "Potrebujem niečo bez lepku k sushi" - both are the same request.
+    Root cause: app.main._has_recipe_shopping_language()'s "co
+    potrebujem" marker matched inside "nieco potrebujem" via a bare
+    substring check (see
+    tests/test_core.py::TestV2_18d8_RecipeShoppingLanguageWordBoundary
+    for the marker-level unit coverage)."""
+
+    def test_object_fronted_phrasing_matches_canonical_intent(self):
+        canonical = _engine_chat("Potrebujem niečo bez lepku k sushi", "ae-c6-canonical", evaluation_context())
+        fronted = _engine_chat("Niečo potrebujem bez lepku k sushi", "ae-c6-fronted", evaluation_context())
+        assert canonical.get("intent") == fronted.get("intent") == "product_search"
+
+    def test_object_fronted_phrasing_still_attaches_gluten_free_products(self):
+        response = _engine_chat("Niečo potrebujem bez lepku k sushi", "ae-c6-fronted-products", evaluation_context())
+        assert _product_ids(response), "gluten-free sushi products should still be attached"
