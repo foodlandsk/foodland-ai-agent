@@ -31,13 +31,13 @@
         "bezlepková sójová omáčka",
         "tamari",
         "nori",
-        "sushi ryža"
+        "suši ryža"
       ],
       "expected_answer_include": [
         "overte zloženie",
         "bezlepk"
       ],
-      "note": "Má odporúčať vhodné sushi doplnky a upozorniť na zloženie. (converted from tests/regression_training_cases.jsonl, id=RT0002)"
+      "note": "Má odporúčať vhodné sushi doplnky a upozorniť na zloženie. (converted from tests/regression_training_cases.jsonl, id=RT0002) V2.18d.7 human review: 'sushi ryža' corrected to 'suši ryža' - stale English-transliteration spelling never matched the actual catalog title ('Suši ryža KIMPO/HARUKA/...'); Advisor already returns the correct product, this was a golden-data spelling bug (see docs/routing-debt.md C4)."
     },
     {
       "id": "regbug_rt0003",
@@ -99,9 +99,9 @@
       "must_include_title_substrings": [
         "kokosové mlieko",
         "jazmínová ryža",
-        "rybia omáčka"
+        "rybacia omáčka"
       ],
-      "note": "Kari dotaz má preferovať suroviny ku kari. (converted from tests/regression_training_cases.jsonl, id=RT0006)"
+      "note": "Kari dotaz má preferovať suroviny ku kari. (converted from tests/regression_training_cases.jsonl, id=RT0006) V2.18d.7 human review: 'rybia omáčka' corrected to 'rybacia omáčka' - the catalog has never carried the short adjectival form, only 'Rybacia omáčka ...' (THUAN PHAT/TIPAROS/MEGACHEF/SQUID BRAND/...); Advisor already returns the correct product, this was a golden-data wording bug (see docs/routing-debt.md C4)."
     },
     {
       "id": "regbug_rt0007",
@@ -315,12 +315,11 @@
       "critical": true,
       "expected_intent": "recipe",
       "expected_answer_include": [
-        "Recept",
-        "kapustu",
-        "fermentovat"
+        "recept",
+        "Foodland.sk"
       ],
       "max_products": 0,
-      "note": "Recept na kimchi ma odpovedat postupom, nie produktovymi kartami na vyrobu. (converted from tests/regression_training_cases.jsonl, id=RT0022)"
+      "note": "Recept na kimchi ma odpovedat postupom, nie produktovymi kartami na vyrobu. (converted from tests/regression_training_cases.jsonl, id=RT0022) V2.18d.7 human review: 'kapustu'/'fermentovat' removed - those assumed inline LLM-generated recipe prose that this project deliberately replaced (Result Presentation Layer) with a fixed template answer plus a separate structured `recipes` array of real Foodland.sk recipe links (verified live: kimchi query returns 4 real recipes incl. 'Tradičný Kimchi recept'). Updated to the actual deterministic template ('Našla som recept(y) z Foodland.sk...') so the check reflects current architecture instead of superseded prose. The original intent - no product-purchase cards for a recipe request - remains enforced unchanged via max_products=0 (see docs/routing-debt.md C5)."
     },
     {
       "id": "regbug_rt0023",
