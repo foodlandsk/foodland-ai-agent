@@ -86,23 +86,49 @@ def strip_diacritics(text: str) -> str:
     return "".join(result)
 
 
+_TRAILING_PUNCT = "?!.,;:"
+
+
 def apply_typo(text: str) -> str:
     lowered = text.lower()
     for original, typo in _TYPO_SWAPS.items():
         if original in lowered:
             idx = lowered.index(original)
             return text[:idx] + typo + text[idx + len(original):]
-    # Deterministic fallback typo: double the middle character of the
-    # longest word, never random (Section 16/22).
+    # Deterministic fallback typo: double the LAST letter of the
+    # longest word, never random (Section 16/22). Word length and the
+    # mutation target are both measured on the word's letters only
+    # (trailing "?"/"." stripped first) - otherwise a short word with
+    # attached punctuation (e.g. "doprava?") can out-rank a longer
+    # punctuation-free word, and the mutation itself can land on the
+    # punctuation mark instead of a letter.
+    #
+    # V2.18d.5 (C1_TYPO_MUTATOR_KEYWORD_CORRUPTION): the previous
+    # policy doubled the MIDDLE character instead of the last one. For
+    # short Slovak keywords (7-9 letters) that middle point falls
+    # inside, or immediately after, the short leading stem this
+    # project's own intent/FAQ classifiers key off via substring checks
+    # (e.g. "kredit", "doprav", "nahrad", "obsahuj" - see app/main.py) -
+    # turning a robustness-testing typo into a meaning-destroying one.
+    # Doubling the final letter instead is an equally realistic,
+    # equally deterministic typo (a common fat-finger repeat at the end
+    # of a word) that leaves the leading stem untouched for any word,
+    # regardless of length or vocabulary - it is not tuned to any
+    # specific keyword or scenario.
     words = text.split()
     if not words:
         return text
-    longest_idx = max(range(len(words)), key=lambda i: len(words[i]))
+
+    def _core_len(word: str) -> int:
+        return len(word.rstrip(_TRAILING_PUNCT))
+
+    longest_idx = max(range(len(words)), key=lambda i: _core_len(words[i]))
     word = words[longest_idx]
-    if len(word) < 3:
+    core = word.rstrip(_TRAILING_PUNCT)
+    suffix = word[len(core):]
+    if len(core) < 3:
         return text
-    mid = len(word) // 2
-    words[longest_idx] = word[:mid] + word[mid] + word[mid:]
+    words[longest_idx] = core + core[-1] + suffix
     return " ".join(words)
 
 

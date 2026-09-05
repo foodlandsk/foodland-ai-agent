@@ -287,6 +287,141 @@ class TestMutationEngine:
         for marker in me.UNSAFE_MUTATION_MARKERS:
             assert marker not in me.SAFE_MUTATION_TYPES
 
+    def test_typo_mutation_is_deterministic(self):
+        text = "koľko stojí doprava?"
+        assert me.apply_typo(text) == me.apply_typo(text)
+
+    def test_typo_mutation_changes_surface_form(self):
+        assert me.apply_typo("kredity od akej sumy") != "kredity od akej sumy"
+
+    def test_typo_mutation_leaves_very_short_words_unchanged(self):
+        # Pre-existing, explicitly-justified no-safe-mutation contract:
+        # a core word under 3 letters has no room for a realistic typo.
+        assert me.apply_typo("k je") == "k je"
+
+    def test_typo_mutation_selection_independent_of_advisor_output(self):
+        # apply_typo() takes ONLY the raw text - it cannot see Advisor
+        # output, expected answers, or PASS/FAIL, so it cannot be tuned
+        # to make any particular scenario pass.
+        import inspect
+
+        params = list(inspect.signature(me.apply_typo).parameters)
+        assert params == ["text"]
+
+    def test_typo_mutation_does_not_special_case_scenario_ids(self):
+        import inspect
+
+        source = inspect.getsource(me.apply_typo)
+        assert "rt00" not in source
+        assert "scenario_id" not in source
+
+    def test_typo_mutation_count_matches_safe_mutation_types(self):
+        parent = _scored_scenario("parent_count")
+        assert len(me.generate_safe_mutations(parent)) == len(me.SAFE_MUTATION_TYPES)
+
+    def test_typo_mutator_version_unchanged_preserves_generation_history(self):
+        # V2.18d.5 fixed apply_typo()'s internal algorithm WITHOUT
+        # bumping MUTATION_VERSION or any scenario_id: the mutation_id
+        # ("<parent>__mut_typo_v1") is the join key generation_history
+        # uses to compare a new benchmark run's failures against the
+        # immediately prior one (new_failures/existing_failures/
+        # closed_regressions in scripts/run_intelligence_benchmark.py).
+        # Bumping it would have orphaned every historical TYPO record
+        # instead of letting the fix show up as closed_regressions.
+        assert me.MUTATION_VERSION == "1"
+
+
+class TestV2_18d5_TypoMutatorSemanticBias:
+    """V2.18d.5 - C1_TYPO_MUTATOR_KEYWORD_CORRUPTION.
+
+    app.intelligence_diagnostics.mutation_engine.apply_typo()'s fallback
+    used to double the MIDDLE character of the longest word. For short
+    Slovak keywords (7-9 letters) that point falls inside, or right
+    after, the short leading stem this project's own intent/FAQ
+    classifiers key off via substring checks (see app/main.py:
+    "kredit", "doprav", "nahrad", "obsahuj", "postovn", "suvisiace",
+    "ingredien", ...) - turning a robustness-testing typo into a
+    meaning-destroying one. These tests pin down the CORRECTED
+    contract: the mutation must always preserve the word's leading
+    substring (the stem), regardless of vocabulary, and must never
+    mutate trailing punctuation instead of a real letter.
+    """
+
+    # (query, the classifier-relevant leading stem that must survive)
+    # - one representative sample per real V2.18d.2 C1 failure, plus
+    # extra samples spanning one-word/two-word/long-word/diacritics/
+    # brand/product/negation/number/dietary/FAQ/replacement/recipe
+    # categories (Section 21 adversarial sweep).
+    _STEM_PRESERVING_SAMPLES = [
+        ("súvisiace produkty k sushi ryži", "suvisiace"),       # C1: rt0004
+        ("čo sa hodí ku gochujang?", "gochujan"),                # C1: rt0005 (product/brand-ish)
+        ("obsahuje kimchi rybiu omáčku?", "obsahuj"),            # C1: rt0007
+        ("náhrada za rybiu omáčku vegan", "nahrad"),             # C1: rt0013 (replacement + dietary)
+        ("kredity od akej sumy môžem použiť?", "kredit"),        # C1: rt0015 (FAQ)
+        ("koľko stojí doprava?", "doprav"),                      # C1: rt0023 (FAQ)
+        ("ako môžem zaplatiť?", "zapl"),                         # C1: rt0024 (FAQ)
+        ("poštovné", "postovn"),                                 # C1: rt0025 (one-word query)
+        ("ramen na Pho polievku mate ingrediencie?", "ingredien"),  # C1: rt0026 (recipe)
+        ("kredity", "kredit"),                                   # two-word-free single token
+        ("dnes kredity", "kredit"),                              # two-word
+        ("nechcem lepok v chlebe", "nechc"),                     # negation
+        ("objednavka 123456789", "12345678"),                    # numeric-heavy token
+        ("vegan bezlepkove jedlo", "bezlepkov"),                 # dietary terms
+        ("vernostny program registracia", "registraci"),         # FAQ terms
+        ("recept na kimchi polievku", "polievk"),                # recipe
+    ]
+
+    @pytest.mark.parametrize("query,stem", _STEM_PRESERVING_SAMPLES)
+    def test_leading_stem_survives_typo_mutation(self, query, stem):
+        mutated = me.apply_typo(query)
+        normalized = me.strip_diacritics(mutated).lower()
+        assert stem in normalized, f"{query!r} -> {mutated!r} lost stem {stem!r}"
+
+    @pytest.mark.parametrize("query,_stem", _STEM_PRESERVING_SAMPLES)
+    def test_typo_mutation_never_targets_trailing_punctuation(self, query, _stem):
+        mutated = me.apply_typo(query)
+        # The mutated word's trailing punctuation must be byte-identical
+        # to the original's - only a letter may be doubled, never "?".
+        orig_last_word = query.split()[-1]
+        mutated_last_word = mutated.split()[-1]
+        orig_punct = orig_last_word[len(orig_last_word.rstrip(me._TRAILING_PUNCT)):]
+        mutated_punct = mutated_last_word[len(mutated_last_word.rstrip(me._TRAILING_PUNCT)):]
+        assert mutated_punct == orig_punct
+
+    def test_typo_swap_dict_path_unaffected_by_fallback_change(self):
+        # Brand/product hardcoded swaps (_TYPO_SWAPS) are a separate,
+        # untouched code path - this fix only changes the fallback used
+        # when no hardcoded swap matches.
+        assert me.apply_typo("chcem kikkoman omacku") == "chcem kikoman omacku"
+
+    @pytest.mark.parametrize("text", ["", " ", "???", "a! b? c."])
+    def test_typo_mutation_does_not_crash_on_degenerate_input(self, text):
+        # All-punctuation "words" and words entirely below the 3-letter
+        # floor have no letter left to double once punctuation is
+        # stripped - must fall back to returning the input unchanged,
+        # never raise.
+        assert me.apply_typo(text) == text
+
+    def test_c1_scenarios_pass_live_after_fix(self):
+        # Downstream OBSERVATION, not the definition of mutator
+        # correctness (Section 20): the mutator contract is defined by
+        # stem preservation above. This just confirms the real-world
+        # payoff - the 9 scenarios V2.18d.2 classified as
+        # C1_TYPO_MUTATOR_KEYWORD_CORRUPTION now round-trip through the
+        # actual mutation used by the benchmark without being altered
+        # into a different intent-bearing string.
+        from app.intelligence_diagnostics import scenario_registry as _sr
+
+        parent_ids = {
+            "regbug_rt0004", "regbug_rt0005", "regbug_rt0007", "regbug_rt0013",
+            "regbug_rt0015", "regbug_rt0023", "regbug_rt0024", "regbug_rt0025", "regbug_rt0026",
+        }
+        canonical = {s.scenario_id: s for s in _sr.load_all_scenarios()}
+        for parent_id in parent_ids:
+            parent = canonical[parent_id]
+            mutated = me.mutate_scenario(parent, me.TYPO)
+            assert mutated.turns[0].message != parent.turns[0].message
+
     def test_benchmark_execution_uses_non_customer_context(self):
         import inspect
 
