@@ -2990,6 +2990,36 @@ class TestFAQ:
         answer = main.best_direct_faq_answer("ako mozem zaplatit?", knowledge)
         assert answer
 
+    def test_faq_generic_payment_question_gets_full_methods_list(self, knowledge):
+        # V2.18d.4 (C3 FAQ retrieval topic mismatch, regbug_rt0024): a bare
+        # "how can I pay?" with no store/card qualifier must return the
+        # complete payment-methods answer (COD + card + bank transfer +
+        # ...), not the narrow "yes you can pay by card in our physical
+        # store" record. Root cause: the general scoring loop's "ako"+
+        # "zapl" bonus applied equally to every payment-related FAQ
+        # question (all of them contain "plat" as a substring), so the
+        # in-store record won on raw token overlap alone - its own
+        # question text literally contains "zaplatit".
+        answer = main.best_direct_faq_answer("ako mozem zaplatit?", knowledge)
+        normalized = main.normalize(answer)
+        assert "dobierka" in normalized
+        assert "kartou" in normalized
+        assert "predajni" not in normalized
+
+    def test_faq_instore_card_question_still_gets_narrow_answer(self, knowledge):
+        # Companion regression for the fix above: an explicit in-store
+        # qualifier must still win the specific record, even when phrased
+        # with "ako" (which the generic-question shortcut above also
+        # matches on).
+        for query in (
+            "ako mozem zaplatit kartou v predajni?",
+            "Da sa v predajni platit kartou?",
+            "Mozem zaplatit kartou priamo v predajni?",
+        ):
+            answer = main.best_direct_faq_answer(query, knowledge)
+            assert answer
+            assert "predajni" in main.normalize(answer), query
+
     def test_faq_intent_detects_slovak_loyalty_program_wording(self):
         # Regression: FAQ_INTENT_MARKERS only had the English "loyalty",
         # so a Slovak question about "vernostny program" never even reached

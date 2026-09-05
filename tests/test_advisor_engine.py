@@ -383,3 +383,25 @@ class TestCharacterization_rt0003_rt0027_FIXED_C2_ALLERGEN_PRODUCT_LEAKAGE:
         response = _engine_chat("je gochujang bez lepku?", "ae-c2-canonical", evaluation_context())
         assert response.get("intent") == "allergen_safety"
         assert _product_ids(response), "gochujang should still be attached"
+
+
+class TestCharacterization_rt0024_FIXED_C3_FAQ_TOPIC_MISMATCH:
+    """V2.18d.4 (V2.18d.2 cluster C3) - end-to-end regression through the
+    real AdvisorEngine boundary. A generic "how can I pay?" question must
+    resolve to the complete payment-methods FAQ answer, not the narrower
+    "yes, card payment works in our physical store" record it previously
+    lost to on raw keyword overlap (see
+    tests/test_core.py::TestFAQ::test_faq_generic_payment_question_gets_full_methods_list
+    for the query-builder unit coverage)."""
+
+    def test_generic_payment_question_gets_full_methods_answer(self):
+        response = _engine_chat("ako mozem zaplatit?", "ae-c3-generic", evaluation_context())
+        assert response.get("intent") == "faq"
+        normalized = m.normalize(response.get("answer") or "")
+        assert "dobierka" in normalized
+        assert "kartou" in normalized
+
+    def test_instore_card_question_still_functional(self):
+        response = _engine_chat("Mozem zaplatit kartou priamo v predajni?", "ae-c3-instore", evaluation_context())
+        assert response.get("intent") == "faq"
+        assert "predajni" in m.normalize(response.get("answer") or "")

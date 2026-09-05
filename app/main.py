@@ -7906,6 +7906,30 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         card_types_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("platobne", "metody"))
         if card_types_answer:
             return card_types_answer
+    # V2.18d.4 (C3 FAQ retrieval topic mismatch): a bare "how can I pay"
+    # question (no in-store/card-specific qualifier) must resolve to the
+    # complete payment-methods answer (covers COD/bank transfer/card/
+    # etc.), not whichever payment-related FAQ record happens to share
+    # the most literal words with the query. The general scoring loop
+    # below gives every "plat*"-question the same flat "ako"+"zapl"
+    # bonus (no discrimination between them), so a generic query
+    # previously lost on raw token overlap to the narrower "can I pay
+    # by card in store" record (its question literally contains
+    # "zaplatit"). Reuses the SAME canonical "platobne"+"metody" record
+    # the "kariet" shortcut above already points to. Guarded on the
+    # query NOT mentioning a store qualifier, so an explicit in-store
+    # card question (test_faq_sub_question_beats_generic_same_category_
+    # answer) still falls through unchanged to the general scoring loop.
+    if (
+        "ako" in normalized_message
+        and "zapl" in normalized_message
+        and not any(marker in normalized_message for marker in ("predajn", "obchod"))
+    ):
+        payment_methods_answer = direct_faq_answer_by_question_markers(
+            loaded_knowledge, required_markers=("platobne", "metody")
+        )
+        if payment_methods_answer:
+            return payment_methods_answer
     if "adresa" in normalized_message:
         address_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("kamennu", "predajnu"))
         if address_answer:
