@@ -511,6 +511,46 @@ Plná Python sada 2305 passed, canary 10/10, trust audit čistý.
 
 **Status**: `CLOSED_BY_HUMAN_REVIEW_V2_18D_8`.
 
+## V2.19c/d poznámka — evaluačná state-isolation chyba, nájdená a opravená
+
+Počas V2.19b bol dočasný curated benchmark scenár vrátený späť, pretože
+interagoval s nesúvisiacim testom `tests/test_ranking_shadow.py`.
+V2.19c (read-only forenzný audit) tento incident vysledoval na presný,
+abláciou potvrdený root cause: `app/evaluation/adapter.py`'s
+`make_chat_fn()`/`make_session_chat_fn()` hardcodovali `client_key`
+(`"eval-adapter"`) pre KAŽDÉ volanie — `session_id` bol už dávnejšie
+správne izolovaný per-call, ale `client_key` nie. `app.main.user_memory_key()`
+odvodzuje personalizačný profil z `client_key`, takže KAŽDÝ spotrebiteľ
+tohto adaptéra (V2.10 evaluácia, V2.18/19 intelligence_diagnostics
+benchmark, `app.ranking_shadow.shadow_compare()`) zdieľal a mutoval
+JEDEN spoločný profil — potvrdené kontrolovanou abláciou (zdieľaný kľúč
+zmenšil reálny candidate set zo 4 na 2 produkty; unikátny kľúč obnovil
+baseline). Žiadny produkčný/CUSTOMER dopad (produkcia nikdy nepoužíva
+`client_key="eval-adapter"`). V2.18 310-core benchmark empiricky
+overený ako poradie-invariantný (kanonické aj reverzné poradie, 0
+rozdielov) — nález teda neohrozuje historickú dôveryhodnosť skóre.
+
+**V2.19d oprava**: `client_key` teraz odvodený z (už unikátneho)
+`session_id` namiesto konštanty. Počas implementácie sa objavil
+súvisiaci bug: pôvodný počítadlo bolo per-closure, nie per-proces —
+každé nové `make_chat_fn()` volanie (každý testovací súbor, každý
+benchmark beh, `shadow_compare()` interne) reštartovalo vlastné
+počítadlo od nuly, takže prvé volania DVOCH rôznych closures kolidovali
+na rovnakom `"eval-isolated-1"` identifikátore. Opravené presunutím
+počítadla na modulovú úroveň. `make_session_chat_fn()` odvodzuje
+`client_key` z volajúcim dodaného `session_id` — rôzne scenáre/session_id
+zostávajú izolované, zatiaľ čo VŠETKY ťahy TOHO ISTÉHO viac-kolového
+scenára zámerne zdieľajú jeden profil (kontinuita konverzácie, nie chyba).
+
+Overenie: presná V2.19c reprodukcia (30× nesúvisiaci dopyt → shadow_compare)
+už nemení candidate set. Plný V2.18 beh 310/310 nezmenený, poradie-invariantný
+aj po oprave. Plná Python sada 2315 passed (2 nové testy). Canary 10/10,
+trust audit čistý. Nové testy:
+`tests/test_intelligence_diagnostics_v2_18.py::TestV2_18d5_TypoMutatorSemanticBias::test_independent_make_chat_fn_calls_get_isolated_profiles`,
+`::test_session_chat_fn_shares_profile_only_within_same_session`.
+
+**Status**: `CLOSED_BY_HUMAN_REVIEW_V2_19D`.
+
 ## Ako pridávať nové záznamy
 
 Pri objavení novej routing medzery (manuálnym testovaním, produkčným

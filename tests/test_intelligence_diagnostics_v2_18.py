@@ -450,22 +450,71 @@ class TestV2_18d5_TypoMutatorSemanticBias:
     def test_synthetic_run_creates_no_customer_profile_state(self, tmp_path, monkeypatch):
         monkeypatch.setenv("USER_MEMORY_PATH", str(tmp_path / "user_memory.json"))
         monkeypatch.setenv("ANALYTICS_SALT", "test-salt")
-        from app.evaluation.adapter import make_chat_fn
+        import app.evaluation.adapter as adapter
         import app.main as m
 
-        chat_fn = make_chat_fn()
+        chat_fn = adapter.make_chat_fn()
+        n_before = adapter._call_counter["n"]
         chat_fn("sushi ryza", 4)
         # EVALUATION context calls still flow through the shared _chat_impl
         # pipeline (same documented behavior as ADMIN_TEST - V2.15b), so a
         # profile write CAN occur; the guard is that it only ever touches
-        # the ONE synthetic bucket derived from the isolated client_key
-        # ("eval-adapter" - app.evaluation.adapter.make_chat_fn), never a
-        # real customer's key. The stored key is itself a salted hash
-        # (app.main.user_memory_key), never the raw client_key in plaintext.
+        # a synthetic, isolated-session-derived bucket (V2.19d:
+        # client_key == the call's own "eval-isolated-N" session_id,
+        # N from a process-global counter - app.evaluation.adapter.
+        # make_chat_fn), never a real customer's key. The stored key is
+        # itself a salted hash (app.main.user_memory_key), never the raw
+        # client_key in plaintext. The counter is process-global (fixed
+        # in the same V2.19d change - see _call_counter's docstring), so
+        # this test cannot assume "eval-isolated-1"; it reads the actual
+        # ordinal this call used instead.
         if (tmp_path / "user_memory.json").exists():
             content = (tmp_path / "user_memory.json").read_text(encoding="utf-8")
-            expected_key = m.user_memory_key("", "eval-adapter")
+            expected_key = m.user_memory_key("", f"eval-isolated-{n_before + 1}")
             assert expected_key in content
+
+    def test_independent_make_chat_fn_calls_get_isolated_profiles(self):
+        """V2.19d (V2.19c state-isolation audit): every make_chat_fn()
+        call used to share ONE personalization profile (client_key
+        hardcoded to "eval-adapter"), so an unrelated earlier scenario's
+        accumulated diet/subject/brand signal could change a later,
+        independent scenario's ranked results - confirmed via a
+        controlled ablation to shrink a real candidate set from 4 to 2
+        products. client_key must now be unique per call, matching the
+        session_id isolation this adapter already had. Also covers the
+        immediate follow-on bug the fix itself surfaced: the isolation
+        counter must be process-global, not per-closure, or two
+        independently-created chat_fn closures collide on the same
+        first identifier."""
+        import app.evaluation.adapter as adapter
+        import app.main as m
+
+        chat_fn_1 = adapter.make_chat_fn()
+        chat_fn_2 = adapter.make_chat_fn()
+        n_before = adapter._call_counter["n"]
+        chat_fn_1("prva nezavisla scena", 4)
+        chat_fn_2("druha nezavisla scena z INEHO closure", 4)
+        key_1 = m.user_memory_key("", f"eval-isolated-{n_before + 1}")
+        key_2 = m.user_memory_key("", f"eval-isolated-{n_before + 2}")
+        assert key_1 != key_2
+        assert key_1 in m.load_user_memories()
+        assert key_2 in m.load_user_memories()
+
+    def test_session_chat_fn_shares_profile_only_within_same_session(self):
+        """V2.19d companion: make_session_chat_fn() must still let every
+        turn of ONE multi-turn scenario share a profile (Section 29's
+        intentional continuity), while two DIFFERENT session_ids
+        (independent scenarios) remain isolated from each other."""
+        from app.evaluation.adapter import make_session_chat_fn
+        import app.main as m
+
+        session_chat_fn = make_session_chat_fn()
+        session_chat_fn("prvy tah", 4, "scenario-a")
+        session_chat_fn("druhy tah", 4, "scenario-a")
+        session_chat_fn("iny scenar", 4, "scenario-b")
+        key_a = m.user_memory_key("", "eval-session-scenario-a")
+        key_b = m.user_memory_key("", "eval-session-scenario-b")
+        assert key_a != key_b
 
     def test_synthetic_run_creates_no_authoritative_cart_confirmation(self):
         import inspect
