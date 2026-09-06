@@ -101,6 +101,42 @@ def _find_exclusion_span(normalized_message: str) -> tuple[int, int, str] | None
             return idx, clause_end, clause_text
     return None
 
+
+# V2.20f - comparative-continuation words ("iné"/"iný"/"iná" - "show me
+# OTHER X") immediately after an exclusion clause. Bounded, explicit set
+# only (Section 44 of the originating mandate) - not a general grammar.
+_RELATED_SUBJECT_CONTINUATION_MARKERS = ("ine ", "iny ", "ina ", "inu ", "ineho ", "inej ")
+
+
+def related_subject_suppression_span(message: str) -> tuple[int, int] | None:
+    """A WIDER span than _find_exclusion_span() above - that clause and
+    its brand/subfamily resolution feeding parse_structured_query()/
+    retrieval are completely UNCHANGED (Section 84 of the V2.20f mandate).
+    This span exists only for app.main.detect_related_subject() to decide
+    whether a RELATED_SUBJECT_ALIASES occurrence is positive current-turn
+    evidence (Section 39 - reuses the SAME marker detection rather than a
+    second, independent negation parser).
+
+    When the exclusion clause is immediately followed by one of the
+    bounded continuation markers, the exclusion semantically governs the
+    REST of the sentence, not just the clause up to the first punctuation
+    mark - "Nechcem sriracha omácku, ukáž mi iné pikantné omáčky" means
+    "[show me] other [sauces] than what I excluded", not an unrelated
+    second request, so "pikantné" occurring after "iné" must not count as
+    positive related-subject evidence either. Without a continuation
+    marker, the span is exactly the same narrow clause as V2.20d's own
+    exclusion (e.g. "chcem omácku, ale nie sriracha" - no continuation
+    word, so only "sriracha" itself is suppressed)."""
+    normalized = search_normalize(message)
+    span = _find_exclusion_span(normalized)
+    if span is None:
+        return None
+    marker_start, clause_end, _clause_text = span
+    tail = f" {normalized[clause_end:].lstrip(' ,.;!?')} "
+    if any(f" {marker}" in tail for marker in _RELATED_SUBJECT_CONTINUATION_MARKERS):
+        return marker_start, len(normalized)
+    return marker_start, clause_end
+
 # Dietary phrase stems -> the same facet vocabulary app.taxonomy already
 # derives from real category memberships (_DIETARY_CATEGORY_TERMS) - never
 # an invented health claim (Section 19). Matched as a normalized substring,

@@ -89,7 +89,7 @@ from app.product_normalizer import normalize_catalog
 from app.structured_search import hybrid_search_products as _hybrid_search_products
 from app.structured_search import build_structured_result_set as _build_structured_result_set
 from app.structured_search import format_result_set_products as _format_result_set_products
-from app.query_constraints import parse_structured_query
+from app.query_constraints import parse_structured_query, related_subject_suppression_span
 from app.ranking_config import get_active_ranking_profile, get_active_ranking_profile_version
 from app.ranking_config import CONFIG_DIR as _RANKING_PROFILE_DIR
 from app.ranking_config import is_active_profile_degraded as _ranking_profile_degraded
@@ -9634,8 +9634,28 @@ def detect_related_subject(message: str) -> str | None:
     if "pho" in normalized_message:
         return "pho"
 
+    # V2.20f (NEGATION_EXCLUSION_NOT_APPLIED, RELATED_SUBJECT_FALSE_POSITIVE
+    # cluster): an alias occurrence that falls inside an explicit current-
+    # turn negation/exclusion clause (the same bounded marker set
+    # app.query_constraints uses for V2.20d retrieval exclusions - one
+    # shared detector, not a duplicated negation parser) is not positive
+    # evidence that the customer wants related products for it.
+    # "Nechcem sriracha omacku, ukaz mi ine pikantne omacky" must not
+    # infer related_subject from either the excluded "sriracha" or the
+    # comparative-continuation "ine pikantne" that follows it. A genuine
+    # positive mention of the SAME or a DIFFERENT alias elsewhere in the
+    # message (or in a message with no exclusion at all) is unaffected -
+    # this only ever disregards the one occurrence proven to lie inside
+    # the exclusion's span, never the whole message (fail-open on
+    # anything not confidently excluded).
+    suppression_span = related_subject_suppression_span(message)
     for subject, aliases in RELATED_SUBJECT_ALIASES.items():
-        if any(alias in normalized_message for alias in aliases):
+        for alias in aliases:
+            idx = normalized_message.find(alias)
+            if idx == -1:
+                continue
+            if suppression_span is not None and suppression_span[0] <= idx < suppression_span[1]:
+                continue
             return subject
 
     if normalized_message.strip() in {

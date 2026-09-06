@@ -2167,6 +2167,44 @@ class TestIntentDetection:
         subj = main.detect_related_subject("ingrediencie na kimchi")
         assert subj == "kimchi_recipe"
 
+    def test_related_subject_ignores_alias_inside_explicit_exclusion(self):
+        # V2.20f (RELATED_SUBJECT_FALSE_POSITIVE, revealed by V2.20d once
+        # the false-positive structured "sriracha" family match it used to
+        # produce was removed - see V2.20b negation_0003, V2.20e forensic
+        # trace). "sriracha" occurring inside "ale nie sriracha" must not
+        # be read as positive evidence the customer wants sriracha-related
+        # products.
+        assert main.detect_related_subject("chcem omacku, ale nie sriracha") is None
+
+    def test_related_subject_ignores_comparative_continuation_after_exclusion(self):
+        # The exact V2.20b negation_0003 wording: "iné pikantné" directly
+        # continues the preceding exclusion ("other than what I just
+        # excluded"), so it must not independently trigger medium_spicy
+        # either - not just the excluded "sriracha" occurrence itself.
+        assert main.detect_related_subject("nechcem sriracha omacku, ukaz mi ine pikantne omacky") is None
+
+    def test_related_subject_positive_sriracha_request_still_detected(self):
+        # Positive control (Section 10/28) - exclusion awareness must not
+        # suppress a genuine positive mention with no exclusion present.
+        assert main.detect_related_subject("chcem sriracha omacku") == "sriracha"
+
+    def test_related_subject_genuine_related_request_still_routes(self):
+        # Positive control (Section 31) - a genuinely related/pairing
+        # request must keep detecting medium_spicy even after this fix.
+        # Its downstream zero-product result (a separate, out-of-scope
+        # data issue - see V2.20e Section M) is deliberately not asserted
+        # here; this test protects ROUTING, not the answer's content.
+        assert main.detect_related_subject("co sa hodi k pikantnemu jedlu") == "medium_spicy"
+
+    def test_related_subject_no_exclusion_at_all_unaffected(self):
+        assert main.detect_related_subject("chcem sojovu omacku") is None
+
+    def test_related_subject_substring_safety_unrelated_alias_elsewhere_still_fires(self):
+        # An exclusion clause must only suppress the ONE occurrence proven
+        # to lie inside it - a different, genuinely positive alias
+        # mentioned elsewhere in the same message is unaffected.
+        assert main.detect_related_subject("chcem korejsku pastu, ale nie gochujang") == "korejska_kuchyna"
+
     def test_special_gluten_free_sushi(self):
         subj = main.detect_special_product_subject("bezlepkove sushi")
         assert subj == "gluten_free_sushi"
@@ -2658,6 +2696,24 @@ class TestRelatedProducts:
         results = main.related_products_for_subject(products, main.knowledge, "kimchi", 8)
         for p in results:
             assert "kimchi" not in nrm(p.get("title", ""))
+
+    def test_v220f_excluded_brand_no_longer_hijacks_into_empty_related_products(self):
+        # V2.20b negation_0003, revealed as RELATED_SUBJECT_FALSE_POSITIVE
+        # by V2.20e once V2.20d's own structured-retrieval fix removed the
+        # earlier false-positive "sriracha" family match: "Nechcem sriracha
+        # omacku, ukaz mi ine pikantne omacky" used to route to
+        # related_products_for_subject("medium_spicy", ...) - which
+        # returns zero products - before ever reaching the (already
+        # correct) exclusion-aware retrieval path. This is no longer
+        # secret HOLDOUT/benchmark evidence (V2.20b/V2.20e already
+        # exposed it) - now a permanent regression contract.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="Nechcem sriracha omacku, ukaz mi ine pikantne omacky.", limit=8), request)
+        titles = [nrm(product.get("title", "")) for product in result.get("products", [])]
+
+        assert result.get("intent") == "product_search"
+        assert titles
+        assert not any("sriracha" in t for t in titles)
 
     def test_kimchi_recipe_shopping_does_not_include_rice_or_ready_kimchi(self):
         request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
