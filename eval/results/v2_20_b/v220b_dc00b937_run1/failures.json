@@ -1,0 +1,1478 @@
+{
+  "clusters": [
+    {
+      "capability": "NEGATION",
+      "cluster_id": "v220b_cluster_001",
+      "count": 2,
+      "dev_count": 1,
+      "failed_invariants": [
+        "product_title_forbidden:sriracha"
+      ],
+      "holdout_count": 1,
+      "scenario_ids": [
+        "v220_negation_0003",
+        "v220_negation_0001"
+      ]
+    },
+    {
+      "capability": "ALLERGEN_SAFETY",
+      "cluster_id": "v220b_cluster_002",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "requires_uncertainty"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_allergen_safety_0004"
+      ]
+    },
+    {
+      "capability": "BUDGET_REASONING",
+      "cluster_id": "v220b_cluster_003",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "product_title_contains_any:sojova omacka|sójová omáčka",
+        "products_nonempty"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_budget_0002"
+      ]
+    },
+    {
+      "capability": "CATEGORY_DISCOVERY",
+      "cluster_id": "v220b_cluster_004",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "products_nonempty"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_category_discovery_0002"
+      ]
+    },
+    {
+      "capability": "FAQ",
+      "cluster_id": "v220b_cluster_005",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "answer_contains:50"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_faq_0007"
+      ]
+    },
+    {
+      "capability": "FAQ",
+      "cluster_id": "v220b_cluster_006",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "answer_contains:google",
+        "intent"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_faq_0010"
+      ]
+    },
+    {
+      "capability": "FAQ",
+      "cluster_id": "v220b_cluster_007",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "answer_contains:vietnam",
+        "intent"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_faq_0011"
+      ]
+    },
+    {
+      "capability": "FAQ",
+      "cluster_id": "v220b_cluster_008",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "answer_contains:vypredan",
+        "intent"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_faq_0012"
+      ]
+    },
+    {
+      "capability": "FAQ",
+      "cluster_id": "v220b_cluster_009",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "answer_contains:4468",
+        "intent"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_faq_0015"
+      ]
+    },
+    {
+      "capability": "INSUFFICIENT_DATA",
+      "cluster_id": "v220b_cluster_010",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "requires_uncertainty"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_insufficient_data_0002"
+      ]
+    },
+    {
+      "capability": "PRODUCT_ADVICE",
+      "cluster_id": "v220b_cluster_011",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "intent",
+        "product_title_contains_any:ryzovy ocot|ryžový ocot"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_product_advice_0003"
+      ]
+    },
+    {
+      "capability": "PRODUCT_SEARCH",
+      "cluster_id": "v220b_cluster_012",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "product_title_forbidden:aroy-d"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_product_search_0004"
+      ]
+    },
+    {
+      "capability": "PRODUCT_SEARCH",
+      "cluster_id": "v220b_cluster_013",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "intent",
+        "product_title_contains_any:tanier"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_product_search_0008"
+      ]
+    },
+    {
+      "capability": "RECIPE",
+      "cluster_id": "v220b_cluster_014",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "intent",
+        "products_empty"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_recipe_0002"
+      ]
+    },
+    {
+      "capability": "RECIPE_TO_PRODUCTS",
+      "cluster_id": "v220b_cluster_015",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "product_title_contains_any:rezance",
+        "products_nonempty"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_recipe_to_products_0002"
+      ]
+    },
+    {
+      "capability": "RECIPE_TO_PRODUCTS",
+      "cluster_id": "v220b_cluster_016",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "product_title_contains_any:suši ryža|sushi rice"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_recipe_to_products_0005"
+      ]
+    },
+    {
+      "capability": "REPLACEMENT",
+      "cluster_id": "v220b_cluster_017",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "product_title_contains_any:ryzovy ocot|rice vinegar"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_replacement_0005"
+      ]
+    },
+    {
+      "capability": "REPLACEMENT",
+      "cluster_id": "v220b_cluster_018",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "product_title_contains_any:hoisin omacka|sladka sojova omacka"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_replacement_0009"
+      ]
+    },
+    {
+      "capability": "REPLACEMENT",
+      "cluster_id": "v220b_cluster_019",
+      "count": 1,
+      "dev_count": 1,
+      "failed_invariants": [
+        "intent",
+        "product_title_contains_any:tamari sojova omacka|bezlepkova sojova omacka"
+      ],
+      "holdout_count": 0,
+      "scenario_ids": [
+        "v220_replacement_0010"
+      ]
+    },
+    {
+      "capability": "FAQ",
+      "cluster_id": "v220b_cluster_020",
+      "count": 1,
+      "dev_count": 0,
+      "failed_invariants": [
+        "answer_contains:14",
+        "intent"
+      ],
+      "holdout_count": 1,
+      "scenario_ids": [
+        "v220_faq_0005"
+      ]
+    },
+    {
+      "capability": "RECIPE_TO_PRODUCTS",
+      "cluster_id": "v220b_cluster_021",
+      "count": 1,
+      "dev_count": 0,
+      "failed_invariants": [
+        "product_title_contains_any:kokosove mlieko",
+        "products_nonempty"
+      ],
+      "holdout_count": 1,
+      "scenario_ids": [
+        "v220_recipe_to_products_0001"
+      ]
+    },
+    {
+      "capability": "REPLACEMENT",
+      "cluster_id": "v220b_cluster_022",
+      "count": 1,
+      "dev_count": 0,
+      "failed_invariants": [
+        "product_title_contains_any:kokosove mlieko|kokosovy krem"
+      ],
+      "holdout_count": 1,
+      "scenario_ids": [
+        "v220_replacement_0006"
+      ]
+    },
+    {
+      "capability": "REPLACEMENT",
+      "cluster_id": "v220b_cluster_023",
+      "count": 1,
+      "dev_count": 0,
+      "failed_invariants": [
+        "intent",
+        "products_nonempty"
+      ],
+      "holdout_count": 1,
+      "scenario_ids": [
+        "v220_replacement_0011"
+      ]
+    }
+  ],
+  "cross_capability_patterns": [
+    {
+      "confidence": "HIGH",
+      "description": "Explicit exclusion/negation of a named brand or product does not filter it out of retrieval - observed across 2 distinct capabilities (NEGATION, PRODUCT_SEARCH), 3 scenarios, both splits.",
+      "pattern_id": "v220b_pattern_negation_not_applied",
+      "scenario_ids": [
+        "v220_negation_0001",
+        "v220_negation_0003",
+        "v220_product_search_0004"
+      ],
+      "severity": "MEDIUM"
+    },
+    {
+      "confidence": "MEDIUM",
+      "description": "The generic 'which two products do you want to compare' clarification prompt fired for two completely unrelated query types (cuisine category discovery, login-method FAQ) that never mentioned comparison at all.",
+      "pattern_id": "v220b_pattern_generic_comparison_fallback_misfire",
+      "scenario_ids": [
+        "v220_category_discovery_0002",
+        "v220_faq_0010"
+      ],
+      "severity": "MEDIUM"
+    },
+    {
+      "confidence": "MEDIUM",
+      "description": "Rice-vinegar-specific requests (advice and replacement) both returned plain rice products instead of rice vinegar.",
+      "pattern_id": "v220b_pattern_rice_vs_rice_vinegar_confusion",
+      "scenario_ids": [
+        "v220_product_advice_0003",
+        "v220_replacement_0005"
+      ],
+      "severity": "LOW"
+    },
+    {
+      "confidence": "MEDIUM",
+      "description": "'What do I need from Foodland for X' phrasing (tom kha, pad thai) fell through to the generic zero-product bare-recipe redirect instead of the use_case_advice ingredient-role products, despite LIVE_USE_CASES covering both dishes.",
+      "pattern_id": "v220b_pattern_use_case_advice_paraphrase_gap",
+      "scenario_ids": [
+        "v220_recipe_to_products_0001",
+        "v220_recipe_to_products_0002"
+      ],
+      "severity": "MEDIUM"
+    },
+    {
+      "confidence": "HIGH",
+      "description": "BENCHMARK SELF-INTEGRITY FINDING (not an Advisor defect): several V2.20a expected_invariants used ASCII-only product_title_contains_any terms ('kokosove mlieko', 'omacka', 'sojova omacka') that structurally cannot match real catalog titles, which consistently carry Slovak diacritics ('kokosové', 'omáčka'). invariant_evaluator._lower() does not strip diacritics (confirmed by design during V2.18d.7/V2.19). At least 2-3 FAILs are very likely false negatives caused by this, not Advisor defects.",
+      "pattern_id": "v220b_pattern_benchmark_ascii_diacritic_mismatch",
+      "scenario_ids": [
+        "v220_replacement_0006",
+        "v220_replacement_0009",
+        "v220_replacement_0010"
+      ],
+      "severity": "INFORMATIONAL"
+    }
+  ],
+  "failures": [
+    {
+      "attempt": 1,
+      "catalog_dependency": false,
+      "classification_note": "requires_uncertainty marker vocabulary is Slovak-only; the actual EN answer IS cautious in substance ('I don't want to recommend a product by name alone... check the label') but uses different phrasing my invariant doesn't recognize. Separately noted: the EN answer leaked the Slovak word 'alergény' mid-sentence - a real but low-severity mixed-language cosmetic defect.",
+      "confidence_estimate": "HIGH",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L2",
+      "error_buckets": [
+        "INVARIANT_FAILED:requires_uncertainty"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "HUMAN_CURATED",
+      "ground_truth_review_required": true,
+      "language": "en",
+      "latency_ms": 196.21480000205338,
+      "preliminary_classification": "POSSIBLE_EVALUATOR_DEFECT",
+      "primary_capability": "ALLERGEN_SAFETY",
+      "reasons": [
+        "requires_uncertainty: hit=False"
+      ],
+      "response_excerpt": "For allergies or intolerance to alergény, I don't want to recommend a product by name alone. Please check the ingredients and allergens on the specific product page - the label is what matters. Send u",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": true,
+      "scenario_id": "v220_allergen_safety_0004",
+      "secondary_capabilities": [],
+      "severity_estimate": "LOW",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "Treated as a stateless follow-up ('no active search to link to') instead of a standalone comparative request, despite no prior turn existing in this single-turn scenario.",
+      "confidence_estimate": "MEDIUM",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L3",
+      "error_buckets": [
+        "INVARIANT_FAILED:products_nonempty",
+        "INVARIANT_FAILED:product_title_contains_any:sojova omacka|sójová omáčka"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 240.88820000179112,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "BUDGET_REASONING",
+      "reasons": [
+        "products_nonempty: 0 product(s) returned",
+        "product_title_contains_any:['sojova omacka', 'sójová omáčka']: hit=False"
+      ],
+      "response_excerpt": "Nemám aktívny nákupný zoznam ani vyhľadávanie, na ktoré by som to mohla naviazať - čo hľadáte?",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_budget_0002",
+      "secondary_capabilities": [
+        "REPLACEMENT"
+      ],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "'čo všetko máte z kórejskej kuchyne' (cuisine category discovery) received the generic product-comparison clarification prompt ('ktoré dva produkty chcete porovnať'). Same fallback text as v220_faq_0010 - see cross-cluster note.",
+      "confidence_estimate": "MEDIUM",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L1",
+      "error_buckets": [
+        "INVARIANT_FAILED:products_nonempty"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 191.67830000515096,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "CATEGORY_DISCOVERY",
+      "reasons": [
+        "products_nonempty: 0 product(s) returned"
+      ],
+      "response_excerpt": "Ktoré dva produkty presne chcete porovnať, a čo je pre Vás dôležitejšie - cena, veľkosť balenia, alebo konkrétne použitie?",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_category_discovery_0002",
+      "secondary_capabilities": [],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": false,
+      "classification_note": "intent correctly resolved to faq, but the returned answer was for a DIFFERENT FAQ entry (ordering process) than the one asked about (free-shipping threshold) - same general shape as the historical C3 FAQ-topic-mismatch pattern (V2.18d.4), NOT confirmed to be the same code path.",
+      "confidence_estimate": "MEDIUM",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L1",
+      "error_buckets": [
+        "INVARIANT_FAILED:answer_contains:50"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 213.39859999716282,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "FAQ",
+      "reasons": [
+        "intent=='faq': actual='faq'",
+        "answer_contains:'50': present=False"
+      ],
+      "response_excerpt": "Vyberiete si produkty a vložíte ich do košíka, vyplníte doručovaciu adresu a kontaktné údaje, zvolíte spôsob dopravy a platby a objednávku potvrdíte. Po odoslaní dostanete e-mailové potvrdenie.",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_faq_0007",
+      "secondary_capabilities": [],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": false,
+      "classification_note": "Google/Facebook login question routed to intent=product_comparison with the identical generic clarification prompt as v220_category_discovery_0002 - see cross-cluster note below.",
+      "confidence_estimate": "MEDIUM",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L1",
+      "error_buckets": [
+        "INVARIANT_FAILED:intent==faq",
+        "INVARIANT_FAILED:answer_contains:google"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 723.1494000006933,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "FAQ",
+      "reasons": [
+        "intent=='faq': actual='product_comparison'",
+        "answer_contains:'google': present=False"
+      ],
+      "response_excerpt": "Ktoré dva produkty presne chcete porovnať, a čo je pre Vás dôležitejšie - cena, veľkosť balenia, alebo konkrétne použitie?",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_faq_0010",
+      "secondary_capabilities": [],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": false,
+      "classification_note": "Country-of-origin question routed to product_search with unrelated products (lotus shoots/incense/bao dough). Possibly too indirect a paraphrase for marker-based FAQ detection.",
+      "confidence_estimate": "LOW",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L1",
+      "error_buckets": [
+        "INVARIANT_FAILED:intent==faq",
+        "INVARIANT_FAILED:answer_contains:vietnam"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": true,
+      "language": "sk",
+      "latency_ms": 560.2610999922035,
+      "preliminary_classification": "ROOT_CAUSE_UNCERTAIN",
+      "primary_capability": "FAQ",
+      "reasons": [
+        "intent=='faq': actual='product_search'",
+        "answer_contains:'vietnam': present=False"
+      ],
+      "response_excerpt": "Našla som tieto najrelevantnejšie produkty: Nakladané lotosové výhonky NGOC LIEN 385g; Vonné tyčinky HEM Jahoda 6008791; Mrazené cesto na Senvič Bao Buns PA 800 g. Ďalšie odporúčania sú nižšie.",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_faq_0011",
+      "secondary_capabilities": [],
+      "severity_estimate": "LOW",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": false,
+      "classification_note": "'What does it mean if a product isn't shown' routed to product_advice with unrelated instant-soup products.",
+      "confidence_estimate": "MEDIUM",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L1",
+      "error_buckets": [
+        "INVARIANT_FAILED:intent==faq",
+        "INVARIANT_FAILED:answer_contains:vypredan"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 1058.2837000110885,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "FAQ",
+      "reasons": [
+        "intent=='faq': actual='product_advice'",
+        "answer_contains:'vypredan': present=False"
+      ],
+      "response_excerpt": "Našla som vhodné produkty k tejto otázke: PHO GA instantná kuracia rezancová polievka v kelímku OH! RICEY 71g; PHO BO instantná hovädzia polievka OH! RICEY 62g; Samokypriacia múka PHOENIX 1500g. Detai",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_faq_0012",
+      "secondary_capabilities": [],
+      "severity_estimate": "LOW",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": false,
+      "classification_note": "Phone/contact question routed to product_search with unrelated products (seaweed, cling film).",
+      "confidence_estimate": "MEDIUM",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L1",
+      "error_buckets": [
+        "INVARIANT_FAILED:intent==faq",
+        "INVARIANT_FAILED:answer_contains:4468"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 713.9318999979878,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "FAQ",
+      "reasons": [
+        "intent=='faq': actual='product_search'",
+        "answer_contains:'4468': present=False"
+      ],
+      "response_excerpt": "Našla som tieto najrelevantnejšie produkty: Morské riasy A+ HOSAN 65g; Potravinárska fólia 30 cm x 300 m; Potravinárska fólia 45 cm x 300 m. Ďalšie odporúčania sú nižšie.",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_faq_0015",
+      "secondary_capabilities": [],
+      "severity_estimate": "LOW",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": false,
+      "classification_note": "Calorie question never engaged with the question at all - fell back to a generic 'we have 79 products in this category' listing rather than any acknowledgement of the nutrition question.",
+      "confidence_estimate": "MEDIUM",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L2",
+      "error_buckets": [
+        "INVARIANT_FAILED:requires_uncertainty"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 289.64420000556856,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "INSUFFICIENT_DATA",
+      "reasons": [
+        "requires_uncertainty: hit=False"
+      ],
+      "response_excerpt": "Máme 79 produktov v kategórii \"Instantné rezance\". Tu sú najrelevantnejšie:",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_insufficient_data_0002",
+      "secondary_capabilities": [],
+      "severity_estimate": "LOW",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "Same exclusion-not-applied symptom as v220_negation_0001, this time on the 'mild' framing excluding sriracha specifically - 4 of 4 top matches were sriracha products.",
+      "confidence_estimate": "HIGH",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L2",
+      "error_buckets": [
+        "INVARIANT_FAILED:product_title_forbidden:sriracha"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 331.80309999443125,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "NEGATION",
+      "reasons": [
+        "products_nonempty: 4 product(s) returned",
+        "product_title_forbidden:'sriracha': offending=['Sriracha čili omáčka Original FLYING GOOSE 3450 ml', 'Sriracha čili omáčka super štipľavá UNI-EAGLE 740ml', 'Sriracha čili omáčka super štipľavá UNI-EAGLE 440ml', 'Sriracha čili omáčka super štipľavá UNI-EAGLE 210ml']"
+      ],
+      "response_excerpt": "Máme 26 produktov v kategórii \"Sriracha omáčka\". Tu sú najrelevantnejšie:",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_negation_0003",
+      "secondary_capabilities": [],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "Rice-vinegar-vs-white-vinegar advice question returned SUSHI RICE products instead of rice vinegar - same rice/rice-vinegar family-confusion symptom as v220_replacement_0005.",
+      "confidence_estimate": "MEDIUM",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L2",
+      "error_buckets": [
+        "INVARIANT_FAILED:intent==product_advice",
+        "INVARIANT_FAILED:product_title_contains_any:ryzovy ocot|ryžový ocot"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 196.4109999971697,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "PRODUCT_ADVICE",
+      "reasons": [
+        "intent=='product_advice': actual='product_search'",
+        "products_nonempty: 4 product(s) returned",
+        "product_title_contains_any:['ryzovy ocot', 'ryžový ocot']: hit=False"
+      ],
+      "response_excerpt": "Máme 12 produktov v kategórii \"Ryža na sushi\". Tu sú najrelevantnejšie:",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_product_advice_0003",
+      "secondary_capabilities": [],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "Explicit brand exclusion ('nie od AROY-D') had zero effect - all 4 returned coconut milk products were AROY-D. Same exclusion-not-applied symptom as the two negation cases above.",
+      "confidence_estimate": "HIGH",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L3",
+      "error_buckets": [
+        "INVARIANT_FAILED:product_title_forbidden:aroy-d"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 192.01389999943785,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "PRODUCT_SEARCH",
+      "reasons": [
+        "intent=='product_search': actual='product_search'",
+        "products_nonempty: 4 product(s) returned",
+        "product_title_forbidden:'aroy-d': offending=['Kokosové mlieko AROY-D 1000ml', 'Kokosové mlieko AROY-D 250ml', 'Kokosové mlieko na varenie AROY-D 400ml', 'Kokosové mlieko AROY-D 500 ml']"
+      ],
+      "response_excerpt": "Máme 17 produktov v kategórii \"Kokosové mlieko\". Tu sú najrelevantnejšie:",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_product_search_0004",
+      "secondary_capabilities": [
+        "NEGATION",
+        "PREFERENCE"
+      ],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "'What sushi plate do you have' (tableware) resolved to related_products with sushi-rice-adjacent ingredient items, not tableware. Possibly a genuinely sparse tableware category.",
+      "confidence_estimate": "LOW",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L1",
+      "error_buckets": [
+        "INVARIANT_FAILED:intent==product_search",
+        "INVARIANT_FAILED:product_title_contains_any:tanier"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 207.4548000091454,
+      "preliminary_classification": "ROOT_CAUSE_UNCERTAIN",
+      "primary_capability": "PRODUCT_SEARCH",
+      "reasons": [
+        "intent=='product_search': actual='related_products'",
+        "products_nonempty: 6 product(s) returned",
+        "product_title_contains_any:['tanier']: hit=False"
+      ],
+      "response_excerpt": "K sushi odporúčam hlavne tieto súvisiace produkty: Morské riasy Yaki nori na Kimbap GIMBAPGIM NBH 50 listov; Wasabi pasta v tube S&B 90g; Nakladaný zázvor na suši - ružový GOLDEN TURTLE 240g/160g. Poz",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_product_search_0008",
+      "secondary_capabilities": [],
+      "severity_estimate": "LOW",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": false,
+      "classification_note": "Pure 'how is bibimbap made' recipe request resolved to related_products with 7 products returned, violating the RECIPE_ONLY (products_empty) contract entirely.",
+      "confidence_estimate": "HIGH",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L1",
+      "error_buckets": [
+        "INVARIANT_FAILED:intent==recipe",
+        "INVARIANT_FAILED:products_empty"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 840.2902999951039,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "RECIPE",
+      "reasons": [
+        "intent=='recipe': actual='related_products'",
+        "products_empty: 7 product(s) returned (expected 0)"
+      ],
+      "response_excerpt": "K bibimbap odporúčam hlavne tieto súvisiace produkty: Sezamový olej 100% LEE KUM KEE 207 ml; Čili pasta GOCHUJANG SEMPIO 500g; Ssamjang Kórejská sójová pasta SEMPIO 250g. Pozrite si odporúčania nižšie",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_recipe_0002",
+      "secondary_capabilities": [],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "Same generic bare-recipe-redirect-with-zero-products symptom as v220_recipe_to_products_0001, for pad thai.",
+      "confidence_estimate": "MEDIUM",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L2",
+      "error_buckets": [
+        "INVARIANT_FAILED:products_nonempty",
+        "INVARIANT_FAILED:product_title_contains_any:rezance"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 215.5066999985138,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "RECIPE_TO_PRODUCTS",
+      "reasons": [
+        "products_nonempty: 0 product(s) returned",
+        "product_title_contains_any:['rezance']: hit=False"
+      ],
+      "response_excerpt": "Našla som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie.",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_recipe_to_products_0002",
+      "secondary_capabilities": [],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "EN 'what do I need to make sushi' returned nori/ginger/rice-vinegar but not sushi rice itself - the one HIGH-confidence use-case role (rice->sushi_rice) was the one missing from results.",
+      "confidence_estimate": "LOW",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L2",
+      "error_buckets": [
+        "INVARIANT_FAILED:product_title_contains_any:suši ryža|sushi rice"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_review_required": false,
+      "language": "en",
+      "latency_ms": 177.45640000794083,
+      "preliminary_classification": "ROOT_CAUSE_UNCERTAIN",
+      "primary_capability": "RECIPE_TO_PRODUCTS",
+      "reasons": [
+        "products_nonempty: 6 product(s) returned",
+        "product_title_contains_any:['suši ryža', 'sushi rice']: hit=False"
+      ],
+      "response_excerpt": "For sushi, I'd mainly recommend these related products: Nakladaný zázvor na suši - ružový GOLDEN TURTLE 240g/160g; Morské riasy Yaki nori na Kimbap GIMBAPGIM NBH 50 listov; Ryžový ocot CHINKIANG HENGS",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_recipe_to_products_0005",
+      "secondary_capabilities": [],
+      "severity_estimate": "LOW",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "Rice-vinegar replacement request returned plain rice (jazmínová/basmati) instead of rice vinegar - same rice/rice-vinegar confusion as v220_product_advice_0003.",
+      "confidence_estimate": "MEDIUM",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L2",
+      "error_buckets": [
+        "INVARIANT_FAILED:product_title_contains_any:ryzovy ocot|rice vinegar"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 561.6634000034537,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "REPLACEMENT",
+      "reasons": [
+        "intent=='replacement_products': actual='replacement_products'",
+        "products_nonempty: 2 product(s) returned",
+        "product_title_contains_any:['ryzovy ocot', 'rice vinegar']: hit=False"
+      ],
+      "response_excerpt": "Našla som tieto najrelevantnejšie produkty: Jazmínová ryža VJ Platinium 5 kg; Basmati ryža - TILDA - 1kg. Ďalšie odporúčania sú nižšie.",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_replacement_0005",
+      "secondary_capabilities": [],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "Same ASCII-vs-diacritic benchmark defect as v220_replacement_0006: expected 'hoisin omacka' cannot match real title 'Hoisin omáčka' (č). Advisor's answer (Hoisin omáčka LEE KUM KEE/FLYING GOOSE) looks correct.",
+      "confidence_estimate": "HIGH",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L2",
+      "error_buckets": [
+        "INVARIANT_FAILED:product_title_contains_any:hoisin omacka|sladka sojova omacka"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_review_required": true,
+      "language": "sk",
+      "latency_ms": 2181.948699988425,
+      "preliminary_classification": "POSSIBLE_GROUND_TRUTH_PROBLEM",
+      "primary_capability": "REPLACEMENT",
+      "reasons": [
+        "intent=='replacement_products': actual='replacement_products'",
+        "products_nonempty: 6 product(s) returned",
+        "product_title_contains_any:['hoisin omacka', 'sladka sojova omacka']: hit=False"
+      ],
+      "response_excerpt": "Našla som tieto najrelevantnejšie produkty: Hoisin omáčka LEE KUM KEE 397g; Hoisin omáčka FLYING GOOSE BRAND 455ml; Hoisin omáčka FLYING GOOSE BRAND 730ml. Ďalšie odporúčania sú nižšie.",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_replacement_0009",
+      "secondary_capabilities": [],
+      "severity_estimate": "INFORMATIONAL",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "Multi-constraint (vegetarian substitution + gluten-free sub-question) resolved to intent=allergen_safety with a safety disclaimer instead of replacement_products - possibly correct safety-precedence behavior, possibly a genuine replacement-intent miss; also possibly compounded by the same ASCII/diacritic expected-substring issue as 0006/0009 ('sojova omacka' vs 'sójová omáčka').",
+      "confidence_estimate": "LOW",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L3",
+      "error_buckets": [
+        "INVARIANT_FAILED:intent==replacement_products",
+        "INVARIANT_FAILED:product_title_contains_any:tamari sojova omacka|bezlepkova sojova omacka"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_review_required": true,
+      "language": "sk",
+      "latency_ms": 199.73469999968074,
+      "preliminary_classification": "ROOT_CAUSE_UNCERTAIN",
+      "primary_capability": "REPLACEMENT",
+      "reasons": [
+        "intent=='replacement_products': actual='allergen_safety'",
+        "products_nonempty: 8 product(s) returned",
+        "product_title_contains_any:['tamari sojova omacka', 'bezlepkova sojova omacka']: hit=False"
+      ],
+      "response_excerpt": "Pri alergii alebo intolerancii na lepok vám nechcem odporučiť produkt len podľa názvu. Prosím overte zloženie a alergény v detaile konkrétneho produktu. Ak riešite konkrétny produkt, rozhodujúca je et",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_replacement_0010",
+      "secondary_capabilities": [],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "DEV",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": false,
+      "classification_note": "Return-window paraphrase routed to product_search returning unrelated tamarind/ginger-tea products. Could be FAQ-marker miss (POSSIBLE_ADVISOR_DEFECT) or an overly-indirect paraphrase (POSSIBLE_GROUND_TRUTH_PROBLEM).",
+      "confidence_estimate": "LOW",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L1",
+      "error_buckets": [
+        "INVARIANT_FAILED:intent==faq",
+        "INVARIANT_FAILED:answer_contains:14"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": true,
+      "language": "sk",
+      "latency_ms": 556.4554999873508,
+      "preliminary_classification": "ROOT_CAUSE_UNCERTAIN",
+      "primary_capability": "FAQ",
+      "reasons": [
+        "intent=='faq': actual='product_search'",
+        "answer_contains:'14': present=False"
+      ],
+      "response_excerpt": "Našla som tieto najrelevantnejšie produkty: Tamarind bez semien COCK BRAND 454g; Tamarind bez semien COCK BRAND 150g; Instantný zázvorový čaj bez cukru GINGEN 70g. Ďalšie odporúčania sú nižšie.",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_faq_0005",
+      "secondary_capabilities": [],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "HOLDOUT",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "Explicit 'nechcem sriracha' still returned a Sriracha product among matches. Same symptom as v220_negation_0003 and v220_product_search_0004 - see cross-cluster note (negation/exclusion constraints not applied to retrieval filtering).",
+      "confidence_estimate": "HIGH",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L2",
+      "error_buckets": [
+        "INVARIANT_FAILED:product_title_forbidden:sriracha"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 446.00209999771323,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "NEGATION",
+      "reasons": [
+        "products_nonempty: 8 product(s) returned",
+        "product_title_forbidden:'sriracha': offending=['Sriracha pálivá čili omáčka FLYING GOOSE 730 ml']"
+      ],
+      "response_excerpt": "Našla som tieto najrelevantnejšie produkty: JIN Ramen Pálivé instantné rezance OTOKI 120g; Hubová vegetariánska omáčka na pražené jedlá LEE KUM KEE 510g; Čili omáčka na morské jedlá THAI DANCER 300ml.",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_negation_0001",
+      "secondary_capabilities": [],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "HOLDOUT",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "'čo z Foodlandu potrebujem na tom kha gai' got the generic bare-recipe redirect with ZERO products, not the use_case_advice coconut-milk/fish-sauce roles. Same symptom as v220_recipe_to_products_0002 (paraphrase not reaching the use-case-advice shopping path).",
+      "confidence_estimate": "MEDIUM",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L2",
+      "error_buckets": [
+        "INVARIANT_FAILED:products_nonempty",
+        "INVARIANT_FAILED:product_title_contains_any:kokosove mlieko"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 227.58439999597613,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "RECIPE_TO_PRODUCTS",
+      "reasons": [
+        "products_nonempty: 0 product(s) returned",
+        "product_title_contains_any:['kokosove mlieko']: hit=False"
+      ],
+      "response_excerpt": "Našla som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie.",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_recipe_to_products_0001",
+      "secondary_capabilities": [],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "HOLDOUT",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": true,
+      "classification_note": "BENCHMARK SELF-INTEGRITY FINDING: expected substring 'kokosove mlieko' (ASCII) can never match the real catalog title 'Kokosové mlieko' (diacritic é) - invariant_evaluator's _lower() does not strip diacritics. The Advisor's actual answer (BAMBOO TREE/CHAOKOH coconut milk) looks correct; this is very likely a benchmark authoring defect, not an Advisor defect.",
+      "confidence_estimate": "HIGH",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L3",
+      "error_buckets": [
+        "INVARIANT_FAILED:product_title_contains_any:kokosove mlieko|kokosovy krem"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_review_required": true,
+      "language": "sk",
+      "latency_ms": 1933.2639000058407,
+      "preliminary_classification": "POSSIBLE_GROUND_TRUTH_PROBLEM",
+      "primary_capability": "REPLACEMENT",
+      "reasons": [
+        "intent=='replacement_products': actual='replacement_products'",
+        "products_nonempty: 2 product(s) returned",
+        "product_title_contains_any:['kokosove mlieko', 'kokosovy krem']: hit=False"
+      ],
+      "response_excerpt": "Našla som tieto najrelevantnejšie produkty: Kokosové mlieko BAMBOO TREE 1000ml; Kokosové mlieko CHAOKOH 1000 ml. Ďalšie odporúčania sú nižšie.",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_replacement_0006",
+      "secondary_capabilities": [],
+      "severity_estimate": "INFORMATIONAL",
+      "source": "CURATED",
+      "split": "HOLDOUT",
+      "status": "FAIL",
+      "turn_count": 1
+    },
+    {
+      "attempt": 1,
+      "catalog_dependency": false,
+      "classification_note": "Complex multi-constraint mirin-replacement question (vegetarian friend + gluten-free sub-question) resolved to intent=recipe with the generic bare-recipe redirect, zero products.",
+      "confidence_estimate": "MEDIUM",
+      "constraint_count": 0,
+      "critical": false,
+      "difficulty": "L4",
+      "error_buckets": [
+        "INVARIANT_FAILED:intent==replacement_products",
+        "INVARIANT_FAILED:products_nonempty"
+      ],
+      "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_review_required": false,
+      "language": "sk",
+      "latency_ms": 228.99300001154188,
+      "preliminary_classification": "POSSIBLE_ADVISOR_DEFECT",
+      "primary_capability": "REPLACEMENT",
+      "reasons": [
+        "intent=='replacement_products': actual='recipe'",
+        "products_nonempty: 0 product(s) returned"
+      ],
+      "response_excerpt": "Našla som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie.",
+      "run_id": "v220b_dc00b937_run1",
+      "safety_sensitive": false,
+      "scenario_id": "v220_replacement_0011",
+      "secondary_capabilities": [
+        "DIETARY_SAFETY",
+        "MULTI_CONSTRAINT"
+      ],
+      "severity_estimate": "MEDIUM",
+      "source": "CURATED",
+      "split": "HOLDOUT",
+      "status": "FAIL",
+      "turn_count": 1
+    }
+  ],
+  "summary": {
+    "by_capability": {
+      "ALLERGEN_SAFETY": {
+        "fail": 1,
+        "n": 4,
+        "pass": 3,
+        "score": 0.75
+      },
+      "ALREADY_HAVE": {
+        "fail": 0,
+        "n": 3,
+        "pass": 3,
+        "score": 1.0
+      },
+      "AMBIGUITY": {
+        "fail": 0,
+        "n": 2,
+        "pass": 2,
+        "score": 1.0
+      },
+      "AVAILABILITY_PRICE": {
+        "fail": 0,
+        "n": 2,
+        "pass": 2,
+        "score": 1.0
+      },
+      "BASKET_COMPLETENESS": {
+        "fail": 0,
+        "n": 2,
+        "pass": 2,
+        "score": 1.0
+      },
+      "BUDGET_REASONING": {
+        "fail": 1,
+        "n": 2,
+        "pass": 1,
+        "score": 0.5
+      },
+      "CATEGORY_DISCOVERY": {
+        "fail": 1,
+        "n": 3,
+        "pass": 2,
+        "score": 0.6666666666666666
+      },
+      "COMPARISON": {
+        "fail": 0,
+        "n": 3,
+        "pass": 3,
+        "score": 1.0
+      },
+      "CROSS_SELL": {
+        "fail": 0,
+        "n": 2,
+        "pass": 2,
+        "score": 1.0
+      },
+      "CULTURAL_AUTHENTICITY": {
+        "fail": 0,
+        "n": 3,
+        "pass": 3,
+        "score": 1.0
+      },
+      "DIETARY_SAFETY": {
+        "fail": 0,
+        "n": 1,
+        "pass": 1,
+        "score": 1.0
+      },
+      "FAQ": {
+        "fail": 6,
+        "n": 15,
+        "pass": 9,
+        "score": 0.6
+      },
+      "FOLLOW_UP": {
+        "fail": 0,
+        "n": 3,
+        "pass": 3,
+        "score": 1.0
+      },
+      "INSUFFICIENT_DATA": {
+        "fail": 1,
+        "n": 2,
+        "pass": 1,
+        "score": 0.5
+      },
+      "MULTI_CONSTRAINT": {
+        "fail": 0,
+        "n": 3,
+        "pass": 3,
+        "score": 1.0
+      },
+      "NEGATION": {
+        "fail": 2,
+        "n": 4,
+        "pass": 2,
+        "score": 0.5
+      },
+      "OUT_OF_DOMAIN": {
+        "fail": 0,
+        "n": 2,
+        "pass": 2,
+        "score": 1.0
+      },
+      "PERSONALIZATION": {
+        "fail": 0,
+        "n": 0,
+        "pass": 0,
+        "score": null
+      },
+      "PRODUCT_ADVICE": {
+        "fail": 1,
+        "n": 1,
+        "pass": 0,
+        "score": 0.0
+      },
+      "PRODUCT_SEARCH": {
+        "fail": 2,
+        "n": 10,
+        "pass": 8,
+        "score": 0.8
+      },
+      "PRODUCT_TO_RECIPE": {
+        "fail": 0,
+        "n": 2,
+        "pass": 2,
+        "score": 1.0
+      },
+      "QUANTITY_REASONING": {
+        "fail": 0,
+        "n": 1,
+        "pass": 1,
+        "score": 1.0
+      },
+      "RECIPE": {
+        "fail": 1,
+        "n": 5,
+        "pass": 4,
+        "score": 0.8
+      },
+      "RECIPE_TO_PRODUCTS": {
+        "fail": 3,
+        "n": 5,
+        "pass": 2,
+        "score": 0.4
+      },
+      "REPLACEMENT": {
+        "fail": 5,
+        "n": 11,
+        "pass": 6,
+        "score": 0.5454545454545454
+      }
+    },
+    "by_catalog_dependency": {
+      "False": {
+        "fail": 10,
+        "n": 50,
+        "pass": 40,
+        "score": 0.8
+      },
+      "True": {
+        "fail": 14,
+        "n": 41,
+        "pass": 27,
+        "score": 0.6585365853658537
+      }
+    },
+    "by_constraint_count": {
+      "0": {
+        "fail": 24,
+        "n": 91,
+        "pass": 67,
+        "score": 0.7362637362637363
+      }
+    },
+    "by_difficulty": {
+      "L1": {
+        "fail": 9,
+        "n": 32,
+        "pass": 23,
+        "score": 0.71875
+      },
+      "L2": {
+        "fail": 10,
+        "n": 28,
+        "pass": 18,
+        "score": 0.6428571428571429
+      },
+      "L3": {
+        "fail": 4,
+        "n": 23,
+        "pass": 19,
+        "score": 0.8260869565217391
+      },
+      "L4": {
+        "fail": 1,
+        "n": 7,
+        "pass": 6,
+        "score": 0.8571428571428571
+      },
+      "L5": {
+        "fail": 0,
+        "n": 1,
+        "pass": 1,
+        "score": 1.0
+      }
+    },
+    "by_language": {
+      "en": {
+        "fail": 2,
+        "n": 8,
+        "pass": 6,
+        "score": 0.75
+      },
+      "sk": {
+        "fail": 22,
+        "n": 83,
+        "pass": 61,
+        "score": 0.7349397590361446
+      }
+    },
+    "by_safety_sensitive": {
+      "False": {
+        "fail": 23,
+        "n": 86,
+        "pass": 63,
+        "score": 0.7325581395348837
+      },
+      "True": {
+        "fail": 1,
+        "n": 5,
+        "pass": 4,
+        "score": 0.8
+      }
+    },
+    "by_split": {
+      "DEV": {
+        "fail": 19,
+        "n": 69,
+        "pass": 50,
+        "score": 0.7246376811594203
+      },
+      "HOLDOUT": {
+        "fail": 5,
+        "n": 22,
+        "pass": 17,
+        "score": 0.7727272727272727
+      }
+    },
+    "by_turn_type": {
+      "multi_turn": {
+        "fail": 0,
+        "n": 5,
+        "pass": 5,
+        "score": 1.0
+      },
+      "single_turn": {
+        "fail": 24,
+        "n": 86,
+        "pass": 62,
+        "score": 0.7209302325581395
+      }
+    },
+    "capability_macro_score": 0.7942550505050505,
+    "combined": {
+      "fail": 24,
+      "micro_score": 0.7362637362637363,
+      "n_scored": 91,
+      "pass": 67
+    },
+    "dev": {
+      "fail": 19,
+      "n_scored": 69,
+      "pass": 50,
+      "pending": 12,
+      "score": 0.7246376811594203
+    },
+    "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+    "generalization_gap_dev_minus_holdout": -0.04808959156785242,
+    "holdout": {
+      "fail": 5,
+      "n_scored": 22,
+      "pass": 17,
+      "pending": 3,
+      "score": 0.7727272727272727
+    },
+    "run_id": "v220b_dc00b937_run1"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "catalog_hash": "c2881106d6efc60eca3a5d2a9741f4af994268b8bc44fbf7c825f6441420634a",
+  "customer_synthetic_calls": 0,
+  "dev_counts": {
+    "fail": 19,
+    "pass": 50,
+    "pending": 12,
+    "unknown": 0
+  },
+  "dev_input_hash": "ff38330df59cd850132a6869e247a466a8a4375863b1fd3d245abf36206d5bc7",
+  "dev_result_hash": "9af871b7f1e51375189da201ecd99543c71db02f0d37c72d95d72f41e1cb1723",
+  "execution_context": "EVALUATION",
+  "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+  "holdout_counts": {
+    "fail": 5,
+    "pass": 17,
+    "pending": 3,
+    "unknown": 0
+  },
+  "holdout_input_hash": "5a78b1e48ef500774dfce785be7c756b68047bc2dcc7c9aaa60b1db604ec63af",
+  "holdout_result_hash": "27c428eae26802436f00f1549f46590ab8ba1c238dc097865b7575e4cfddc231",
+  "post_run_production_hashes": {
+    "app/evaluation/adapter.py": "1fad7830c8207666020010873afcc1c839793cf1d9f0edb42a1860eea7c68eb8",
+    "app/main.py": "6ece2fd0a91653869e20b8fb6ce19d705a743a8671842570163243d407a8578a",
+    "app/widget.js": "dbd102079cb63c6114a1f8fd83a23e6a51d5857d9538653f0c74e2f99ba07b47"
+  },
+  "run_id": "v220b_dc00b937_run1",
+  "v220a_freeze_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d"
+}

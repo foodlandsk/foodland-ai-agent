@@ -1,0 +1,288 @@
+{
+  "by_capability": {
+    "ALLERGEN_SAFETY": {
+      "fail": 1,
+      "n": 4,
+      "pass": 3,
+      "score": 0.75
+    },
+    "ALREADY_HAVE": {
+      "fail": 0,
+      "n": 3,
+      "pass": 3,
+      "score": 1.0
+    },
+    "AMBIGUITY": {
+      "fail": 0,
+      "n": 2,
+      "pass": 2,
+      "score": 1.0
+    },
+    "AVAILABILITY_PRICE": {
+      "fail": 0,
+      "n": 2,
+      "pass": 2,
+      "score": 1.0
+    },
+    "BASKET_COMPLETENESS": {
+      "fail": 0,
+      "n": 2,
+      "pass": 2,
+      "score": 1.0
+    },
+    "BUDGET_REASONING": {
+      "fail": 1,
+      "n": 2,
+      "pass": 1,
+      "score": 0.5
+    },
+    "CATEGORY_DISCOVERY": {
+      "fail": 1,
+      "n": 3,
+      "pass": 2,
+      "score": 0.6666666666666666
+    },
+    "COMPARISON": {
+      "fail": 0,
+      "n": 3,
+      "pass": 3,
+      "score": 1.0
+    },
+    "CROSS_SELL": {
+      "fail": 0,
+      "n": 2,
+      "pass": 2,
+      "score": 1.0
+    },
+    "CULTURAL_AUTHENTICITY": {
+      "fail": 0,
+      "n": 3,
+      "pass": 3,
+      "score": 1.0
+    },
+    "DIETARY_SAFETY": {
+      "fail": 0,
+      "n": 1,
+      "pass": 1,
+      "score": 1.0
+    },
+    "FAQ": {
+      "fail": 6,
+      "n": 15,
+      "pass": 9,
+      "score": 0.6
+    },
+    "FOLLOW_UP": {
+      "fail": 0,
+      "n": 3,
+      "pass": 3,
+      "score": 1.0
+    },
+    "INSUFFICIENT_DATA": {
+      "fail": 1,
+      "n": 2,
+      "pass": 1,
+      "score": 0.5
+    },
+    "MULTI_CONSTRAINT": {
+      "fail": 0,
+      "n": 3,
+      "pass": 3,
+      "score": 1.0
+    },
+    "NEGATION": {
+      "fail": 2,
+      "n": 4,
+      "pass": 2,
+      "score": 0.5
+    },
+    "OUT_OF_DOMAIN": {
+      "fail": 0,
+      "n": 2,
+      "pass": 2,
+      "score": 1.0
+    },
+    "PERSONALIZATION": {
+      "fail": 0,
+      "n": 0,
+      "pass": 0,
+      "score": null
+    },
+    "PRODUCT_ADVICE": {
+      "fail": 1,
+      "n": 1,
+      "pass": 0,
+      "score": 0.0
+    },
+    "PRODUCT_SEARCH": {
+      "fail": 2,
+      "n": 10,
+      "pass": 8,
+      "score": 0.8
+    },
+    "PRODUCT_TO_RECIPE": {
+      "fail": 0,
+      "n": 2,
+      "pass": 2,
+      "score": 1.0
+    },
+    "QUANTITY_REASONING": {
+      "fail": 0,
+      "n": 1,
+      "pass": 1,
+      "score": 1.0
+    },
+    "RECIPE": {
+      "fail": 1,
+      "n": 5,
+      "pass": 4,
+      "score": 0.8
+    },
+    "RECIPE_TO_PRODUCTS": {
+      "fail": 3,
+      "n": 5,
+      "pass": 2,
+      "score": 0.4
+    },
+    "REPLACEMENT": {
+      "fail": 5,
+      "n": 11,
+      "pass": 6,
+      "score": 0.5454545454545454
+    }
+  },
+  "by_catalog_dependency": {
+    "False": {
+      "fail": 10,
+      "n": 50,
+      "pass": 40,
+      "score": 0.8
+    },
+    "True": {
+      "fail": 14,
+      "n": 41,
+      "pass": 27,
+      "score": 0.6585365853658537
+    }
+  },
+  "by_constraint_count": {
+    "0": {
+      "fail": 24,
+      "n": 91,
+      "pass": 67,
+      "score": 0.7362637362637363
+    }
+  },
+  "by_difficulty": {
+    "L1": {
+      "fail": 9,
+      "n": 32,
+      "pass": 23,
+      "score": 0.71875
+    },
+    "L2": {
+      "fail": 10,
+      "n": 28,
+      "pass": 18,
+      "score": 0.6428571428571429
+    },
+    "L3": {
+      "fail": 4,
+      "n": 23,
+      "pass": 19,
+      "score": 0.8260869565217391
+    },
+    "L4": {
+      "fail": 1,
+      "n": 7,
+      "pass": 6,
+      "score": 0.8571428571428571
+    },
+    "L5": {
+      "fail": 0,
+      "n": 1,
+      "pass": 1,
+      "score": 1.0
+    }
+  },
+  "by_language": {
+    "en": {
+      "fail": 2,
+      "n": 8,
+      "pass": 6,
+      "score": 0.75
+    },
+    "sk": {
+      "fail": 22,
+      "n": 83,
+      "pass": 61,
+      "score": 0.7349397590361446
+    }
+  },
+  "by_safety_sensitive": {
+    "False": {
+      "fail": 23,
+      "n": 86,
+      "pass": 63,
+      "score": 0.7325581395348837
+    },
+    "True": {
+      "fail": 1,
+      "n": 5,
+      "pass": 4,
+      "score": 0.8
+    }
+  },
+  "by_split": {
+    "DEV": {
+      "fail": 19,
+      "n": 69,
+      "pass": 50,
+      "score": 0.7246376811594203
+    },
+    "HOLDOUT": {
+      "fail": 5,
+      "n": 22,
+      "pass": 17,
+      "score": 0.7727272727272727
+    }
+  },
+  "by_turn_type": {
+    "multi_turn": {
+      "fail": 0,
+      "n": 5,
+      "pass": 5,
+      "score": 1.0
+    },
+    "single_turn": {
+      "fail": 24,
+      "n": 86,
+      "pass": 62,
+      "score": 0.7209302325581395
+    }
+  },
+  "capability_macro_score": 0.7942550505050505,
+  "combined": {
+    "fail": 24,
+    "micro_score": 0.7362637362637363,
+    "n_scored": 91,
+    "pass": 67
+  },
+  "dev": {
+    "fail": 19,
+    "n_scored": 69,
+    "pass": 50,
+    "pending": 12,
+    "score": 0.7246376811594203
+  },
+  "execution_sha": "dc00b937e3db1e6522236e1f44c5c12360eff53d",
+  "generalization_gap_dev_minus_holdout": -0.04808959156785242,
+  "holdout": {
+    "fail": 5,
+    "n_scored": 22,
+    "pass": 17,
+    "pending": 3,
+    "score": 0.7727272727272727
+  },
+  "run_id": "v220b_dc00b937_run1"
+}
