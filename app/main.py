@@ -1589,6 +1589,17 @@ RELATED_PRODUCT_QUERIES = {
     "kondenzovane_mlieko": [
         "kondenzovane mlieko", "bubble tea", "tapiokove perly", "kokosove mlieko", "mango", "ovocny sirup", "matcha",
     ],
+    # V2.20g fix: RELATED_SUBJECT_ALIASES["medium_spicy"] (detection side)
+    # has had a "medium_spicy" entry since it was added, but this dict
+    # (the recommendation side related_products_for_subject() actually
+    # reads) never did - a genuine related "co sa hodi k pikantnemu
+    # jedlu?" request detected related_subject="medium_spicy" correctly
+    # but then always produced zero products. Reuses the same 3 curated
+    # terms already vetted for the unrelated SPECIAL_PRODUCT_QUERIES
+    # bundle mechanism's own "medium_spicy" entry, not invented here.
+    "medium_spicy": [
+        "sriracha", "gochujang", "chilli olej",
+    ],
 }
 
 PRODUCT_SET_SIGNAL_TOKENS = {"set", "sety", "setu", "setov", "sada", "sady", "sad", "kit", "suprava", "supravy", "supravu", "supravou"}

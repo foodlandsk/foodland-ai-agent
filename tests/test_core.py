@@ -2697,6 +2697,22 @@ class TestRelatedProducts:
         for p in results:
             assert "kimchi" not in nrm(p.get("title", ""))
 
+    def test_medium_spicy_related_returns_real_products(self, products):
+        # V2.20g fix: RELATED_SUBJECT_ALIASES["medium_spicy"] (detection
+        # side) has always existed, but RELATED_PRODUCT_QUERIES (the dict
+        # this function actually reads) never had a matching entry, so a
+        # genuine "co sa hodi k pikantnemu jedlu?" request correctly
+        # detected related_subject="medium_spicy" (V2.20f preserved this
+        # routing) but always got zero products back.
+        results = main.related_products_for_subject(products, main.knowledge, "medium_spicy", 8)
+        assert results
+
+    def test_genuine_medium_spicy_request_returns_products_end_to_end(self):
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="co sa hodi k pikantnemu jedlu", limit=8), request)
+        assert result.get("intent") == "related_products"
+        assert result.get("products")
+
     def test_v220f_excluded_brand_no_longer_hijacks_into_empty_related_products(self):
         # V2.20b negation_0003, revealed as RELATED_SUBJECT_FALSE_POSITIVE
         # by V2.20e once V2.20d's own structured-retrieval fix removed the
