@@ -53,6 +53,54 @@ EXPLICIT = "EXPLICIT"
 INFERRED_HIGH = "INFERRED_HIGH"
 INFERRED_MEDIUM = "INFERRED_MEDIUM"
 
+# V2.20d - explicit product/brand EXCLUSION markers (distinct from
+# app.session_state._BRAND_REMOVAL_MARKERS, which only means "stop
+# requiring the currently active brand", never enforces a hard block).
+# Deliberately narrow, longest/most-specific-first so "ale nie od" is tried
+# before its own substring "nie od" - covers only the forms confirmed by
+# V2.20b evidence (regbug-style negation_0003/product_search_0004) plus the
+# closely analogous forms the fix's own mandate named ("iny/ina/ine nez").
+# Fails OPEN by design (Section 33): a marker with no recognizable known
+# brand/subfamily after it does nothing, never guesses.
+_EXCLUSION_MARKERS = ("ale nie od ", "nie od ", "ale nie ", "nechcem ", "iny nez ", "ina nez ", "ine nez ")
+_EXCLUSION_CLAUSE_END_RE = re.compile(r"[,.;!?]")
+# A single compact word/hyphenated-word (e.g. "aroy-d", "kikkoman") - used
+# as a fallback brand-shaped exclusion candidate when `known_brands` (built
+# from the catalog's own `brand` FIELD) does not recognize it. This catalog
+# stores the manufacturer/importer name in `brand` ("Thai Agri Foods Public
+# Company Limited"), not the marketing name printed on the title
+# ("AROY-D") - confirmed by direct catalog inspection - so a known-brands-
+# only check would silently miss real marketing-brand exclusions entirely
+# (Section 34/35 of the originating mandate: fall back to title-matching
+# convention when structured brand metadata is absent/unreliable). A
+# multi-word vague phrase ("nieco prilis slane") never matches this shape,
+# so it never becomes an exclusion (Section 33 fail-open).
+_NAMED_ENTITY_RE = re.compile(r"^[a-z][a-z0-9-]{2,}$")
+
+
+def _looks_like_named_entity(clause_text: str) -> bool:
+    return bool(_NAMED_ENTITY_RE.match(clause_text.strip()))
+
+
+def _find_exclusion_span(normalized_message: str) -> tuple[int, int, str] | None:
+    """First EXPLICIT exclusion marker's (span_start, span_end, clause_text) -
+    span_start/span_end cover marker+clause so the caller can cut it out of
+    the text used for POSITIVE detection; clause_text is only the words
+    between the marker and the next clause boundary (comma/period/
+    semicolon/?/! or end of string), which is what gets checked against
+    known brands/taxonomy. Returns None if no marker is present."""
+    for marker in _EXCLUSION_MARKERS:
+        idx = normalized_message.find(marker)
+        if idx == -1:
+            continue
+        clause_start = idx + len(marker)
+        end_match = _EXCLUSION_CLAUSE_END_RE.search(normalized_message, clause_start)
+        clause_end = end_match.start() if end_match else len(normalized_message)
+        clause_text = normalized_message[clause_start:clause_end].strip()
+        if clause_text:
+            return idx, clause_end, clause_text
+    return None
+
 # Dietary phrase stems -> the same facet vocabulary app.taxonomy already
 # derives from real category memberships (_DIETARY_CATEGORY_TERMS) - never
 # an invented health claim (Section 19). Matched as a normalized substring,
@@ -95,6 +143,8 @@ class StructuredProductQuery:
     package_size: PackageSize | None = None
     dietary_facets: list[str] = field(default_factory=list)
     concept_id: str = ""
+    excluded_brand: str | None = None
+    excluded_subfamily: str | None = None
     explicit_constraints: set[str] = field(default_factory=set)
     constraint_sources: dict[str, str] = field(default_factory=dict)
     confidence: str = "UNKNOWN"  # HIGH / MEDIUM / LOW / UNKNOWN, taxonomy-style
@@ -175,7 +225,29 @@ def parse_structured_query(
     normalized = search_normalize(message)
     query = StructuredProductQuery(raw_query=message)
 
-    rule = _match_taxonomy_rule(normalized)
+    # V2.20d - resolve an explicit exclusion clause BEFORE any positive
+    # detection runs, so a named entity the customer excluded ("nechcem
+    # sriracha", "ale nie od AROY-D") can never also register as a
+    # positive family/subfamily/brand requirement further down. Only
+    # cut the clause out of `positive_text` once it resolves to a REAL
+    # known brand or taxonomy subfamily (fail open on anything else -
+    # Section 33: ambiguous phrasing must never turn into a hard filter).
+    positive_text = normalized
+    exclusion_span = _find_exclusion_span(normalized)
+    if exclusion_span is not None:
+        span_start, span_end, clause_text = exclusion_span
+        excluded_rule = _match_taxonomy_rule(clause_text)
+        if excluded_rule is not None and excluded_rule.subfamily:
+            query.excluded_subfamily = excluded_rule.subfamily
+        excluded_brand_hit = _detect_brand(clause_text, known_brands)
+        if not excluded_brand_hit and not excluded_rule and _looks_like_named_entity(clause_text):
+            excluded_brand_hit = clause_text.strip()
+        if excluded_brand_hit:
+            query.excluded_brand = excluded_brand_hit
+        if query.excluded_subfamily or query.excluded_brand:
+            positive_text = normalized[:span_start] + " " + normalized[span_end:]
+
+    rule = _match_taxonomy_rule(positive_text)
     if rule is not None:
         query.family = rule.family
         query.subfamily = rule.subfamily
@@ -209,7 +281,7 @@ def parse_structured_query(
     else:
         query.confidence = "UNKNOWN"
 
-    brand = _detect_brand(normalized, known_brands)
+    brand = _detect_brand(positive_text, known_brands)
     if brand:
         query.brand = brand
         query.explicit_constraints.add("brand")
@@ -295,6 +367,8 @@ def merge_constraints(
         brand=merged_brand,
         package_size=merged_size,
         dietary_facets=list(dict.fromkeys([*base.dietary_facets, *addition.dietary_facets])),
+        excluded_brand=addition.excluded_brand or base.excluded_brand,
+        excluded_subfamily=addition.excluded_subfamily or base.excluded_subfamily,
         confidence=base.confidence,
     )
     merged.explicit_constraints = (set(base.explicit_constraints) | set(addition.explicit_constraints))

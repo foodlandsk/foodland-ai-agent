@@ -470,17 +470,63 @@ def _exclude_taxonomy_family_mismatches(results: list[dict], query: str, limit: 
     return filtered[:limit]
 
 
+def _exclude_negated_entities(results: list[dict], structured, limit: int) -> list[dict]:
+    """V2.20d (NEGATION_EXCLUSION_NOT_APPLIED): search_products() has no
+    negation awareness, so a brand/subfamily the customer explicitly
+    excluded ("nechcem sriracha", "ale nie od AROY-D") but still lexically
+    present in the query text can otherwise dominate its own top-N results
+    via ordinary title/brand token overlap. `structured` is the SAME
+    parse_structured_query() result the caller already computed for
+    _exclude_taxonomy_family_mismatches (Section 32 of the originating
+    mandate - one exclusion detector, not two). Subfamily exclusion is
+    checked via taxonomy classification (reliable structured data); brand
+    exclusion falls back to a normalized title-text check because this
+    catalog's own `brand` field is the manufacturer/importer name ("Thai
+    Agri Foods...") rather than the marketing name printed in the title
+    ("AROY-D") - confirmed by direct catalog inspection. Unlike
+    _exclude_taxonomy_family_mismatches, this deliberately does NOT fall
+    back to the unfiltered list when filtering empties it (Section 38 -
+    an explicit exclusion must outrank the "never return zero" convenience
+    fallback, not be silently defeated by it)."""
+    if not results or not (structured.excluded_subfamily or structured.excluded_brand):
+        return results
+    filtered = []
+    for item in results:
+        taxonomy = product_taxonomy_index.get(item.get("id"))
+        if structured.excluded_subfamily and taxonomy is not None and taxonomy.canonical_subfamily == structured.excluded_subfamily:
+            continue
+        if structured.excluded_brand and structured.excluded_brand in normalize(str(item.get("title", ""))):
+            continue
+        filtered.append(item)
+    return filtered[:limit]
+
+
+def _search_products_for_cache(products_list: list[Product] | list[dict], query: str, limit: int) -> list[dict]:
+    """V2.20d: an explicit exclusion (excluded_subfamily/excluded_brand)
+    can legitimately remove products from the legacy scorer's naive top-N,
+    so fetch a wider candidate pool first whenever one is present -
+    filtering only the already-truncated top `limit` would distort recall
+    exactly the way Section 28 of the originating mandate warns against
+    (the excluded item still occupies top slots pre-filter, starving real
+    alternatives ranked just behind it). Queries with no exclusion are
+    completely unaffected (fetch_limit == limit)."""
+    structured = parse_structured_query(query)
+    fetch_limit = limit * 4 if (structured.excluded_subfamily or structured.excluded_brand) else limit
+    results = _exclude_taxonomy_family_mismatches(search_products(products_list, query, fetch_limit), query, fetch_limit)
+    return _exclude_negated_entities(results, structured, limit)
+
+
 def cached_search_products(products_list: list[Product] | list[dict], query: str, limit: int = 8) -> list[dict]:
     """Cache repeated catalog scans for hot chat/autocomplete queries."""
     if PRODUCT_SEARCH_CACHE_MAX_SIZE <= 0:
-        return _exclude_taxonomy_family_mismatches(search_products(products_list, query, limit), query, limit)
+        return _search_products_for_cache(products_list, query, limit)
 
     cache_key = (id(products_list), normalize(query), int(limit))
     cached = product_search_cache.get(cache_key)
     if cached is not None:
         return [dict(product) for product in cached]
 
-    results = _exclude_taxonomy_family_mismatches(search_products(products_list, query, limit), query, limit)
+    results = _search_products_for_cache(products_list, query, limit)
     if len(product_search_cache) >= PRODUCT_SEARCH_CACHE_MAX_SIZE:
         product_search_cache.pop(next(iter(product_search_cache)))
     product_search_cache[cache_key] = [dict(product) for product in results]

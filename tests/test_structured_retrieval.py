@@ -285,6 +285,119 @@ class TestBrandConstraints:
         assert any("brand" in c for c in result.relaxed_constraints)
 
 
+class TestExplicitExclusion:
+    """V2.20d - NEGATION_EXCLUSION_NOT_APPLIED, root-caused from the V2.20b
+    blind benchmark. Two independent confirmed failures shared one root
+    cause (parse_structured_query() had no negation awareness at all, so a
+    lexically-present excluded brand/subfamily name was parsed as a
+    POSITIVE requirement) but needed two separate enforcement points once
+    characterized against the real catalog:
+
+    - v220_negation_0003 ("nechcem sriracha omacku..."): the excluded
+      clause resolves to a real taxonomy subfamily (retrieval.py's
+      excluded_subfamily path) - direct-construction tests below exercise
+      this fixture's brand pair instead of a message-level parse, because
+      this fixture's only subfamily pair (rice) has no bare/broad rule to
+      narrow FROM (every non-rice family rule here requires its own
+      qualifying compound phrase, so there is no query text that resolves
+      "family=sauce, no subfamily yet" in this fixture - confirmed by
+      direct inspection, not assumed).
+    - v220_product_search_0004 ("kokosove mlieko, ale nie od AROY-D"): the
+      excluded brand is a MARKETING name printed only in the product
+      title, not the catalog's own `brand` field (confirmed against the
+      real catalog: AROY-D's `brand` field is "Thai Agri Foods Public
+      Company Limited") - excluded_brand falls back to a title-text check
+      for exactly this reason. This fixture's KIKKOMAN is a genuine
+      known-brands hit, so the brand-exclusion tests below cover the
+      known-brand path end-to-end via real message parsing.
+
+    Both mechanisms are additionally verified against the real, live
+    catalog (not just this synthetic fixture) as part of this fix's own
+    characterization step - see the V2.20d final report.
+
+    v220_negation_0001 ("nie je palive") is a different, unrelated
+    mechanism (no taxonomy rule matches "palive"/"pikantne" at all, so it
+    never reaches this module) and is deliberately left untouched."""
+
+    def test_confirmed_fail_brand_exclusion_replicated(self):
+        # Mirrors v220_product_search_0004's shape: an excluded brand named
+        # right after "ale nie od" must never become a positive requirement.
+        query, result = retrieve("chcem sojova omacka, ale nie od kikkoman")
+        assert query.excluded_brand == "kikkoman"
+        assert query.brand is None
+        assert "FL_S1" not in result.valid_match_ids
+        assert "FL_S3" not in result.valid_match_ids
+        assert "FL_S2" in result.valid_match_ids  # Lee Kum Kee soy sauce remains eligible
+
+    def test_confirmed_fail_subfamily_exclusion_replicated(self):
+        # Mirrors v220_negation_0003's shape at the retrieval.py mechanism
+        # level: a broad family match must lose exactly the excluded
+        # subfamily's members and nothing else. Constructed directly
+        # (bypassing the parser) because this fixture's rule set has no
+        # message that naturally parses to "family=sauce, no subfamily yet"
+        # - every sauce rule here requires its own qualifying compound.
+        from app.query_constraints import StructuredProductQuery
+        query = StructuredProductQuery(raw_query="", family="sauce", excluded_subfamily="fish_sauce")
+        result = retrieve_products(query, INDEX)
+        assert "FL_S4" not in result.valid_match_ids  # the excluded fish-sauce product
+        assert {"FL_S1", "FL_S2", "FL_S3", "FL_S5"} <= set(result.valid_match_ids)
+
+    def test_positive_control_named_brand_remains_eligible(self):
+        # Section 19 of the originating mandate: exclusion support must not
+        # globally suppress a brand the customer actually asked FOR.
+        query, result = retrieve("chcem kikkoman sojova omacka")
+        assert query.excluded_brand is None
+        assert query.brand == "kikkoman"
+        assert "FL_S1" in result.exact_match_ids
+
+    def test_negative_control_explicit_exclusion_enforced(self):
+        # Section 20 - the mandate's own canonical negative control.
+        query, result = retrieve("chcem sojova omacka, ale nie od kikkoman")
+        offending_ids = {"FL_S1", "FL_S3"}
+        assert not (offending_ids & set(result.valid_match_ids))
+        assert not (offending_ids & set(result.exact_match_ids))
+        assert not (offending_ids & set(result.nearest_match_ids))
+
+    def test_polite_phrasing_nechcem_variant(self):
+        query, _ = retrieve("nechcem kikkoman, chcem inu sojova omacka")
+        assert query.excluded_brand == "kikkoman"
+
+    def test_substring_safety_does_not_exclude_unrelated_products(self):
+        # Section 24 - excluding "kikkoman" must not touch products whose
+        # title/brand does not contain that brand at all.
+        _, result = retrieve("chcem cervena kari pasta, ale nie od kikkoman")
+        assert "FL_C1" in result.valid_match_ids
+
+    def test_ambiguous_marker_with_no_known_entity_fails_open(self):
+        # Section 33 - "nechcem" followed by something that resolves to no
+        # known brand/subfamily must do nothing, never guess/over-filter.
+        query, result = retrieve("chcem sojova omacka, ale nechcem nieco prilis slane")
+        assert query.excluded_brand is None
+        assert query.excluded_subfamily is None
+        assert "FL_S1" in result.valid_match_ids
+
+    def test_exclusion_removing_the_only_candidate_does_not_reintroduce_it(self):
+        # Section 38 - an explicit exclusion outranks convenience fallback;
+        # AROY-D is this fixture's only coconut-water brand.
+        query, result = retrieve("chcem kokosovu vodu, ale nie od aroy-d")
+        assert query.excluded_brand == "aroy-d"
+        assert "FL_CW" not in result.valid_match_ids
+        assert "FL_CW" not in result.exact_match_ids
+        assert "FL_CW" not in result.nearest_match_ids
+
+    def test_exclusion_survives_narrowing_followup(self):
+        # merge_constraints() must carry excluded_brand/excluded_subfamily
+        # forward on a same-session narrowing follow-up, or a customer who
+        # excludes a brand and then only adds a size would see it reappear.
+        from app.query_constraints import merge_constraints
+        base = parse_structured_query("chcem sojova omacka, ale nie od kikkoman", known_brands=INDEX.known_brands)
+        followup = parse_structured_query("500 ml", known_brands=INDEX.known_brands)
+        merged = merge_constraints(base, followup)
+        assert merged.excluded_brand == "kikkoman"
+        result = retrieve_products(merged, INDEX)
+        assert "FL_S1" not in result.valid_match_ids
+
+
 class TestDietaryConstraints:
     def test_gluten_free_soy_sauce_excludes_ungrounded_products(self):
         _, result = retrieve("bezlepkova sojova omacka")

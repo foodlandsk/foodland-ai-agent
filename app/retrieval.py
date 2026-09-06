@@ -61,6 +61,15 @@ class StructuredProductIndex:
     size_index: dict[tuple[str, float], set[str]] = field(default_factory=dict)
     confidence_by_id: dict[str, str] = field(default_factory=dict)
     known_brands: frozenset[str] = frozenset()
+    # V2.20d - normalized title text per id, used ONLY for excluded_brand
+    # enforcement (StructuredProductIndex.brand_index is built from the
+    # catalog's own `brand` field, which for this catalog is the
+    # manufacturer/importer name, not the marketing name printed on the
+    # title - see app.query_constraints._looks_like_named_entity). Every
+    # other index above stays a pure id-set inverted index; this one alone
+    # carries text because there is no reliable structured field to index
+    # a marketing brand name by.
+    title_search_form_by_id: dict[str, str] = field(default_factory=dict)
 
 
 def build_structured_index(
@@ -95,6 +104,7 @@ def build_structured_index(
             size_base = _size_to_base(normalized.package_size)
             if size_base is not None:
                 index.size_index.setdefault(size_base, set()).add(product_id)
+            index.title_search_form_by_id[product_id] = normalized.title_search_form
 
     index.known_brands = frozenset(brands)
     return index
@@ -212,6 +222,29 @@ def retrieve_products(
         for facet in query.dietary_facets:
             candidates &= index.dietary_index.get(facet, set())
             applied.append(f"dietary={facet}")
+
+    # V2.20d - explicit customer exclusions ("nechcem sriracha", "ale nie
+    # od AROY-D"). Subtracted here, upstream of valid_ids, so an excluded
+    # product can never re-enter via exact_match_ids/nearest_match_ids/the
+    # relaxation fallback below either - all three are derived from
+    # valid_ids (Section 38/39 of the originating mandate: a filter only in
+    # one downstream tier is not enough if another tier can reintroduce it).
+    excluded_brand = getattr(query, "excluded_brand", None)
+    if excluded_brand:
+        candidates -= index.brand_index.get(excluded_brand, set())
+        # Structured brand_index membership alone is not reliable enough
+        # here (see StructuredProductIndex.title_search_form_by_id's own
+        # docstring) - also drop any remaining candidate whose own title
+        # literally names the excluded brand.
+        candidates = {
+            pid for pid in candidates
+            if excluded_brand not in index.title_search_form_by_id.get(pid, "")
+        }
+        applied.append(f"excluded_brand={excluded_brand}")
+    excluded_subfamily = getattr(query, "excluded_subfamily", None)
+    if excluded_subfamily:
+        candidates -= index.subfamily_index.get(excluded_subfamily, set())
+        applied.append(f"excluded_subfamily={excluded_subfamily}")
 
     valid_ids = candidates
     result.valid_match_ids = sorted(valid_ids)
