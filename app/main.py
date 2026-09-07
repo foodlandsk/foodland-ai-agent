@@ -5227,7 +5227,17 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         # search - same "explicit signal beats broad category word"
         # principle as the brand/kitchenware guards below.
         related_subject = None
-    if related_subject and related_subject.endswith("_kuchyna") and any(
+    if related_subject and (
+        related_subject.endswith("_kuchyna")
+        # V2.20g fix (product_search_0008): "sushi" is not a
+        # "_kuchyna"-suffixed cuisine subject, but its alias match
+        # (RELATED_SUBJECT_ALIASES["sushi"]) is the exact same broad
+        # substring hijack the *_kuchyna guard below already exists to
+        # stop - "tanier na susi" (sushi plate) was losing to the
+        # generic sushi food cross-sell instead of reaching the real
+        # sushi tableware in the catalog.
+        or related_subject == "sushi"
+    ) and any(
         marker in normalize(routing_message)
         for marker in ("noz", "nozice", "palick", "tanier", "misk", "misa", "cajnik", "salk", "lyzic", "podlozk", "sekaci", "brusny")
     ):

@@ -1144,6 +1144,52 @@ class TestSearchProducts:
         assert "nori" not in titles[0]
         assert "ocot" not in titles[0]
 
+    def test_sushi_kitchenware_term_overrides_sushi_related_subject_routing(self):
+        # V2.20g (product_search_0008): "aky tanier na susi mate" (what
+        # sushi plate do you have) got the generic sushi related_products
+        # cross-sell (nori/wasabi/ginger/vinegar/soy sauce) instead of the
+        # real sushi tableware in the catalog (Japonsky Susi tanier...,
+        # Japonska Miska na susi..., Japonsky noz SATAKE Sushi...) - the
+        # existing kitchenware override (see
+        # test_kitchenware_term_overrides_cuisine_related_subject_routing)
+        # only neutralizes related_subject for *_kuchyna cuisine subjects,
+        # never for "sushi" itself, even though "sushi"'s alias match is
+        # the exact same broad substring-hijack mechanism.
+        for index, (message, expected_word) in enumerate((
+            ("aky tanier na susi mate", "tanier"),
+            ("aky tanier na sushi mate", "tanier"),
+            ("mate misku na sushi", "misk"),
+            ("aky noz na sushi mate", "noz"),
+        )):
+            # Distinct client per query - session memory from one query in
+            # this loop must not bleed into the next query's ranking.
+            request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host=f"127.0.0.{index + 1}"))
+            assert main.detect_related_subject(message) == "sushi", message  # sanity: alias still matches
+            result = main.chat(main.ChatRequest(message=message, limit=6), request)
+            titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
+            assert result.get("intent") == "product_search", message
+            assert titles, message
+            assert expected_word in titles[0], message
+
+    def test_sushi_kitchenware_override_preserves_genuine_sushi_food_requests(self):
+        # V2.20g control: the override must require BOTH the kitchenware
+        # term AND the sushi subject - a genuine sushi food/ingredient
+        # question (no kitchenware word) must keep its existing behavior.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+
+        result = main.chat(main.ChatRequest(message="co sa hodi k sushi?", limit=6), request)
+        assert result.get("intent") == "related_products"
+        titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
+        assert any("wasabi" in t or "nori" in t for t in titles)
+
+        result = main.chat(main.ChatRequest(message="aku ryzu na sushi mate?", limit=6), request)
+        titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
+        assert titles and "ryz" in titles[0]
+
+        result = main.chat(main.ChatRequest(message="mate wasabi na sushi?", limit=6), request)
+        titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
+        assert titles and "wasabi" in titles[0]
+
     def test_gochujang_found(self, products):
         results = search_products(products, "gochujang", 4)
         assert titles_contain(results, "gochujang", "Gochujang")
