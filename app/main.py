@@ -8138,6 +8138,12 @@ def wants_recipe_products(message: str) -> bool:
             "produkt",
             "kupit",
             "nakup",
+            # V2.20l fix: "co mi z toho predavate?" (what of it do you
+            # sell?) is a genuine shopping-list question about a named
+            # recipe, but had no matching marker at all - the stem
+            # covers predavam/predavas/predava/predavame/predavate/
+            # predavaju via substring (Slovak "predavat" - to sell).
+            "predava",
             "nakupny zoznam",
             "co potrebujem",
             "co treba",

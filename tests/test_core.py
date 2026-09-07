@@ -1110,6 +1110,18 @@ class TestSearchProducts:
         assert result.get("intent") == "recipe"
         assert not result.get("products")
 
+    def test_pad_thai_sell_question_returns_products_end_to_end(self):
+        # V2.20 recipe_to_products_0002: "robim pad thai, co mi z toho
+        # predavate?" had no recognized shopping-list marker at all and
+        # fell through to a bare RECIPE_ONLY answer (zero products)
+        # instead of the expected ingredient list (rice noodles etc.).
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="robim pad thai, co mi z toho predavate", limit=8), request)
+        assert result.get("intent") == "recipe_to_products"
+        titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
+        assert titles
+        assert any("rezance" in t for t in titles)
+
     def test_best_sushi_rice_chat_prioritizes_rice(self):
         request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
         result = main.chat(main.ChatRequest(message="Najlepsia sushi ryza", limit=5), request)
@@ -1805,6 +1817,14 @@ class TestIntentDetection:
         assert not main.wants_recipe_products("recept na pho bo")
         assert main.wants_recipe_products("recept na pho bo a produkty")
         assert main.wants_recipe_products("co potrebujem k receptu pho bo")
+
+    def test_recipe_product_intent_recognizes_sell_stem(self):
+        # V2.20 recipe_to_products_0002: "co mi z toho predavate?" (what
+        # of it do you sell?) is a genuine shopping-list question about a
+        # named recipe, but had no matching marker at all - fell through
+        # to a bare RECIPE_ONLY answer with zero products instead.
+        assert main.wants_recipe_products("robim pad thai, co mi z toho predavate")
+        assert main.wants_recipe_products("co predavate k tomuto receptu")
 
     def test_pho_recipe_products_prioritize_spices_then_noodles(self, products):
         matches = main.related_products_for_subject(products, main.knowledge, "pho", 8)
