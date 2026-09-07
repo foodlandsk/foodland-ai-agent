@@ -1122,6 +1122,17 @@ class TestSearchProducts:
         assert titles
         assert any("rezance" in t for t in titles)
 
+    def test_english_sushi_shopping_question_includes_sushi_rice_end_to_end(self):
+        # V2.20 recipe_to_products_0005: the English phrasing never
+        # reached sushi_shopping_core_products() at all, so sushi rice -
+        # the one ingredient that function exists specifically to
+        # guarantee - never appeared in the answer.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="What do I need from Foodland to make sushi at home?", limit=8), request)
+        titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
+        assert titles
+        assert any(("susi ryza" in t or "sushi ryza" in t) for t in titles)
+
     def test_best_sushi_rice_chat_prioritizes_rice(self):
         request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
         result = main.chat(main.ChatRequest(message="Najlepsia sushi ryza", limit=5), request)
@@ -4628,6 +4639,20 @@ class TestV2_19b_ShoppingListCoBoundary:
         # must keep matching unchanged.
         assert main.wants_shopping_list("aké suroviny mám kúpiť") is True
         assert main.wants_shopping_list("pridaj ingrediencie do kosika") is True
+
+    def test_english_shopping_list_question_recognized(self):
+        # V2.20 recipe_to_products_0005: SHOPPING_LIST_MARKERS was
+        # entirely Slovak, so "What do I need from Foodland to make
+        # sushi at home?" never routed to the dedicated
+        # sushi_shopping_core_products() (which already correctly
+        # includes sushi rice) - it fell through to the generic
+        # related_products_for_subject() cross-sell path instead, which
+        # deliberately excludes the subject's own core ingredient.
+        assert main.wants_shopping_list("What do I need from Foodland to make sushi at home?") is True
+        assert main.wants_shopping_list("What do you need to make pad thai?") is True
+
+    def test_plain_english_product_question_unaffected(self):
+        assert main.wants_shopping_list("what soy sauce do you recommend for sushi") is False
 
     def test_canonical_and_word_order_variant_now_agree(self):
         canonical = main.wants_shopping_list("potrebujem niečo bez lepku k sushi")

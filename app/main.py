@@ -2144,6 +2144,16 @@ SHOPPING_LIST_MARKERS = (
     "do košíka",
     "suroviny",
     "ingrediencie",
+    # V2.20m fix: SHOPPING_LIST_MARKERS was entirely Slovak, so an
+    # English shopping-list question ("What do I need from Foodland
+    # to make sushi at home?") never routed to the dedicated
+    # sushi_shopping_core_products()/tom_yum_.../recipe_shopping_...
+    # functions at all (V2.20 recipe_to_products_0005) - those
+    # already correctly include the recipe's core ingredient (e.g.
+    # sushi rice), unlike the generic cross-sell related_products_
+    # for_subject() path it fell through to instead.
+    "what do i need",
+    "what do you need",
 )
 
 MISSING_INGREDIENTS_BY_SUBJECT = {
