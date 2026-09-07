@@ -5025,7 +5025,18 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     # the ordinal-reference clarification above, not a new pattern.
     _orphaned_followup = _recipe_followup_result is None and not recipe_subject and (
         _looks_like_recipe_followup(chat_request.message)
-        or (_detect_price_direction(chat_request.message) is not None and not memory.get("active_result_set_id"))
+        or (
+            _detect_price_direction(chat_request.message) is not None
+            and not memory.get("active_result_set_id")
+            # V2.20p fix (budget_0002): a price-direction cue ("lacnejsiu
+            # alternativu") is only actually orphaned when the CURRENT
+            # message names no product/category of its own - "Potrebujem
+            # lacnejsiu alternativu ako Lee Kum Kee sojova omacka" already
+            # names the subject (sojova_omacka) right there, so it must not
+            # be treated as having nothing to anchor to.
+            and not detect_related_subject(routing_message)
+            and not detect_replacement_subject(routing_message)
+        )
     )
     if _orphaned_followup:
         updated_profile = update_user_memory(profile_key, chat_request.message, "product_search", [], [])

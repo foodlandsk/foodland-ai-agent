@@ -1190,6 +1190,35 @@ class TestSearchProducts:
         titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
         assert titles and "wasabi" in titles[0]
 
+    def test_price_direction_with_named_subject_is_not_orphaned(self):
+        # V2.20p (budget_0002): "Potrebujem lacnejsiu alternativu ako Lee
+        # Kum Kee sojova omacka" (I need a cheaper alternative than Lee Kum
+        # Kee soy sauce) got the orphaned-followup bailout ("I don't have
+        # an active shopping list or search to refer that to - what are you
+        # looking for?") because the guard only checked for an ACTIVE
+        # result set in memory, never whether the CURRENT message itself
+        # already names a product/category - which this one clearly does.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(
+            main.ChatRequest(message="Potrebujem lacnejsiu alternativu ako Lee Kum Kee sojova omacka.", limit=6),
+            request,
+        )
+        titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
+        assert titles
+        assert all(("sojova omacka" in t or "sojov" in t) for t in titles)
+        assert "nemam aktivny" not in nrm(result.get("answer", ""))
+
+    def test_price_direction_without_named_subject_still_orphaned(self):
+        # V2.20p control: a genuinely bare price-direction follow-up with
+        # NO named product/category and no active result set must keep the
+        # existing honest "what are you looking for?" bailout - the fix
+        # must not swallow real orphaned follow-ups.
+        for index, message in enumerate(("nieco lacnejsie", "mate nieco lacnejsie ako toto?", "chcem drahsiu variantu")):
+            request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host=f"127.0.0.{index + 1}"))
+            result = main.chat(main.ChatRequest(message=message, limit=6), request)
+            assert result.get("products") == [], message
+            assert "nemam aktivny" in nrm(result.get("answer", "")), message
+
     def test_gochujang_found(self, products):
         results = search_products(products, "gochujang", 4)
         assert titles_contain(results, "gochujang", "Gochujang")
