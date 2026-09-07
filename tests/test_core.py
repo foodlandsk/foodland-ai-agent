@@ -1081,6 +1081,25 @@ class TestSearchProducts:
         result = main.chat(main.ChatRequest(message="neviem si vybrat medzi kimchi a pho", limit=8), request)
         assert result.get("intent") != "product_advice"
 
+    def test_category_discovery_not_hijacked_by_vs_substring(self):
+        # V2.20 category_discovery_0002: "vsetko" (everything) contains
+        # "vs" as a raw substring, which app.comparison.looks_like_
+        # comparison_request() used to match via marker.strip() -
+        # forcing a bare cuisine-category question into the generic
+        # "which two products" comparison clarification.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="Co vsetko mate z korejskej kuchyne?", limit=8), request)
+        assert result.get("intent") != "product_comparison"
+        assert result.get("products")
+
+    def test_login_method_faq_not_hijacked_by_bare_alebo(self):
+        # V2.20 faq_0010: "alebo" (or) is an everyday conjunction - a
+        # full sentence merely offering two non-product alternatives
+        # (login methods) must not be forced into comparison mode.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="Mozem sa na Foodlande prihlasit cez Google alebo Facebook?", limit=8), request)
+        assert result.get("intent") != "product_comparison"
+
     def test_best_sushi_rice_chat_prioritizes_rice(self):
         request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
         result = main.chat(main.ChatRequest(message="Najlepsia sushi ryza", limit=5), request)

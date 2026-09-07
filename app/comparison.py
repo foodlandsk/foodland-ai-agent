@@ -207,10 +207,24 @@ def looks_like_comparison_request(message: str) -> bool:
     before this exclusion was added. " vs "/"verzus"/" alebo " and the
     "porovnaj" (compare) verb stem are unambiguous enough to keep as
     causal triggers; "rozdiel" is not."""
-    _CAUSAL_COMPARISON_MARKERS = (" vs ", "verzus", " alebo ")
+    _CAUSAL_COMPARISON_MARKERS = (" vs ", "verzus")
+    # Bare word-boundary length, e.g. a genuine two-item request like
+    # "Kikkoman alebo Yamasa?" is short (3 tokens); a real regression
+    # found during V2.20 characterization (faq_0010) showed "alebo" (a
+    # common, everyday conjunction - "cez Google alebo Facebook?", "caj
+    # alebo kavu") firing as an unconditional causal trigger on ANY
+    # sentence that merely offers two non-product alternatives, not just
+    # bare comparison phrasing. Downgraded to require the WHOLE message
+    # be short enough to plausibly BE that bare phrase, same principle
+    # that already excludes "rozdiel" above (a broad word needs
+    # corroborating shape, not just presence) - "vs"/"verzus"/"porovnaj"
+    # remain unconditional, they are unambiguous in any sentence length.
+    _BARE_ALEBO_MAX_TOKENS = 7
 
     normalized_for_check = normalize_for_check(message)
-    has_marker = any(marker.strip() in normalized_for_check for marker in _CAUSAL_COMPARISON_MARKERS) or "porovna" in normalized_for_check
+    has_marker = any(marker in normalized_for_check for marker in _CAUSAL_COMPARISON_MARKERS) or "porovna" in normalized_for_check
+    if not has_marker and " alebo " in normalized_for_check and len(normalized_for_check.split()) <= _BARE_ALEBO_MAX_TOKENS:
+        has_marker = True
     return has_marker or len(_extract_ordinal_indices(message)) >= 2
 
 

@@ -325,6 +325,29 @@ class TestLooksLikeComparisonRequest:
     def test_plain_product_search_is_not_comparison(self):
         assert not cmp.looks_like_comparison_request("chcem kupit sojovu omacku")
 
+    def test_vs_does_not_match_inside_unrelated_word(self):
+        # V2.20 category_discovery_0002: " vs " was matched via
+        # marker.strip() -> bare "vs", a raw substring inside ordinary
+        # words like "vsetko" (everything) - "vs" must only ever count
+        # word-bounded, the same guarantee " vs "'s own padding already
+        # implied before .strip() silently discarded it.
+        assert not cmp.looks_like_comparison_request("Co vsetko mate z korejskej kuchyne?")
+
+    def test_bare_vs_word_boundary_still_works(self):
+        assert cmp.looks_like_comparison_request("Kikkoman vs Yamasa")
+
+    def test_alebo_in_a_long_non_product_sentence_is_not_comparison(self):
+        # V2.20 faq_0010: "alebo" (or) is an everyday conjunction used
+        # constantly for non-product reasons - treating it as an
+        # unconditional causal trigger the same way " vs "/"verzus" are
+        # misfired on any sentence merely offering two alternatives.
+        assert not cmp.looks_like_comparison_request("Mozem sa na Foodlande prihlasit cez Google alebo Facebook?")
+
+    def test_alebo_bare_two_item_phrase_still_works(self):
+        # Positive control - the original, already-locked-in bare
+        # cross-category brand example must remain unaffected.
+        assert cmp.looks_like_comparison_request("Kikkoman alebo Yamasa?")
+
 
 class TestExecuteComparisonHandler:
     """app.workflow_executor.execute_comparison() - the customer-facing
