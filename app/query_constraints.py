@@ -46,6 +46,13 @@ _GENERIC_FAMILY_ONLY_RULE_IDS = frozenset({"plain_rice"})
 # FAMILY_DEFINITIONS (product-title-oriented) wasn't typed verbatim.
 _RICE_ROOT_TOKENS = frozenset({"ryza", "ryzu", "ryze", "ryzou", "ryzi"})
 _SUSHI_TOKENS = frozenset({"sushi", "susi"})
+# A query naming rice vinegar ("ryzovym octom do sushi ryze") also
+# satisfies the rice+sushi co-occurrence above, but the customer is
+# asking about vinegar, not rice - "do sushi ryze" only describes what
+# the vinegar is FOR. When a vinegar token is present, defer to the
+# ordinary title_phrases loop below (rice_vinegar's own compound phrases)
+# instead of shortcutting straight to sushi_rice.
+_VINEGAR_TOKENS = frozenset({"ocot", "octu", "octom", "octe", "octov"})
 
 # Source tiers for a single constraint (Section 5). Do not treat a weak
 # inference like an explicit customer requirement.
@@ -195,7 +202,7 @@ def _match_taxonomy_rule(normalized_query: str) -> FamilyRule | None:
     runs against a product title - here against query text. A query never
     has a "category", so every match is inherently the title-only path."""
     query_tokens = raw_tokens(normalized_query)
-    if (query_tokens & _RICE_ROOT_TOKENS) and (query_tokens & _SUSHI_TOKENS):
+    if (query_tokens & _RICE_ROOT_TOKENS) and (query_tokens & _SUSHI_TOKENS) and not (query_tokens & _VINEGAR_TOKENS):
         sushi_rule = FAMILY_DEFINITIONS_BY_ID.get("sushi_rice")
         if sushi_rule is not None:
             return sushi_rule

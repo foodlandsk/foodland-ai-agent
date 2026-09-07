@@ -265,7 +265,13 @@ FAMILY_DEFINITIONS: list[FamilyRule] = [
         family="vinegar",
         subfamily="rice_vinegar",
         confidence="HIGH",
-        title_phrases=("ryzovy ocot",),
+        # Genitive/instrumental case forms ("ryzoveho octu"/"ryzovym
+        # octom") were already curated for the shadow-only
+        # classify_rice_query() phrase table above but never carried over
+        # to this live rule, so "namiesto ryzoveho octu..."/"medzi
+        # ryzovym octom a..." never matched rice_vinegar at all - a
+        # declension gap, not a taxonomy design choice.
+        title_phrases=("ryzovy ocot", "ryzoveho octu", "ryzovym octom"),
         attributes=(("source", "rice"),),
         display_label="Ryžový ocot",
     ),

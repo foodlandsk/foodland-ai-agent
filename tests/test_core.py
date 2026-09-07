@@ -1040,6 +1040,25 @@ class TestSearchProducts:
         results = search_products(products, "sushi ryza", 6)
         assert titles_contain(results, "susi ryza", "sushi ryza", "susi ryz")
 
+    def test_rice_vinegar_genitive_and_instrumental_case_end_to_end(self):
+        # Rice-vinegar declension gap: the live taxonomy rule only had the
+        # nominative "ryzovy ocot" phrase, so genitive/instrumental
+        # customer wording never resolved to vinegar at all.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+
+        genitive = main.chat(main.ChatRequest(message="Namiesto ryzoveho octu mozem pouzit co?", limit=8), request)
+        genitive_titles = [nrm(p.get("title", "")) for p in genitive.get("products", [])]
+        assert genitive_titles
+        assert any("ocot" in t for t in genitive_titles)
+
+        # Instrumental case, plus "sushi ryze" naming what the vinegar is
+        # FOR - must not be hijacked into sushi rice results instead.
+        instrumental = main.chat(main.ChatRequest(message="Neviem si vybrat medzi ryzovym octom a bielym octom do sushi ryze.", limit=8), request)
+        instrumental_titles = [nrm(p.get("title", "")) for p in instrumental.get("products", [])]
+        assert instrumental_titles
+        assert any("ocot" in t for t in instrumental_titles)
+        assert not any("susi ryza" in t or "sushi ryza" in t for t in instrumental_titles)
+
     def test_best_sushi_rice_chat_prioritizes_rice(self):
         request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
         result = main.chat(main.ChatRequest(message="Najlepsia sushi ryza", limit=5), request)

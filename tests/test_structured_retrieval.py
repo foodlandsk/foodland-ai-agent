@@ -242,6 +242,59 @@ class TestCollisionProtection:
         assert "FL_M1" in result.valid_match_ids
 
 
+class TestRiceVinegarDeclension:
+    """Rice-vinegar declension gap (V2.20b product_advice_0003/
+    replacement_0005): the live rice_vinegar FamilyRule only had the
+    nominative "ryzovy ocot" title_phrase, so genitive ("ryzoveho octu")
+    and instrumental ("ryzovym octom") customer phrasing never matched it
+    at all - either falling through to LEGACY_FALLBACK (no family) or,
+    when the same message also mentioned "sushi ryze" as the item the
+    vinegar is FOR, being hijacked by _match_taxonomy_rule's unconditional
+    rice+sushi co-occurrence shortcut into sushi_rice instead."""
+
+    def test_genitive_case_resolves_to_vinegar(self):
+        # Mirrors replacement_0005: "Namiesto ryzoveho octu mozem pouzit co?"
+        query, result = retrieve("namiesto ryzoveho octu mozem pouzit co")
+        assert query.family == "vinegar"
+        assert query.subfamily == "rice_vinegar"
+        assert "FL_RV" in result.valid_match_ids
+        assert "FL_R1" not in result.valid_match_ids
+
+    def test_instrumental_case_resolves_to_vinegar(self):
+        query, result = retrieve("chcem sa rozhodnut medzi ryzovym octom a bielym octom")
+        assert query.family == "vinegar"
+        assert query.subfamily == "rice_vinegar"
+        assert "FL_RV" in result.valid_match_ids
+
+    def test_instrumental_case_with_sushi_mention_still_resolves_to_vinegar(self):
+        # Mirrors product_advice_0003 exactly: mentioning "sushi ryze" as
+        # what the vinegar is FOR must not hijack the query into sushi_rice.
+        query, result = retrieve("neviem si vybrat medzi ryzovym octom a bielym octom do sushi ryze")
+        assert query.family == "vinegar"
+        assert query.subfamily == "rice_vinegar"
+        assert "FL_RV" in result.valid_match_ids
+        assert "FL_R6" not in result.valid_match_ids
+
+    def test_bare_sushi_rice_shortcut_still_works_without_vinegar_mention(self):
+        # Positive control - the co-occurrence shortcut itself must still
+        # fire normally when there is no competing vinegar token at all
+        # (product membership under this concept_id is a separate,
+        # pre-existing, out-of-scope limitation - see V2.20d evidence:
+        # FL_R6's own taxonomy classification is subfamily=plain_rice,
+        # not sushi_rice, so subfamily_index has no "sushi_rice" entries
+        # at all; this test only protects the QUERY-side resolution).
+        query, result = retrieve("chcem ryzu na sushi")
+        assert query.family == "rice"
+        assert query.subfamily == "sushi_rice"
+        assert result.retrieval_mode != LEGACY_FALLBACK
+
+    def test_nominative_case_still_resolves_to_vinegar(self):
+        # Baseline - the original, already-working phrasing is unaffected.
+        query, result = retrieve("ryzovy ocot")
+        assert query.family == "vinegar"
+        assert "FL_RV" in result.valid_match_ids
+
+
 class TestSizeConstraints:
     def test_kg_and_gram_equivalence(self):
         query, result = retrieve("jazminova ryza 5000 g")
