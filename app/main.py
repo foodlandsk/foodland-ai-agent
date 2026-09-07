@@ -4653,7 +4653,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         # never reach this branch (excluded by the check above).
         if _use_case_advice_has_resolvable_role(contextual_message):
             recipe_subject = None
-    needs_article_context = is_article_info_intent(chat_request.message)
+    needs_article_context = is_article_info_intent(chat_request.message) or is_product_decision_help_request(chat_request.message)
     explicit_article_request = is_explicit_article_request(chat_request.message)
     query_language = detect_query_language(chat_request.message)
     knowledge_sections = knowledge_sections_for_intent(
@@ -5252,7 +5252,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         else None
     )
     product_advice_context = (
-        is_article_info_intent(chat_request.message)
+        (is_article_info_intent(chat_request.message) or is_product_decision_help_request(chat_request.message))
         and not article_product_subject
         and not already_have_subject
         and not special_subject
@@ -9477,7 +9477,11 @@ def detect_special_product_subject(message: str) -> str | None:
     ):
         return "kimchi_product"
     if ("sushi ryz" in normalized_message or "susi ryz" in normalized_message) and not any(
-        marker in normalized_message for marker in ("bez lepku", "bezlepk", "celiak", "dopln")
+        # "ryzovym octom... do sushi ryze" names vinegar FOR sushi rice,
+        # not sushi rice itself - a vinegar mention must not be swept
+        # into this shortcut (same declension-aware guard as V2.20h's
+        # app.query_constraints._match_taxonomy_rule fix).
+        marker in normalized_message for marker in ("bez lepku", "bezlepk", "celiak", "dopln", "ryzovy ocot", "ryzoveho octu", "ryzovym octom")
     ):
         return "sushi_rice"
     if (is_gluten_free_search(normalized_message) or "celiak" in normalized_message) and bool(
@@ -9490,7 +9494,7 @@ def detect_special_product_subject(message: str) -> str | None:
         return "rice_seasoning"
     if "ryz" in normalized_message and not any(
         marker in normalized_message
-        for marker in ("ryzovar", "hrniec", "korenie", "muka", "ocot", "rezance", "sushi", "susi", "papier", "nudle")
+        for marker in ("ryzovar", "hrniec", "korenie", "muka", "ocot", "ryzoveho octu", "ryzovym octom", "rezance", "sushi", "susi", "papier", "nudle")
     ):
         return "plain_rice"
     if "sushi" in normalized_message and "dopln" in normalized_message and any(
@@ -9716,6 +9720,21 @@ def is_article_info_intent(message: str) -> bool:
             "benefits",
         )
     )
+
+
+# A "help me choose" decision request ("neviem si vybrat medzi X a Y") is
+# a different framing than is_article_info_intent()'s explain/describe
+# questions, but shares the same downstream product_advice intent - a
+# separate, narrowly-scoped helper instead of broadening
+# is_article_info_intent() itself (which also gates article_product_
+# subject/needs_article_context, unrelated concerns this should not
+# touch).
+_PRODUCT_DECISION_HELP_MARKERS = ("neviem si vybrat", "neviem sa rozhodnut", "ako sa rozhodnut", "ktory je lepsi", "ktora je lepsia", "ktore je lepsie")
+
+
+def is_product_decision_help_request(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(marker in normalized_message for marker in _PRODUCT_DECISION_HELP_MARKERS)
 
 
 def detect_article_product_subject(message: str, articles: list[dict] | None = None) -> str | None:

@@ -1059,6 +1059,28 @@ class TestSearchProducts:
         assert any("ocot" in t for t in instrumental_titles)
         assert not any("susi ryza" in t or "sushi ryza" in t for t in instrumental_titles)
 
+    def test_rice_vinegar_decision_help_resolves_to_product_advice(self):
+        # product_advice_0003's intent-classification gap: is_article_info_
+        # intent() (the sole gate for product_advice_context AND for
+        # whether Products_AI knowledge even gets searched at all) never
+        # recognized "neviem si vybrat medzi X a Y" (decision-help framing)
+        # as distinct from is_article_info_intent()'s explain/describe
+        # questions - is_product_decision_help_request() closes that gap.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="Neviem si vybrat medzi ryzovym octom a bielym octom do sushi ryze.", limit=8), request)
+        assert result.get("intent") == "product_advice"
+        titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
+        assert any("ocot" in t for t in titles)
+
+    def test_decision_help_with_special_subject_still_defers(self):
+        # Positive control - a decision-help question about a dish that
+        # DOES have a genuine special_subject match (kimchi) must not be
+        # forced into product_advice; existing special_subject precedence
+        # is unaffected by this fix.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="neviem si vybrat medzi kimchi a pho", limit=8), request)
+        assert result.get("intent") != "product_advice"
+
     def test_best_sushi_rice_chat_prioritizes_rice(self):
         request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
         result = main.chat(main.ChatRequest(message="Najlepsia sushi ryza", limit=5), request)
@@ -2223,6 +2245,22 @@ class TestIntentDetection:
         # to lie inside it - a different, genuinely positive alias
         # mentioned elsewhere in the same message is unaffected.
         assert main.detect_related_subject("chcem korejsku pastu, ale nie gochujang") == "korejska_kuchyna"
+
+    def test_special_subject_sushi_rice_defers_to_none_when_vinegar_mentioned(self):
+        # product_advice_0003's mechanism: "...ryzovym octom... do sushi
+        # ryze" names vinegar FOR sushi rice, not sushi rice itself - the
+        # legacy special_subject detector's sushi_rice shortcut must not
+        # fire (nor fall through to plain_rice via the bare "ocot"
+        # exclusion missing declined forms).
+        assert main.detect_special_product_subject("neviem si vybrat medzi ryzovym octom a bielym octom do sushi ryze") is None
+
+    def test_special_subject_sushi_rice_still_works_without_vinegar(self):
+        assert main.detect_special_product_subject("chcem sushi ryzu") == "sushi_rice"
+
+    def test_product_decision_help_request_detected(self):
+        assert main.is_product_decision_help_request("neviem si vybrat medzi X a Y")
+        assert main.is_product_decision_help_request("neviem sa rozhodnut")
+        assert not main.is_product_decision_help_request("chcem sojovu omacku")
 
     def test_special_gluten_free_sushi(self):
         subj = main.detect_special_product_subject("bezlepkove sushi")
