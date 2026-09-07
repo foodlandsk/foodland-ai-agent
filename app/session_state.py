@@ -495,6 +495,11 @@ _CONTACT_TOPIC_PHRASE_MARKERS = (
     "aky mate telefon", "vas telefon", "telefonne cislo", "telefonny kontakt",
     "vas email", "mate email", "vasa emailova adresa", "vas e-mail",
     "dajte mi kontakt", "posli mi kontakt", "chcem kontakt", "davate kontakt",
+    # V2.20n fix: "Aky je telefonicky kontakt na zakaznicku podporu?" used
+    # neither the "telefonny kontakt" nor "vas telefon" phrasing above -
+    # "telefonicky kontakt" (adjective form) and "zakaznicku podporu" are
+    # distinct real phrasings for the same ask (V2.20 faq_0015).
+    "telefonicky kontakt", "zakaznicku podporu", "zakaznickej podpory", "zakaznicka podpora",
 )
 
 

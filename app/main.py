@@ -2125,6 +2125,11 @@ FAQ_INTENT_MARKERS = (
     "dodan",
     "pockanie",
     "odber",
+    # V2.20n fix: "prihlasit" (login/Google-Facebook FAQ, faq_0010) and
+    # "nevidim" (sold-out/not-visible-in-shop FAQ, faq_0012) - both
+    # confirmed 0 blast-radius hits against data/products.json.
+    "prihlas",
+    "nevidim",
 )
 
 SHOPPING_LIST_MARKERS = (
@@ -7830,7 +7835,14 @@ def is_no_result_event(event: dict) -> bool:
 
 def is_faq_intent(message: str) -> bool:
     normalized_message = normalize(message)
-    return any(marker in normalized_message for marker in FAQ_INTENT_MARKERS)
+    if any(marker in normalized_message for marker in FAQ_INTENT_MARKERS):
+        return True
+    # V2.20n fix: bare "pochadz" has 12 blast-radius hits in
+    # data/products.json (product-origin descriptions), so it is not a
+    # flat FAQ_INTENT_MARKERS entry - only the "odkial"+"pochadz"
+    # conjunction (the store-sourcing FAQ question, V2.20 faq_0011) is
+    # narrow enough to be safe.
+    return "odkial" in normalized_message and "pochadz" in normalized_message
 
 
 _ADDRESS_PATTERN = re.compile(
@@ -8061,6 +8073,10 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         validity_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("platia", "kredity"))
         if validity_answer:
             return validity_answer
+    if "kredit" in normalized_message and any(marker in normalized_message for marker in ("od akej", "od kolkej", "minimalna", "min. suma", "min suma")):
+        threshold_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("vysky", "kredity"))
+        if threshold_answer:
+            return threshold_answer
 
     current_category = ""
     for record in loaded_knowledge.get("sections", {}).get("FAQ", []):

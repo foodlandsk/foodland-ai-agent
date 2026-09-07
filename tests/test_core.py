@@ -3467,6 +3467,53 @@ class TestFAQ:
         assert answer
         assert "predajni" in main.normalize(answer)
 
+    def test_faq_credit_threshold_beats_generic_order_process(self, knowledge):
+        # V2.20n fix (faq_0007): "Od akej sumy nakupu mozem pouzit kredity?"
+        # was correctly classified intent==faq ("kredit" marker), but no
+        # dedicated shortcut existed for this sub-question, so it fell
+        # through to the generic token-overlap scoring loop and lost to the
+        # unrelated "how do I place an order" answer.
+        assert main.is_faq_intent("Od akej sumy nakupu mozem pouzit kredity?")
+        answer = main.best_direct_faq_answer("Od akej sumy nakupu mozem pouzit kredity?", knowledge)
+        assert answer
+        assert "50" in answer
+
+    def test_faq_login_via_google_or_facebook(self, knowledge):
+        # V2.20n fix (faq_0010): "prihlasit" had no FAQ_INTENT_MARKERS
+        # entry, so this never reached the FAQ answer lookup at all.
+        assert main.is_faq_intent("Mozem sa na Foodlande prihlasit cez Google alebo Facebook?")
+        answer = main.best_direct_faq_answer("Mozem sa na Foodlande prihlasit cez Google alebo Facebook?", knowledge)
+        assert answer
+        assert "google" in main.normalize(answer)
+
+    def test_faq_product_origin_odkial_pochadz_combo(self, knowledge):
+        # V2.20n fix (faq_0011): bare "pochadz" has 12 blast-radius hits in
+        # data/products.json (origin descriptions like "pochadza z
+        # Thajska"), so only the "odkial"+"pochadz" conjunction is gated in.
+        assert main.is_faq_intent("Odkial vacsinou pochadzaju vase produkty?")
+        assert not main.is_faq_intent("Tato ryza pochadza z Thajska, mate podobnu?")
+        answer = main.best_direct_faq_answer("Odkial vacsinou pochadzaju vase produkty?", knowledge)
+        assert answer
+        assert "vietnam" in main.normalize(answer)
+
+    def test_faq_product_not_visible_means_sold_out(self, knowledge):
+        # V2.20n fix (faq_0012): "nevidim" had no FAQ_INTENT_MARKERS entry
+        # (0 blast-radius hits in data/products.json).
+        assert main.is_faq_intent("Co znamena, ked produkt v e-shope nevidim?")
+        answer = main.best_direct_faq_answer("Co znamena, ked produkt v e-shope nevidim?", knowledge)
+        assert answer
+        assert "vypredan" in main.normalize(answer)
+
+    def test_faq_phone_contact_for_customer_support(self, knowledge):
+        # V2.20n fix (faq_0015): "telefonicky kontakt" / "zakaznicku
+        # podporu" were not in _CONTACT_TOPIC_PHRASE_MARKERS, so
+        # is_contact_query() (and therefore is_faq_query, which ORs it in
+        # alongside is_faq_intent()) never fired.
+        assert main._is_contact_query("Aky je telefonicky kontakt na zakaznicku podporu?")
+        answer = main.best_direct_faq_answer("Aky je telefonicky kontakt na zakaznicku podporu?", knowledge)
+        assert answer
+        assert "4468" in answer
+
 
 class TestKnowledgeSearch:
     def test_sriracha_in_products_ai(self, knowledge):
