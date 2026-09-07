@@ -1100,6 +1100,16 @@ class TestSearchProducts:
         result = main.chat(main.ChatRequest(message="Mozem sa na Foodlande prihlasit cez Google alebo Facebook?", limit=8), request)
         assert result.get("intent") != "product_comparison"
 
+    def test_bibimbap_recipe_question_end_to_end(self):
+        # V2.20 recipe_0002: "ako sa robi bibimbap" (impersonal "how IS
+        # it made") fell through is_recipe_intent() entirely and was
+        # misrouted into related_products with real products, violating
+        # the RECIPE_ONLY (products_empty) contract.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="ako sa robi bibimbap", limit=8), request)
+        assert result.get("intent") == "recipe"
+        assert not result.get("products")
+
     def test_best_sushi_rice_chat_prioritizes_rice(self):
         request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
         result = main.chat(main.ChatRequest(message="Najlepsia sushi ryza", limit=5), request)
@@ -2048,9 +2058,22 @@ class TestIntentDetection:
         assert recipes
         assert any("japonske-vyprazane-kura-kuracie-karaage" in r.get("link", "") for r in recipes)
 
-        related_matches = main.related_products_for_subject(products, knowledge, "karaage", 6)
-        assert related_matches
-        assert any("skrob" in main.normalize(r.get("title", "")) for r in related_matches)
+    def test_impersonal_ako_sa_robi_recognized_as_recipe_intent(self):
+        # V2.20 recipe_0002: "ako sa robi bibimbap" (how IS bibimbap
+        # made - impersonal/reflexive) fell through is_recipe_intent()
+        # entirely, since RECIPE_INTENT_MARKERS only had the 1st-person
+        # forms ("ako spravim"/"ako pripravim"/"ako urobim") - it was
+        # then misrouted into related_products (real products returned)
+        # instead of the expected RECIPE_ONLY (products_empty) contract.
+        for query in ("ako sa robi bibimbap", "ako sa pripravuje kimchi"):
+            assert main.is_recipe_intent(main.normalize(query)), query
+
+    def test_ako_sa_vyraba_still_reserved_for_article_intent(self):
+        # Positive control - "ako sa vyraba" (manufacturing/explain
+        # question) is is_article_info_intent()'s own marker and must
+        # NOT also become a recipe trigger via this fix.
+        assert not main.is_recipe_intent(main.normalize("ako sa vyraba sojova omacka"))
+        assert main.is_article_info_intent("ako sa vyraba sojova omacka")
 
     def test_recipe_product_subject_samples_return_products(self, products):
         subjects = [

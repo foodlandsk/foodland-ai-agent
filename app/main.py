@@ -2695,6 +2695,13 @@ RECIPE_INTENT_MARKERS = (
     "ako spravim",
     "ako pripravim",
     "ako urobim",
+    # V2.20k fix: the impersonal/reflexive form ("how IS it made" -
+    # a genuine, common Slovak recipe-question shape distinct from
+    # the 1st-person forms above) was missing entirely, so "ako sa
+    # robi bibimbap" fell through is_recipe_intent() and got
+    # misrouted into related_products instead (V2.20 recipe_0002).
+    "ako sa robi",
+    "ako sa pripravuje",
     "recipe",
     "how to make",
     "how do i make",
