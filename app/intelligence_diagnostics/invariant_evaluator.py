@@ -137,7 +137,18 @@ def check_invariant(invariant: str, response: dict) -> tuple[bool, str]:
         # abstention answers already use in production (see app.main's
         # gluten-free/allergen composition paths) - not a new concept,
         # just a reusable check for it.
-        markers = ("overte zloženie", "overte zlozenie", "nemôžem potvrdiť", "nemozem potvrdit", "neviem overiť", "neviem overit", "nemám overené", "nemam overene")
+        # V2.20t fix (allergen_safety_0004): this vocabulary was Slovak-only,
+        # so an EN-language scenario could never pass it even when the
+        # Advisor's English allergen-safety answer already expresses the
+        # exact same uncertainty. "check the ingredients" is the literal
+        # phrase app.main.allergen_safety_answer(lang="en") uses in both
+        # its generic and specific-allergen templates (app/main.py,
+        # ALLERGEN_TERM_EN_LABELS branch) - not a guessed phrase.
+        markers = (
+            "overte zloženie", "overte zlozenie", "nemôžem potvrdiť", "nemozem potvrdit",
+            "neviem overiť", "neviem overit", "nemám overené", "nemam overene",
+            "check the ingredients",
+        )
         answer_lower = _lower(response.get("answer"))
         hit = any(m in answer_lower for m in markers)
         return hit, f"requires_uncertainty: hit={hit}"

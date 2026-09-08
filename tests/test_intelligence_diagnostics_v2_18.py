@@ -944,3 +944,39 @@ class TestProductTitleInvariantDiacriticFold:
         for response, invariant in cases:
             passed, reason = check_invariant(invariant, response)
             assert passed is True, reason
+
+
+class TestRequiresUncertaintyEnglishVocabulary:
+    """V2.20t - requires_uncertainty's disclaimer vocabulary was Slovak-
+    only, so an EN-language scenario (allergen_safety_0004: "I have a
+    shellfish allergy, is oyster sauce safe for me?") could never pass it
+    even though app.main.allergen_safety_answer(lang="en") already
+    expresses the exact same uncertainty in English."""
+
+    def test_english_allergen_answer_now_passes(self):
+        from app.intelligence_diagnostics.invariant_evaluator import check_invariant
+
+        response = {
+            "answer": (
+                "For allergies or intolerance to shellfish, I don't want to recommend a product by "
+                "name alone. Please check the ingredients and allergens on the specific product page "
+                "- the label is what matters. Send us the product name and we'll help you find its "
+                "page on Foodland.sk."
+            )
+        }
+        passed, reason = check_invariant("requires_uncertainty", response)
+        assert passed is True, reason
+
+    def test_slovak_vocabulary_still_works_unchanged(self):
+        from app.intelligence_diagnostics.invariant_evaluator import check_invariant
+
+        response = {"answer": "Prosím overte zloženie v detaile konkrétneho produktu."}
+        passed, reason = check_invariant("requires_uncertainty", response)
+        assert passed is True, reason
+
+    def test_confident_answer_still_fails(self):
+        from app.intelligence_diagnostics.invariant_evaluator import check_invariant
+
+        response = {"answer": "Yes, oyster sauce is completely safe for you."}
+        passed, reason = check_invariant("requires_uncertainty", response)
+        assert passed is False, reason
