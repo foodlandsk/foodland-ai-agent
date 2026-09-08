@@ -897,3 +897,50 @@ class TestMaxProductsZeroInvariantFix:
         rt0010 = scenarios["regbug_rt0010"]
         assert rt0010.source == SOURCE_REGRESSION_BUG
         assert rt0010.underlying_case_id == "regbug_rt0010"
+
+
+class TestProductTitleInvariantDiacriticFold:
+    """V2.20s - product_title_contains_any/product_title_forbidden used a
+    plain .lower() with no diacritic stripping, so a real Slovak product
+    title ("Ryzovy ocot") never matched a scenario's accent-free expected
+    substring ("ryzovy ocot") even though they name the same product
+    (found via V2.20 replacement_0005/0009/0010 - the Advisor already
+    returned the correct product, but the invariant still reported FAIL).
+    Fixed by folding both the title and the term through the same
+    NFKD+ASCII technique app.search.normalize() already uses."""
+
+    def test_contains_any_matches_across_diacritics(self):
+        from app.intelligence_diagnostics.invariant_evaluator import check_invariant
+
+        response = {"products": [{"title": "Ryžový ocot MIZKAN Komesu 500ml"}]}
+        passed, reason = check_invariant("product_title_contains_any:ryzovy ocot|rice vinegar", response)
+        assert passed is True, reason
+
+    def test_contains_any_still_fails_when_truly_absent(self):
+        from app.intelligence_diagnostics.invariant_evaluator import check_invariant
+
+        response = {"products": [{"title": "Sojova omacka KIKKOMAN 250ml"}]}
+        passed, reason = check_invariant("product_title_contains_any:ryzovy ocot|rice vinegar", response)
+        assert passed is False, reason
+
+    def test_forbidden_matches_across_diacritics(self):
+        from app.intelligence_diagnostics.invariant_evaluator import check_invariant
+
+        response = {"products": [{"title": "Ryžový ocot MIZKAN Komesu 500ml"}]}
+        passed, reason = check_invariant("product_title_forbidden:ryzovy ocot", response)
+        assert passed is False, reason  # forbidden term present -> invariant fails
+
+    def test_v220_replacement_scenarios_now_pass_with_real_products(self):
+        # The exact 3 responses the real Advisor returns for replacement_
+        # 0005/0009/0010 (V2.20), previously FAIL only because of the
+        # diacritic gap - not because the products were wrong.
+        from app.intelligence_diagnostics.invariant_evaluator import check_invariant
+
+        cases = [
+            ({"products": [{"title": "Ryžový ocot MIZKAN Komesu 500ml"}]}, "product_title_contains_any:ryzovy ocot|rice vinegar"),
+            ({"products": [{"title": "Hoisin omáčka LEE KUM KEE 397g"}]}, "product_title_contains_any:hoisin omacka|sladka sojova omacka"),
+            ({"products": [{"title": "Tamari sójová omáčka bezlepková - KIKKOMAN 250ml"}]}, "product_title_contains_any:tamari sojova omacka|bezlepkova sojova omacka"),
+        ]
+        for response, invariant in cases:
+            passed, reason = check_invariant(invariant, response)
+            assert passed is True, reason

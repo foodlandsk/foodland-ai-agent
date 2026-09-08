@@ -18,11 +18,28 @@ detection) so V2.18's notion of "correct" stays consistent with V2.17's.
 """
 from __future__ import annotations
 
+import unicodedata
+
 _STOCK_MARKERS = ("skladom", "potvrdena skladova zasoba", "overena dostupnost na sklade")
 
 
 def _lower(text) -> str:
     return str(text or "").lower()
+
+
+def _fold(text) -> str:
+    """Diacritic-insensitive lowercase fold (same NFKD+ASCII technique as
+    app.search.normalize()). Product titles are authored with correct
+    Slovak diacritics ("Ryzovy ocot"), while a scenario's expected
+    title-substring is sometimes written accent-free ("ryzovy ocot") -
+    plain _lower() never matches those against each other even though
+    they name the same product. Folding both sides the same way can only
+    turn a previous miss into a match (if the raw strings already matched,
+    the folded ones trivially still do - the transformation is uniform and
+    order-preserving) - it cannot cause an already-correct FAIL to become
+    a false PASS."""
+    ascii_text = unicodedata.normalize("NFKD", str(text or "")).encode("ascii", "ignore").decode("ascii")
+    return ascii_text.lower()
 
 
 def check_invariant(invariant: str, response: dict) -> tuple[bool, str]:
@@ -93,14 +110,21 @@ def check_invariant(invariant: str, response: dict) -> tuple[bool, str]:
     # of a response dict, same as everything above - never call the
     # Advisor themselves. -------------------------------------------------
     if invariant.startswith("product_title_contains_any:"):
+        # V2.20s fix: folded (diacritic-insensitive), not just lowercased -
+        # real product titles carry correct Slovak diacritics ("Ryzovy
+        # ocot") while a scenario's expected substring is sometimes
+        # authored accent-free ("ryzovy ocot"); plain lowercasing alone
+        # never matched those against each other even though they name
+        # the same product (see _fold()'s docstring for why this cannot
+        # turn an already-correct FAIL into a false PASS).
         terms = [t for t in invariant.split(":", 1)[1].split("|") if t]
-        titles_lower = [_lower(p.get("title")) for p in (response.get("products") or [])]
-        hit = any(term.lower() in title for title in titles_lower for term in terms)
+        titles_folded = [_fold(p.get("title")) for p in (response.get("products") or [])]
+        hit = any(_fold(term) in title for title in titles_folded for term in terms)
         return hit, f"product_title_contains_any:{terms!r}: hit={hit}"
 
     if invariant.startswith("product_title_forbidden:"):
-        term = invariant.split(":", 1)[1].lower()
-        offending = [p.get("title") for p in (response.get("products") or []) if term in _lower(p.get("title"))]
+        term = _fold(invariant.split(":", 1)[1])
+        offending = [p.get("title") for p in (response.get("products") or []) if term in _fold(p.get("title"))]
         return not offending, f"product_title_forbidden:{term!r}: offending={offending}"
 
     if invariant.startswith("min_products:"):
