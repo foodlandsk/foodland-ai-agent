@@ -1254,6 +1254,20 @@ class TestSearchProducts:
         assert titles
         assert "kokosove mlieko" in titles[0]
 
+    def test_mild_seasoning_request_excludes_sriracha_end_to_end(self):
+        # V2.20w (negation_0001, HOLDOUT): "Chcem nieco na dochutenie
+        # jedla, ale nech to nie je palive." returned sriracha (a hot
+        # sauce) among the top results despite explicitly asking for a
+        # non-spicy seasoning.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(
+            main.ChatRequest(message="Chcem nieco na dochutenie jedla, ale nech to nie je palive.", limit=8),
+            request,
+        )
+        titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
+        assert titles
+        assert not any("sriracha" in t for t in titles)
+
     def test_gochujang_found(self, products):
         results = search_products(products, "gochujang", 4)
         assert titles_contain(results, "gochujang", "Gochujang")
@@ -2550,6 +2564,20 @@ class TestIntentDetection:
     def test_special_vegan_fish_sauce(self):
         subj = main.detect_special_product_subject("nahrada za rybaciu omacku vegan")
         assert subj == "vegan_fish_sauce_replacement"
+
+    def test_special_mild_detects_spaced_negation(self):
+        # V2.20w fix (negation_0001, HOLDOUT): "Chcem nieco na dochutenie
+        # jedla, ale nech to nie je palive." negates "paliv" with a SPACED
+        # negation ("nie je palive"), not the compound "nepaliv" word the
+        # branch already handled - neither this nor detect_related_subject()
+        # recognized it, so the message fell through to generic keyword
+        # search and returned sriracha (a hot sauce) unfiltered.
+        assert main.detect_special_product_subject("Chcem nieco na dochutenie jedla, ale nech to nie je palive.") == "mild"
+        assert main.detect_special_product_subject("nieco nie palive prosim") == "mild"
+        assert main.detect_special_product_subject("chcem nieco, ale nie pikantne") == "mild"
+        # existing compound-word forms must still work unchanged
+        assert main.detect_special_product_subject("chcem nepalive korenie") == "mild"
+        assert main.detect_special_product_subject("chcem jemne korenie") == "mild"
 
     def test_replacement_subject_detected_before_related_cross_sell(self):
         assert main.detect_replacement_subject("cim vynahradim gochujang") == "gochujang"

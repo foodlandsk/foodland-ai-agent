@@ -9658,7 +9658,18 @@ def detect_special_product_subject(message: str) -> str | None:
         marker in normalized_message for marker in ("vegan", "vegans", "nahrad", "alternativ")
     ):
         return "vegan_fish_sauce_replacement"
-    if "nepaliv" in normalized_message or "jemne" in normalized_message:
+    if "nepaliv" in normalized_message or "jemne" in normalized_message or any(
+        marker in normalized_message
+        for marker in (
+            # V2.20w fix (negation_0001, HOLDOUT): "nech to nie je
+            # palive" (let it not be spicy) negates "paliv"/"pikant"
+            # with a SPACED negation, not the compound "nepaliv" word -
+            # neither this branch nor detect_related_subject() recognized
+            # it at all, so the message fell through to generic keyword
+            # search and returned sriracha (a hot sauce) unfiltered.
+            "nie je palive", "nie palive", "nie je pikantne", "nie pikantne",
+        )
+    ):
         return "mild"
     return None
 
