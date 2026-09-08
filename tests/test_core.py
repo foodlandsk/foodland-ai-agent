@@ -1219,6 +1219,19 @@ class TestSearchProducts:
             assert result.get("products") == [], message
             assert "nemam aktivny" in nrm(result.get("answer", "")), message
 
+    def test_gluten_free_tamari_replacement_end_to_end(self):
+        # V2.20q (replacement_0010): "Potrebujem bezlepkovu nahradu za
+        # tamari" got the ALLERGEN_SAFETY refusal instead of real gluten-
+        # free tamari products - see
+        # TestIntentDetection.test_gluten_free_replacement_request_is_not_allergen_safety
+        # for the underlying detect_allergen_intent() unit-level fix.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="Potrebujem bezlepkovu nahradu za tamari.", limit=8), request)
+        assert result.get("intent") == "replacement_products"
+        titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
+        assert titles
+        assert all("tamari" in t or "sojov" in t for t in titles)
+
     def test_gochujang_found(self, products):
         results = search_products(products, "gochujang", 4)
         assert titles_contain(results, "gochujang", "Gochujang")
@@ -1749,6 +1762,24 @@ class TestIntentDetection:
 
     def test_allergen_warning_suffix_does_not_override_product_search(self):
         assert main.detect_allergen_intent("chcem ryzove rezance. pozor na alergeny") is None
+
+    def test_gluten_free_replacement_request_is_not_allergen_safety(self):
+        # V2.20q fix (replacement_0010): "Potrebujem bezlepkovu nahradu za
+        # tamari" (I need a gluten-free substitute for tamari) is a
+        # REPLACEMENT REQUEST, not a safety verification question - it was
+        # misclassified as allergen_safety because bare "tamari" (with no
+        # "bezpec"/"pri lepk" safety framing) was enough to trigger the
+        # "lepk" rule, so ALLERGEN_SAFETY won workflow precedence
+        # unconditionally before the already-correct gluten-free
+        # replacement exclusion ever got a chance to run.
+        assert main.detect_allergen_intent("Potrebujem bezlepkovu nahradu za tamari.") is None
+        assert main.detect_allergen_intent("aka je bezlepkova alternativa k tamari?") is None
+
+        # The genuine safety-verification question this rule exists FOR
+        # must remain unaffected - it already matches via "bezpec"/"pri
+        # lepk" independently of the removed bare-"tamari" branch (see
+        # tests/strict_customer_european_diet_1000.jsonl SC0836-846).
+        assert main.detect_allergen_intent("Je tamari bezpecnejsia volba pri lepku?") == "lepok"
 
     def test_missing_composition_complaint_detected(self):
         # Regression test: a real production complaint cluster where

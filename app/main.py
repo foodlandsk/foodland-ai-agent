@@ -10005,7 +10005,20 @@ def detect_allergen_intent(message: str) -> str | None:
         or any(marker in normalized_message for marker in ("vhodn", "zlozen"))
     ):
         return "vhodnost pre veganov"
-    if "lepk" in normalized_message and any(marker in normalized_message for marker in ("tamari", "bezpec", "pri lepk")):
+    # V2.20q fix (replacement_0010): bare "tamari" here (with no
+    # "bezpec"/"pri lepk" safety-question framing) misclassified a
+    # GLUTEN-FREE REPLACEMENT REQUEST ("potrebujem bezlepkovu nahradu
+    # za tamari") as an allergen-safety VERIFICATION question -
+    # ALLERGEN_SAFETY then wins workflow precedence unconditionally
+    # (app.workflow_resolver.resolve_workflow, Invariant #3) before the
+    # already-correct gluten-free exclusion below (which explicitly
+    # returns None for a gluten-free tamari/soy-sauce request) ever
+    # gets a chance to run. The protected safety case ("Je tamari
+    # bezpecnejsia volba pri lepku?", tests/strict_customer_european_
+    # diet_1000.jsonl SC0836-846) is unaffected - it already matches
+    # via "bezpec"/"pri lepk" independently of the "tamari" branch
+    # removed here.
+    if "lepk" in normalized_message and any(marker in normalized_message for marker in ("bezpec", "pri lepk")):
         return "lepok"
     gluten_free_product_search = is_gluten_free_search(normalized_message)
     asks_if_gluten_free = gluten_free_product_search and (
