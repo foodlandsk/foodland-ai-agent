@@ -2866,6 +2866,48 @@ class TestIntentDetection:
             titles = " ".join(main.normalize(p.get("title", "")) for p in alternatives)
             assert "tamarind" not in titles, subject
 
+    def test_explicit_replacement_request_not_swallowed_by_related_products_action(self):
+        # V2.20x fix (replacement_0011, HOLDOUT): a message combining
+        # "Recept chce X..." recipe framing with an EXPLICIT substitution
+        # request ("Cim to nahradit...") was misrouted twice over:
+        # (1) execute_recipe() fired on the coarse "recept"/recipe_subject
+        #     match and returned a zero-product generic recipe listing
+        #     before replacement routing ever ran;
+        # (2) after fixing (1), the V2.13b action-target resolver's
+        #     "explicit related-products action" branch (rt0004's own
+        #     fix) still fired instead, because detect_special_product_
+        #     subject() independently classifies this exact message as
+        #     "vegan_fish_sauce_replacement" (a special_subject/
+        #     related_subject conflict this resolver exists to
+        #     arbitrate) - forcing intent=related_products and
+        #     overriding the correctly-detected replacement_subject.
+        assert main.detect_replacement_subject(
+            "Recept chce rybaciu omacku, ale ja varim pre kamaratku, ktora je vegetarianka. Cim to nahradit a este mi povedz, ci je to aj bezlepkove."
+        ) == "rybacia omacka"
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(
+            main.ChatRequest(
+                message="Recept chce rybaciu omacku, ale ja varim pre kamaratku, ktora je vegetarianka. Cim to nahradit a este mi povedz, ci je to aj bezlepkove.",
+                limit=8,
+            ),
+            request,
+        )
+        assert result.get("intent") == "replacement_products"
+        assert result.get("products")
+
+    def test_rt0004_related_products_action_unaffected(self, products):
+        # Control: the canonical case the V2.13b action-target resolver
+        # exists for (regbug_rt0004, 310-core) must keep working - it has
+        # no "nahrad"/"namiesto"/"cim "-style marker, so
+        # detect_replacement_subject() returns None and the new
+        # suppression condition in V2.20x's fix never engages.
+        assert main.detect_replacement_subject("suvisiace produkty k sushi ryzi") is None
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.2"))
+        result = main.chat(main.ChatRequest(message="suvisiace produkty k sushi ryzi", limit=8), request)
+        assert result.get("intent") == "related_products"
+        titles = " ".join(nrm(p.get("title", "")) for p in result.get("products", []))
+        assert "nori" in titles or "wasabi" in titles or "zazvor" in titles
+
     def test_recipe_intent_not_falsely_triggered_by_english_recommend(self):
         # Regression test: a bare "rec" prefix check used to match any
         # English word starting with those letters ("recommend",

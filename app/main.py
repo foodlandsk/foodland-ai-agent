@@ -4954,6 +4954,17 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         if _recipe_followup_result is None:
             _clear_recipe_state(memory)
 
+    # V2.20x fix (replacement_0011, HOLDOUT): an explicit substitution
+    # request ("Cim to nahradit...") must win over recipe execution even
+    # when the message ALSO names a recipe subject via "Recept chce X..."
+    # framing - detect_replacement_subject() already encodes "explicit
+    # substitution request" semantics (nahrad/namiesto/alternativ/cim ...),
+    # so reuse it directly rather than inventing a new marker set.
+    # execute_recipe()'s own docstring documents that recipe_subject=None
+    # is exactly how a caller opts out of Block D (it falls through to the
+    # unchanged blocks below) - not a new mechanism.
+    if recipe_subject and detect_replacement_subject(routing_message):
+        recipe_subject = None
     # V2.13e: recipe execution boundary (app.workflow_executor.execute_recipe)
     # - Block D (main recipe_subject handler) and Block E (recipe_followup_result
     # handler) moved verbatim, docs/recipe-state-machine-v2.13e.md. Called
@@ -5201,10 +5212,20 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     # customer actually typed this turn).
     _raw_special_subject = detect_special_product_subject(chat_request.message)
     _raw_related_subject = detect_related_subject(chat_request.message)
+    # V2.20x fix (replacement_0011, HOLDOUT): an explicit substitution
+    # request ("Cim to nahradit...") must not be reinterpreted as a
+    # companion/cross-sell action request merely because the same
+    # message also contains a special_subject/related_subject conflict
+    # this resolver would otherwise arbitrate (e.g. detect_special_
+    # product_subject() returning "vegan_fish_sauce_replacement" for a
+    # "nahrad"-bearing message) - same anchoring principle as the raw-
+    # message guard above, one more explicit-intent signal suppressing
+    # the conflict instead of manufacturing one.
+    _explicit_replacement_request = bool(detect_replacement_subject(routing_message))
     _action_target_analysis = _resolve_action_target_signal(
         routing_message,
-        special_subject=special_subject if _raw_special_subject else None,
-        related_subject=related_subject if _raw_related_subject else None,
+        special_subject=special_subject if _raw_special_subject and not _explicit_replacement_request else None,
+        related_subject=related_subject if _raw_related_subject and not _explicit_replacement_request else None,
         has_recipe_shopping_language=_has_recipe_shopping_language(routing_message),
         # V2.13b perf note: resolve_workflow()'s RELATED_PRODUCTS decision
         # only needs related_subject + has_recipe_shopping_language (see
