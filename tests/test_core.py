@@ -3659,6 +3659,16 @@ class TestFAQ:
         assert answer
         assert "4468" in answer
 
+    def test_faq_return_period_without_reason(self, knowledge):
+        # V2.20u fix (faq_0005, HOLDOUT): "vratit" (bare infinitive "to
+        # return") had no FAQ_INTENT_MARKERS entry - only "vraten"/
+        # "vracen" were covered, neither of which is a substring of
+        # "Do kolkych dni mozem vratit tovar bez udania dovodu?".
+        assert main.is_faq_intent("Do kolkych dni mozem vratit tovar bez udania dovodu?")
+        answer = main.best_direct_faq_answer("Do kolkych dni mozem vratit tovar bez udania dovodu?", knowledge)
+        assert answer
+        assert "14" in answer
+
 
 class TestKnowledgeSearch:
     def test_sriracha_in_products_ai(self, knowledge):

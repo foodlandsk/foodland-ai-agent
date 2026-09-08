@@ -2104,6 +2104,11 @@ FAQ_INTENT_MARKERS = (
     "reklamac",
     "vraten",
     "vracen",
+    # V2.20u fix (faq_0005 holdout): "vratit" (bare infinitive "to
+    # return") - "Do kolkych dni mozem vratit tovar bez udania
+    # dovodu?" had neither "vraten" nor "vracen" as a substring.
+    # Confirmed 0 blast-radius hits against data/products.json.
+    "vratit",
     "delivery",
     "shipping",
     "courier",
