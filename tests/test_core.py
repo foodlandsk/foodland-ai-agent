@@ -1232,6 +1232,16 @@ class TestSearchProducts:
         assert titles
         assert all("tamari" in t or "sojov" in t for t in titles)
 
+    def test_nutrition_calorie_question_gets_honest_uncertainty_end_to_end(self):
+        # V2.20r (insufficient_data_0002): "Kolko kalorii ma porcia vasho
+        # ramenu?" got a generic "Instantne rezance" category browse (79
+        # products) instead of an honest data-absence answer - no
+        # nutrition/calorie field exists anywhere in data/products.json.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="Kolko kalorii ma porcia vasho ramenu?", limit=6), request)
+        assert result.get("products") == []
+        assert "nemam overene" in nrm(result.get("answer", ""))
+
     def test_gochujang_found(self, products):
         results = search_products(products, "gochujang", 4)
         assert titles_contain(results, "gochujang", "Gochujang")
@@ -1797,6 +1807,35 @@ class TestIntentDetection:
         assert "eshop@foodland.sk" in answer_sk
         answer_en = main.missing_composition_answer("en")
         assert "eshop@foodland.sk" in answer_en
+
+    def test_nutrition_data_query_detected(self):
+        # V2.20r (insufficient_data_0002): no nutrition/calorie field
+        # exists anywhere in data/products.json - a factual nutrition-
+        # value question must be recognized so it gets an honest
+        # data-absence answer instead of silently falling through to an
+        # unrelated category browse.
+        assert main.is_nutrition_data_query("Kolko kalorii ma porcia vasho ramenu?")
+        assert main.is_nutrition_data_query("aka je vyzivova hodnota tejto ryze?")
+        assert main.is_nutrition_data_query("what is the nutritional value of this soup?")
+        assert main.is_nutrition_data_query("how many calories does this have?")
+
+    def test_nutrition_data_query_not_falsely_triggered_by_product_search(self):
+        # Control: an ordinary product search/discovery query must not be
+        # hijacked into the uncertainty answer merely because the message
+        # is about food.
+        assert not main.is_nutrition_data_query("aku ryzu na sushi mate?")
+        assert not main.is_nutrition_data_query("chcem kupit ramen")
+        assert not main.is_nutrition_data_query("najlepsie kimchi")
+
+    def test_nutrition_data_uncertainty_answer_matches_requires_uncertainty_vocabulary(self):
+        # The response text must literally contain one of the disclaimer
+        # phrases app.intelligence_diagnostics.invariant_evaluator's
+        # requires_uncertainty check recognizes - otherwise the honest
+        # abstention would still fail the semantic contract.
+        answer_sk = main.nutrition_data_uncertainty_answer("sk")
+        assert "nemám overené" in answer_sk
+        answer_en = main.nutrition_data_uncertainty_answer("en")
+        assert answer_en and "calorie" in answer_en.lower()
 
     def test_faq_doprava(self):
         assert main.is_faq_intent("kolko stoji doprava?")

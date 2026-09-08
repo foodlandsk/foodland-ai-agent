@@ -4707,6 +4707,17 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             emit_customer_analytics=execution_context.emit_customer_analytics,
         )
 
+    if is_nutrition_data_query(chat_request.message):
+        updated_profile = update_user_memory(profile_key, chat_request.message, "product_search", [], [])
+        log_question(chat_request.message, client_key, 0, intent="product_search", session_id=session_id, primary_intent="product_search", subject="", interaction_id=interaction_id)
+        return {
+            "answer": nutrition_data_uncertainty_answer(query_language),
+            "products": [],
+            "knowledge": knowledge_summary({}),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": "product_search",
+        }
+
     # V2.13b (docs/workflow-precedence-before-v2.13b.md, rt0010): the
     # old inline condition treated allergen_product_query() returning ""
     # as "not applicable", when it is often a DELIBERATE zero-safe-
@@ -9964,6 +9975,48 @@ def missing_composition_answer(lang: str = "sk") -> str:
         "Ospravedlňujeme sa, niektoré produkty môžu mať na stránke neúplne uvedené zloženie. "
         "Napíšte nám prosím priamo na eshop@foodland.sk alebo zavolajte na +421 2 4468 1527 "
         "a radi vám zloženie konkrétneho produktu doplníme."
+    )
+
+
+# V2.20r fix (insufficient_data_0002): no nutrition/calorie field exists
+# anywhere in data/products.json (confirmed field list: id/title/
+# description/product_type/link/image_link/price/sale_price/currency/
+# brand/availability/gtin/unit_pricing_measure) - a factual nutrition-
+# value question ("kolko kalorii ma...") must get an honest
+# data-absence answer instead of silently falling through to an
+# unrelated category browse (detect_related_subject() matching the
+# named dish, e.g. "ramen", and returning its generic product list).
+NUTRITION_DATA_QUERY_MARKERS = (
+    "kolko kalorii",
+    "kolko ma kalorii",
+    "kaloricka hodnota",
+    "energeticka hodnota",
+    "vyzivova hodnota",
+    "vyzivove udaje",
+    "nutricna hodnota",
+    "nutricne udaje",
+    "how many calories",
+    "how many kcal",
+    "calorie count",
+    "nutritional value",
+    "nutrition facts",
+)
+
+
+def is_nutrition_data_query(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(marker in normalized_message for marker in NUTRITION_DATA_QUERY_MARKERS)
+
+
+def nutrition_data_uncertainty_answer(lang: str = "sk") -> str:
+    if lang == "en":
+        return (
+            "I don't have verified nutritional data (such as calories) for individual "
+            "products - please check the product label or contact the manufacturer directly."
+        )
+    return (
+        "Presné výživové údaje, napríklad kalórie, k jednotlivým produktom nemám overené - "
+        "odporúčam pozrieť etiketu produktu alebo kontaktovať výrobcu priamo."
     )
 
 
