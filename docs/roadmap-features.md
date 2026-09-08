@@ -2095,3 +2095,210 @@ Detail: `docs/decision-observability-expansion-v2.15e.3.md`.
 
 **NEXT_PROGRAM_PHASE = WAIT_FOR_EMPIRICAL_DATA.** V2.15f sa nezačína
 automaticky.
+
+---
+
+> **Poznámka (dodatočne, 2026-09-09):** V2.15f sa skutočne nikdy
+> nespustil ako learning-pipeline sprint (empirické dáta na to doteraz
+> neboli dostatočné). Projekt namiesto toho pokračoval sériou V2.16–V2.20
+> sprintov nižšie – live-verifikačné uzávery, conversational commerce UX,
+> customer QA/audit vrstva a napokon nezávislý blind-benchmark diagnostický
+> cyklus. Tento dodatok bol dopísaný spätne, aby dokument zodpovedal
+> realite git histórie; jednotlivé sprinty nižšie sú sumarizované z ich
+> commit správ a existujúcich `docs/*.md` súborov, nie prepisované nanovo.
+
+## V2.16a–V2.16e — Priebežné live-verifikačné uzávery
+
+Séria 5 malých, audit-first sprintov nadväzujúcich na V2.15 sériu,
+každý s vlastným `docs/*.md` reportom:
+
+- **V2.16a**: Zovšeobecnil V2.15c mechanizmus non-commerce nadväzujúcich
+  otázok aj na tému platobných metód ("Ako môžem zaplatiť?" → "A Apple
+  Pay?"). `opening_hours`/`contact` zostali zámerne neopravené
+  (`NOT_REACHED_PRE_EXISTING_GAP` – kolízia markera "otvoren" s reálnym
+  produktovým textom "po otvorení").
+- **V2.16a.1**: Uzavrel `opening_hours`/`contact` cez priame dátové
+  ukotvenie namiesto markera.
+- **V2.16b**: Reálny živý bug – kuracie instantné rezance (FL_9996) sa
+  ukázali ako top "vegánsky" výsledok, pretože `product_type` breadcrumb
+  je Foodlandova hromadná merchandising kategória, nie dietetické
+  tvrdenie na úrovni SKU. Oprava: "vegan"/"vegetarian" odstránené z
+  hard-filter taxonómie – chýbajúci facet je teraz UNKNOWN, nikdy FALSE.
+  `gluten_free`/`organic` auditované rovnako prísne a ponechané
+  nezmenené (0 potvrdených chybných tagov v 563/2140 produktoch).
+  `halal` = `DATA_REQUIRED`, neimplementované.
+- **V2.16c**: 3 reálne opravy v `replacement_products` kandidátnom
+  pipeline – gluten-free filter pre `alternative_products_for_subject()`,
+  oprava hranice slova pri `detect_already_have_subject()` ("nemam"
+  matchovalo vnútri "mam"), a gluten-free filter + relevance-check
+  rozšírený aj na legacy `special_subject` cestu (rybia omáčka, ryžový
+  ocot, sushi ryža). rt0013 routing zostal nedotknutý.
+- **V2.16d**: 3 opravy v recipe/basket inteligencii – `use_case_advice`
+  už nemôže "uniesť" self-declared basket-completion požiadavku;
+  self-declaration teraz parsuje viacero konceptov naraz (nie len 1);
+  `basket_completion` dostal session continuitu (predtým každý
+  nadväzujúci dotaz padal do generickej odpovede).
+- **V2.16e**: SEVERE nález – AI-generovaný prompt-template text
+  ("profil urči podľa názvu produktu...") unikal ako doslovná
+  zákaznícka odpoveď v 63/130 (48,5 %) kurátorovaných záznamov. Opravené
+  guardom (`_is_broken_curation_placeholder()`) + trvalý
+  `scripts/trust_audit.py --broken-curation-content` check. Pridaný
+  nový modul `app.explanation` pre "prečo toto?"/"prečo nie tamto?"
+  vysvetlenia posledného rozhodnutia (bez novej LLM/search volania).
+
+Priebežné výsledky cez celú sériu: plný beh rástol 1870 → 1986, V2.10
+eval 0 regresií, canary 10/10 nezmenené v každom kroku, `AUTO_PROMOTION`
+nezmenené (`False`).
+
+---
+
+## V2.17–V2.17.3 — Conversational Commerce UX & Customer QA/Audit vrstva
+
+- **V2.17**: Uzavrel V2.15e.3 nález `STRUCTURAL_GAP_ACCEPTED` (widget
+  nikdy nečítal `data.cross_sell`) – overil všetkých 5 potrebných
+  podmienok naživo a prepojil cross-sell na existujúci
+  `recommendation_reason`/`addProducts()` render mechanizmus (žiadna
+  paralelná card-rendering cesta). Pri tej príležitosti opravené aj
+  zavádzajúce "Skladom" – celý katalóg (2140/2140) nesie statickú feed
+  hodnotu `availability="in_stock"`, nikdy živý sklad. `rt0013`
+  ranking-invariance test opravený (tvrdil neopakovateľné presné
+  poradie).
+- **V2.17.1**: `app/customer_audit.py` – privacy-conscious READ-ONLY
+  audit log reálnych zákazníckych konverzácií (PII redakcia, len
+  allowlist polí, nikdy nereruns intent/search/ranking/LLM). Dva nové
+  READ admin endpointy.
+- **V2.17.2**: `app/customer_qa.py` – 8 deterministických QA pravidiel
+  nad V2.17.1 dátami (ON-READ architektúra, žiadny nový JSONL store).
+  OBSERVATION → ANALYSIS → EVIDENCE → HUMAN INVESTIGATION, nikdy
+  automatická oprava.
+- **V2.17.3**: `app/customer_qa_reproduction.py` – nezávislá
+  reprodukčná vrstva nad V2.17.2 nálezmi (OFFLINE/ADMIN_TEST režimy).
+  FINDING ≠ BUG – REPRODUCED nikdy neautorizuje opravu
+  (`automatic_fix`/`automatic_deploy` natvrdo `false`).
+
+Výsledky: plný beh 1998 → 2162, canary 10/10 v každom kroku, trust
+audit čistý, `AUTO_PROMOTION` nezmenené (`False`) počas celej série.
+
+---
+
+## V2.18a–V2.18d.8 — Continuous Customer Intelligence Diagnostic Loop
+
+**V2.18a-c**: Nová `app/intelligence_diagnostics/` balíček – diagnostický
+benchmark WITHOUT zmeny zákazníckeho správania (0 diffov v `app/main.py`/
+`app/widget.js`). Kľúčové komponenty: `scenario_schema.py`,
+`scenario_registry.py` (62 existujúcich V2.10 golden/conversation
+prípadov + curated + lifecycle overlay), `invariant_evaluator.py`
+(sémantický kontrakt vocabulary), `mutation_engine.py` (4 bezpečné
+mutácie: TYPO/DIACRITICS_STRIP/WORD_ORDER/POLITENESS_TOGGLE),
+`benchmark_runner.py`, `failure_triage.py`, `synthetic_reproduction.py`,
+`real_customer_qa_bridge.py`. Prvý beh (66 kanonických + 244 mutácií =
+310): `overall_score=0.861`, `stable_core_score=0.939`,
+`mutation_score=0.840` – Advisor je krehkejší na povrchové variácie
+(preklepy/diakritika/slovosled) než čistý golden set naznačuje. Všetkých
+43 zlyhaní nezávisle reprodukovaných, žiadne opravené (tento sprint
+zámerne zastavuje pri dôkaze).
+
+**V2.18d.1–V2.18d.8**: Postupné opravy nájdených defektov z 310-core
+benchmarku: `max_products=0` invariant mismatch (d.1), enforcement
+allergen-safety product kontraktu (d.3), FAQ retrieval topic mismatch
+pre generické platobné otázky (d.4), typo-mutation sémantický bias
+(d.5), human-review ticket pre rt0002 slovosled (d.6), oprava
+zastaraných C4/C5 golden dát (d.7), a C6 slovosledná krehkosť
+("niečo potrebujem" false trigger v `wants_recipe_products()`) (d.8).
+Po d.8 dosiahol 310-core **310/310, stable_core=1.0**.
+
+Plný beh rástol 2238 → 2313+ cez celú sériu, V2.10 eval nezmenené,
+canary 10/10, `AUTO_PROMOTION` nezmenené (`False`).
+
+---
+
+## V2.19a–V2.19d — Evaluačný harness hardening
+
+Read-only forenzný audit (V2.19a, `docs/routing-debt.md`) našiel
+sesterský C6-štýl slovosledný gap v `wants_shopping_list()`/
+`SHOPPING_LIST_MARKERS` (V2.18d.8 opravil len `wants_recipe_products()`).
+**V2.19b** opravil tento sesterský gap rovnakým fix shape (generic
+per-marker-prefix pravidlo, nie hardcoded enumerácia). **V2.19c**
+(state-isolation audit) a **V2.19d** opravili client_key izoláciu v
+`app.evaluation.adapter` – nutná podmienka pre bezpečné paralelné/blind
+benchmarkovanie v ďalšej sérii.
+
+Plný beh nezmenený mimo nových testov, 310-core zostal 310/310.
+
+---
+
+## V2.20a–V2.20x — Nezávislá scenárna továreň, blind benchmark a úplné DEV/HOLDOUT uzavretie
+
+Najväčšia a najnovšia séria: nezávislý, vopred rozdelený DEV/HOLDOUT
+scenárny súbor (`app/intelligence_diagnostics/v220_factory.py`,
+`eval/golden/v2_20_scenarios.json`, 106 scenárov, 91 skórovaných) a prvý
+"blind" beh proti nemu.
+
+**V2.20a**: nezávislá scenárna továreň + holdout architektúra.
+**V2.20b**: prvý blind beh – **historický, nemenný výsledok
+67/91 = 73,6 %**.
+
+**V2.20d–V2.20m** (12 opráv): explicitné retrieval exclusions (d),
+related-subject exclusion-awareness (f), medium_spicy chýbajúci záznam
+(g), rice-vinegar deklinačná medzera (h), product_advice intent gap (i),
+comparison-intent false positive z vs/alebo overbreadth (j), impersonálne
+"ako sa robí" ako recipe intent (k), "predáva" ako recipe-shopping
+intent (l), anglické shopping-list otázky (m).
+
+**V2.20n–V2.20u** (na požiadanie používateľa, DEV skóre naháňanie):
+FAQ cluster (5 chýbajúcich/nesprávnych FAQ markerov naraz, n), sushi
+kitchenware routing hijack (o), price-direction orphaned-followup
+false positive (p), gluten-free replacement mylne klasifikovaný ako
+allergen-safety (q), honest data-absence odpoveď pre nutrition/calorie
+otázky – nová kapacita (r), **diakritický fold v evaluátorových
+title-substring checkoch** (s – opravil 3 DEV "zlyhania", ktoré boli v
+skutočnosti len chyby vyhodnocovača, nie appky), anglický disclaimer
+vocabulary pre `requires_uncertainty` (t – **DEV dosiahol 69/69,
+100 %**), "vrátiť" ako FAQ marker nájdený prvým HOLDOUT behom (u).
+
+**Prvý úplný HOLDOUT beh** (na priamu požiadavku používateľa,
+2026-09-08): **18/22 = 81,8 %** – vyšší než pôvodný blind výsledok, čo
+naznačuje, že väčšina opráv generalizovala aj na neviditeľné dotazy, nie
+len na literálne DEV scenáre.
+
+**V2.20v–V2.20x** (postupné HOLDOUT opravy až do 22/22):
+slovosledná tolerancia interponovaného názvu obchodu medzi "čo" a
+"potrebujem" (v – rovnaký fix shape aplikovaný na OBE sesterské funkcie
+naraz, `wants_shopping_list()` aj `wants_recipe_products()`), medzerová
+negácia "nie je pálivé" pre mild-produktovú rodinu (w), a napokon **dve
+nezávislé precedenčné vrstvy** blokujúce explicitnú substitučnú
+požiadavku – `execute_recipe()` a V2.13b action-target resolver –
+opravené dvoma úzkymi, aditívnymi guardmi bez zásahu do
+`app/workflow_resolver.py`/`app/turn_resolver.py` samotných (x).
+
+**Finálny stav (2026-09-09): DEV 69/69 (100 %), HOLDOUT 22/22
+(100 %)**. 310-core zostal 310/310 cez celú sériu. Plný beh rástol
+2385 → 2419, JS 46/46 nezmenené, canary 10/10 nezmenené, trust audit
+čistý v každom kroku. Každá oprava mala vlastný commit s pred-fix
+reprodukciou (často cez `git stash`), root-cause dôkazom a plnou
+validačnou batériou pred pushom.
+
+**Zámerne neopravené/zdokumentované medzery objavené počas série**
+(mimo rozsahu jednotlivých opráv, nie nedopatrenie):
+- `eval/golden/v2_20_scenarios.json` scenáre `replacement_0005`/
+  `replacement_0009` boli pôvodne označené za DEV zlyhania kvôli
+  diakritickej medzere vo vyhodnocovači (opravené v V2.20s) – appka
+  vždy vracala správny produkt.
+- `app.main.alternative_products_for_subject(..., "rybacia omacka", ...)`
+  vracia prevažne ĎALŠIU rybaciu omáčku namiesto kurátorovaných
+  vegetariánskych/bezlepkových alternatív (tamari/sójová omáčka/hubová
+  vegetariánska omáčka) už existujúcich inde v kóde – `replacement_0011`
+  scenár toto nekontroluje (len `intent`+`products_nonempty`), takže
+  HOLDOUT prešiel, ale skutočná zákaznícka potreba (vyhnúť sa rybacej
+  omáčke) nie je plne naplnená. Samostatný budúci kandidát.
+- OBSERVABILITY_GAP z V2.15a (externé HTTP volania nerozlíšiteľné od
+  reálneho zákazníka na úrovni `POST /chat`) zostáva otvorený – vyžaduje
+  novú architektúru (napr. auth header signál), nie rýchlu opravu.
+
+**Ďalší krok**: HOLDOUT sada je teraz "vyčerpaná" (už nie je blind) –
+akékoľvek ďalšie iterácie na tejto istej sade scenárov by boli
+overfitting, nie nezávislé meranie. Kandidáti na ďalší sprint: (a)
+rozšíriť V2.20 sadu o nové kurátorované scenáre pre čerstvý blind cyklus,
+(b) OBSERVABILITY_GAP architektonické riešenie, (c) `alternative_
+products_for_subject("rybacia omacka", ...)` kvalitatívna oprava. V2.20y
+sa nezačína automaticky.
