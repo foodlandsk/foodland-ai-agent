@@ -6923,6 +6923,15 @@ def wants_shopping_list(message: str) -> bool:
         if marker.startswith("co "):
             if re.search(r"(?:^|\s)" + re.escape(marker), normalized_message):
                 return True
+            # V2.20v fix (recipe_to_products_0001, HOLDOUT): "Co z
+            # Foodlandu potrebujem na tom kha gai?" inserts "z
+            # foodlandu" (naming WHERE to shop) between "co" and
+            # "potrebujem" - the exact-substring marker above never
+            # matches a real, natural customer phrasing. Bounded to a
+            # single interposed token (not an unbounded gap) so it
+            # cannot re-open the V2.19b/V2.18d.8 false-trigger class.
+            if marker == "co potrebujem" and re.search(r"(?:^|\s)co\s+z\s+\S+\s+potrebujem", normalized_message):
+                return True
         elif marker in normalized_message:
             return True
     return False
@@ -8193,7 +8202,7 @@ def detect_recipe_subject(message: str) -> str | None:
 
 def wants_recipe_products(message: str) -> bool:
     normalized_message = normalize(message)
-    return any(
+    if any(
         marker in normalized_message
         for marker in (
             "ingredien",
@@ -8216,7 +8225,15 @@ def wants_recipe_products(message: str) -> bool:
             "k receptu",
             "k recept",
         )
-    )
+    ):
+        return True
+    # V2.20v fix (recipe_to_products_0001, HOLDOUT): same word-order gap
+    # as wants_shopping_list()'s V2.20v fix - "Co z Foodlandu potrebujem
+    # na tom kha gai?" inserts "z foodlandu" (naming WHERE to shop)
+    # between "co" and "potrebujem", so the bare "co potrebujem"
+    # substring above never matches this natural phrasing. Bounded to a
+    # single interposed token, same as the sibling fix.
+    return bool(re.search(r"(?:^|\s)co\s+z\s+\S+\s+potrebujem", normalized_message))
 
 
 def recipe_related_product_subject(

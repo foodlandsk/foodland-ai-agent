@@ -1242,6 +1242,18 @@ class TestSearchProducts:
         assert result.get("products") == []
         assert "nemam overene" in nrm(result.get("answer", ""))
 
+    def test_tom_kha_shopping_list_with_interposed_shop_name_end_to_end(self):
+        # V2.20v (recipe_to_products_0001, HOLDOUT): "Co z Foodlandu
+        # potrebujem na tom kha gai?" returned a zero-product generic
+        # recipe-listing fallback instead of the tom-kha ingredient
+        # shopping list (coconut milk first, per
+        # app.main.MISSING_INGREDIENTS_BY_SUBJECT['tom_kha']).
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        result = main.chat(main.ChatRequest(message="Co z Foodlandu potrebujem na tom kha gai?", limit=8), request)
+        titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
+        assert titles
+        assert "kokosove mlieko" in titles[0]
+
     def test_gochujang_found(self, products):
         results = search_products(products, "gochujang", 4)
         assert titles_contain(results, "gochujang", "Gochujang")
@@ -1981,6 +1993,17 @@ class TestIntentDetection:
         # to a bare RECIPE_ONLY answer with zero products instead.
         assert main.wants_recipe_products("robim pad thai, co mi z toho predavate")
         assert main.wants_recipe_products("co predavate k tomuto receptu")
+
+    def test_recipe_product_intent_tolerates_interposed_shop_name(self):
+        # V2.20v fix (recipe_to_products_0001, HOLDOUT): "Co z Foodlandu
+        # potrebujem na tom kha gai?" inserts "z Foodlandu" between "co"
+        # and "potrebujem" - the bare "co potrebujem" substring never
+        # matched this natural word order, so execute_recipe() (gated on
+        # wants_recipe_products()) fell through to the generic zero-
+        # product recipe-listing fallback instead of building the
+        # ingredient shopping list.
+        assert main.wants_recipe_products("Co z Foodlandu potrebujem na tom kha gai?")
+        assert not main.wants_recipe_products("nieco z foodlandu potrebujem")
 
     def test_pho_recipe_products_prioritize_spices_then_noodles(self, products):
         matches = main.related_products_for_subject(products, main.knowledge, "pho", 8)
@@ -4860,4 +4883,18 @@ class TestV2_19b_ShoppingListCoBoundary:
         canonical = main.wants_shopping_list("potrebujem niečo bez lepku k sushi")
         word_order_variant = main.wants_shopping_list("niečo potrebujem bez lepku k sushi")
         assert canonical == word_order_variant == False
+
+    def test_co_potrebujem_tolerates_interposed_shop_name(self):
+        # V2.20v fix (recipe_to_products_0001, HOLDOUT): "Co z Foodlandu
+        # potrebujem na tom kha gai?" inserts "z Foodlandu" (naming WHERE
+        # to shop) between "co" and "potrebujem" - a natural word order
+        # the exact-substring "co potrebujem" marker never matched.
+        assert main.wants_shopping_list("Co z Foodlandu potrebujem na tom kha gai?") is True
+        assert main.wants_shopping_list("co z eshopu potrebujem na sushi") is True
+
+    def test_co_potrebujem_interposed_variant_still_boundary_aware(self):
+        # The new interposed-token pattern must still require "co" at a
+        # real word boundary - "nieco z foodlandu potrebujem" must not
+        # match, same protection as the bare marker above.
+        assert main.wants_shopping_list("nieco z foodlandu potrebujem bez lepku") is False
 
