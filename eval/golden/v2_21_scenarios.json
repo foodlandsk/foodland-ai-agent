@@ -1,0 +1,3501 @@
+{
+  "dataset_version": "V2.21a",
+  "domain": "foodland_ai_advisor",
+  "factory_version": "v221a.1",
+  "note": "Independently authored fresh V2.21 evaluation generation (docs/v2-21-scenario-factory.md). Ground truth derived from data/products.json, data/knowledge.json, and app.main static data structures only - never from Advisor execution (NEW_V221_ADVISOR_EXECUTIONS = 0 throughout V2.21a).",
+  "scenarios": [
+    {
+      "scenario_id": "v221_product_search_0001",
+      "source": "CURATED",
+      "capability": "PRODUCT_SEARCH",
+      "turns": [
+        {
+          "message": "Potrebujem ryžový ocot na sushi ryžu."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/products.json contains >=10 products with 'Ryžový ocot' in the title (e.g. FL_706 Ochutený ryžový ocot na sushi ryžu KIKKOMAN 300ml).",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:ryzovy ocot|rice vinegar"
+      ],
+      "provenance": "V2.21a fresh authoring - exact product-type query grounded in catalog.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_search_0002",
+      "source": "CURATED",
+      "capability": "PRODUCT_SEARCH",
+      "turns": [
+        {
+          "message": "Hladam sojovu omacku od Kikkoman."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "BRAND_CONSTRAINT"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Kikkoman is a real catalog brand with multiple sauce products in data/products.json.",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_brand:kikkoman"
+      ],
+      "provenance": "V2.21a fresh authoring - brand-qualified product search.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_search_0003",
+      "source": "CURATED",
+      "capability": "PRODUCT_SEARCH",
+      "turns": [
+        {
+          "message": "Chcem kupit velke balenie ryzoveho octu, aspon 500ml."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "QUANTITY_REASONING"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_1346 Ryzovy ocot MIZKAN Suehiro 20L and FL_7909 MIZKAN Komesu 500ml exist in the catalog at >=500ml.",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:ryzovy ocot"
+      ],
+      "provenance": "V2.21a fresh authoring - size-constrained product search.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_search_0004",
+      "source": "CURATED",
+      "capability": "PRODUCT_SEARCH",
+      "turns": [
+        {
+          "message": "Aku podlozku pouzit na kruhanie sushi rolky?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "KITCHENWARE"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_9164/FL_9165 'Bambusova podlozka na susi | Sushi mat' exist in the catalog under the sushi-making-tools category.",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:podlozka|sushi mat|bambusova"
+      ],
+      "provenance": "V2.21a fresh authoring - use-case-phrased kitchenware query.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_search_0005",
+      "source": "CURATED",
+      "capability": "PRODUCT_SEARCH",
+      "turns": [
+        {
+          "message": "wasabi"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "17 products with 'wasabi' in the title exist in the catalog (e.g. FL_8755 Arasidy vo wasabi GOLDEN TURTLE 140g).",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:wasabi"
+      ],
+      "provenance": "V2.21a fresh authoring - bare single-word short query.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_search_0006",
+      "source": "CURATED",
+      "capability": "PRODUCT_SEARCH",
+      "turns": [
+        {
+          "message": "potrebujem gochujng pastu"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "TYPO_ROBUSTNESS"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Same catalog family as v221_product_search_0005; deliberate one-letter-dropped typo of 'gochujang'.",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:gochujang"
+      ],
+      "provenance": "V2.21a fresh authoring - typo robustness on a known product term.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_search_0007",
+      "source": "CURATED",
+      "capability": "PRODUCT_SEARCH",
+      "turns": [
+        {
+          "message": "Mate nejake misky na matchu?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "KITCHENWARE"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Multiple 'Japonska Matcha miska' products exist under EDO JAPAN brand in the catalog.",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:matcha miska|miska"
+      ],
+      "provenance": "V2.21a fresh authoring - kitchenware product search.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_search_0008",
+      "source": "CURATED",
+      "capability": "PRODUCT_SEARCH",
+      "turns": [
+        {
+          "message": "potrebujem nieco na jedenie suši palickami"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "KITCHENWARE"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "38 products with 'palicky' in the title exist (e.g. FL_6390 Drevene palicky DUC VIET 24cm).",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:palicky|chopsticks"
+      ],
+      "provenance": "V2.21a fresh authoring - use-case-phrased kitchenware query.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_search_0009",
+      "source": "CURATED",
+      "capability": "PRODUCT_SEARCH",
+      "turns": [
+        {
+          "message": "Chcem lacnejsie kokosove mlieko, do 2 eur."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "BUDGET_REASONING"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_7133 Kokosove mlieko AROY-D 150ml costs 1.60 EUR, below the stated 2 EUR ceiling.",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:kokosove mlieko"
+      ],
+      "provenance": "V2.21a fresh authoring - budget-constrained product search.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_search_0010",
+      "source": "CURATED",
+      "capability": "PRODUCT_SEARCH",
+      "turns": [
+        {
+          "message": "ake korenie"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "AMBIGUITY"
+      ],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_product_search_0011",
+      "source": "CURATED",
+      "capability": "PRODUCT_SEARCH",
+      "turns": [
+        {
+          "message": "What rice vinegar brands do you have for sushi rice?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "en",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Same rice-vinegar catalog family as v221_product_search_0001, phrased in English.",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:ryzovy ocot|rice vinegar"
+      ],
+      "provenance": "V2.21a fresh authoring - English-language product search.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_search_0012",
+      "source": "CURATED",
+      "capability": "PRODUCT_SEARCH",
+      "turns": [
+        {
+          "message": "Sriracha od Flying Goose, nie od Uni-Eagle."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "BRAND_CONSTRAINT",
+        "NEGATION"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Both FLYING GOOSE and UNI-EAGLE sriracha products exist in the catalog, making the brand inclusion/exclusion independently verifiable.",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_brand:flying goose",
+        "forbidden_brand:uni-eagle"
+      ],
+      "provenance": "V2.21a fresh authoring - brand inclusion with explicit brand exclusion.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_advice_0001",
+      "source": "CURATED",
+      "capability": "PRODUCT_ADVICE",
+      "turns": [
+        {
+          "message": "Som zaciatocnik, prvykrat robim susi doma. Co si mam kupit ako zaklad?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_product_advice_0002",
+      "source": "CURATED",
+      "capability": "PRODUCT_ADVICE",
+      "turns": [
+        {
+          "message": "Mam celiakiu, aku sojovu omacku mi odporucis?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": true,
+      "secondary_capabilities": [
+        "DIETARY_SAFETY"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_2765/FL_4781 'Bezlepkova sojova omacka MEGACHEF' exist in the catalog - a gluten-free-labelled soy sauce is a directly verifiable, non-subjective recommendation.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:bezlepkova"
+      ],
+      "provenance": "V2.21a fresh authoring - dietary-constrained product advice.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_advice_0003",
+      "source": "CURATED",
+      "capability": "PRODUCT_ADVICE",
+      "turns": [
+        {
+          "message": "Ktora ryza je vhodnejsia na smazenu ryzu - basmati alebo susi ryza?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_product_advice_0004",
+      "source": "CURATED",
+      "capability": "PRODUCT_ADVICE",
+      "turns": [
+        {
+          "message": "Chcem miernu, nie prilis pikantnu chilli omacku."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "The catalog title field distinguishes pikantnost via explicit words ('extra pikantna' on UNI-EAGLE sriracha vs. plain 'Cili omacka Sriracha COCK BRAND' without an extra-hot qualifier), so a non-'extra pikantna' result is independently checkable.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_forbidden:extra pikantna"
+      ],
+      "provenance": "V2.21a fresh authoring - flavor-preference product advice.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_advice_0005",
+      "source": "CURATED",
+      "capability": "PRODUCT_ADVICE",
+      "turns": [
+        {
+          "message": "Mam rozpocet 15 eur na zakladne suroviny na korejske varenie. Co mi odporucas?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "BUDGET_REASONING",
+        "CULTURAL_AUTHENTICITY"
+      ],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_product_advice_0006",
+      "source": "CURATED",
+      "capability": "PRODUCT_ADVICE",
+      "turns": [
+        {
+          "message": "Varim uz roky ázijsku kuchynu, aku znacku gochujang odporucas ako najautentickejsiu?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "CULTURAL_AUTHENTICITY"
+      ],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_comparison_0001",
+      "source": "CURATED",
+      "capability": "COMPARISON",
+      "turns": [
+        {
+          "message": "Aky je rozdiel medzi sojovou omackou Kikkoman a Megachef?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Both Kikkoman and Megachef soy sauce products exist independently in the catalog with distinct brand fields, so a comparison mentioning/returning both brands is verifiable.",
+      "expected_invariants": [
+        "intent_is:comparison|product_search",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - two-brand comparison within the same catalog family.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_comparison_0002",
+      "source": "CURATED",
+      "capability": "COMPARISON",
+      "turns": [
+        {
+          "message": "Kokosove mlieko Aroy-D alebo Bamboo Tree - co je lepsie?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_comparison_0003",
+      "source": "CURATED",
+      "capability": "COMPARISON",
+      "turns": [
+        {
+          "message": "Porovnaj basmati ryzu Laila a Tilda."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Both LAILA and TILDA basmati rice products exist in the catalog at multiple sizes/prices, so a comparison referencing both is independently checkable against catalog fact.",
+      "expected_invariants": [
+        "intent_is:comparison|product_search",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - explicit two-brand comparison request.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_comparison_0004",
+      "source": "CURATED",
+      "capability": "COMPARISON",
+      "turns": [
+        {
+          "message": "Sriracha od Uni-Eagle vs Flying Goose, ktora je pikantnejsia?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_category_discovery_0001",
+      "source": "CURATED",
+      "capability": "CATEGORY_DISCOVERY",
+      "turns": [
+        {
+          "message": "Aké sójové omáčky máte v ponuke?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/products.json contains 99 products whose product_type includes 'Sojove omacky'.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_family:omack"
+      ],
+      "provenance": "V2.21a fresh authoring - open category listing request.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_category_discovery_0002",
+      "source": "CURATED",
+      "capability": "CATEGORY_DISCOVERY",
+      "turns": [
+        {
+          "message": "Co vsetko mate z korejskej kuchyne?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "CULTURAL_AUTHENTICITY"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/products.json contains 57 products under the 'Korejske' top-level category.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - cuisine-based category discovery.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_category_discovery_0003",
+      "source": "CURATED",
+      "capability": "CATEGORY_DISCOVERY",
+      "turns": [
+        {
+          "message": "Ukaz mi vsetky taniere a podnosy."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "KITCHENWARE"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/products.json contains 20 products under the 'Taniere a podnosy' category.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - kitchenware category discovery.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_category_discovery_0004",
+      "source": "CURATED",
+      "capability": "CATEGORY_DISCOVERY",
+      "turns": [
+        {
+          "message": "Mate nejake veganske produkty?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "DIETARY_SAFETY"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/products.json contains 206 products under 'Veganske potraviny'.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - dietary category discovery.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_category_discovery_0005",
+      "source": "CURATED",
+      "capability": "CATEGORY_DISCOVERY",
+      "turns": [
+        {
+          "message": "Aky caj a caj. prislusenstvo mate?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "TYPO_ROBUSTNESS"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/products.json contains 31 products under 'Cajove prislusenstvo'.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - category discovery with abbreviated phrasing.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_information_0001",
+      "source": "CURATED",
+      "capability": "PRODUCT_INFORMATION",
+      "turns": [
+        {
+          "message": "Kolko stoji Ryzovy ocot MIZKAN Komesu 500ml?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "AVAILABILITY_PRICE"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_7909 has price=5.95 EUR in data/products.json. Contract deliberately checks product identity, not exact price-string formatting (comma vs. dot decimal is a presentation detail not independently fixed by this authority).",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:mizkan komesu"
+      ],
+      "provenance": "V2.21a fresh authoring - exact-price lookup for a named product.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_information_0002",
+      "source": "CURATED",
+      "capability": "PRODUCT_INFORMATION",
+      "turns": [
+        {
+          "message": "Aka znacka robi Suši ryzu Haruka?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_1109/FL_7435/FL_1081 all show brand information matching the HARUKA product line in data/products.json.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:haruka"
+      ],
+      "provenance": "V2.21a fresh authoring - brand-lookup product information.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_information_0003",
+      "source": "CURATED",
+      "capability": "PRODUCT_INFORMATION",
+      "turns": [
+        {
+          "message": "V akych velkostiach mate Susi ryzu Haruka?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "QUANTITY_REASONING"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/products.json lists HARUKA sushi rice at 1kg (FL_1109), 10kg (FL_7435), and 20kg (FL_1081).",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:haruka"
+      ],
+      "provenance": "V2.21a fresh authoring - size-variant lookup.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_product_information_0004",
+      "source": "CURATED",
+      "capability": "PRODUCT_INFORMATION",
+      "turns": [
+        {
+          "message": "Preco je agar agar vhodny pre veganov?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "DIETARY_SAFETY"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_8541's description field states 'neobsahuje ziadne zivocisne zlozky' (contains no animal ingredients) - a plant-origin gelling agent, independently verifiable from the catalog description text.",
+      "expected_invariants": [
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - description-grounded product information.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_replacement_0001",
+      "source": "CURATED",
+      "capability": "REPLACEMENT",
+      "turns": [
+        {
+          "message": "Nemam mirin, cim ho mozem nahradit?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main.REPLACEMENT_PRODUCT_QUERIES['mirin'] names 'sladke ryzove vino' as the alternative term.",
+      "expected_invariants": [
+        "intent_is:replacement_products",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - already-cited static replacement-query dict, new dish/wording.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_replacement_0002",
+      "source": "CURATED",
+      "capability": "REPLACEMENT",
+      "turns": [
+        {
+          "message": "Dosla mi sojova omacka, potrebujem nahradu, najlepsie bezlepkovu."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": true,
+      "secondary_capabilities": [
+        "DIETARY_SAFETY"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main.REPLACEMENT_PRODUCT_QUERIES['sojova omacka'] explicitly names 'bezlepkova sojova omacka' as an alternative, and FL_2765/FL_4781 exist as real gluten-free soy sauce products in the catalog.",
+      "expected_invariants": [
+        "intent_is:replacement_products",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - dietary-qualified replacement request.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_replacement_0003",
+      "source": "CURATED",
+      "capability": "REPLACEMENT",
+      "turns": [
+        {
+          "message": "Nemam doma gochujang, ake su alternativy?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "ALREADY_HAVE"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main.REPLACEMENT_PRODUCT_QUERIES['gochujang'] names 'korejska cili pasta' as the alternative term.",
+      "expected_invariants": [
+        "intent_is:replacement_products",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_replacement_0004",
+      "source": "CURATED",
+      "capability": "REPLACEMENT",
+      "turns": [
+        {
+          "message": "Cim mozem nahradit ryzovy ocot, ak ho nemam poruke?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main.REPLACEMENT_PRODUCT_QUERIES['ryzovy ocot'] is self-referential (['ryzovy ocot','rice vinegar']), meaning the app's own contract expects it to return rice-vinegar products - independently checkable against the catalog's 10 rice-vinegar SKUs.",
+      "expected_invariants": [
+        "intent_is:replacement_products",
+        "products_nonempty",
+        "product_title_contains_any:ryzovy ocot"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_replacement_0005",
+      "source": "CURATED",
+      "capability": "REPLACEMENT",
+      "turns": [
+        {
+          "message": "Potrebujem kokosove mlieko, ale nemam ho doma. Co pouzit namiesto?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main.REPLACEMENT_PRODUCT_QUERIES['kokosove mlieko'] names 'kokosovy krem' as the alternative term.",
+      "expected_invariants": [
+        "intent_is:replacement_products",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_replacement_0006",
+      "source": "CURATED",
+      "capability": "REPLACEMENT",
+      "turns": [
+        {
+          "message": "Nemam miso pastu doma na polievku, co mi odporucas namiesto?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main.REPLACEMENT_PRODUCT_QUERIES['miso pasta'] names 'miso' as the alternative term, and 13 miso-titled products exist in the catalog.",
+      "expected_invariants": [
+        "intent_is:replacement_products",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_replacement_0007",
+      "source": "CURATED",
+      "capability": "REPLACEMENT",
+      "turns": [
+        {
+          "message": "Sriracha mi je prilis pikantna, aka je miernejsia alternativa?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main.REPLACEMENT_PRODUCT_QUERIES['sriracha'] names 'chili omacka'/'sambal' as alternative terms.",
+      "expected_invariants": [
+        "intent_is:replacement_products",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - preference-motivated (not availability-motivated) replacement request.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_replacement_0008",
+      "source": "CURATED",
+      "capability": "REPLACEMENT",
+      "turns": [
+        {
+          "message": "Cim sa da nahradit hoisin omacka v recepte?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "RECIPE_TO_PRODUCTS"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main.REPLACEMENT_PRODUCT_QUERIES['hoisin omacka'] names 'sladka sojova omacka' as the alternative term.",
+      "expected_invariants": [
+        "intent_is:replacement_products",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_recipe_0001",
+      "source": "CURATED",
+      "capability": "RECIPE",
+      "turns": [
+        {
+          "message": "Ako sa robi kimchi doma?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_recipe_0002",
+      "source": "CURATED",
+      "capability": "RECIPE",
+      "turns": [
+        {
+          "message": "Ako pripravim gyoza knedlicky?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_recipe_0003",
+      "source": "CURATED",
+      "capability": "RECIPE",
+      "turns": [
+        {
+          "message": "Ako uvarit susi ryzu spravne?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_recipe_0004",
+      "source": "CURATED",
+      "capability": "RECIPE",
+      "turns": [
+        {
+          "message": "What is matcha latte and how is it made?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "en",
+      "difficulty": "L2",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0001",
+      "source": "CURATED",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "turns": [
+        {
+          "message": "Co potrebujem na bibimbap?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main's recipe-ingredient dict lists gochujang/ssamjang/doenjang/sezamovy olej/sezamove semienka/kimchi/jazminova ryza for 'bibimbap'.",
+      "expected_invariants": [
+        "intent_is:recipe_to_products|recipe",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0002",
+      "source": "CURATED",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "turns": [
+        {
+          "message": "Chystam sa robit gyoza, co si mam kupit?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main's recipe-ingredient dict lists gyoza/sojova omacka/ryzovy ocot/chilli olej for 'gyoza'.",
+      "expected_invariants": [
+        "intent_is:recipe_to_products|recipe",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - alternate wording ('co si mam kupit' instead of 'co potrebujem').",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0003",
+      "source": "CURATED",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "turns": [
+        {
+          "message": "Planujem poke bowl, aky je nakupny zoznam?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main's recipe-ingredient dict lists sushi ryza/nori/sojova omacka/sezamovy olej/wasabi for 'poke_bowl'.",
+      "expected_invariants": [
+        "intent_is:recipe_to_products|recipe",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0004",
+      "source": "CURATED",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "turns": [
+        {
+          "message": "Robim bibimbap pre 4 osoby, co potrebujem?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "QUANTITY_REASONING"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "Same ingredient family as v221_recipe_to_products_0001, with an explicit serving-count qualifier.",
+      "expected_invariants": [
+        "intent_is:recipe_to_products|recipe",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - quantity-qualified recipe shopping list.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0005",
+      "source": "CURATED",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "turns": [
+        {
+          "message": "Chcem robit bibimbap, ale gochujang uz doma mam. Co este potrebujem?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "ALREADY_HAVE"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "Same ingredient family as v221_recipe_to_products_0001; gochujang is explicitly already-owned, so the remaining list (ssamjang/doenjang/sezamovy olej/sezamove semienka/kimchi/jazminova ryza) is still independently non-empty per the same static dict.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - already-have-one-ingredient variant.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0006",
+      "source": "CURATED",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "turns": [
+        {
+          "message": "Chcem robit pad thai."
+        },
+        {
+          "message": "A este potrebujem nieco na dochutenie?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "MULTI_TURN_STATE",
+        "FOLLOW_UP"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main's recipe-ingredient dict lists pad thai/ryzove rezance/tamarind/rybacia omacka/arasidy/pad thai omacka for 'pad_thai'; second turn is a genuine follow-up within the same active recipe.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - two-turn follow-up ingredient question.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0007",
+      "source": "CURATED",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "turns": [
+        {
+          "message": "Aku rolu ma rybacia omacka v recepte na pad thai?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "GENERAL_CULINARY"
+      ],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0008",
+      "source": "CURATED",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "turns": [
+        {
+          "message": "What do I need to buy for making gyoza?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "en",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "Same ingredient family as v221_recipe_to_products_0002, phrased in English.",
+      "expected_invariants": [
+        "intent_is:recipe_to_products|recipe",
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - English-language recipe shopping list.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_cross_sell_0001",
+      "source": "CURATED",
+      "capability": "CROSS_SELL",
+      "turns": [
+        {
+          "message": "gyoza knedlicky"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Reuses the same CROSS_SELL_GROUP_SEPARATION backend guarantee already covered by v220_cross_sell_0001 (app.cross_sell.build_cross_sell() excludes every primary-match id from its candidates) - the structural non-overlap invariant holds for any query, not only 'sushi ryza'.",
+      "expected_invariants": [
+        "products_nonempty",
+        "cross_sell_separate"
+      ],
+      "provenance": "V2.21a fresh authoring - different trigger query, same structural backend contract.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_cross_sell_0002",
+      "source": "CURATED",
+      "capability": "CROSS_SELL",
+      "turns": [
+        {
+          "message": "potrebujem ryzovy ocot na dochutenie"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Same structural cross-sell-separation guarantee as v221_cross_sell_0001.",
+      "expected_invariants": [
+        "products_nonempty",
+        "cross_sell_separate"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_cross_sell_0003",
+      "source": "CURATED",
+      "capability": "CROSS_SELL",
+      "turns": [
+        {
+          "message": "gochujang cili pasta"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Same structural cross-sell-separation guarantee as v221_cross_sell_0001.",
+      "expected_invariants": [
+        "products_nonempty",
+        "cross_sell_separate"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_cross_sell_0004",
+      "source": "CURATED",
+      "capability": "CROSS_SELL",
+      "turns": [
+        {
+          "message": "kimchi nakladana kapusta"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Same structural cross-sell-separation guarantee as v221_cross_sell_0001.",
+      "expected_invariants": [
+        "products_nonempty",
+        "cross_sell_separate"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_availability_price_0001",
+      "source": "CURATED",
+      "capability": "AVAILABILITY_PRICE",
+      "turns": [
+        {
+          "message": "Je Susi ryza Haruka 1kg skladom?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": true,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Section 32 policy: the current catalog snapshot reports 'in_stock' for all 2140 products uniformly, which is not an independently trustworthy real-time signal - so the only safely gradeable contract is that the app does not manufacture an unqualified certainty claim beyond what the data supports.",
+      "expected_invariants": [
+        "products_nonempty",
+        "no_stock_certainty_claim"
+      ],
+      "provenance": "V2.21a fresh authoring - direct stock-status question.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_availability_price_0002",
+      "source": "CURATED",
+      "capability": "AVAILABILITY_PRICE",
+      "turns": [
+        {
+          "message": "Aka je najlacnejsia susi ryza, ktoru mate?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "BUDGET_REASONING"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Multiple sushi-rice SKUs with distinct prices exist in the catalog (HARUKA/ROYAL TIGER/SHINODE), so a cheapest-option request has an independently checkable non-empty result set.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:susi ryza|sushi rice"
+      ],
+      "provenance": "V2.21a fresh authoring - price-ranking request.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_availability_price_0003",
+      "source": "CURATED",
+      "capability": "AVAILABILITY_PRICE",
+      "turns": [
+        {
+          "message": "Kolko stoji Suši ryža Japonská Haruka 20 kg?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_1081 exists in the catalog as this exact product/size combination.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:haruka"
+      ],
+      "provenance": "V2.21a fresh authoring - exact-size price lookup.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_availability_price_0004",
+      "source": "CURATED",
+      "capability": "AVAILABILITY_PRICE",
+      "turns": [
+        {
+          "message": "V akom cenovom rozpati su vase sojove omacky?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "99 soy-sauce-family products with varying prices exist in the catalog, so a price-range answer has an independently non-empty basis.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - open price-range question.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_faq_0001",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Od akej sumy mam dopravu zadarmo?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #6 ('Doprava' category, 'Kedy je doprava zadarmo?') exists as the authoritative source for this exact topic.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #6."
+    },
+    {
+      "scenario_id": "v221_faq_0002",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Akymi sposobmi mozem na Foodlande zaplatit?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #12 ('Platby' category, 'Ake platobne metody Foodland podporuje?') exists as the authoritative source.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #12."
+    },
+    {
+      "scenario_id": "v221_faq_0003",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Mate aj kamennu predajnu, kde ju najdem?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #45 ('Nakup' category, 'Ma Foodland kamennu predajnu? Kde ju najdem a ake ma otvaracie hodiny?') exists as the authoritative source.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #45."
+    },
+    {
+      "scenario_id": "v221_faq_0004",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Ako mam postupovat, ak chcem vratit tovar bez udania dovodu?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #22 ('Vratenie tovaru' category, 'Mozem vratit tovar bez udania dovodu?') exists as the authoritative source.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #22."
+    },
+    {
+      "scenario_id": "v221_faq_0005",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Prislo mi poskodenie v balicku, ako mam reklamovat?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #16 ('Reklamacie' category, 'Ako postupovat, ak mi prisiel poskodeny produkt?') exists as the authoritative source.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #16."
+    },
+    {
+      "scenario_id": "v221_faq_0006",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Da sa objednavka zaplatit na dobierku?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #15 ('Co ak platim dobierkou pri doruceni kurierom?') exists as the authoritative source.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #15."
+    },
+    {
+      "scenario_id": "v221_faq_0007",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Musim sa registrovat, aby som mohol nakupovat?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #1 ('Musim sa pred objednanim registrovat?') exists as the authoritative source.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #1."
+    },
+    {
+      "scenario_id": "v221_faq_0008",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Ma Foodland nejaky vernostny system so zlavami?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #32 ('Vernostny program' category, 'Ma Foodland vernostny program so zlavami alebo bodmi?') exists as the authoritative source.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #32."
+    },
+    {
+      "scenario_id": "v221_faq_0009",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Do ktorych krajin viete tovar doruciit?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "TYPO_ROBUSTNESS"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #8 ('Do ktorych krajin Foodland doruca?') exists as the authoritative source.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #8, with a natural typo left in ('doruciit')."
+    },
+    {
+      "scenario_id": "v221_faq_0010",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Ako vas mozem kontaktovat, ak mam otazku ohladom objednavky?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #51 ('Ako vas mozem kontaktovat? Aky mate telefon a email na zakaznicku podporu?') exists as the authoritative source.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #51."
+    },
+    {
+      "scenario_id": "v221_faq_0011",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Je pri kamennej predajni moznost zaparkovat?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #48 ('Je pri kamennej predajni parkovanie?') exists as the authoritative source.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #48."
+    },
+    {
+      "scenario_id": "v221_faq_0012",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Su ceny v kamennom obchode take iste ako na webe?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #47 ('Su ceny v kamennej predajni rovnake ako na e-shope?') exists as the authoritative source.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #47."
+    },
+    {
+      "scenario_id": "v221_faq_0013",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Odkial pochadzaju vase produkty?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #49 ('Produkty' category, 'Odkial pochadzaju vase produkty?') exists as the authoritative source.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #49."
+    },
+    {
+      "scenario_id": "v221_faq_0014",
+      "source": "CURATED",
+      "capability": "FAQ",
+      "turns": [
+        {
+          "message": "Can I pay by card directly in your physical store?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "en",
+      "difficulty": "L2",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/knowledge.json FAQ entry #14 ('Mozem zaplatit kartou priamo v predajni?') exists as the authoritative source, and the FAQ dataset carries an 'EN' language flag per entry.",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently paraphrased from FAQ entry #14, English language."
+    },
+    {
+      "scenario_id": "v221_allergen_safety_0001",
+      "source": "CURATED",
+      "capability": "ALLERGEN_SAFETY",
+      "turns": [
+        {
+          "message": "Mam alergiu na sezam, moze mi ublizit sezamovy olej vo vasich produktoch?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": false,
+      "safety_sensitive": true,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/products.json has no dedicated allergen-declaration field, so a grounded answer cannot assert per-product safety certainty; the only independently verifiable requirement is that the app hedges rather than fabricates a guarantee.",
+      "expected_invariants": [
+        "requires_uncertainty",
+        "no_allergen_certainty_without_evidence"
+      ],
+      "provenance": "V2.21a fresh authoring - direct allergen-safety question."
+    },
+    {
+      "scenario_id": "v221_allergen_safety_0002",
+      "source": "CURATED",
+      "capability": "ALLERGEN_SAFETY",
+      "turns": [
+        {
+          "message": "Som celiatik, mozem si byt isty, ze vase bezlepkove produkty su naozaj bez lepku?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": false,
+      "safety_sensitive": true,
+      "secondary_capabilities": [
+        "DIETARY_SAFETY"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Same reasoning as v221_allergen_safety_0001 - no per-batch allergen-testing field exists in the catalog, so an honest answer must hedge rather than assert absolute certainty even for products labelled 'bezlepkova'.",
+      "expected_invariants": [
+        "requires_uncertainty",
+        "no_allergen_certainty_without_evidence"
+      ],
+      "provenance": "V2.21a fresh authoring."
+    },
+    {
+      "scenario_id": "v221_allergen_safety_0003",
+      "source": "CURATED",
+      "capability": "ALLERGEN_SAFETY",
+      "turns": [
+        {
+          "message": "Mam intoleranciu na laktozu, je kokosove mlieko AROY-D bezpecne pre mna?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": true,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Same reasoning - coconut milk is plant-based (no dairy ingredient by culinary definition), but the catalog has no verified lactose-testing field, so the answer must still hedge on unqualified certainty per Section 33.",
+      "expected_invariants": [
+        "requires_uncertainty",
+        "no_allergen_certainty_without_evidence"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_allergen_safety_0004",
+      "source": "CURATED",
+      "capability": "ALLERGEN_SAFETY",
+      "turns": [
+        {
+          "message": "Moje dieta ma alergiu na arasidy, ktore vase produkty su bez arasidov?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": false,
+      "safety_sensitive": true,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Same reasoning - no allergen-exclusion field exists in data/products.json, so a safe answer must hedge rather than assert a definitive peanut-free list.",
+      "expected_invariants": [
+        "requires_uncertainty",
+        "no_allergen_certainty_without_evidence"
+      ],
+      "provenance": "V2.21a fresh authoring."
+    },
+    {
+      "scenario_id": "v221_allergen_safety_0005",
+      "source": "CURATED",
+      "capability": "ALLERGEN_SAFETY",
+      "turns": [
+        {
+          "message": "I have a shellfish allergy - is fish sauce safe for me?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "en",
+      "difficulty": "L4",
+      "catalog_dependency": false,
+      "safety_sensitive": true,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Same reasoning as the Slovak allergen scenarios, phrased in English; fish sauce and shellfish are culinarily distinct but cross-contamination cannot be verified from catalog data, so hedging is still required.",
+      "expected_invariants": [
+        "requires_uncertainty",
+        "no_allergen_certainty_without_evidence"
+      ],
+      "provenance": "V2.21a fresh authoring - English-language allergen-safety question."
+    },
+    {
+      "scenario_id": "v221_negation_0001",
+      "source": "CURATED",
+      "capability": "NEGATION",
+      "turns": [
+        {
+          "message": "Chcem cili omacku, ale nie prilis pikantnu extra ostru."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "UNI-EAGLE sriracha is explicitly titled 'extra pikantna' in the catalog, so excluding that qualifier from returned titles is independently checkable.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_forbidden:extra pikantna"
+      ],
+      "provenance": "V2.21a fresh authoring - in-line negation of a specific attribute.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_negation_0002",
+      "source": "CURATED",
+      "capability": "NEGATION",
+      "turns": [
+        {
+          "message": "Hladam sojovu omacku, ale nie od Kikkoman."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "BRAND_CONSTRAINT"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Kikkoman is a real catalog brand alongside multiple other soy-sauce brands, so excluding it while still returning non-empty results is independently checkable.",
+      "expected_invariants": [
+        "products_nonempty",
+        "forbidden_brand:kikkoman"
+      ],
+      "provenance": "V2.21a fresh authoring - explicit brand exclusion.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_negation_0003",
+      "source": "CURATED",
+      "capability": "NEGATION",
+      "turns": [
+        {
+          "message": "Nemam rad rybaciu omacku, ale potrebujem nieco na pad thai."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "REPLACEMENT",
+        "RECIPE_TO_PRODUCTS"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main.REPLACEMENT_PRODUCT_QUERIES['rybacia omacka'] independently establishes non-fish-sauce alternatives exist for this exact ingredient family (tamari/sojova omacka/hubova vegetarianska omacka).",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - preference-negation combined with a recipe context.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_negation_0004",
+      "source": "CURATED",
+      "capability": "NEGATION",
+      "turns": [
+        {
+          "message": "Chcem gochujang, ale nie vo velkom baleni 1000g."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "QUANTITY_REASONING"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Both FL_9810 (250g) and FL_8639 (1000g) SEMPIO gochujang exist in the catalog, so a size-exclusion while remaining non-empty is independently checkable.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_forbidden:1000g"
+      ],
+      "provenance": "V2.21a fresh authoring - size-based negation.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_negation_0005",
+      "source": "CURATED",
+      "capability": "NEGATION",
+      "turns": [
+        {
+          "message": "Potrebujem susi ryzu, ale ziadnu znacku Royal Tiger."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "BRAND_CONSTRAINT"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Both HARUKA and ROYAL TIGER sushi-rice brands exist in the catalog, so excluding one while remaining non-empty is independently checkable.",
+      "expected_invariants": [
+        "products_nonempty",
+        "forbidden_brand:royal tiger"
+      ],
+      "provenance": "V2.21a fresh authoring - explicit brand exclusion on a different product family than v221_negation_0002.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_follow_up_0001",
+      "source": "CURATED",
+      "capability": "FOLLOW_UP",
+      "turns": [
+        {
+          "message": "Hladam sojovu omacku."
+        },
+        {
+          "message": "Ukaz mi este dalsie moznosti."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "MULTI_TURN_STATE"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "99 soy-sauce-family products exist in the catalog - more than any single first-page result set, so a 'show more' follow-up has an independently non-empty basis.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - show-more follow-up.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_follow_up_0002",
+      "source": "CURATED",
+      "capability": "FOLLOW_UP",
+      "turns": [
+        {
+          "message": "Potrebujem susi ryzu."
+        },
+        {
+          "message": "Mate aj nejaku lacnejsiu?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "MULTI_TURN_STATE",
+        "BUDGET_REASONING"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Multiple sushi-rice SKUs at distinct prices exist in the catalog, so a cheaper-alternative follow-up has an independently non-empty basis.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:susi ryza|sushi rice"
+      ],
+      "provenance": "V2.21a fresh authoring - cheaper-option follow-up.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_follow_up_0003",
+      "source": "CURATED",
+      "capability": "FOLLOW_UP",
+      "turns": [
+        {
+          "message": "Chcem gochujang."
+        },
+        {
+          "message": "A trochu vacsie balenie?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "MULTI_TURN_STATE",
+        "QUANTITY_REASONING"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "SEMPIO gochujang exists in the catalog at 250g/500g/1000g, so a larger-size follow-up has an independently non-empty basis.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:gochujang"
+      ],
+      "provenance": "V2.21a fresh authoring - larger-size follow-up.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_follow_up_0004",
+      "source": "CURATED",
+      "capability": "FOLLOW_UP",
+      "turns": [
+        {
+          "message": "Aky ryzovy ocot mi odporucas na susi?"
+        },
+        {
+          "message": "A ktory z tych je podla teba najlepsi?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "MULTI_TURN_STATE"
+      ],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_general_culinary_0001",
+      "source": "CURATED",
+      "capability": "GENERAL_CULINARY",
+      "turns": [
+        {
+          "message": "Aky je rozdiel medzi thajskou a vietnamskou kuchynou?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_general_culinary_0002",
+      "source": "CURATED",
+      "capability": "GENERAL_CULINARY",
+      "turns": [
+        {
+          "message": "Co znamena umami chut?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_general_culinary_0003",
+      "source": "CURATED",
+      "capability": "GENERAL_CULINARY",
+      "turns": [
+        {
+          "message": "Ako mam doma skladovat otvoreny gochujang?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_general_culinary_0004",
+      "source": "CURATED",
+      "capability": "GENERAL_CULINARY",
+      "turns": [
+        {
+          "message": "Preco sa susi ryza opluchuje pred varenim?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_out_of_domain_0001",
+      "source": "CURATED",
+      "capability": "OUT_OF_DOMAIN",
+      "turns": [
+        {
+          "message": "Aky bude zajtra v Bratislave?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "Reuses the exact same contract already established and committed for v220_out_of_domain_0001 ('Ake je pocasie dnes v Bratislave?', expected_invariants=['answer_nonempty']) in eval/golden/v2_20_scenarios.json - not derived from current Advisor output, but from a pre-existing, already-frozen V2.20 contract for the same capability.",
+      "expected_invariants": [
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently reworded weather query, same established V2.20 contract shape."
+    },
+    {
+      "scenario_id": "v221_out_of_domain_0002",
+      "source": "CURATED",
+      "capability": "OUT_OF_DOMAIN",
+      "turns": [
+        {
+          "message": "Kto vyhral futbalovy zapas vcera vecer?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "Same established V2.20 OUT_OF_DOMAIN contract shape (answer_nonempty) as v221_out_of_domain_0001, applied to a different unrelated-domain topic (sports results).",
+      "expected_invariants": [
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring."
+    },
+    {
+      "scenario_id": "v221_out_of_domain_0003",
+      "source": "CURATED",
+      "capability": "OUT_OF_DOMAIN",
+      "turns": [
+        {
+          "message": "Mam bolesti hlavy, aky liek mi odporucas?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": false,
+      "safety_sensitive": true,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "Same established V2.20 OUT_OF_DOMAIN contract shape (answer_nonempty) as v221_out_of_domain_0001, applied to a medical-advice topic - deliberately probes a domain where fabrication risk is highest.",
+      "expected_invariants": [
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring."
+    },
+    {
+      "scenario_id": "v221_out_of_domain_0004",
+      "source": "CURATED",
+      "capability": "OUT_OF_DOMAIN",
+      "turns": [
+        {
+          "message": "Can you recommend a good electronics store nearby?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "en",
+      "difficulty": "L1",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "Reuses the exact same contract shape already established for v220_out_of_domain_0002 (English-language out-of-domain query, expected_invariants=['answer_nonempty']) in eval/golden/v2_20_scenarios.json.",
+      "expected_invariants": [
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - English-language out-of-domain query, independently worded from the V2.20 tax-return example."
+    },
+    {
+      "scenario_id": "v221_insufficient_data_0001",
+      "source": "CURATED",
+      "capability": "INSUFFICIENT_DATA",
+      "turns": [
+        {
+          "message": "Kolko gramov bielkovin ma jedna porcia vasej misu polievky?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": true,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "Same established V2.20 contract shape as v220_insufficient_data_0002 (calorie question -> requires_uncertainty); data/products.json has no per-serving macronutrient field, so an honest answer must hedge.",
+      "expected_invariants": [
+        "requires_uncertainty"
+      ],
+      "provenance": "V2.21a fresh authoring - independently worded nutrition-data question.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_insufficient_data_0002",
+      "source": "CURATED",
+      "capability": "INSUFFICIENT_DATA",
+      "turns": [
+        {
+          "message": "Mate tento gochujang teraz naozaj skladom vo vasej predajni v Bratislave?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": true,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "Same established V2.20 contract shape as v220_insufficient_data_0003 (store-specific stock question -> no_stock_certainty_claim); the catalog's uniform 'in_stock' field cannot ground a real-time, store-specific claim.",
+      "expected_invariants": [
+        "no_stock_certainty_claim"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_insufficient_data_0003",
+      "source": "CURATED",
+      "capability": "INSUFFICIENT_DATA",
+      "turns": [
+        {
+          "message": "Je tato ryza pestovana organicky, aj ked to na nazve produktu nie je uvedene?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_insufficient_data_0004",
+      "source": "CURATED",
+      "capability": "INSUFFICIENT_DATA",
+      "turns": [
+        {
+          "message": "Do you have the exact manufacturing date for this soy sauce batch?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "en",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "data/products.json has no batch/manufacturing-date field for any product, so an honest answer cannot assert a specific date.",
+      "expected_invariants": [
+        "requires_uncertainty"
+      ],
+      "provenance": "V2.21a fresh authoring - English-language insufficient-data question.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_budget_reasoning_0001",
+      "source": "CURATED",
+      "capability": "BUDGET_REASONING",
+      "turns": [
+        {
+          "message": "Potrebujem gochujang, najviac za 4 eura."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_9810 SEMPIO gochujang 250g costs 3.57 EUR, at or under the stated 4 EUR ceiling.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:gochujang"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_budget_reasoning_0002",
+      "source": "CURATED",
+      "capability": "BUDGET_REASONING",
+      "turns": [
+        {
+          "message": "Mam len 10 eur, kolko susi ryze si za to mozem kupit?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_1109 HARUKA sushi rice 1kg and FL_8060 ROYAL TIGER 1kg both fall under 10 EUR in the catalog.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:susi ryza|sushi rice"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_budget_reasoning_0003",
+      "source": "CURATED",
+      "capability": "BUDGET_REASONING",
+      "turns": [
+        {
+          "message": "Ktora znacka kokosoveho mlieka je cenovo najvyhodnejsia?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Multiple coconut-milk SKUs at distinct prices exist in the catalog (AROY-D from 1.60 EUR, BAMBOO TREE 3.94 EUR), so a value-ranking question has an independently non-empty, price-comparable basis.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:kokosove mlieko"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_budget_reasoning_0004",
+      "source": "CURATED",
+      "capability": "BUDGET_REASONING",
+      "turns": [
+        {
+          "message": "Mam rozpocet 8 eur na zaklad na kimchi jjigae, vystacim si?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "RECIPE_TO_PRODUCTS"
+      ],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_typo_robustness_0001",
+      "source": "CURATED",
+      "capability": "TYPO_ROBUSTNESS",
+      "turns": [
+        {
+          "message": "potrebujem sriraca omacku"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "25 sriracha-titled products exist in the catalog; 'sriraca' is a one-letter-dropped natural misspelling of 'sriracha'.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:sriracha"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_typo_robustness_0002",
+      "source": "CURATED",
+      "capability": "TYPO_ROBUSTNESS",
+      "turns": [
+        {
+          "message": "chcem kupit gochujang pastu"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "4 gochujang-titled products exist in the catalog; 'gochujang' (single-j) is a natural misspelling of 'gochujang' (double-j is the correct romanization).",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:gochujang"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_typo_robustness_0003",
+      "source": "CURATED",
+      "capability": "TYPO_ROBUSTNESS",
+      "turns": [
+        {
+          "message": "hladam ryzovy ocot bez akykolvek diakritiky ci ciarok"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Same rice-vinegar catalog family as v221_product_search_0001, deliberately written with zero diacritics throughout the whole message.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:ryzovy ocot"
+      ],
+      "provenance": "V2.21a fresh authoring - full-message diacritic-free natural typing style.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_typo_robustness_0004",
+      "source": "CURATED",
+      "capability": "TYPO_ROBUSTNESS",
+      "turns": [
+        {
+          "message": "mate kikoman sojovu omacku"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "BRAND_CONSTRAINT"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Kikkoman is a real catalog brand; 'kikoman' (single-k) is a natural misspelling.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - brand-name typo.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_multi_turn_state_0001",
+      "source": "CURATED",
+      "capability": "MULTI_TURN_STATE",
+      "turns": [
+        {
+          "message": "Hladam sojovu omacku."
+        },
+        {
+          "message": "Konkretne od znacky Kikkoman."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "BRAND_CONSTRAINT"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Kikkoman is a real catalog brand within the soy-sauce family; the second turn refines the first turn's active product family with a brand constraint.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_brand:kikkoman"
+      ],
+      "provenance": "V2.21a fresh authoring - initial search then brand refinement.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_multi_turn_state_0002",
+      "source": "CURATED",
+      "capability": "MULTI_TURN_STATE",
+      "turns": [
+        {
+          "message": "Chcem robit gyoza."
+        },
+        {
+          "message": "Cesnak uz doma mam."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "RECIPE_TO_PRODUCTS",
+        "ALREADY_HAVE"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main's recipe-ingredient dict lists gyoza/sojova omacka/ryzovy ocot/chilli olej for 'gyoza'; the second turn declares one already-owned item within the same active recipe context.",
+      "expected_invariants": [
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - recipe context then already-have follow-up.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_multi_turn_state_0003",
+      "source": "CURATED",
+      "capability": "MULTI_TURN_STATE",
+      "turns": [
+        {
+          "message": "Potrebujem gochujang."
+        },
+        {
+          "message": "Mate aj nejaky lacnejsi?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "BUDGET_REASONING",
+        "FOLLOW_UP"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Multiple gochujang SKUs at distinct prices (3.57-8.09 EUR) exist in the catalog, so a cheaper-option follow-up within the same active product family has an independently non-empty basis.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:gochujang"
+      ],
+      "provenance": "V2.21a fresh authoring - product search then cheaper-option follow-up.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_multi_turn_state_0004",
+      "source": "CURATED",
+      "capability": "MULTI_TURN_STATE",
+      "turns": [
+        {
+          "message": "Nemam doma sojovu omacku, cim ju mozem nahradit?"
+        },
+        {
+          "message": "Chcem vacsie balenie, na 500ml."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "REPLACEMENT",
+        "QUANTITY_REASONING"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main.REPLACEMENT_PRODUCT_QUERIES['sojova omacka'] establishes the replacement family for the first turn; FL_4781 MEGACHEF gluten-free soy sauce exists at 500ml, giving the size-refinement follow-up an independently non-empty basis.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - replacement request then size preference follow-up.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_multi_turn_state_0005",
+      "source": "CURATED",
+      "capability": "MULTI_TURN_STATE",
+      "turns": [
+        {
+          "message": "Ukaz mi vase sojove omacky."
+        },
+        {
+          "message": "A ten druhy typ, co ste spomenuli, ten chcem."
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L5",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_multi_turn_state_0006",
+      "source": "CURATED",
+      "capability": "MULTI_TURN_STATE",
+      "turns": [
+        {
+          "message": "Chcem robit bibimbap, co potrebujem?"
+        },
+        {
+          "message": "Vlastne zabudni na to, hladam teraz caj a caj. prislusenstvo."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "CATEGORY_DISCOVERY"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "A hard topic switch away from the first turn's recipe context to an unrelated category (31 tea-accessory products exist in the catalog) must not carry over the bibimbap ingredient list into the second turn's result set.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_forbidden:gochujang|kimchi|ssamjang"
+      ],
+      "provenance": "V2.21a fresh authoring - explicit hard topic-switch state-isolation probe.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_already_have_0001",
+      "source": "CURATED",
+      "capability": "ALREADY_HAVE",
+      "turns": [
+        {
+          "message": "Robim pad thai a rybaciu omacku aj tamarind uz mam doma, co este potrebujem?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "RECIPE_TO_PRODUCTS"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main's recipe-ingredient dict lists pad thai/ryzove rezance/tamarind/rybacia omacka/arasidy/pad thai omacka for 'pad_thai'; excluding two already-owned items still leaves a non-empty remainder per the same static list.",
+      "expected_invariants": [
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_already_have_0002",
+      "source": "CURATED",
+      "capability": "ALREADY_HAVE",
+      "turns": [
+        {
+          "message": "Na poke bowl mam uz nori aj wasabi, co mi este chyba?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "RECIPE_TO_PRODUCTS"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main's recipe-ingredient dict lists sushi ryza/nori/sojova omacka/sezamovy olej/wasabi for 'poke_bowl'; excluding two already-owned items still leaves a non-empty remainder.",
+      "expected_invariants": [
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_already_have_0003",
+      "source": "CURATED",
+      "capability": "ALREADY_HAVE",
+      "turns": [
+        {
+          "message": "Sojovu omacku a sezamovy olej na bibimbap uz mam, zvysok potrebujem kupit."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L5",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "RECIPE_TO_PRODUCTS"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "Bibimbap's ingredient list does not contain plain 'sojova omacka' at all (it lists gochujang/ssamjang/doenjang/sezamovy olej/sezamove semienka/kimchi/jazminova ryza), so this already-have claim references an item outside the dish's own list while the real remainder is still independently non-empty.",
+      "expected_invariants": [
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - already-have claim on an item not actually part of the dish's own ingredient list, probing robustness.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_quantity_reasoning_0001",
+      "source": "CURATED",
+      "capability": "QUANTITY_REASONING",
+      "turns": [
+        {
+          "message": "Robim bibimbap pre 6 ludi, ake mnozstva potrebujem?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "RECIPE_TO_PRODUCTS"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "Same ingredient family as bibimbap's static recipe list; a serving-count qualifier does not change which ingredients are needed, only quantities, so the base ingredient list is still independently non-empty.",
+      "expected_invariants": [
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_quantity_reasoning_0002",
+      "source": "CURATED",
+      "capability": "QUANTITY_REASONING",
+      "turns": [
+        {
+          "message": "Kolko susi ryze potrebujem na 4 porcie?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_quantity_reasoning_0003",
+      "source": "CURATED",
+      "capability": "QUANTITY_REASONING",
+      "turns": [
+        {
+          "message": "Chcem najvacsie balenie ryzoveho octu, ake mate."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_1346 Ryzovy ocot MIZKAN Suehiro 20L is the largest rice-vinegar unit size in the catalog by a wide margin.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:ryzovy ocot"
+      ],
+      "provenance": "V2.21a fresh authoring - largest-size request.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_brand_constraint_0001",
+      "source": "CURATED",
+      "capability": "BRAND_CONSTRAINT",
+      "turns": [
+        {
+          "message": "Chcem iba produkty od Lee Kum Kee."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Lee Kum Kee is a real, multi-product catalog brand (black bean sauce, double deluxe soy sauce, mushroom vegetarian sauce).",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_brand:lee kum kee"
+      ],
+      "provenance": "V2.21a fresh authoring - single-brand-only constraint with no other qualifier.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_brand_constraint_0002",
+      "source": "CURATED",
+      "capability": "BRAND_CONSTRAINT",
+      "turns": [
+        {
+          "message": "Hladam gochujang, ale iba znacku Sempio."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "CULTURAL_AUTHENTICITY"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "SEMPIO is a real catalog brand with 3 gochujang SKUs at different sizes (250g/500g/1000g).",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_brand:sempio"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_brand_constraint_0003",
+      "source": "CURATED",
+      "capability": "BRAND_CONSTRAINT",
+      "turns": [
+        {
+          "message": "Aroy-D kokosove mlieko, prosim."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L1",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "AROY-D is a real catalog brand with 4 coconut-milk SKUs at distinct sizes.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_brand:aroy-d"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_brand_constraint_0004",
+      "source": "CURATED",
+      "capability": "BRAND_CONSTRAINT",
+      "turns": [
+        {
+          "message": "Sriracha, ale urcite nie znacku Cock Brand."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "NEGATION"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "COCK BRAND is a real catalog sriracha brand alongside UNI-EAGLE/FLYING GOOSE, so exclusion while remaining non-empty is independently checkable.",
+      "expected_invariants": [
+        "products_nonempty",
+        "forbidden_brand:cock brand"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_dietary_safety_0001",
+      "source": "CURATED",
+      "capability": "DIETARY_SAFETY",
+      "turns": [
+        {
+          "message": "Som vegan, ake sushi ingrediencie si mozem kupit u vas?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "206 products exist under 'Veganske potraviny' in the catalog, independently overlapping with sushi-relevant items (nori, sushi rice, rice vinegar are plant-derived by definition).",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_dietary_safety_0002",
+      "source": "CURATED",
+      "capability": "DIETARY_SAFETY",
+      "turns": [
+        {
+          "message": "Potrebujem vegetariansku verziu ramenu."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "85 products exist under 'Vegetarianske potraviny' in the catalog, and 45 ramen-titled products exist, giving independently non-empty overlap potential.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_dietary_safety_0003",
+      "source": "CURATED",
+      "capability": "DIETARY_SAFETY",
+      "turns": [
+        {
+          "message": "Aké bezlepkové snacky mate na skladom?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "49 products exist under 'Krekry a snacky' and 563 products have 'bezlepk' somewhere in their title/description in the catalog, giving an independently non-empty overlap.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_dietary_safety_0004",
+      "source": "CURATED",
+      "capability": "DIETARY_SAFETY",
+      "turns": [
+        {
+          "message": "I need a lactose-free alternative to dairy milk for my matcha latte."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "en",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "Coconut milk (plant-based, inherently lactose-free by composition) exists as a well-stocked catalog family (16+ SKUs), giving an independently non-empty basis for this request.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring - English-language dietary-constraint question.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_kitchenware_0001",
+      "source": "CURATED",
+      "capability": "KITCHENWARE",
+      "turns": [
+        {
+          "message": "Aky drziak na palicky mi odporucate?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_9335 'Japonske jedalne palicky s Drziakom Geisha' exists in the catalog, confirming chopstick-holder-style products are present.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_kitchenware_0002",
+      "source": "CURATED",
+      "capability": "KITCHENWARE",
+      "turns": [
+        {
+          "message": "Potrebujem servirovacie taniere na susi pre hostov."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "20 products exist under 'Taniere a podnosy' in the catalog.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_kitchenware_0003",
+      "source": "CURATED",
+      "capability": "KITCHENWARE",
+      "turns": [
+        {
+          "message": "Mate cajove prislusenstvo na pripravu matchy?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "31 products exist under 'Cajove prislusenstvo', and 45 matcha-titled products exist, giving independently non-empty overlap.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_related_products_0001",
+      "source": "CURATED",
+      "capability": "RELATED_PRODUCTS",
+      "turns": [
+        {
+          "message": "Co sa mi este zide k miso paste?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "13 miso-titled products exist in the catalog under multiple related sub-types (paste, instant soup, tofu-miso soup), giving independently non-empty related-item potential.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_related_products_0002",
+      "source": "CURATED",
+      "capability": "RELATED_PRODUCTS",
+      "turns": [
+        {
+          "message": "Co sa hodi k matchovemu praktu?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "45 matcha-related products exist in the catalog spanning both consumable (matcha latte mix) and kitchenware (matcha bowls) categories.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_related_products_0003",
+      "source": "CURATED",
+      "capability": "RELATED_PRODUCTS",
+      "turns": [
+        {
+          "message": "Co dalsie budem potrebovat k instantnemu ramenu?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "45 ramen-titled products exist in the catalog, a large enough family to support a related-item suggestion with independently non-empty basis.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_ambiguity_0001",
+      "source": "CURATED",
+      "capability": "AMBIGUITY",
+      "turns": [
+        {
+          "message": "Potrebujem nieco azijske na veceru."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "Same established V2.20 AMBIGUITY contract shape as v220_ambiguity_0001/0002 (vague need-statement -> answer_nonempty), independently reworded.",
+      "expected_invariants": [
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_ambiguity_0002",
+      "source": "CURATED",
+      "capability": "AMBIGUITY",
+      "turns": [
+        {
+          "message": "Chcem tu omacku, co ste mi ukazali minule."
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_ambiguity_0003",
+      "source": "CURATED",
+      "capability": "AMBIGUITY",
+      "turns": [
+        {
+          "message": "Dajte mi nieco chutne."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": false,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "Same established V2.20 AMBIGUITY contract shape as v220_ambiguity_0002 ('Dajte mi nieco dobre' -> answer_nonempty), independently reworded with a different adjective.",
+      "expected_invariants": [
+        "answer_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring."
+    },
+    {
+      "scenario_id": "v221_multi_constraint_0001",
+      "source": "CURATED",
+      "capability": "MULTI_CONSTRAINT",
+      "turns": [
+        {
+          "message": "Potrebujem sojovu omacku, bezlepkovu a pod 5 eur."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": true,
+      "secondary_capabilities": [
+        "DIETARY_SAFETY",
+        "BUDGET_REASONING"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_2765 'Bezlepkova sojova omacka MEGACHEF 200 ml' costs 3.57 EUR, satisfying both the gluten-free and under-5-EUR constraints simultaneously and verifiably.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_title_contains_any:bezlepkova"
+      ],
+      "provenance": "V2.21a fresh authoring - dietary + budget dual constraint.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_multi_constraint_0002",
+      "source": "CURATED",
+      "capability": "MULTI_CONSTRAINT",
+      "turns": [
+        {
+          "message": "Gochujang od Sempio, najmensie balenie, ktore mate."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "BRAND_CONSTRAINT",
+        "QUANTITY_REASONING"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "FL_9810 SEMPIO gochujang 250g is the smallest SEMPIO gochujang size in the catalog, satisfying both the brand and smallest-size constraints simultaneously.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_brand:sempio"
+      ],
+      "provenance": "V2.21a fresh authoring - brand + size dual constraint.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_multi_constraint_0003",
+      "source": "CURATED",
+      "capability": "MULTI_CONSTRAINT",
+      "turns": [
+        {
+          "message": "Kokosove mlieko, znacka Aroy-D, ale nie najmensie balenie 150ml."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "BRAND_CONSTRAINT",
+        "NEGATION"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "AROY-D coconut milk exists at 150ml/250ml/500ml/1000ml; excluding the 150ml size while remaining non-empty is independently checkable.",
+      "expected_invariants": [
+        "products_nonempty",
+        "product_brand:aroy-d",
+        "product_title_forbidden:150ml"
+      ],
+      "provenance": "V2.21a fresh authoring - brand constraint + size negation.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_multi_constraint_0004",
+      "source": "CURATED",
+      "capability": "MULTI_CONSTRAINT",
+      "turns": [
+        {
+          "message": "Robim korejske jedlo pre vegetariana, co mi odporucas a kolko to bude stat?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L5",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "CULTURAL_AUTHENTICITY",
+        "DIETARY_SAFETY",
+        "BUDGET_REASONING"
+      ],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_cultural_authenticity_0001",
+      "source": "CURATED",
+      "capability": "CULTURAL_AUTHENTICITY",
+      "turns": [
+        {
+          "message": "Potrebujem autenticke kórejske ingrediencie na bibimbap."
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L3",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [
+        "RECIPE_TO_PRODUCTS"
+      ],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "EXISTING_CONTRACT",
+      "ground_truth_reason": "app.main's recipe-ingredient dict lists gochujang/ssamjang/doenjang/sezamovy olej/sezamove semienka/kimchi/jazminova ryza for 'bibimbap', and SEMPIO/DAESANG are established Korean-origin catalog brands for several of these.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    },
+    {
+      "scenario_id": "v221_cultural_authenticity_0002",
+      "source": "CURATED",
+      "capability": "CULTURAL_AUTHENTICITY",
+      "turns": [
+        {
+          "message": "Aky ryzovy ocot je najautentickejsi pre japonske susi?"
+        }
+      ],
+      "ground_truth_status": "GROUND_TRUTH_PENDING",
+      "language": "sk",
+      "difficulty": "L4",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a"
+    },
+    {
+      "scenario_id": "v221_cultural_authenticity_0003",
+      "source": "CURATED",
+      "capability": "CULTURAL_AUTHENTICITY",
+      "turns": [
+        {
+          "message": "Mate vietnamske omacky na pho?"
+        }
+      ],
+      "ground_truth_status": "SCORED",
+      "language": "sk",
+      "difficulty": "L2",
+      "catalog_dependency": true,
+      "safety_sensitive": false,
+      "secondary_capabilities": [],
+      "created_version": "V2.21a",
+      "ground_truth_authority": "AUTHORITATIVE_DATA",
+      "ground_truth_reason": "42 products exist under the 'Vietnamske' top-level category in the catalog, and app.main's recipe-ingredient dict lists hoisin/sriracha/rybacia omacka among the 'pho' ingredients.",
+      "expected_invariants": [
+        "products_nonempty"
+      ],
+      "provenance": "V2.21a fresh authoring.",
+      "catalog_snapshot_id": "products_c2881106d6efc60e"
+    }
+  ]
+}
