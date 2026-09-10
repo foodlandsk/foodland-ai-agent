@@ -1,0 +1,389 @@
+{
+  "execution_sha": "unknown",
+  "scenario_freeze_hash": "3a748f6abc157f8d74a440397cbac0d8957210260bdb4415286e597b7fe8f366",
+  "split_filter": "HOLDOUT",
+  "run_id": "v221b_unknown_4f43c2a5",
+  "results": [
+    {
+      "scenario_id": "v221_allergen_safety_0001",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "111b6dc34cb8d9cf8c662a89c3c9d9717c956ce14a5cd4e7567fe6bfdb5f138e",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Pri alergii alebo intolerancii na sezam vám nechcem odporučiť produkt len podľa názvu. Prosím overte zloženie a alergény v detaile konkrétneho produktu. Ak riešite konkrétny produkt, rozhodujúca je etiketa. Ak mi pošlete názov produktu, pomôžem vám nájsť jeho detail na Foodland.sk."
+    },
+    {
+      "scenario_id": "v221_ambiguity_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "656189c0907fea285230fd43ae95a7be207f468920d05f41ee45df4d38f8a3ac",
+      "state": "PENDING",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Hoisin omáčka FLYING GOOSE BRAND 455ml; Tonkatsu omáčka AYUKO 150ml; Tamarind omáčka na varenie MADAM PUM 450ml. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_ambiguity_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "fe39b9e78f6183bb2e7ad6c1ff9e3ed4ea3ce98d9d8d369865a0b631b8fca6c3",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Japonské krekery Arare KHAO SHONG 180g; Kukuričné cukriky BAP VIET 400g; Ryžové tenké rezance BUN KHO THANH THUY 500g. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_brand_constraint_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "6fbe6a7d68d13fe022798ed9a3263d9a13ee3e4dfd3c12f6bee04c8c613be308",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 4 produktov v kategórii \"Gochujang\":"
+    },
+    {
+      "scenario_id": "v221_budget_reasoning_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "6a2a7354dc54f4382b507e128ed962ddd360ff0b1f0a20b914801808dc71e9cc",
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "product_title_contains_any:susi ryza|sushi rice",
+          "expected": "susi ryza|sushi rice",
+          "observed": "sojova omacka citronova ponzu kikkoman 250ml; rybacia omacka premium megachef 200ml; mirin - sladke ryzove vino na varenie ayuko 150ml; aka miso polievka prasok s tofu lobo 30g; kimchi ramen ottogi - ",
+          "reason": "expected a product title containing one of ['susi ryza', 'sushi rice']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Sójová omáčka citrónová Ponzu KIKKOMAN 250ml; Rybacia omáčka Premium MEGACHEF 200ml; Mirin - sladké ryžové víno na varenie AYUKO 150ml. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_category_discovery_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "3e75feaa5f9af22a3242db9312fbc2460b562a3a62615ca091e6679077d02c1e",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Japonský tanier Three Cats Ø19,5 cm | H3,5 cm 6040090; Japonský tanier Hana Blue Ø22,5 cm | H3 cm 6040840; Japonský tanier Sendan Tokusa Ø15 cm | H2,5 cm 6038101. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_comparison_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "be15893741bd78d0d00844f9ae5099e652566c33a20e9e4bccfb4a8eb5f84480",
+      "state": "PENDING",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 17 produktov v kategórii \"Kokosové mlieko\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v221_cross_sell_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "c632258debc2ce0271e460235766973b19bb5941d4337216ac245aa722b67d76",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 10 produktov v kategórii \"Ryžový ocot\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v221_dietary_safety_0001",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "1f99ca21973de50abe303d6d0f489d792fe5717d734cdb3d020d98678a2e0433",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Pripravila som nákupný zoznam pre sushi: 7 položiek nájdete na Foodland.sk a 2 čerstvých alebo doplnkových surovín si doplňte mimo e-shopu."
+    },
+    {
+      "scenario_id": "v221_dietary_safety_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "0b1f72b28d19f42aca4f7686bfac3b2479b9a196105877992be7856b50477376",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Na bezlepkové snacky máme napríklad papadam, ktorý je skvelý ako chrumkavá pochúťka, alebo pečené solené kešu orechy, ktoré sú výbornou zdravou alternatívou. Odporúčam tiež pozrieť si bezlepkové sójové omáčky, ktoré sa hodia ako dip k snackom."
+    },
+    {
+      "scenario_id": "v221_faq_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "3f1bc2883b8af0b147226f6a3b19a9b9040e110eb3ab880019c1640552530a2d",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Áno, predajňa Foodland sa nachádza na adrese Stará Vajnorská 3308/19, 831 04 Bratislava (areál REMPO). Otváracie hodiny: Po–Pi 8:00–18:00, So 9:00–20:00, Ne 9:00–15:00.\n\nhttps://maps.app.goo.gl/3tFJ4P6w2pj88xAP8"
+    },
+    {
+      "scenario_id": "v221_faq_0009",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "67b3a15e0447f19952d985eb82e630c7ba54e6c6525d1b0b1ab87270614064d4",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Kuriéri DPD, GLS a Nagel doručujú do viacerých krajín Európy. Packeta doručuje len na Slovensko, do Česka a Maďarska."
+    },
+    {
+      "scenario_id": "v221_faq_0011",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "ac5a4bbfda122d12468605463dbfb252b1a8ddc37dd53a4072fb8b8ad4f736c5",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Áno, parkovanie je dostupné v rámci areálu podľa aktuálnej obsadenosti."
+    },
+    {
+      "scenario_id": "v221_general_culinary_0001",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "9e337669a6d25990373de201b70317f01e56c4b3c0bcf8a57c14be93bac1f7cc",
+      "state": "PENDING",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Thajská kuchyňa je známa výraznou kombináciou sladkej, kyslej, slanej a pálivej chuti, často používa kokosové mlieko a kari pasty, zatiaľ čo vietnamská kuchyňa je ľahšia, svieža a často používa bylinky a rybaciu omáčku. Skvelo sa hodí k thajskej kuchyni rybacia omáčka Premium MEGACHEF a k vietnamske"
+    },
+    {
+      "scenario_id": "v221_insufficient_data_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "14eeb72b7ad5427db642f0ecb35fd9db28b9be43be32493d5d31856b4c03d8c4",
+      "state": "PENDING",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 78 produktov v 5 kategóriách. Tu sú tie najväčšie:\n- Basmati ryža (20)\n- Ryža (19)\n- Jazmínová ryža (14)\n- Lepkavá ryža (13)\n- Ryža na sushi (12)"
+    },
+    {
+      "scenario_id": "v221_kitchenware_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "885ecad187760b7d72ad6f0d6ea649537976c214a4011c40ffee77e1b6046ea3",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Japonský Suši tanier Sendan Tokusa 23 x11,5 cm | H2 cm 6038121; Japonský suši tanier Tokusa Blue 22,2x12,4 cm | H2,5 cm 6030625; Japonská Miska na suši Green Ø33,5 cm | H8,5 cm 6041050. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_multi_constraint_0001",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "330f18fa36d1a8777efa8314781b65143758fad613d057362426443cafe59137",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Pre bezlepkovú sójovú omáčku pod 5 eur odporúčam Bezlepkovú sójovú omáčku MEGACHEF 200 ml za 3.45 EUR, ktorá je ideálna na varenie aj dochucovanie. Pre istotu si však overte zloženie v detaile produktu.\n\n_(Ceny overte v detaile produktu - mozu sa lisit.)_"
+    },
+    {
+      "scenario_id": "v221_multi_turn_state_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "4a7eaa980e70f58991ef929261a4585a4cc0d29ac394806ac078fc03a21e2d69",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Skvelo sa hodí k cesnaku sezamový olej, ktorý zvýrazní jeho chuť a dodá jedlám príjemnú orieškovú arómu, alebo sójová omáčka citrónová Ponzu pre sviežu a pikantnú chuťovú kombináciu. Odporúčam tiež vyskúšať miso pastu alebo čili pastu gochujang, ktoré dodajú jedlám hĺbku a pikantnosť."
+    },
+    {
+      "scenario_id": "v221_negation_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "c35466d1a7245be81b9b93760ccaa41e7bea1a311e505c23948fe5ccb709fba8",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: MARUKIN Tmavá sójová omáčka KOIKUCHI 1000ml; Slaná sójová omáčka Kecap Asin ABC 600 ml; Sójová omáčka tmavá Typ A DEK SOM BOON 970g. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_negation_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "a6b4872173334a2c5d7f61b75fb7fa2509041a4c6f47a629334374dd31984911",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Nižšie nájdete podobné alternatívy rybacej omáčky, ktoré môžete použiť na Pad Thai, vrátane vegánskej verzie, ak preferujete bezrybaciu chuť."
+    },
+    {
+      "scenario_id": "v221_product_advice_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "2ebc40729223a60a1112b0eba69cedc5442ef97b62cc3923b5c1f29e6369b0f0",
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "products_nonempty",
+          "expected": "",
+          "observed": "0 products",
+          "reason": "expected at least one product"
+        },
+        {
+          "invariant": "product_title_contains_any:bezlepkova",
+          "expected": "bezlepkova",
+          "observed": "",
+          "reason": "expected a product title containing one of ['bezlepkova']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Pri alergii alebo intolerancii na lepok vám nechcem odporučiť produkt len podľa názvu. Prosím overte zloženie a alergény v detaile konkrétneho produktu. Ak riešite konkrétny produkt, rozhodujúca je etiketa. Ak mi pošlete názov produktu, pomôžem vám nájsť jeho detail na Foodland.sk."
+    },
+    {
+      "scenario_id": "v221_product_advice_0004",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "f63ce49b8b34f3bd74ae5e0c0e2d404b2b824111283db38a43613efa452ff4d2",
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "product_title_forbidden:extra pikantna",
+          "expected": "extra pikantna",
+          "observed": "instantna polievka soba chili nissin 92g; instantna polievka soba chili nissin 111g; sladka cili omacka na kura royal thai 700 ml; sladka cili omacka na kura royal thai 310g; sladka cili omacka na jar",
+          "reason": "forbidden term(s) found: ['extra pikantna']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Odporúčam sladké čili omáčky na kura alebo na jarné závitky Royal Thai, ktoré majú jemnú pikantnosť a príjemnú sladkú chuť. Skvelo sa hodia na dochutenie jedál bez prílišného pálivého efektu."
+    },
+    {
+      "scenario_id": "v221_product_information_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "503b2ddbc4323e2e8b48ad09fe80326f75cd3f0f10b2747d9bb92b5d84ecfe4b",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 12 produktov v kategórii \"Ryža na sushi\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v221_product_search_0001",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "e8488e7145f1fc7c25839065915f2398589340a6969092e8d5eafb3ef7fc6b94",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 10 produktov v kategórii \"Ryžový ocot\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v221_product_search_0006",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "e05946beee032a09440e7399d14f5f0a3d4a9df1454712c67c5d12c184551b9f",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Čili pasta GOCHUJANG SEMPIO 500g; Čili pasta Gochujang Ofood DAESANG 500g; Čili pasta Kórejská GOCHUJANG SEMPIO 1000g. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_product_search_0010",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "db541350fff8a26494a3e0c8e8d22dc78522bcbca7dc54d092359bc206928bcd",
+      "state": "PENDING",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: NAM - Zmes korení v prášku LOBO 70g; Mleté čierne korenie 400g SAVIVA; Korenie 5 vôní VIANCO 500g. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_quantity_reasoning_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "3162762cfa4a34c0ddd541089a0e270fd95f8613a9836b0f47616cc08445e46a",
+      "state": "PENDING",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 12 produktov v kategórii \"Ryža na sushi\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v221_recipe_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "7748c09aa36bb8c23205340bb7525ac4666a6b26702b2ac17e2afc8544d229ea",
+      "state": "PENDING",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 12 produktov v kategórii \"Ryža na sushi\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0004",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "8d9a6a7b33b9e1bba9e8dfd822fefc0022e3901759062e00d72a8841239e8831",
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe",
+          "expected": "recipe_to_products|recipe",
+          "observed": "related_products",
+          "reason": "expected intent in ['recipe_to_products', 'recipe']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Pripravila som nákupný zoznam pre bibimbap: 8 položiek nájdete na Foodland.sk a 3 čerstvých alebo doplnkových surovín si doplňte mimo e-shopu."
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0008",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "d073bc25b6894937d8985884175cb1d14da89b90dd9299ed8c7d876ad16661b4",
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe",
+          "expected": "recipe_to_products|recipe",
+          "observed": "product_search",
+          "reason": "expected intent in ['recipe_to_products', 'recipe']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 4 produktov v kategórii \"Gyoza knedličky\":"
+    },
+    {
+      "scenario_id": "v221_related_products_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "897285d0cf4c95af01b17523c7550429c0bfd609444141998cec227554aed554",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 79 produktov v kategórii \"Instantné rezance\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v221_replacement_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "67a4de37ba691258b2ac53700bcb09c224bc17ac2255bf28dca10c098a672da2",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Nižšie nájdete podobné alternatívy k gochujangu, ktoré môžete použiť ako náhradu."
+    },
+    {
+      "scenario_id": "v221_typo_robustness_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "9b079465d1e17c9b33dcecbce42be2f8c081e12c7e4aac72f23773e213e0b509",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 4 produktov v kategórii \"Gochujang\":"
+    },
+    {
+      "scenario_id": "v221_typo_robustness_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "2af9c6f040a7f3aac52fc85bf2f31434804e264ed0cb0d3ed20f38b5722bb2d1",
+      "state": "PASS",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 10 produktov v kategórii \"Ryžový ocot\". Tu sú najrelevantnejšie:"
+    }
+  ]
+}

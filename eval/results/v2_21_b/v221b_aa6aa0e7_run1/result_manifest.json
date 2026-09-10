@@ -1,0 +1,53 @@
+{
+  "artifact_freeze_sha": "a361c24",
+  "catalog_snapshot_hash": "c2881106d6efc60eca3a5d2a9741f4af994268b8bc44fbf7c825f6441420634a",
+  "combined_counts": {
+    "error": 0,
+    "fail": 25,
+    "micro_score": 0.7899159663865546,
+    "pass": 94,
+    "pending": 24,
+    "scored_denominator": 119,
+    "total": 143
+  },
+  "customer_calls": 0,
+  "dev_counts": {
+    "error": 0,
+    "fail": 20,
+    "pass": 72,
+    "pending": 17,
+    "scored_denominator": 92,
+    "total": 109
+  },
+  "dev_input_hash": "4d956d9bee633b88b02af23fe19c532dfffd46a35e4890e0d7af46c4ace70fc5",
+  "execution_context": "EVALUATION",
+  "execution_sha": "aa6aa0e72a3183aa97f11c7165ebe115ea74e3c0",
+  "execution_sha_note": "Independently verified via `git rev-parse HEAD` immediately before DEV and immediately after HOLDOUT (both aa6aa0e72a3183aa97f11c7165ebe115ea74e3c0, unchanged). The runner's own internal _get_commit() recorded 'unknown' inside dev_raw.json/holdout_raw.json because its subprocess git call failed in this execution environment - raw files left exactly as produced, not patched.",
+  "historical_declaration": "THIS IS THE IMMUTABLE FIRST FROZEN V2.21 RESULT.",
+  "holdout_counts": {
+    "error": 0,
+    "fail": 5,
+    "pass": 22,
+    "pending": 7,
+    "scored_denominator": 27,
+    "total": 34
+  },
+  "holdout_input_hash": "b00fad3a24c6544291e136bb25b6cdc1c5d2370a058759ab119147f9cd55c0cd",
+  "macro_capability_score": 0.7818021484688151,
+  "post_run_production_hashes": {
+    "app/advisor_engine.py": "81750e05241115e2918254a69b7eb8cf1a067933",
+    "app/evaluation/adapter.py": "465c28475ce53b36fdee10240e564e9014699f07",
+    "app/intelligence_diagnostics/v221_factory.py": "0bed499e137d9ffabe07b4b6b0d1a5c2db71dbdc",
+    "app/intelligence_diagnostics/v221_scorer.py": "69accc4f184649561a15b0fde7a06e2d16eebf8b",
+    "app/main.py": "c23a0e8b6d13314ef85a11c4a5493b8e4b49351b",
+    "app/query_constraints.py": "4b573ff3d213f96ec3a71601604d87ae8ce4b927",
+    "app/retrieval.py": "dcf75aa83f20cb8506344fe73f0c0c2c01f6b8d8",
+    "app/widget.js": "482393c9e9bb7afde6ae07f7bf0922522f04f6eb",
+    "eval/golden/v2_21_manifest.json": "2bca93bf454677f9e046759c6bd8e69662ba06e7",
+    "eval/golden/v2_21_scenarios.json": "080a21c07f2db44b02dc0ce9b8751f5d64d0a73e"
+  },
+  "run_id": "v221b_aa6aa0e7_run1",
+  "scenario_freeze_hash": "3a748f6abc157f8d74a440397cbac0d8957210260bdb4415286e597b7fe8f366",
+  "source_under_test_sha": "aa6aa0e72a3183aa97f11c7165ebe115ea74e3c0",
+  "v221_version": "V2.21b"
+}

@@ -1,0 +1,499 @@
+{
+  "note": "Mechanical inventory only - no root-cause classification performed (V2.21b scope). Input to V2.21c.",
+  "count": 25,
+  "scenarios": [
+    {
+      "scenario_id": "v221_brand_constraint_0003",
+      "split": "DEV",
+      "capability": "BRAND_CONSTRAINT",
+      "intent": null,
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "product_brand:aroy-d",
+          "expected": "aroy-d",
+          "observed": "thai agri foods public company limited; thai agri foods public company limited; thai agri foods public company limited; thai agri foods public company limited",
+          "reason": "expected a product brand containing one of ['aroy-d']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 17 produktov v kategórii \"Kokosové mlieko\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v221_brand_constraint_0004",
+      "split": "DEV",
+      "capability": "BRAND_CONSTRAINT",
+      "intent": null,
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "forbidden_brand:cock brand",
+          "expected": "cock brand",
+          "observed": "cock brand; flying goose brand; flying goose brand; flying goose brand",
+          "reason": "forbidden brand(s) found: ['cock brand']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 26 produktov v kategórii \"Sriracha omáčka\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v221_budget_reasoning_0002",
+      "split": "HOLDOUT",
+      "capability": "BUDGET_REASONING",
+      "intent": null,
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "product_title_contains_any:susi ryza|sushi rice",
+          "expected": "susi ryza|sushi rice",
+          "observed": "sojova omacka citronova ponzu kikkoman 250ml; rybacia omacka premium megachef 200ml; mirin - sladke ryzove vino na varenie ayuko 150ml; aka miso polievka prasok s tofu lobo 30g; kimchi ramen ottogi - ",
+          "reason": "expected a product title containing one of ['susi ryza', 'sushi rice']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Sójová omáčka citrónová Ponzu KIKKOMAN 250ml; Rybacia omáčka Premium MEGACHEF 200ml; Mirin - sladké ryžové víno na varenie AYUKO 150ml. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_comparison_0001",
+      "split": "DEV",
+      "capability": "COMPARISON",
+      "intent": "comparison|product_search",
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:comparison|product_search",
+          "expected": "comparison|product_search",
+          "observed": "product_advice",
+          "reason": "expected intent in ['comparison', 'product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Sójová omáčka Kikkoman je tradičná, vyrobená prirodzeným kvasením, zatiaľ čo Megachef ponúka aj bezlepkovú a sladkú tmavú variantu, vhodnú pre špecifické diéty alebo chuťové preferencie. Odporúčam tiež vyskúšať citrónovú Ponzu Kikkoman, ktorá skvelo doplní vaše jedlá sviežou chuťou."
+    },
+    {
+      "scenario_id": "v221_comparison_0003",
+      "split": "DEV",
+      "capability": "COMPARISON",
+      "intent": "comparison|product_search",
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:comparison|product_search",
+          "expected": "comparison|product_search",
+          "observed": "product_comparison",
+          "reason": "expected intent in ['comparison', 'product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Podľa dostupných údajov (cena) by som vybrala Basmati ryža extra dlhozrná LAILA 1 kg (5.35 EUR, 1000g) pred Basmati ryža - TILDA - 1kg (7.14 EUR, 1000g)."
+    },
+    {
+      "scenario_id": "v221_faq_0005",
+      "split": "DEV",
+      "capability": "FAQ",
+      "intent": "faq",
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:faq",
+          "expected": "faq",
+          "observed": "product_search",
+          "reason": "expected intent in ['faq']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Drevené paličky DUC VIET 24cm; Japonské jedálne paličky čierne | 22,5 cm 6006416; Japonské jedálne paličky Flower pattern 22,5 cm 6006406. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_faq_0007",
+      "split": "DEV",
+      "capability": "FAQ",
+      "intent": "faq",
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:faq",
+          "expected": "faq",
+          "observed": "product_search",
+          "reason": "expected intent in ['faq']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Suši zázvor natural LV ZHENG FOOD 150g; Žltá kari pasta COCK BRAND 50g; Žltá kari pasta COCK BRAND 400g. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_faq_0012",
+      "split": "DEV",
+      "capability": "FAQ",
+      "intent": "faq",
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:faq",
+          "expected": "faq",
+          "observed": "product_search",
+          "reason": "expected intent in ['faq']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Hakkaisan Seishu Saké 720 ml, 15,5%; Hakutsuru Excellent Junmai Sake 720ml, 15%; Japonské saké Hakutsuru Tanrei Junmai 180 ml, 13,5 %. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_faq_0014",
+      "split": "DEV",
+      "capability": "FAQ",
+      "intent": "faq",
+      "language": "en",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:faq",
+          "expected": "faq",
+          "observed": "product_search",
+          "reason": "expected intent in ['faq']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "I found these most relevant products: Surimi krabie tyčinky rýchlo mrazené SEA STORY 500g. More recommendations are below."
+    },
+    {
+      "scenario_id": "v221_follow_up_0003",
+      "split": "DEV",
+      "capability": "FOLLOW_UP",
+      "intent": null,
+      "language": "sk",
+      "turn_count": 2,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "product_title_contains_any:gochujang",
+          "expected": "gochujang",
+          "observed": "plastova nadoba na potraviny + viecko 300 ml  45 ks/balenie; mochi japonske kolace mix balenie - q brand 600g; mochi japonske kolace mix balenie q brand 450g; zelene kari balicek na varenie - lobo 253",
+          "reason": "expected a product title containing one of ['gochujang']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Plastová nádoba na potraviny + viečko 300 ml – 45 ks/balenie; Mochi Japonské koláče mix balenie - Q Brand 600g; Mochi Japonské koláče mix balenie Q Brand 450g. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_insufficient_data_0001",
+      "split": "DEV",
+      "capability": "INSUFFICIENT_DATA",
+      "intent": null,
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "requires_uncertainty",
+          "expected": "",
+          "observed": "nasla som tieto najrelevantnejsie produkty: pho ga instantna kuracia rezancova polievka v kelimku oh! ricey 71g; hao hao instantna krevetova polievka 75g; laksa lamian celozrne rezance prima taste 144",
+          "reason": "expected at least one hedge/uncertainty phrase"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: PHO GA instantná kuracia rezancová polievka v kelímku OH! RICEY 71g; HAO HAO instantná krevetová polievka 75g; Laksa LaMian celozrné rezance Prima Taste 144g. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_insufficient_data_0004",
+      "split": "DEV",
+      "capability": "INSUFFICIENT_DATA",
+      "intent": null,
+      "language": "en",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "requires_uncertainty",
+          "expected": "",
+          "observed": "mame 56 produktov v kategorii \"sojova omacka\". tu su najrelevantnejsie:",
+          "reason": "expected at least one hedge/uncertainty phrase"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 56 produktov v kategórii \"Sójová omáčka\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v221_multi_constraint_0003",
+      "split": "DEV",
+      "capability": "MULTI_CONSTRAINT",
+      "intent": null,
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "product_brand:aroy-d",
+          "expected": "aroy-d",
+          "observed": "thai agri foods public company limited",
+          "reason": "expected a product brand containing one of ['aroy-d']"
+        },
+        {
+          "invariant": "product_title_forbidden:150ml",
+          "expected": "150ml",
+          "observed": "kokosove mlieko aroy-d 150ml",
+          "reason": "forbidden term(s) found: ['150ml']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Áno, kokosové mlieko v tomto variante máme v ponuke:"
+    },
+    {
+      "scenario_id": "v221_negation_0001",
+      "split": "DEV",
+      "capability": "NEGATION",
+      "intent": null,
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "product_title_forbidden:extra pikantna",
+          "expected": "extra pikantna",
+          "observed": "sriracha cili omacka extra pikantna uni-eagle 740 ml; sriracha paliva cili omacka - extra cesnak flying goose 200 ml; sriracha cili omacka extra pikantna uni-eagle 210ml; sriracha cili omacka extra pi",
+          "reason": "forbidden term(s) found: ['extra pikantna']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Sriracha čili omáčka extra pikantná UNI-EAGLE 740 ml; Sriracha pálivá čili omáčka - extra cesnak FLYING GOOSE 200 ml; Sriracha čili omáčka extra pikantná UNI-EAGLE 210ml. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_negation_0004",
+      "split": "DEV",
+      "capability": "NEGATION",
+      "intent": null,
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "product_title_forbidden:1000g",
+          "expected": "1000g",
+          "observed": "cili pasta korejska gochujang sempio 1000g",
+          "reason": "forbidden term(s) found: ['1000g']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Áno, gochujang v tomto variante máme v ponuke:"
+    },
+    {
+      "scenario_id": "v221_product_advice_0002",
+      "split": "HOLDOUT",
+      "capability": "PRODUCT_ADVICE",
+      "intent": null,
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "products_nonempty",
+          "expected": "",
+          "observed": "0 products",
+          "reason": "expected at least one product"
+        },
+        {
+          "invariant": "product_title_contains_any:bezlepkova",
+          "expected": "bezlepkova",
+          "observed": "",
+          "reason": "expected a product title containing one of ['bezlepkova']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Pri alergii alebo intolerancii na lepok vám nechcem odporučiť produkt len podľa názvu. Prosím overte zloženie a alergény v detaile konkrétneho produktu. Ak riešite konkrétny produkt, rozhodujúca je etiketa. Ak mi pošlete názov produktu, pomôžem vám nájsť jeho detail na Foodland.sk."
+    },
+    {
+      "scenario_id": "v221_product_advice_0004",
+      "split": "HOLDOUT",
+      "capability": "PRODUCT_ADVICE",
+      "intent": null,
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "product_title_forbidden:extra pikantna",
+          "expected": "extra pikantna",
+          "observed": "instantna polievka soba chili nissin 92g; instantna polievka soba chili nissin 111g; sladka cili omacka na kura royal thai 700 ml; sladka cili omacka na kura royal thai 310g; sladka cili omacka na jar",
+          "reason": "forbidden term(s) found: ['extra pikantna']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Odporúčam sladké čili omáčky na kura alebo na jarné závitky Royal Thai, ktoré majú jemnú pikantnosť a príjemnú sladkú chuť. Skvelo sa hodia na dochutenie jedál bez prílišného pálivého efektu."
+    },
+    {
+      "scenario_id": "v221_product_search_0007",
+      "split": "DEV",
+      "capability": "PRODUCT_SEARCH",
+      "intent": "product_search",
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search",
+          "expected": "product_search",
+          "observed": "related_products",
+          "reason": "expected intent in ['product_search']"
+        },
+        {
+          "invariant": "product_title_contains_any:matcha miska|miska",
+          "expected": "matcha miska|miska",
+          "observed": "lavovy kolac - matcha unico, 200g; zahustene sladene kondenzovane mlieko longevity 397g; maltoza tekuta zw 500g; jazminovy zeleny caj tan cuong 100g",
+          "reason": "expected a product title containing one of ['matcha miska', 'miska']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Momentálne nemáme špeciálne misky na matchu, ale skvelo sa hodí k nej napríklad jazmínový zelený čaj, ktorý doplní zážitok z prípravy a pitia matchy. Odporúčam tiež vyskúšať zahustené sladené kondenzované mlieko ako sladidlo do matcha nápojov."
+    },
+    {
+      "scenario_id": "v221_product_search_0008",
+      "split": "DEV",
+      "capability": "PRODUCT_SEARCH",
+      "intent": "product_search",
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "product_title_contains_any:palicky|chopsticks",
+          "expected": "palicky|chopsticks",
+          "observed": "susi ryza kimpo 9,07 kg; susi ryza obento 1 kg; susi ryza kimpo 1 kg; nakladany zazvor na susi - ruzovy 150g; podlozka na susi japonska sushi mat emro 6006333; zlta redkovka na susi 500g; baran ozdoby",
+          "reason": "expected a product title containing one of ['palicky', 'chopsticks']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Suši ryža KIMPO 9,07 kg; Suši ryža OBENTO 1 kg; Suši ryža KIMPO 1 kg. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0001",
+      "split": "DEV",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "intent": "recipe_to_products|recipe",
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe",
+          "expected": "recipe_to_products|recipe",
+          "observed": "related_products",
+          "reason": "expected intent in ['recipe_to_products', 'recipe']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Pripravila som nákupný zoznam pre bibimbap: 8 položiek nájdete na Foodland.sk a 3 čerstvých alebo doplnkových surovín si doplňte mimo e-shopu."
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0002",
+      "split": "DEV",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "intent": "recipe_to_products|recipe",
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe",
+          "expected": "recipe_to_products|recipe",
+          "observed": "product_search",
+          "reason": "expected intent in ['recipe_to_products', 'recipe']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Sójová omáčka citrónová Ponzu KIKKOMAN 250ml; Ryžový ocot CHINKIANG HENGSHUN 550ml; Čili olej Chiu Chow LEE KUM KEE 335g. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0003",
+      "split": "DEV",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "intent": "recipe_to_products|recipe",
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe",
+          "expected": "recipe_to_products|recipe",
+          "observed": "related_products",
+          "reason": "expected intent in ['recipe_to_products', 'recipe']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Pripravila som nákupný zoznam pre poke bowl; položky z Foodland.sk sú nižšie pripravené aj ako kandidáti do košíka."
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0004",
+      "split": "HOLDOUT",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "intent": "recipe_to_products|recipe",
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe",
+          "expected": "recipe_to_products|recipe",
+          "observed": "related_products",
+          "reason": "expected intent in ['recipe_to_products', 'recipe']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Pripravila som nákupný zoznam pre bibimbap: 8 položiek nájdete na Foodland.sk a 3 čerstvých alebo doplnkových surovín si doplňte mimo e-shopu."
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0005",
+      "split": "DEV",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "intent": null,
+      "language": "sk",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "products_nonempty",
+          "expected": "",
+          "observed": "0 products",
+          "reason": "expected at least one product"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Nemám aktívny nákupný zoznam ani vyhľadávanie, na ktoré by som to mohla naviazať - čo hľadáte?"
+    },
+    {
+      "scenario_id": "v221_recipe_to_products_0008",
+      "split": "HOLDOUT",
+      "capability": "RECIPE_TO_PRODUCTS",
+      "intent": "recipe_to_products|recipe",
+      "language": "en",
+      "turn_count": 1,
+      "state": "FAIL",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe",
+          "expected": "recipe_to_products|recipe",
+          "observed": "product_search",
+          "reason": "expected intent in ['recipe_to_products', 'recipe']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 4 produktov v kategórii \"Gyoza knedličky\":"
+    }
+  ]
+}
