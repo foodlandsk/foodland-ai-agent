@@ -451,6 +451,133 @@ class TestExplicitExclusion:
         assert "FL_S1" not in result.valid_match_ids
 
 
+class TestMultiwordExclusionClause:
+    """V2.21e (C2 EXCLUSION_CLAUSE_MULTIWORD_GAP) - _looks_like_named_entity()
+    (TestExplicitExclusion above) only accepts a BARE single compact token
+    ("kikkoman", "aroy-d") - a natural multi-word exclusion clause
+    ("vo velkom baleni 1000g", "najmensie balenie 150ml", "prilis pikantnu
+    extra ostru") never matched that shape and silently fell through
+    (Section 33 fail-open: no exclusion applied at all), even though it
+    names a genuinely actionable, GENERIC signal. Two narrow extractors -
+    reusing _detect_package_size()'s existing regex, and the "pikant"/
+    "ostr"/"paliv" spice-stem vocabulary already used elsewhere in this
+    codebase (app.main.detect_special_product_subject's "mild" branch) -
+    populate the new excluded_title_phrase field, filtered by app.retrieval
+    /app.main identically to how excluded_brand already is (same title-
+    substring mechanism, different source).
+
+    v221_negation_0001/0004, v221_multi_constraint_0003 (C2 portion only -
+    its product_brand:aroy-d C3 failure is untouched, see the closure test
+    below), v221_product_advice_0004 (revealed HOLDOUT, diagnostic only)."""
+
+    def test_minimal_pair_size_inclusion_vs_exclusion_vs_multiword_exclusion(self):
+        # A: positive inclusion - untouched.
+        inclusion = parse_structured_query("chcem 1000ml", known_brands=INDEX.known_brands)
+        assert inclusion.excluded_title_phrase is None
+        assert inclusion.package_size is not None and inclusion.package_size.raw == "1000ml"
+
+        # B: simple bare-token exclusion - already worked via
+        # _looks_like_named_entity() before this fix, must still work.
+        simple_exclusion = parse_structured_query("chcem sojova omacka, ale nie 1000ml", known_brands=INDEX.known_brands)
+        assert simple_exclusion.excluded_title_phrase == "1000ml"
+
+        # C: the actual gap - natural multi-word phrasing around the same
+        # size token.
+        multiword_exclusion = parse_structured_query("chcem sojova omacka, ale nie vo velkom baleni 1000ml", known_brands=INDEX.known_brands)
+        assert multiword_exclusion.excluded_title_phrase == "1000ml"
+
+    def test_minimal_pair_intensity_inclusion_vs_exclusion_vs_multiword_exclusion(self):
+        # A: positive inclusion - untouched (no exclusion marker at all).
+        inclusion = parse_structured_query("chcem prilis pikantnu omacku")
+        assert inclusion.excluded_title_phrase is None
+
+        # B: a bare "pikant" token alone after "nie" is NOT this mechanism -
+        # it's app.main.detect_special_product_subject()'s separate "mild"-
+        # family rediscovery signal (no product family named yet) - must
+        # stay unaffected by this fix (Section 6: don't make every noun
+        # phrase after "nie" an exclusion).
+        bare_negation = parse_structured_query("nie pikantne")
+        assert bare_negation.excluded_title_phrase is None
+
+        # C: the actual gap - an explicit intensifier ("prilis"/"velmi")
+        # plus a spice stem in a natural multi-word clause.
+        multiword_exclusion = parse_structured_query("chcem cili omacku, ale nie prilis pikantnu extra ostru")
+        assert multiword_exclusion.excluded_title_phrase == "extra pikant"
+
+    def test_v221_negation_0001_extra_pikantna_end_to_end(self):
+        query, result = retrieve("chcem sojova omacka, ale nie vo velkom baleni 1000ml")
+        assert query.excluded_title_phrase == "1000ml"
+        assert "FL_S1" not in result.valid_match_ids  # 1000ml Kikkoman - excluded
+        assert "FL_S2" in result.valid_match_ids  # 500ml Lee Kum Kee - remains eligible
+
+    def test_v221_multi_constraint_0003_c2_portion_only(self):
+        # C2_COMPONENT_FIXED_C3_REMAINS: the size exclusion (C2, this
+        # sprint) must work even though the brand inclusion (C3,
+        # untouched) still resolves to the catalog's manufacturer name,
+        # not "aroy-d" - verified against the real, live catalog+scorer in
+        # this sprint's report, not this synthetic fixture (which has no
+        # AROY-D coconut milk product to exercise the C3 half at all).
+        query = parse_structured_query("Kokosove mlieko, znacka Aroy-D, ale nie najmensie balenie 150ml.")
+        assert query.excluded_title_phrase == "150ml"
+
+    def test_v221_product_advice_0004_intensity_phrase(self):
+        # Revealed HOLDOUT (diagnostic only, not re-executed against the
+        # Advisor here) - bare "nie " is deliberately NOT a registered
+        # exclusion marker (blast radius - Section 33), but "nie prilis "/
+        # "nie velmi " are narrow enough to add safely, mirroring
+        # "iny/ina/ine nez" above.
+        query = parse_structured_query("Chcem miernu, nie prilis pikantnu chilli omacku.")
+        assert query.excluded_title_phrase == "extra pikant"
+
+    def test_positive_control_named_brand_exclusion_unaffected(self):
+        # TestExplicitExclusion's own cases must still resolve exactly as
+        # before - this fix must not change WHICH resolution path wins.
+        query, result = retrieve("chcem sojova omacka, ale nie od kikkoman")
+        assert query.excluded_brand == "kikkoman"
+        assert query.excluded_title_phrase is None
+        assert "FL_S1" not in result.valid_match_ids
+
+    def test_positive_control_subfamily_exclusion_unaffected(self):
+        query, result = retrieve("chcem sojova omacka, ale nie rybacia omacka")
+        assert query.excluded_subfamily is not None
+        assert query.excluded_title_phrase is None
+
+    def test_negative_control_requested_family_not_wiped_by_intensity_clause(self):
+        # Section 6: excluding "extra pikant" must not also swallow the
+        # positively-requested product family the same clause happens to
+        # continue naming (e.g. "...pikantnu chilli omacku" - the family
+        # words trail the exclusion clause with no punctuation between
+        # them, so they are cut from positive_text along with the
+        # exclusion clause itself, exactly like any other exclusion
+        # clause - the family is still recoverable from the raw message
+        # text by the ordinary keyword search path, verified end-to-end in
+        # this sprint's report). This test only locks in that the
+        # STRUCTURED exclusion itself never overreaches into
+        # excluded_subfamily/excluded_brand for the family's own name.
+        query = parse_structured_query("Chcem miernu, nie prilis pikantnu chilli omacku.")
+        assert query.excluded_subfamily is None
+        assert query.excluded_brand is None
+
+    def test_negative_control_over_stripping_still_fails_open(self):
+        # Section 33 fail-open must survive this fix: an intensifier with
+        # no recognized spice stem, or a spice stem with no intensifier,
+        # must do nothing (never guess).
+        no_stem = parse_structured_query("nechcem nieco prilis slane")
+        assert no_stem.excluded_title_phrase is None
+        no_intensifier = parse_structured_query("chcem omacku, ale nie pikantna")
+        assert no_intensifier.excluded_title_phrase is None
+
+    def test_exclusion_survives_narrowing_followup(self):
+        # merge_constraints() must carry excluded_title_phrase forward too,
+        # mirroring excluded_brand/excluded_subfamily immediately above.
+        from app.query_constraints import merge_constraints
+
+        base = parse_structured_query("chcem sojova omacka, ale nie vo velkom baleni 1000ml", known_brands=INDEX.known_brands)
+        followup = parse_structured_query("500 ml", known_brands=INDEX.known_brands)
+        merged = merge_constraints(base, followup)
+        assert merged.excluded_title_phrase == "1000ml"
+
+
 class TestDietaryConstraints:
     def test_gluten_free_soy_sauce_excludes_ungrounded_products(self):
         _, result = retrieve("bezlepkova sojova omacka")

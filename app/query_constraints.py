@@ -69,7 +69,21 @@ INFERRED_MEDIUM = "INFERRED_MEDIUM"
 # closely analogous forms the fix's own mandate named ("iny/ina/ine nez").
 # Fails OPEN by design (Section 33): a marker with no recognizable known
 # brand/subfamily after it does nothing, never guesses.
-_EXCLUSION_MARKERS = ("ale nie od ", "nie od ", "ale nie ", "nechcem ", "iny nez ", "ina nez ", "ine nez ")
+#
+# V2.21e (C2 EXCLUSION_CLAUSE_MULTIWORD_GAP, v221_product_advice_0004) -
+# "nie prilis "/"nie velmi " added: a bare "nie X" clause (no "ale"/
+# "nechcem" prefix) is otherwise indistinguishable from ordinary Slovak
+# negation and far too broad to add generically (blast radius), but "nie
+# prilis"/"nie velmi" (not TOO/very X) is a deliberate intensity-exclusion
+# phrase, same narrow-multi-word-marker pattern as "iny/ina/ine nez" above.
+_EXCLUSION_MARKERS = ("ale nie od ", "nie od ", "ale nie ", "nechcem ", "iny nez ", "ina nez ", "ine nez ", "nie prilis ", "nie velmi ")
+# V2.21e - these two narrow markers exist only to PROVE "nie" is followed
+# by an intensifier (disambiguating from ordinary negation and from
+# app.main's separate bare "nie pikantne" -> "mild"-family REDISCOVERY
+# signal) - the intensifier word itself must stay part of clause_text for
+# _extract_intensity_exclusion_phrase() to see it, so only "nie " (not the
+# full matched marker) is actually consumed for these two below.
+_NARROW_INTENSITY_MARKERS = frozenset({"nie prilis ", "nie velmi "})
 _EXCLUSION_CLAUSE_END_RE = re.compile(r"[,.;!?]")
 # A single compact word/hyphenated-word (e.g. "aroy-d", "kikkoman") - used
 # as a fallback brand-shaped exclusion candidate when `known_brands` (built
@@ -89,6 +103,51 @@ def _looks_like_named_entity(clause_text: str) -> bool:
     return bool(_NAMED_ENTITY_RE.match(clause_text.strip()))
 
 
+# V2.21e (C2 EXCLUSION_CLAUSE_MULTIWORD_GAP) - a natural multi-word
+# exclusion clause ("vo velkom baleni 1000g", "najmensie balenie 150ml",
+# "prilis pikantnu extra ostru") never matches _looks_like_named_entity()'s
+# single-bare-token shape above, so it silently fell through (Section 33
+# fail-open) even though it names a genuinely actionable, GENERIC signal:
+# a package-size token, or a spice-intensity phrase. Two narrow, evidence-
+# grounded extractors (not a hardcoded phrase list, not a new parallel
+# filtering subsystem - both feed the SAME excluded_title_phrase field
+# that app.retrieval/app.main already filter title text against, the
+# identical mechanism excluded_brand already uses).
+_INTENSITY_EXCLUSION_INTENSIFIERS = ("prilis", "velmi")
+# Reuses the exact spice-stem vocabulary already established elsewhere in
+# this codebase (app.main.detect_special_product_subject's "mild" branch:
+# "nepaliv"/"pikant"), not invented here.
+_INTENSITY_EXCLUSION_STEMS = ("pikant", "ostr", "paliv")
+
+
+def _extract_size_exclusion_phrase(clause_text: str) -> str | None:
+    """Reuses _detect_package_size() (same regex the query's own POSITIVE
+    size detection already uses below) against the exclusion clause text -
+    "vo velkom baleni 1000g" -> "1000g", the exact substring real catalog
+    titles carry (confirmed live: "Cili pasta korejska gochujang SEMPIO
+    1000g")."""
+    size = _detect_package_size(clause_text)
+    return size.raw if size is not None else None
+
+
+def _extract_intensity_exclusion_phrase(clause_text: str) -> str | None:
+    """"prilis pikantnu extra ostru" / "prilis pikantnu chilli omacku" ->
+    "extra pikant". Requires an explicit intensifier (Section 33-style
+    fail-open: without one, a bare "nie pikantne" is app.main's separate
+    "mild"-family REDISCOVERY signal, not a title exclusion within an
+    already-named product family - the two must not overlap) - deriving
+    "extra " + stem is grounded in a real, catalog-wide top-tier naming
+    convention verified across unrelated product lines (both "Sriracha
+    cili omacka extra pikantna UNI-EAGLE" and "Pikantny kuraci ramen
+    Buldak 2x Extra pikantny SAMYANG" use it), not one scenario's title."""
+    if not any(intensifier in clause_text for intensifier in _INTENSITY_EXCLUSION_INTENSIFIERS):
+        return None
+    for stem in _INTENSITY_EXCLUSION_STEMS:
+        if stem in clause_text:
+            return f"extra {stem}"
+    return None
+
+
 def _find_exclusion_span(normalized_message: str) -> tuple[int, int, str] | None:
     """First EXPLICIT exclusion marker's (span_start, span_end, clause_text) -
     span_start/span_end cover marker+clause so the caller can cut it out of
@@ -100,7 +159,8 @@ def _find_exclusion_span(normalized_message: str) -> tuple[int, int, str] | None
         idx = normalized_message.find(marker)
         if idx == -1:
             continue
-        clause_start = idx + len(marker)
+        consumed = "nie " if marker in _NARROW_INTENSITY_MARKERS else marker
+        clause_start = idx + len(consumed)
         end_match = _EXCLUSION_CLAUSE_END_RE.search(normalized_message, clause_start)
         clause_end = end_match.start() if end_match else len(normalized_message)
         clause_text = normalized_message[clause_start:clause_end].strip()
@@ -188,6 +248,13 @@ class StructuredProductQuery:
     concept_id: str = ""
     excluded_brand: str | None = None
     excluded_subfamily: str | None = None
+    # V2.21e (C2 EXCLUSION_CLAUSE_MULTIWORD_GAP) - a title-text substring to
+    # exclude that is neither a known catalog brand nor a taxonomy
+    # subfamily (a package-size token or a spice-intensity phrase derived
+    # from a multi-word exclusion clause) - filtered identically to
+    # excluded_brand (same title-substring mechanism) in app.retrieval /
+    # app.main, just from a different source.
+    excluded_title_phrase: str | None = None
     explicit_constraints: set[str] = field(default_factory=set)
     constraint_sources: dict[str, str] = field(default_factory=dict)
     confidence: str = "UNKNOWN"  # HIGH / MEDIUM / LOW / UNKNOWN, taxonomy-style
@@ -287,7 +354,17 @@ def parse_structured_query(
             excluded_brand_hit = clause_text.strip()
         if excluded_brand_hit:
             query.excluded_brand = excluded_brand_hit
-        if query.excluded_subfamily or query.excluded_brand:
+        if not (query.excluded_subfamily or query.excluded_brand):
+            # V2.21e (C2) - neither a known brand nor a taxonomy subfamily
+            # matched (also true whenever clause_text is a natural multi-
+            # word phrase, which _looks_like_named_entity() above already
+            # rejected) - try the two narrow, generic extractors before
+            # giving up (still fails open: both return None on anything
+            # else, exactly like _looks_like_named_entity() already did).
+            title_phrase = _extract_size_exclusion_phrase(clause_text) or _extract_intensity_exclusion_phrase(clause_text)
+            if title_phrase:
+                query.excluded_title_phrase = title_phrase
+        if query.excluded_subfamily or query.excluded_brand or query.excluded_title_phrase:
             positive_text = normalized[:span_start] + " " + normalized[span_end:]
 
     rule = _match_taxonomy_rule(positive_text)
@@ -412,6 +489,7 @@ def merge_constraints(
         dietary_facets=list(dict.fromkeys([*base.dietary_facets, *addition.dietary_facets])),
         excluded_brand=addition.excluded_brand or base.excluded_brand,
         excluded_subfamily=addition.excluded_subfamily or base.excluded_subfamily,
+        excluded_title_phrase=addition.excluded_title_phrase or base.excluded_title_phrase,
         confidence=base.confidence,
     )
     merged.explicit_constraints = (set(base.explicit_constraints) | set(addition.explicit_constraints))

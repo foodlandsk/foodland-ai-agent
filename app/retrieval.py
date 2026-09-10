@@ -245,6 +245,19 @@ def retrieve_products(
     if excluded_subfamily:
         candidates -= index.subfamily_index.get(excluded_subfamily, set())
         applied.append(f"excluded_subfamily={excluded_subfamily}")
+    # V2.21e (C2 EXCLUSION_CLAUSE_MULTIWORD_GAP) - a title-text substring
+    # exclusion that is neither a known brand nor a taxonomy subfamily (a
+    # package-size token or spice-intensity phrase pulled out of a natural
+    # multi-word exclusion clause, e.g. "vo velkom baleni 1000g" -> "1000g")
+    # - filtered identically to excluded_brand's title-text check above,
+    # just without a brand_index membership check (there is none for this).
+    excluded_title_phrase = getattr(query, "excluded_title_phrase", None)
+    if excluded_title_phrase:
+        candidates = {
+            pid for pid in candidates
+            if excluded_title_phrase not in index.title_search_form_by_id.get(pid, "")
+        }
+        applied.append(f"excluded_title_phrase={excluded_title_phrase}")
 
     valid_ids = candidates
     result.valid_match_ids = sorted(valid_ids)

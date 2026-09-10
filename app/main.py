@@ -488,7 +488,7 @@ def _exclude_negated_entities(results: list[dict], structured, limit: int) -> li
     back to the unfiltered list when filtering empties it (Section 38 -
     an explicit exclusion must outrank the "never return zero" convenience
     fallback, not be silently defeated by it)."""
-    if not results or not (structured.excluded_subfamily or structured.excluded_brand):
+    if not results or not (structured.excluded_subfamily or structured.excluded_brand or structured.excluded_title_phrase):
         return results
     filtered = []
     for item in results:
@@ -496,6 +496,12 @@ def _exclude_negated_entities(results: list[dict], structured, limit: int) -> li
         if structured.excluded_subfamily and taxonomy is not None and taxonomy.canonical_subfamily == structured.excluded_subfamily:
             continue
         if structured.excluded_brand and structured.excluded_brand in normalize(str(item.get("title", ""))):
+            continue
+        # V2.21e (C2 EXCLUSION_CLAUSE_MULTIWORD_GAP) - same title-text
+        # check as excluded_brand above, just from a different source
+        # (a package-size token or spice-intensity phrase pulled out of
+        # a natural multi-word exclusion clause).
+        if structured.excluded_title_phrase and structured.excluded_title_phrase in normalize(str(item.get("title", ""))):
             continue
         filtered.append(item)
     return filtered[:limit]
@@ -511,7 +517,7 @@ def _search_products_for_cache(products_list: list[Product] | list[dict], query:
     alternatives ranked just behind it). Queries with no exclusion are
     completely unaffected (fetch_limit == limit)."""
     structured = parse_structured_query(query)
-    fetch_limit = limit * 4 if (structured.excluded_subfamily or structured.excluded_brand) else limit
+    fetch_limit = limit * 4 if (structured.excluded_subfamily or structured.excluded_brand or structured.excluded_title_phrase) else limit
     results = _exclude_taxonomy_family_mismatches(search_products(products_list, query, fetch_limit), query, fetch_limit)
     return _exclude_negated_entities(results, structured, limit)
 
