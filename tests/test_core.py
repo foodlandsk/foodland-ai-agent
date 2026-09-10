@@ -1863,6 +1863,50 @@ class TestIntentDetection:
         answer_en = main.nutrition_data_uncertainty_answer("en")
         assert answer_en and "calorie" in answer_en.lower()
 
+    def test_protein_macronutrient_query_detected(self):
+        # V2.21g (C9 INSUFFICIENT_DATA_TOPIC_GAP, insufficient_data_0001):
+        # the identical missing-macronutrient-field gap as calories, just
+        # a different nutrient - "kolko gramov bielkovin ma..." (how many
+        # grams of protein) had no marker at all.
+        assert main.is_nutrition_data_query("Kolko gramov bielkovin ma jedna porcia vasej misu polievky?")
+        assert main.is_nutrition_data_query("kolko bielkovin ma tento produkt?")
+        assert main.is_nutrition_data_query("aka je bielkovinova hodnota tejto ryze?")
+        assert main.is_nutrition_data_query("how many grams of protein does this have?")
+
+    def test_protein_query_not_falsely_triggered_by_product_discovery(self):
+        # Control: a genuine product-discovery request for protein-rich
+        # foods must not be hijacked into the uncertainty answer merely
+        # because it mentions protein.
+        assert not main.is_nutrition_data_query("Chcem produkty bohate na bielkoviny.")
+        assert not main.is_nutrition_data_query("Odporucte mi nieco s vysokym obsahom bielkovin.")
+        assert not main.is_nutrition_data_query("Chcem kupit tofu s vysokym obsahom proteinu.")
+
+    def test_manufacturing_date_query_detected(self):
+        # V2.21g (C9, insufficient_data_0004): data/products.json has no
+        # manufacturing-date/batch/expiry field for any product (same
+        # confirmed field list as the nutrition fix above) - a distinct
+        # topic from nutrition, so its own marker list/function pair.
+        assert main.is_product_dating_query("Do you have the exact manufacturing date for this soy sauce batch?")
+        assert main.is_product_dating_query("Aky je datum vyroby tohto produktu?")
+        assert main.is_product_dating_query("Ake cislo sarze ma tento produkt?")
+        assert main.is_product_dating_query("What is the expiration date of this item?")
+
+    def test_manufacturing_date_query_not_falsely_triggered_by_shelf_life_question(self):
+        # Control: a general shelf-life/freshness question (answerable
+        # generically, or already handled elsewhere) must not be hijacked
+        # into this specific manufacturing/batch uncertainty answer.
+        assert not main.is_product_dating_query("Kedy expiruje tento produkt?")
+        assert not main.is_product_dating_query("Aka je trvanlivost tejto sojovej omacky?")
+        assert not main.is_nutrition_data_query("Do you have the exact manufacturing date for this soy sauce batch?")
+
+    def test_product_dating_uncertainty_answer_matches_requires_uncertainty_vocabulary(self):
+        answer_sk = main.product_dating_uncertainty_answer("sk")
+        assert "nemám overené" in answer_sk
+        assert "pozrieť etiketu" in answer_sk or "pozriet etiketu" in main.normalize(answer_sk)
+        answer_en = main.product_dating_uncertainty_answer("en")
+        assert answer_en and "i don't have" in answer_en.lower()
+        assert "contact the manufacturer" in answer_en.lower()
+
     def test_faq_doprava(self):
         assert main.is_faq_intent("kolko stoji doprava?")
 

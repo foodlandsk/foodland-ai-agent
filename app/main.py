@@ -4776,6 +4776,17 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             "intent": "product_search",
         }
 
+    if is_product_dating_query(chat_request.message):
+        updated_profile = update_user_memory(profile_key, chat_request.message, "product_search", [], [])
+        log_question(chat_request.message, client_key, 0, intent="product_search", session_id=session_id, primary_intent="product_search", subject="", interaction_id=interaction_id)
+        return {
+            "answer": product_dating_uncertainty_answer(query_language),
+            "products": [],
+            "knowledge": knowledge_summary({}),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": "product_search",
+        }
+
     # V2.13b (docs/workflow-precedence-before-v2.13b.md, rt0010): the
     # old inline condition treated allergen_product_query() returning ""
     # as "not applicable", when it is often a DELIBERATE zero-safe-
@@ -10117,6 +10128,17 @@ NUTRITION_DATA_QUERY_MARKERS = (
     "calorie count",
     "nutritional value",
     "nutrition facts",
+    # V2.21g fix (C9 INSUFFICIENT_DATA_TOPIC_GAP, insufficient_data_0001):
+    # "kolko gramov bielkovin ma..." (how many grams of protein) is the
+    # identical missing-macronutrient-field gap as calories above, just a
+    # different nutrient - data/products.json has no protein field
+    # either. Confirmed 0 blast-radius hits against data/products.json.
+    "gramov bielkovin",
+    "kolko bielkovin",
+    "kolko ma bielkovin",
+    "bielkovinova hodnota",
+    "grams of protein",
+    "protein content",
 )
 
 
@@ -10134,6 +10156,46 @@ def nutrition_data_uncertainty_answer(lang: str = "sk") -> str:
     return (
         "Presné výživové údaje, napríklad kalórie, k jednotlivým produktom nemám overené - "
         "odporúčam pozrieť etiketu produktu alebo kontaktovať výrobcu priamo."
+    )
+
+
+# V2.21g fix (C9 INSUFFICIENT_DATA_TOPIC_GAP, insufficient_data_0004):
+# same missing-structured-data class as NUTRITION_DATA_QUERY_MARKERS
+# above, but for a completely different topic (manufacturing/batch/
+# expiry tracking, not a nutrient) - data/products.json has no such
+# field either (confirmed field list in the nutrition comment above),
+# so a separate marker list/function pair mirrors that mechanism
+# rather than overloading one function with two unrelated topics. All
+# confirmed 0 blast-radius hits against data/products.json.
+PRODUCT_DATING_QUERY_MARKERS = (
+    "manufacturing date",
+    "production date",
+    "batch number",
+    "lot number",
+    "expiration date",
+    "expiry date",
+    "datum vyroby",
+    "cislo sarze",
+    "sarza",
+    "datum spotreby",
+    "datum minimalnej trvanlivosti",
+)
+
+
+def is_product_dating_query(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(marker in normalized_message for marker in PRODUCT_DATING_QUERY_MARKERS)
+
+
+def product_dating_uncertainty_answer(lang: str = "sk") -> str:
+    if lang == "en":
+        return (
+            "I don't have verified manufacturing/batch/expiry data for individual "
+            "products - please check the product label or contact the manufacturer directly."
+        )
+    return (
+        "Presné údaje o dátume výroby, šarži alebo spotrebe k jednotlivým produktom "
+        "nemám overené - odporúčam pozrieť etiketu produktu alebo kontaktovať výrobcu priamo."
     )
 
 
