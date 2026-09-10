@@ -87,11 +87,22 @@ def _validate_only(split_filter: str | None) -> int:
 
 
 def _execute_advisor(split_filter: str | None, output_path: Path) -> int:
-    """V2.21b ONLY. Imports app.evaluation.adapter.make_chat_fn() for
-    the first time in this codepath - this function must never be
+    """V2.21b ONLY. Imports app.evaluation.adapter.make_session_chat_fn()
+    for the first time in this codepath - this function must never be
     called by anything other than an explicit --execute-advisor
-    invocation of this script."""
-    from app.evaluation.adapter import make_chat_fn  # noqa: PLC0415 - deliberately deferred: this import must never happen at module load time or under --validate-only (Section 62/90)
+    invocation of this script.
+
+    Uses make_session_chat_fn(), not make_chat_fn(): make_chat_fn() mints
+    a brand-new, never-repeated session_id on every single call (see its
+    own docstring), so turn 2+ of a multi-turn scenario would run as a
+    fresh, context-free session and never see turn 1's answer - silently
+    invalidating every MULTI_TURN_STATE scenario (discovered during the
+    V2.21b pre-execution audit via v221_recipe_to_products_0006: turn 2
+    "A este potrebujem nieco na dochutenie?" is unanswerable without
+    turn 1's "Chcem robit pad thai." in session memory). make_session_chat_fn()
+    takes a caller-supplied session_id precisely so multi-turn continuity
+    is the caller's choice, not incidental to a shared counter."""
+    from app.evaluation.adapter import make_session_chat_fn  # noqa: PLC0415 - deliberately deferred: this import must never happen at module load time or under --validate-only (Section 62/90)
     from app.intelligence_diagnostics import v221_factory as factory
     from app.intelligence_diagnostics.v221_scorer import score_scenario
 
@@ -101,20 +112,21 @@ def _execute_advisor(split_filter: str | None, output_path: Path) -> int:
     if split_filter:
         scenarios = [s for s in scenarios if split_map.get(s.scenario_id) == split_filter]
 
-    chat_fn = make_chat_fn()  # EVALUATION context by construction (Section 64) - app.evaluation.adapter.make_chat_fn() never defaults to CUSTOMER
+    chat_fn = make_session_chat_fn()  # EVALUATION context by construction (Section 64) - app.evaluation.adapter.make_session_chat_fn() never defaults to CUSTOMER
 
     results = []
     for s in scenarios:
-        # Section 65 - unique identity per scenario; make_chat_fn()'s
-        # own module-level _call_counter already guarantees a fresh
-        # eval-isolated-N session/client_key per call, and each
-        # scenario's turns are executed sequentially through the SAME
-        # closure call for multi-turn continuity within one scenario
-        # only (never shared across scenarios - a fresh scenario always
-        # starts a fresh call).
+        # Unique, deterministic identity per scenario: scenario_id itself
+        # (already proven globally unique - test_unique_scenario_ids),
+        # reused across every turn of THIS scenario only, so a follow-up
+        # turn sees the prior turn's session memory the way a real
+        # multi-turn conversation would - and never shared with any other
+        # scenario, since each scenario derives its own session_id from
+        # its own scenario_id.
+        session_id = f"eval-session-{s.scenario_id}"
         last_result: dict = {}
         for turn in s.turns:
-            last_result = chat_fn(turn.message, 8)
+            last_result = chat_fn(turn.message, 8, session_id)
 
         score = score_scenario(s.scenario_id, s.expected_invariants if s.is_scored else (), last_result)
         results.append({
