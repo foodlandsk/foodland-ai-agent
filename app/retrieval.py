@@ -266,7 +266,19 @@ def retrieve_products(
 
     brand_ids: set[str] | None = None
     if "brand" in query.explicit_constraints and query.brand:
-        brand_ids = index.brand_index.get(query.brand, set())
+        if getattr(query, "brand_is_title_only", False):
+            # V2.21h (C3 BRAND_INCLUSION_FALLBACK_GAP) - title-text
+            # substring match within the already family/subfamily-
+            # filtered valid_ids, mirroring excluded_brand's own
+            # title-text fallback above (identical catalog data-quality
+            # reason: no reliable brand_index entry exists for a
+            # title-only marketing brand like "aroy-d").
+            brand_ids = {
+                pid for pid in valid_ids
+                if query.brand in index.title_search_form_by_id.get(pid, "")
+            }
+        else:
+            brand_ids = index.brand_index.get(query.brand, set())
 
     size_ids: set[str] | None = None
     if "package_size" in query.explicit_constraints and query.package_size is not None:

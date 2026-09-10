@@ -337,6 +337,80 @@ class TestBrandConstraints:
         assert result.nearest_match_ids  # relaxed back to the full soy_sauce set
         assert any("brand" in c for c in result.relaxed_constraints)
 
+    def test_brand_boundary_matches_before_punctuation(self):
+        # V2.21h (C3 BRAND_INCLUSION_FALLBACK_GAP): _detect_brand() used to
+        # require a literal space on both sides ("... nie od kikkoman "
+        # already worked because it ends the message) - a brand immediately
+        # followed by a comma ("znacka Kikkoman, ale nie...") did not match
+        # at all before this fix. Regex \b is a strict superset of the old
+        # space-padding check (a space is itself non-word), so this can
+        # only add matches, never remove one that already worked.
+        query = parse_structured_query("chcem sojovu omacku, znacka kikkoman, prosim", known_brands=INDEX.known_brands)
+        assert query.brand == "kikkoman"
+
+
+class TestBrandInclusionTitleOnlyFallback:
+    """V2.21h (C3 BRAND_INCLUSION_FALLBACK_GAP) - the positive-inclusion
+    mirror of TestExplicitExclusion's excluded_brand title-text fallback:
+    "Aroy-D kokosove mlieko, prosim." never resolved a brand constraint at
+    all, because AROY-D's own catalog `brand` field is "Thai Agri Foods
+    Public Company Limited" (confirmed live), so it can never appear in
+    known_brands regardless of phrasing. TITLE_ONLY_MARKETING_BRANDS is a
+    small, individually-verified allowlist (see its own docstring for why
+    automatic extraction was rejected), not brand detection from query
+    text shape."""
+
+    def test_v221_brand_constraint_0003_resolves_via_title_only_fallback(self):
+        query = parse_structured_query("Aroy-D kokosove mlieko, prosim.")
+        assert query.brand == "aroy-d"
+        assert query.brand_is_title_only is True
+
+    def test_v221_multi_constraint_0003_brand_half_resolves_despite_trailing_comma(self):
+        # This is exactly what TestBrandConstraints.test_brand_boundary_
+        # matches_before_punctuation above fixes: "znacka Aroy-D," has a
+        # comma immediately after the brand.
+        query = parse_structured_query("Kokosove mlieko, znacka Aroy-D, ale nie najmensie balenie 150ml.")
+        assert query.brand == "aroy-d"
+        assert query.brand_is_title_only is True
+        assert query.excluded_title_phrase == "150ml"
+
+    def test_known_structured_brand_takes_priority_over_title_only_fallback(self):
+        # The fallback must only ever be TRIED when the structured
+        # known_brands lookup already failed - a genuinely known brand
+        # (kikkoman) must resolve via the normal path, never accidentally
+        # via brand_is_title_only.
+        query = parse_structured_query("chcem kikkoman sojovu omacku", known_brands=INDEX.known_brands)
+        assert query.brand == "kikkoman"
+        assert query.brand_is_title_only is False
+
+    def test_negative_control_random_word_is_not_promoted_to_a_brand(self):
+        # Section 6/33 fail-open: an ordinary word must never be silently
+        # treated as a title-only brand just because it looks capitalized
+        # or brand-shaped in the raw message - only the curated
+        # TITLE_ONLY_MARKETING_BRANDS entries can ever resolve this way.
+        query = parse_structured_query("chcem cerstvu zeleninu prosim")
+        assert query.brand is None
+        assert query.brand_is_title_only is False
+
+    def test_retrieval_uses_title_text_match_for_title_only_brand(self):
+        # Direct construction (bypassing the parser), mirroring
+        # TestExplicitExclusion.test_confirmed_fail_subfamily_exclusion_
+        # replicated's own pattern - this fixture's own AROY-D products
+        # happen to have a clean, matching `brand` field (unlike the real
+        # catalog), so this only proves the retrieval-side code path reads
+        # brand_is_title_only and filters by title-text without crashing,
+        # not the real catalog's specific data mismatch (verified live
+        # against the real catalog in this sprint's report instead).
+        from app.query_constraints import StructuredProductQuery
+
+        query = StructuredProductQuery(
+            raw_query="", family="coconut_product", brand="aroy-d",
+            brand_is_title_only=True, explicit_constraints={"brand"},
+        )
+        result = retrieve_products(query, INDEX)
+        assert "FL_CM" in result.exact_match_ids  # Kokosove mlieko AROY-D
+        assert "FL_CO" not in result.exact_match_ids  # Kokosovy olej NATURAL - different brand
+
 
 class TestExplicitExclusion:
     """V2.20d - NEGATION_EXCLUSION_NOT_APPLIED, root-caused from the V2.20b

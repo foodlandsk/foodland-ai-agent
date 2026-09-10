@@ -98,6 +98,28 @@ _EXCLUSION_CLAUSE_END_RE = re.compile(r"[,.;!?]")
 # so it never becomes an exclusion (Section 33 fail-open).
 _NAMED_ENTITY_RE = re.compile(r"^[a-z][a-z0-9-]{2,}$")
 
+# V2.21h (C3 BRAND_INCLUSION_FALLBACK_GAP) - the positive-inclusion mirror
+# of the exclusion-side comment above: "aroy-d" is a real catalog brand
+# (confirmed: 22 products) whose own `brand` FIELD is "Thai Agri Foods
+# Public Company Limited", so it can never appear in `known_brands`
+# (built from that field) no matter how the customer phrases the request -
+# "Aroy-D kokosove mlieko, prosim." matched no family-specific brand at
+# all and silently fell back to an unfiltered category browse.
+#
+# Deliberately a small, MANUALLY CURATED, individually-verified set
+# (same standard as scripts/consistency_audit.py's KNOWN_SAFE_COLLISIONS)
+# rather than automatic extraction from title text: a first pass
+# extracting maximal ALL-CAPS runs from every title in data/products.json
+# also surfaced pure noise as "brand-shaped" - SKU/size codes ("H7", "H8",
+# "XL") and generic descriptors ("BIO", "EKO", "BBQ") that occur across
+# just as many products as real brands do, so an automatic allowlist
+# would risk matching one of those as a false brand constraint the same
+# way v221_cross_sell_0001 was broken by an over-general marker in V2.21d.
+# Add a new entry only after individually confirming, against the live
+# catalog, that (a) the brand's own `brand` field differs from its title
+# name and (b) the title-derived candidate is not a generic word/code.
+TITLE_ONLY_MARKETING_BRANDS = frozenset({"aroy-d"})
+
 
 def _looks_like_named_entity(clause_text: str) -> bool:
     return bool(_NAMED_ENTITY_RE.match(clause_text.strip()))
@@ -255,6 +277,16 @@ class StructuredProductQuery:
     # excluded_brand (same title-substring mechanism) in app.retrieval /
     # app.main, just from a different source.
     excluded_title_phrase: str | None = None
+    # V2.21h (C3 BRAND_INCLUSION_FALLBACK_GAP) - True iff `brand` above was
+    # resolved via TITLE_ONLY_MARKETING_BRANDS (a curated marketing name),
+    # not the catalog's own structured `brand` field / known_brands - the
+    # positive-inclusion mirror of excluded_brand's own title-text fallback
+    # (both exist for the identical catalog data-quality reason: this
+    # catalog's `brand` field is the manufacturer/importer name for some
+    # products, not the marketing name printed on the title). Tells
+    # app.retrieval to filter by title-text-substring instead of
+    # brand_index membership for this query.
+    brand_is_title_only: bool = False
     explicit_constraints: set[str] = field(default_factory=set)
     constraint_sources: dict[str, str] = field(default_factory=dict)
     confidence: str = "UNKNOWN"  # HIGH / MEDIUM / LOW / UNKNOWN, taxonomy-style
@@ -286,14 +318,23 @@ def _match_taxonomy_rule(normalized_query: str) -> FamilyRule | None:
 def _detect_brand(normalized_query: str, known_brands: Iterable[str]) -> str | None:
     """Longest matching known catalog brand (normalized), so a short brand
     name cannot shadow a longer, more specific one mentioned in the same
-    query. Padded with spaces the same way classify_rice_query() already
-    guards word-boundary phrase matches in this codebase."""
-    padded = f" {normalized_query} "
+    query.
+
+    V2.21h (C3 BRAND_INCLUSION_FALLBACK_GAP): was space-padding both sides
+    (matching classify_rice_query()'s convention elsewhere in this
+    codebase), which requires a LITERAL space on both sides of the brand -
+    "znacka Aroy-D, ale nie..." has a comma immediately after the brand,
+    not a space, so it silently never matched. A regex `\\b` word boundary
+    is a strict superset of the space-padding check (a space is itself a
+    non-word character, so `\\b` fires there too) - this can only ADD
+    matches the old check missed (punctuation-adjacent brands), never
+    remove one that already worked, so it is safe to replace outright
+    rather than keep as a second fallback path."""
     best: str | None = None
     for brand in known_brands:
         if not brand:
             continue
-        if f" {brand} " in padded and (best is None or len(brand) > len(best)):
+        if re.search(rf"\b{re.escape(brand)}\b", normalized_query) and (best is None or len(brand) > len(best)):
             best = brand
     return best
 
@@ -402,6 +443,14 @@ def parse_structured_query(
         query.confidence = "UNKNOWN"
 
     brand = _detect_brand(positive_text, known_brands)
+    if not brand:
+        # V2.21h (C3) - the catalog's structured `brand` field missed it;
+        # try the curated title-only marketing-brand fallback before
+        # giving up (mirrors the excluded_brand fallback above).
+        title_only_brand = _detect_brand(positive_text, TITLE_ONLY_MARKETING_BRANDS)
+        if title_only_brand:
+            brand = title_only_brand
+            query.brand_is_title_only = True
     if brand:
         query.brand = brand
         query.explicit_constraints.add("brand")
@@ -478,6 +527,9 @@ def merge_constraints(
     whatever `addition`/`base` would otherwise have supplied."""
     merged_size = None if remove_size else (addition.package_size or base.package_size)
     merged_brand = None if remove_brand else (addition.brand or base.brand)
+    merged_brand_is_title_only = False if remove_brand else (
+        addition.brand_is_title_only if addition.brand else base.brand_is_title_only
+    )
     merged = StructuredProductQuery(
         raw_query=f"{base.raw_query} {addition.raw_query}".strip(),
         family=base.family,
@@ -485,6 +537,7 @@ def merge_constraints(
         attributes=dict(base.attributes),
         concept_id=base.concept_id,
         brand=merged_brand,
+        brand_is_title_only=merged_brand_is_title_only,
         package_size=merged_size,
         dietary_facets=list(dict.fromkeys([*base.dietary_facets, *addition.dietary_facets])),
         excluded_brand=addition.excluded_brand or base.excluded_brand,
