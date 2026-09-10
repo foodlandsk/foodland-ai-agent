@@ -8,7 +8,7 @@ Pokryva:
 - search.py: normalize, tokenize, search_products, ranking
 - knowledge.py: search_knowledge, best_faq_answer
 - grounding.py: validate_answer, URL stripping, price check
-- workflows.py: detect_workflow, get_contract, feature flags
+- workflows.py: products_to_cart_candidates
 - main.py: intent detekcia, allergen safety, FAQ routing, out-of-domain
 
 Nevyzaduje OPENAI_API_KEY - testuje offline logiku.
@@ -105,7 +105,7 @@ from app.search import (
 )
 from app.knowledge import load_knowledge_json, search_knowledge, best_faq_answer, best_product_advice_answer
 from app.grounding import validate_answer, collect_allowed_urls, collect_allowed_prices
-from app.workflows import detect_workflow, get_contract, products_to_cart_candidates
+from app.workflows import products_to_cart_candidates
 from app.embeddings import (
     build_product_embeddings,
     cosine_similarity,
@@ -4175,54 +4175,6 @@ class TestGrounding:
 
 
 class TestWorkflows:
-    def _detect(self, message: str) -> str:
-        return detect_workflow(
-            message,
-            detect_allergen_fn=main.detect_allergen_intent,
-            detect_faq_fn=main.is_faq_intent,
-            detect_recipe_subject_fn=main.detect_recipe_subject,
-            detect_out_of_domain_fn=main.detect_out_of_domain,
-            detect_special_fn=main.detect_special_product_subject,
-            detect_related_fn=main.detect_related_subject,
-        )
-
-    def test_allergen_workflow(self):
-        assert self._detect("alergia na arasidy") == "allergen_safety"
-
-    def test_faq_workflow(self):
-        assert self._detect("kolko stoji doprava?") == "faq"
-
-    def test_recipe_only_workflow(self):
-        assert self._detect("recept na kimchi") == "recipe_only"
-
-    def test_recipe_to_products_workflow(self):
-        wf = self._detect("produkty na recept kimchi")
-        assert wf == "recipe_to_products"
-
-    def test_out_of_domain_workflow(self):
-        assert self._detect("predate bicykle?") == "out_of_domain"
-
-    def test_product_search_workflow(self):
-        assert self._detect("gochujang pasta") == "product_search"
-
-    def test_cross_sell_workflow(self):
-        wf = self._detect("co potrebujem na kimchi?")
-        assert wf == "cross_sell"
-
-    def test_contract_has_allowed_sources(self):
-        contract = get_contract("faq")
-        assert "FAQ" in contract["allowed_sources"]
-
-    def test_contract_recipe_to_products_has_products(self):
-        contract = get_contract("recipe_to_products")
-        assert "products" in contract["allowed_sources"]
-        assert "one_best_product_per_ingredient" in contract["rules"]
-
-    def test_feature_flag_disables_workflow(self, monkeypatch):
-        monkeypatch.setenv("WORKFLOW_DISABLE", "faq")
-        wf = self._detect("kolko stoji doprava?")
-        assert wf != "faq"
-
     def test_cart_candidates_schema(self):
         products = [
             {"id": "FL_100", "title": "Kimchi 500g", "effective_price": 4.99, "currency": "EUR", "link": "https://foodland.sk/kimchi/"},

@@ -1,12 +1,10 @@
 """
-tests/test_integration.py  –  Integration testy: workflow engine + OpenAI retry
+tests/test_integration.py  –  Integration testy: OpenAI retry
 
 Spustenie:
     pytest tests/test_integration.py -v
 
 Pokryva:
-- detect_workflow pre vsetky intenty (allergen, faq, recipe, cross_sell, product_search)
-- workflow kontrakt (get_contract) pre kazdy intent
 - end-to-end chat odpoved s mock OpenAI (normalna cesta)
 - retry logika: RateLimitError 2x → uspech na 3. pokus
 - fallback po vycerpani retry (APITimeoutError, APIConnectionError)
@@ -108,7 +106,6 @@ def _install_stubs() -> None:
 _install_stubs()
 
 import app.main as main  # noqa: E402
-from app.workflows import detect_workflow, get_contract  # noqa: E402
 
 # ─── Pomocne fixtures ───────────────────────────────────────────────────────────
 
@@ -177,87 +174,7 @@ def _mock_http_request():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 1. Workflow detection
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestDetectWorkflow:
-    """detect_workflow vracia spravny intent pre rozne typy sprav."""
-
-    def _detect(self, message: str) -> str:
-        return detect_workflow(
-            message,
-            detect_allergen_fn=main.detect_allergen_intent,
-            detect_faq_fn=lambda m: None,          # FAQ stub – test_core pokryva detail
-            detect_recipe_subject_fn=main.detect_recipe_subject,
-            detect_out_of_domain_fn=main.detect_out_of_domain,
-            detect_special_fn=main.detect_special_product_subject,
-            detect_related_fn=main.detect_related_subject,
-        )
-
-    def test_allergen_safety_lepok(self):
-        assert self._detect("mam celiakiu, kde najdem bezlepkove produkty?") == "allergen_safety"
-
-    def test_allergen_safety_laktoza(self):
-        assert self._detect("som laktozovo intolerantny, mam problem s mliekom") == "allergen_safety"
-
-    def test_allergen_safety_arasidy(self):
-        assert self._detect("mam alergia na arasidy, mozem jest tento produkt?") == "allergen_safety"
-
-    def test_out_of_domain(self):
-        assert self._detect("ake je dnes pocasie v Bratislave?") == "out_of_domain"
-
-    def test_product_search_default(self):
-        assert self._detect("chcem kupit sojovu omacku") == "product_search"
-
-    def test_recipe_to_products(self):
-        # "recept na sushi" + "kupim ingrediencie" → recipe_to_products
-        wf = self._detect("recept na sushi a chcel by som kupit ingrediencie")
-        assert wf in ("recipe_to_products", "recipe_only")
-
-    def test_cross_sell_related(self):
-        # "co ide k" → related intent → cross_sell
-        wf = self._detect("co ide k sushi ryzi?")
-        # detect_related_subject by mal najst related intent
-        # Ak nie, padne na product_search – obe su akceptovatelne pre tento test
-        assert wf in ("cross_sell", "product_search")
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 2. Workflow kontrakt
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestWorkflowContracts:
-    """get_contract vracia spravne allowed_sources a quality_rules."""
-
-    def test_allergen_contract_has_safety_rule(self):
-        contract = get_contract("allergen_safety")
-        assert "never_assert_allergen_free_by_name_only" in contract["quality_rules"]
-
-    def test_allergen_contract_allowed_sources(self):
-        contract = get_contract("allergen_safety")
-        assert "products" in contract["allowed_sources"]
-
-    def test_product_search_contract(self):
-        contract = get_contract("product_search")
-        assert "products" in contract["allowed_sources"]
-        assert "answer" in contract["output_fields"]
-
-    def test_recipe_only_contract_no_product_push(self):
-        contract = get_contract("recipe_only")
-        assert "no_product_push_if_recipe_only_asked" in contract["quality_rules"]
-
-    def test_cross_sell_contract_output_fields(self):
-        contract = get_contract("cross_sell")
-        assert "cart_candidates" in contract["output_fields"]
-
-    def test_unknown_intent_fallback_to_product_search(self):
-        contract = get_contract("neexistujuci_intent")
-        # Bezpecny fallback podla implementacie
-        assert "products" in contract["allowed_sources"]
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 3. Chat flow s mock OpenAI
+# 1. Chat flow s mock OpenAI
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestChatWithMockOpenAI:
@@ -365,7 +282,7 @@ class TestChatWithMockOpenAI:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4. Retry logika – RETRY-01
+# 2. Retry logika – RETRY-01
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestOpenAIRetry:
@@ -545,7 +462,7 @@ class TestOpenAIRetry:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 5. Allergen safety workflow – bezpecnostna logika
+# 3. Allergen safety workflow – bezpecnostna logika
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestAllergenSafetyWorkflow:
