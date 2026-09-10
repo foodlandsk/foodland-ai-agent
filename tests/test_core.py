@@ -3751,6 +3751,72 @@ class TestFAQ:
         assert answer
         assert "dobierkou" in main.normalize(answer)
 
+    def test_complaint_reklamovat_verb_reaches_faq(self, knowledge):
+        # V2.21f (C5 FAQ_MARKER_STEM_GAP, faq_0005): "reklamovat" (verb
+        # infinitive "to file a complaint/claim") shares no substring with
+        # the existing "reklamac" (reklamacia/reklamacny noun stem) marker.
+        for query in ("ako mam reklamovat poskodeny tovar?", "chcem to reklamovat", "tovar prisiel poskodeny, ako reklamovat?"):
+            assert main.is_faq_intent(query), query
+        answer = main.best_direct_faq_answer("ako mam reklamovat poskodeny tovar?", knowledge)
+        assert answer and "reklamacie@foodland.sk" in answer
+
+    def test_complaint_stem_does_not_hijack_advertisement_mentions(self, knowledge):
+        # Negative control: "reklam" alone (tried first, then rejected) is
+        # a substring of the unrelated noun "reklama"/"reklamu"/"reklamou"/
+        # "reklamy" (advertisement) - "reklamov" excludes all four (none
+        # contain an "o" after "reklam") while still covering the verb.
+        for query in (
+            "videl som skvelu reklamu na instagrame na vase produkty",
+            "chcem si kupit priestor na reklamu vo vasom letaku",
+            "aka je vasa najlepsia reklama?",
+        ):
+            assert not main.is_faq_intent(query), query
+
+    def test_registration_stem_reaches_faq(self, knowledge):
+        # V2.21f (C5, faq_0007): only the English "registration" existed -
+        # the Slovak stem itself was entirely missing.
+        for query in ("musim sa registrovat, aby som mohol nakupovat?", "je potrebna registracia na objednanie?"):
+            assert main.is_faq_intent(query), query
+        answer = main.best_direct_faq_answer("musim sa registrovat, aby som mohol nakupovat?", knowledge)
+        assert answer and "registr" in main.normalize(answer)
+
+    def test_store_vs_web_price_conjunction_reaches_faq_gate(self, knowledge):
+        # V2.21f (C5, faq_0012): bare "obchod" has 12 blast-radius hits in
+        # data/products.json descriptions and, more importantly, commonly
+        # names a genuine PRODUCT query ("mate v obchode gochujang?") - only
+        # the "obchod"+"web" conjunction (comparing the physical store to
+        # the online channel, this FAQ's actual topic) is narrow enough.
+        #
+        # Known, documented remainder (NOT fixed here - out of scope for
+        # C5, a marker/stem fix): is_faq_intent() now correctly gates this
+        # query, but search_knowledge()/best_direct_faq_answer() still find
+        # NO match for this exact phrasing against FAQ entry #47 ("Su ceny
+        # v kamennej predajni rovnake ako na e-shope?") - a separate
+        # content-matching gap, not a routing-marker gap, so the full
+        # chat() pipeline still falls through to product_search
+        # end-to-end. MARKER_GAP_FIXED_CONTENT_MATCH_GAP_REMAINS.
+        assert main.is_faq_intent("Su ceny v kamennom obchode take iste ako na webe?")
+
+    def test_obchod_stem_does_not_hijack_product_queries(self, knowledge):
+        # Negative control (V2.21f Section 6): "obchod" appearing
+        # descriptively in a query that is still a product search must not
+        # become FAQ intent.
+        for query in (
+            "mate v obchode gochujang?",
+            "aka je cena kimchi v obchode?",
+            "kolko stoji sojova omacka v obchode?",
+            "chcem nieco z obchodu na varenie",
+        ):
+            assert not main.is_faq_intent(query), query
+
+    def test_faq_0014_precedence_case_untouched(self, knowledge):
+        # C6 FAQ_PRECEDENCE_OVERRIDE (out of scope for C5/this sprint) -
+        # is_faq_intent() already returned True for this query before
+        # V2.21f and must remain unaffected by it; the full-pipeline
+        # override that still routes it elsewhere is a separate,
+        # unaddressed mechanism.
+        assert main.is_faq_intent("Can I pay by card directly in your physical store?")
+
     def test_faq_cash_on_delivery_with_courier_beats_generic_delivery_methods(self, knowledge):
         # "dobierka kurier" used to match the generic "which delivery
         # methods do you offer" shortcut instead of the specific COD answer,

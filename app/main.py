@@ -2108,6 +2108,15 @@ FAQ_INTENT_MARKERS = (
     "hotovost",
     "vyzdvih",
     "reklamac",
+    # V2.21f fix (faq_0005): "reklamovat" (verb infinitive "to file a
+    # complaint/claim") shares no substring with "reklamac" (reklamacia/
+    # reklamacny noun stem) above. Bare "reklam" was tried first but
+    # collides with the unrelated noun "reklama"/"reklamu"/"reklamou"/
+    # "reklamy" (advertisement) - "reklamov" (reklamovat/reklamoval/
+    # reklamovala) excludes all four noun forms (none contain an "o"
+    # after "reklam") while still covering the verb. Confirmed 0
+    # blast-radius hits against data/products.json (title+description).
+    "reklamov",
     "vraten",
     "vracen",
     # V2.20u fix (faq_0005 holdout): "vratit" (bare infinitive "to
@@ -2124,6 +2133,10 @@ FAQ_INTENT_MARKERS = (
     "complaint",
     "refund",
     "registration",
+    # V2.21f fix (faq_0007): the Slovak stem itself ("registrovat"/
+    # "registracia") was entirely missing - only the English word above
+    # existed. Confirmed 0 blast-radius hits against data/products.json.
+    "registr",
     "password",
     "loyalty",
     "vernostn",
@@ -7949,7 +7962,17 @@ def is_faq_intent(message: str) -> bool:
     # flat FAQ_INTENT_MARKERS entry - only the "odkial"+"pochadz"
     # conjunction (the store-sourcing FAQ question, V2.20 faq_0011) is
     # narrow enough to be safe.
-    return "odkial" in normalized_message and "pochadz" in normalized_message
+    if "odkial" in normalized_message and "pochadz" in normalized_message:
+        return True
+    # V2.21f fix (faq_0012): bare "obchod" has 12 blast-radius hits in
+    # data/products.json descriptions (same order as "pochadz" above)
+    # and, more importantly, commonly names a genuine PRODUCT query
+    # ("mate v obchode gochujang?") rather than FAQ - only the
+    # "obchod"+"web" conjunction (comparing the physical store to the
+    # online channel, this FAQ's actual topic) is narrow enough to be
+    # safe, deliberately excluding the much more common "obchod"+"cena"
+    # pairing (a specific product's in-store price, not this FAQ).
+    return "obchod" in normalized_message and "web" in normalized_message
 
 
 _ADDRESS_PATTERN = re.compile(
