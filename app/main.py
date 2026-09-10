@@ -2745,6 +2745,20 @@ RECIPE_INTENT_MARKERS = (
     # V2.8 Section 100/142 target scenario ("Chcem robit Pad Thai") -
     # same bare-dish-marker fix pattern as vindaloo/karaage/tom kha above.
     "pad thai",
+    # V2.21d (C1 RECIPE_BARE_DISH_MARKER_GAP) - "co potrebujem na bibimbap"/
+    # "co si mam kupit" (gyoza)/"aky je nakupny zoznam" (poke bowl) fell
+    # through is_recipe_intent() entirely, same class as vindaloo/karaage/
+    # tom kha/pad thai above - all three already have real ingredient data
+    # (RELATED_SUBJECT_ALIASES, recipe-ingredient dicts) that was simply
+    # unreachable without this marker. Unlike the four entries above, a
+    # bare mention of these three ALSO names a real packaged product
+    # (e.g. "gyoza knedlicky", CROSS_SELL v221_cross_sell_0001) - see
+    # _NEW_BARE_DISH_SUBJECTS_REQUIRE_SHOPPING_INTENT below, which gates
+    # exactly these three (not the four above) on genuine shopping-list
+    # language before granting recipe_subject.
+    "bibimbap",
+    "gyoza",
+    "poke bowl",
 )
 # V2.14d (Section 27-34, docs/use-case-recipe-data-quality-v2.14d.md) -
 # the subset of RECIPE_INTENT_MARKERS above that are bare dish NAMES
@@ -2757,7 +2771,15 @@ RECIPE_INTENT_MARKERS = (
 # lets a specific, resolvable use-case role win that narrow case
 # generically, without weakening recipe detection for every other
 # message (explicit "recept na X"/"co potrebujem na X" are unaffected).
-_BARE_DISH_RECIPE_MARKERS = ("tom kha", "pad thai")
+_BARE_DISH_RECIPE_MARKERS = ("tom kha", "pad thai", "bibimbap", "gyoza", "poke bowl")
+# V2.21d (C1 regression fix) - the three newer bare-dish RECIPE_INTENT_MARKERS
+# entries (bibimbap/gyoza/poke bowl) each also name a real packaged product
+# (e.g. "gyoza knedlicky", CROSS_SELL v221_cross_sell_0001), unlike
+# vindaloo/karaage/tom kha/pad thai above - a bare mention of one of THESE
+# three must not force the recipe workflow without genuine shopping-list
+# language (wants_recipe_products()) alongside it. See the recipe_subject
+# guard in _chat_impl() that consumes this.
+_NEW_BARE_DISH_SUBJECTS_REQUIRE_SHOPPING_INTENT = frozenset({"bibimbap", "gyoza", "poke_bowl"})
 
 RANDOM_RECIPE_INTENT_MARKERS = (
     "co dnes varit",
@@ -4679,6 +4701,18 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         # ("recept na X") and shopping-list intent ("co potrebujem na X")
         # never reach this branch (excluded by the check above).
         if _use_case_advice_has_resolvable_role(contextual_message):
+            recipe_subject = None
+        elif recipe_subject in _NEW_BARE_DISH_SUBJECTS_REQUIRE_SHOPPING_INTENT and not wants_recipe_products(contextual_message):
+            # V2.21d (C1 regression fix, v221_cross_sell_0001) - bibimbap/
+            # gyoza/poke_bowl are bare nouns that also name real packaged
+            # products (a bare "gyoza knedlicky" is a plain product/
+            # cross-sell query, not a recipe request). Only reached when
+            # _recipe_intent_is_bare_dish_marker_only() above is already
+            # True (i.e. no genuine recipe-action language like "ako sa
+            # robi"/"recept" is ALSO present - that case is unaffected,
+            # see test_bibimbap_recipe_question_end_to_end) - a bare
+            # mention alone must not force the recipe workflow for these
+            # three without genuine shopping-list language too.
             recipe_subject = None
     needs_article_context = is_article_info_intent(chat_request.message) or is_product_decision_help_request(chat_request.message)
     explicit_article_request = is_explicit_article_request(chat_request.message)

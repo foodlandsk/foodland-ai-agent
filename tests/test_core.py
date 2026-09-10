@@ -2114,6 +2114,118 @@ class TestIntentDetection:
         kimchi_ramen_result = main.chat(main.ChatRequest(message="nakupny zoznam na kimchi ramen", limit=8), request)
         assert kimchi_ramen_result.get("intent") == "related_products"
 
+    def test_bibimbap_gyoza_pokebowl_reach_recipe_workflow_without_recept_word(self):
+        # V2.21d (C1 RECIPE_BARE_DISH_MARKER_GAP): "co potrebujem na bibimbap?" /
+        # "co si mam kupit" (gyoza) / "aky je nakupny zoznam" (poke bowl) are
+        # shopping-list style questions with no "recept"/how-to wording, same
+        # class as the tom_kha fix above - fell through is_recipe_intent()
+        # entirely even though all three dishes already have real ingredient
+        # data (RELATED_SUBJECT_ALIASES, recipe-ingredient dicts). Fixed by
+        # adding "bibimbap"/"gyoza"/"poke bowl" to RECIPE_INTENT_MARKERS, the
+        # identical pattern as vindaloo/karaage/tom kha/pad thai - PLUS a new
+        # guard (see next test) since, unlike those four, a bare mention of
+        # these three also names a real packaged product.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+
+        for query, expected_subject in (
+            ("Co potrebujem na bibimbap?", "bibimbap"),
+            ("Chystam sa robit gyoza, co si mam kupit?", "gyoza"),
+            ("Planujem poke bowl, aky je nakupny zoznam?", "poke_bowl"),
+            ("Robim bibimbap pre 4 osoby, co potrebujem?", "bibimbap"),
+        ):
+            assert main.is_recipe_intent(main.normalize(query)), query
+            assert main.detect_recipe_subject(query) == expected_subject, query
+
+        # Explicit, unique session_id per call - a recipe query can set an
+        # active_recipe in session memory (recipe_graph shopping plan), and
+        # the default anonymous session used by ChatRequest with no
+        # session_id is SHARED across every test in this file that also
+        # omits one - a bare "co potrebujem na kimchi" test elsewhere relies
+        # on starting from a clean session, so this test must not write into
+        # that shared bucket.
+        bibimbap_result = main.chat(main.ChatRequest(message="Co potrebujem na bibimbap?", limit=8, session_id="v221d-bibimbap"), request)
+        assert bibimbap_result.get("intent") == "recipe_to_products"
+        assert bibimbap_result.get("products")
+
+        gyoza_result = main.chat(main.ChatRequest(message="Chystam sa robit gyoza, co si mam kupit?", limit=8, session_id="v221d-gyoza"), request)
+        assert gyoza_result.get("intent") == "recipe_to_products"
+        assert gyoza_result.get("products")
+
+        poke_bowl_result = main.chat(main.ChatRequest(message="Planujem poke bowl, aky je nakupny zoznam?", limit=8, session_id="v221d-poke-bowl"), request)
+        assert poke_bowl_result.get("intent") == "recipe_to_products"
+        assert poke_bowl_result.get("products")
+
+    def test_bibimbap_gyoza_pokebowl_bare_mention_stays_product_search(self):
+        # V2.21d regression fix (found via DEV-wide diagnostic re-run, not by
+        # inspection): the first version of this fix added "gyoza" as a plain
+        # RECIPE_INTENT_MARKERS entry with no further guard, which broke
+        # v221_cross_sell_0001 ("gyoza knedlicky", a bare product-search query
+        # for the real "Gyoza knedliky CJ BIBIGO" catalog products) - it
+        # started returning a generic "what is gyoza" explanation with ZERO
+        # products instead of the dumplings. Unlike vindaloo/karaage/tom kha/
+        # pad thai, a bare mention of bibimbap/gyoza/poke bowl must NOT force
+        # the recipe workflow without genuine shopping-list language
+        # alongside it (wants_recipe_products()) -
+        # _NEW_BARE_DISH_SUBJECTS_REQUIRE_SHOPPING_INTENT enforces this.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+
+        cross_sell_result = main.chat(main.ChatRequest(message="gyoza knedlicky", limit=8, session_id="v221d-crosssell-regression"), request)
+        assert cross_sell_result.get("intent") != "recipe"
+        assert cross_sell_result.get("products")
+
+        for query in ("Mate gyoza knedlicky?", "Kolko stoji gyoza cesto Happy Belly?"):
+            result = main.chat(main.ChatRequest(message=query, limit=8, session_id=f"v221d-crosssell-neg-{hash(query)}"), request)
+            assert result.get("intent") != "recipe", query
+            assert result.get("products"), query
+
+    def test_bibimbap_gyoza_pokebowl_fix_does_not_change_existing_bare_dish_markers(self):
+        # Positive controls (V2.21d Section 8) - the already-shipped bare-
+        # dish markers (vindaloo/karaage/tom kha/pad thai) must resolve
+        # exactly as before; adding three more tuple entries (and the new
+        # shopping-intent guard, scoped only to the new three via
+        # _NEW_BARE_DISH_SUBJECTS_REQUIRE_SHOPPING_INTENT) must not reorder,
+        # shadow, or gate them.
+        for query, expected_subject in (
+            ("recept na pad thai", "pad_thai"),
+            ("co potrebujem na tom kha gai", "tom_kha"),
+            ("recept na vindaloo", "vindaloo"),
+            ("recept na karaage", "karaage"),
+        ):
+            assert main.detect_recipe_subject(query) == expected_subject, query
+
+    def test_bibimbap_gyoza_pokebowl_explicit_replacement_still_defers(self):
+        # Negative control (V2.21d Section 9): a bare dish name must not
+        # override an explicit replacement request - detect_replacement_subject()
+        # already nulls recipe_subject downstream in _chat_impl regardless
+        # of which dish triggered it (dish-agnostic guard, unchanged by
+        # this fix); this locks in that the new bibimbap marker doesn't
+        # bypass it.
+        assert main.detect_replacement_subject("Cim nahradim gochujang na bibimbap?") == "gochujang"
+
+    # V2.21d known, out-of-scope remainders (not fixed in this sprint -
+    # distinct mechanisms from C1's RECIPE_INTENT_MARKERS gap, per the
+    # V2.21d mandate's explicit no-broadening rule):
+    #
+    # v221_recipe_to_products_0005 ("...gochujang uz doma mam. Co este
+    # potrebujem?"): is_recipe_intent()/detect_recipe_subject() now
+    # correctly resolve "bibimbap", but wants_recipe_products() has no
+    # tolerance for "co ESTE potrebujem" (interposed "este" between "co"
+    # and "potrebujem") - the same bug CLASS as the existing V2.20v "co z
+    # X potrebujem" fix, just a different interposed token, never
+    # addressed for this one. Since it lacks wants_recipe_products(),
+    # the new shopping-intent guard above also (correctly, harmlessly)
+    # defers this one past the recipe workflow entirely now - still FAIL,
+    # different failure shape, no new regression.
+    #
+    # v221_recipe_to_products_0008 ("What do I need to buy for making
+    # gyoza?"): is_recipe_intent() now correctly returns True, but
+    # detect_recipe_subject() resolves to "sushi" instead of "gyoza" -
+    # RELATED_SUBJECT_ALIASES["sushi"]'s "maki" alias substring-matches
+    # the English word "making" (pre-existing, unrelated to this fix).
+    # Even with that corrected, wants_recipe_products() has no
+    # English-language shopping-list markers at all, so products would
+    # still be empty. Both are separate, unrelated latent gaps.
+
     def test_related_shopping_list_intent_detected(self):
         assert main.wants_shopping_list("nákupný zoznam na sushi")
         assert main.missing_ingredients_for_subject("sushi", [])

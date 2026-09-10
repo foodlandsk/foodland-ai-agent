@@ -135,6 +135,7 @@ KNOWN_SAFE_COLLISIONS = {
     frozenset({"udon", "gyudon"}),  # fixed: gyudon reordered before udon in both RELATED_SUBJECT_ALIASES and RECIPE_TITLE_PRODUCT_SUBJECTS
     frozenset({"ryba", "rybac"}),  # verified live: "rybacia omacka" already resolves to rybacia_omacka, not the shorter "ryba"
     frozenset({"rybac", "rybaci"}),  # same
+    frozenset({"gyoza", "gyozam"}),  # V2.21d: both resolve to the same related_subject="gyoza" (RECIPE_INTENT_MARKERS' "gyoza" is a substring of RELATED_SUBJECT_ALIASES' inflected "gyozam") - verified live, is_recipe_intent()/detect_recipe_subject() agree on "gyoza" regardless of which alias matched
 }
 
 
