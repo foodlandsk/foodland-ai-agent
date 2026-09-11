@@ -2985,10 +2985,10 @@
       "secondary_capabilities": [],
       "created_version": "V2.21a",
       "ground_truth_authority": "AUTHORITATIVE_DATA",
-      "ground_truth_reason": "AROY-D is a real catalog brand with 4 coconut-milk SKUs at distinct sizes.",
+      "ground_truth_reason": "AROY-D is a real catalog brand with 4 coconut-milk SKUs at distinct sizes. Verified via product_title_contains_any (not product_brand): AROY-D's own catalog `brand` field is the manufacturer/importer name (\"Thai Agri Foods Public Company Limited\"), not the marketing name printed on the title, so product_brand can never register a match here regardless of Advisor behavior (see V2.21h closure).",
       "expected_invariants": [
         "products_nonempty",
-        "product_brand:aroy-d"
+        "product_title_contains_any:aroy-d"
       ],
       "provenance": "V2.21a fresh authoring.",
       "catalog_snapshot_id": "products_c2881106d6efc60e"
@@ -3400,10 +3400,10 @@
       ],
       "created_version": "V2.21a",
       "ground_truth_authority": "AUTHORITATIVE_DATA",
-      "ground_truth_reason": "AROY-D coconut milk exists at 150ml/250ml/500ml/1000ml; excluding the 150ml size while remaining non-empty is independently checkable.",
+      "ground_truth_reason": "AROY-D coconut milk exists at 150ml/250ml/500ml/1000ml; excluding the 150ml size while remaining non-empty is independently checkable. Brand verified via product_title_contains_any (not product_brand) for the same reason as v221_brand_constraint_0003 (see V2.21h closure).",
       "expected_invariants": [
         "products_nonempty",
-        "product_brand:aroy-d",
+        "product_title_contains_any:aroy-d",
         "product_title_forbidden:150ml"
       ],
       "provenance": "V2.21a fresh authoring - brand constraint + size negation.",
