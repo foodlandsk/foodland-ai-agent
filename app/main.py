@@ -10041,6 +10041,9 @@ def is_article_relevant_product(product: dict, subject: str) -> bool:
     return True
 
 
+_ALREADY_HAVE_CLAUSE_END_RE = re.compile(r"[,.;!?]")
+
+
 def detect_already_have_subject(message: str) -> str | None:
     """Detekuje vzor 'mám X / kúpil som X / vlastním X' a vracia kanonický kľúč subjektu."""
     normalized_message = normalize(message)
@@ -10056,11 +10059,35 @@ def detect_already_have_subject(message: str) -> str | None:
     # boundary before each marker while every legitimately space-preceded
     # occurrence ("uz mam ", start-of-string "mam ") is unaffected.
     padded_message = " " + normalized_message
-    if not any((" " + marker) in padded_message for marker in ALREADY_HAVE_MARKERS):
-        return None
-    for subject_key, aliases in ALREADY_HAVE_SUBJECT_MAP.items():
-        if any(alias in normalized_message for alias in aliases):
-            return subject_key
+    # V2.21k (C11 BUDGET_SUBJECT_LOSS): third occurrence of the same
+    # root-cause class as the V2.16c negation fix above - the marker and
+    # the subject alias were checked independently ANYWHERE in the whole
+    # message, with no requirement that the alias actually belongs to
+    # THIS marker's clause. "Mam len 10 eur, kolko susi ryze si za to
+    # mozem kupit?" (I only have 10 euros, how much sushi rice can I buy
+    # for that?) satisfied the "mam " marker via the budget clause and
+    # the "ryza" alias via the unrelated purchase-question clause,
+    # wrongly classifying a literal "how much rice can I buy" question as
+    # already_have_subject="ryza" and answering with rice-pairing
+    # cross-sell instead of the sushi rice search itself. Restricting the
+    # alias search to the clause right after THIS marker occurrence (same
+    # comma/period/semicolon/?/! boundary convention as
+    # app.query_constraints._find_exclusion_span) keeps every existing
+    # "mam doma kimchi, co dalsie..." case working (the alias always sits
+    # in the marker's own clause there) while a later, unrelated clause
+    # can no longer supply the subject.
+    for marker in ALREADY_HAVE_MARKERS:
+        padded_marker = " " + marker
+        idx = padded_message.find(padded_marker)
+        if idx == -1:
+            continue
+        clause_start = idx + len(padded_marker)
+        end_match = _ALREADY_HAVE_CLAUSE_END_RE.search(padded_message, clause_start)
+        clause_end = end_match.start() if end_match else len(padded_message)
+        clause_text = padded_message[clause_start:clause_end]
+        for subject_key, aliases in ALREADY_HAVE_SUBJECT_MAP.items():
+            if any(alias in clause_text for alias in aliases):
+                return subject_key
     return None
 
 

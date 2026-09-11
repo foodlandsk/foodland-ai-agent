@@ -129,6 +129,45 @@ class TestAlreadyHaveSubjectNegationFix:
         assert r.get("intent") == "related_products"
 
 
+class TestAlreadyHaveSubjectClauseLocalityFix:
+    """V2.21k (C11 BUDGET_SUBJECT_LOSS): a third occurrence of the same
+    root-cause class as the negation fix above - the ALREADY_HAVE_MARKERS
+    marker and the ALREADY_HAVE_SUBJECT_MAP alias were checked
+    independently anywhere in the whole message, with no requirement that
+    the alias belong to THIS marker's own clause. "Mam len 10 eur, kolko
+    susi ryze si za to mozem kupit?" (I only have 10 euros, how much
+    sushi rice can I buy for that?) satisfied "mam " via the budget
+    clause and "ryza" via the unrelated purchase-question clause,
+    wrongly classifying a literal purchase-quantity question as
+    already_have_subject="ryza" and answering with rice-pairing
+    cross-sell (soy sauce, fish sauce, mirin, miso, kimchi ramen) instead
+    of the sushi rice search itself - v221_budget_reasoning_0002
+    (HOLDOUT)."""
+
+    def test_unrelated_later_clause_does_not_supply_the_subject(self):
+        assert m.detect_already_have_subject(
+            "Mam len 10 eur, kolko susi ryze si za to mozem kupit?"
+        ) is None
+
+    def test_unrelated_later_clause_negative_control_other_subject(self):
+        assert m.detect_already_have_subject("Mam len 5 eur, aky lacny gochujang mi odporucas?") is None
+        assert m.detect_already_have_subject("Mam este otazku, kolko stoji miso?") is None
+
+    def test_genuine_same_clause_subject_still_matches(self):
+        # Same guard as TestAlreadyHaveSubjectNegationFix above, re-asserted
+        # here so this class stands on its own as clause-locality evidence.
+        assert m.detect_already_have_subject("Mam doma kimchi, co dalsie by sa hodilo?") == "kimchi"
+        assert m.detect_already_have_subject("Uz mam sojovu omacku, co dalsie by sa hodilo?") == "sojova_omacka"
+
+    def test_budget_reasoning_query_reaches_sushi_rice_search(self):
+        # Mirrors eval/golden/v2_21_scenarios.json::v221_budget_reasoning_0002.
+        r = _chat("Mam len 10 eur, kolko susi ryze si za to mozem kupit?", "v221k-c11-budget")
+        assert r.get("intent") == "product_search"
+        products = r.get("products") or []
+        assert products
+        assert any("susi ryza" in m.normalize(title) for title in _titles({"products": products}))
+
+
 class TestSpecialSubjectShadowGlutenFreeFix:
     """The 3 REPLACEMENT_SUBJECT_ALIASES entries detect_special_product_
     subject() pre-empts (fish sauce, rice vinegar, sushi rice) must also
