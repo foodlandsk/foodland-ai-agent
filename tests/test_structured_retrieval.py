@@ -489,6 +489,41 @@ class TestExplicitExclusion:
         query, _ = retrieve("nechcem kikkoman, chcem inu sojova omacka")
         assert query.excluded_brand == "kikkoman"
 
+    def test_interposed_discourse_modifier_between_ale_and_nie(self):
+        # V2.21i (C4 EXCLUSION_MARKER_INTERPOSED_WORD,
+        # v221_brand_constraint_0004): "ale URCITE nie znacku Cock Brand"
+        # inserts a confirmatory discourse adverb between "ale" and "nie" -
+        # the plain "ale nie " marker requires them contiguous, so this
+        # found NO marker at all (not a multi-word-clause issue - a
+        # different, earlier failure point).
+
+        # PASS control: unaffected by this fix.
+        assert parse_structured_query("sojova omacka, ale nie kikkoman", known_brands=INDEX.known_brands).excluded_brand == "kikkoman"
+
+        # Target failing form, now fixed.
+        assert parse_structured_query("sojova omacka, ale urcite nie kikkoman", known_brands=INDEX.known_brands).excluded_brand == "kikkoman"
+
+        # Additional natural forms, same bounded literal-phrase mechanism.
+        for modifier in ("naozaj", "rozhodne", "prosim"):
+            query = parse_structured_query(f"sojova omacka, ale {modifier} nie kikkoman", known_brands=INDEX.known_brands)
+            assert query.excluded_brand == "kikkoman", modifier
+
+    def test_interposed_modifier_words_do_not_create_exclusion_without_ale_nie(self):
+        # Negative controls (V2.21i Section 4): "urcite"/"prosim" occurring
+        # WITHOUT the "ale ... nie" exclusion shape must never manufacture
+        # a negative brand constraint, and must not block the positive
+        # brand request either.
+        q1 = parse_structured_query("chcem urcite kikkoman sojovu omacku", known_brands=INDEX.known_brands)
+        assert q1.excluded_brand is None
+        assert q1.brand == "kikkoman"
+
+        q2 = parse_structured_query("prosim, chcem sojovu omacku kikkoman", known_brands=INDEX.known_brands)
+        assert q2.excluded_brand is None
+        assert q2.brand == "kikkoman"
+
+        q3 = parse_structured_query("urcite chcem sojovu omacku, nie nieco ine", known_brands=INDEX.known_brands)
+        assert q3.excluded_brand is None
+
     def test_substring_safety_does_not_exclude_unrelated_products(self):
         # Section 24 - excluding "kikkoman" must not touch products whose
         # title/brand does not contain that brand at all.

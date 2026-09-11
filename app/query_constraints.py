@@ -76,7 +76,18 @@ INFERRED_MEDIUM = "INFERRED_MEDIUM"
 # negation and far too broad to add generically (blast radius), but "nie
 # prilis"/"nie velmi" (not TOO/very X) is a deliberate intensity-exclusion
 # phrase, same narrow-multi-word-marker pattern as "iny/ina/ine nez" above.
-_EXCLUSION_MARKERS = ("ale nie od ", "nie od ", "ale nie ", "nechcem ", "iny nez ", "ina nez ", "ine nez ", "nie prilis ", "nie velmi ")
+_EXCLUSION_MARKERS = (
+    "ale nie od ", "nie od ", "ale nie ", "nechcem ", "iny nez ", "ina nez ", "ine nez ", "nie prilis ", "nie velmi ",
+    # V2.21i (C4 EXCLUSION_MARKER_INTERPOSED_WORD, v221_brand_constraint_0004)
+    # - "ale URCITE nie znacku Cock Brand" inserts a confirmatory discourse
+    # adverb between "ale" and "nie", so the plain "ale nie " marker above
+    # never matched at all (not even a multi-word-clause issue - no marker
+    # was found, full stop). A very small, explicitly justified set of
+    # literal 4-word phrases (same bounded-literal-string mechanism as
+    # every entry above, not a wildcard/regex) - confirmed 0 blast-radius
+    # hits against data/products.json for all four.
+    "ale urcite nie ", "ale naozaj nie ", "ale rozhodne nie ", "ale prosim nie ",
+)
 # V2.21e - these two narrow markers exist only to PROVE "nie" is followed
 # by an intensifier (disambiguating from ordinary negation and from
 # app.main's separate bare "nie pikantne" -> "mild"-family REDISCOVERY
