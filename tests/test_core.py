@@ -3349,6 +3349,45 @@ class TestSessionMemory:
         assert followup_matches
         assert "jujuba" in main.normalize(followup_matches[0].get("title", ""))
 
+    def test_size_comparative_followup_resolves_last_subject(self):
+        # V2.21j/k C10 FOLLOWUP_SIZE_COMPARATIVE: a bare size-comparative
+        # follow-up named no continuation cue from the existing marker set
+        # ("k tomu", "co este", "odporuc", ...), so is_context_followup()
+        # returned False and contextualize_message() never appended the
+        # prior subject - the search then ran on "bigger package" alone
+        # with zero gochujang context.
+        main.session_memories.clear()
+        key = main.session_memory_key("memory-test-size-comparative", "127.0.0.1")
+        memory = main.get_session_memory(key)
+        main.update_session_memory(key, "Chcem gochujang.", "product_search", [], [], {})
+
+        assert main.is_context_followup("A trochu vacsie balenie?")
+        assert main.is_context_followup("A trochu väčšie balenie?")
+        assert main.is_context_followup("Mate aj mensie balenie?")
+
+        contextual = main.contextualize_message("A trochu vacsie balenie?", memory)
+        assert "gochujang" in main.normalize(contextual)
+
+    def test_size_comparative_followup_does_not_fire_when_subject_named_explicitly(self):
+        # Negative control: a query that already names its own subject is
+        # longer than the 3-token gate, so it must not be treated as a
+        # context follow-up (nothing to resolve - the subject is already
+        # in the message).
+        assert not main.is_context_followup("Chcem vacsie balenie ryze")
+        assert not main.is_context_followup("Chcem oveľa väčšie balenie sojovej omacky prosim")
+        assert not main.is_context_followup("Najvacsie balenie ryze?")
+
+    def test_size_comparative_followup_end_to_end(self, products):
+        # Mirrors eval/golden/v2_21_scenarios.json::v221_follow_up_0003.
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        first = main.chat(main.ChatRequest(message="Chcem gochujang.", limit=8, session_id="v221j-c10-e2e"), request)
+        assert first.get("products")
+
+        second = main.chat(main.ChatRequest(message="A trochu vacsie balenie?", limit=8, session_id="v221j-c10-e2e"), request)
+        titles = [main.normalize(p.get("title", "")) for p in (second.get("products") or [])]
+        assert titles
+        assert any("gochujang" in title for title in titles)
+
     def test_diet_preference_is_remembered(self):
         main.session_memories.clear()
         key = main.session_memory_key("memory-test-2", "127.0.0.1")

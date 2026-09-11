@@ -4370,9 +4370,18 @@ def _routing_message(message: str, memory: dict | None) -> str:
 
 def is_context_followup(message: str) -> bool:
     normalized_message = normalize(message).strip()
+    # C10 FOLLOWUP_SIZE_COMPARATIVE (V2.21k): a bare size-comparative
+    # follow-up ("A trochu vacsie balenie?" - "And a bit bigger
+    # package?") named no continuation cue from the existing marker
+    # set, so contextualize_message() never appended the prior turn's
+    # subject/product title and the search ran on "bigger package"
+    # alone with no gochujang context at all. The <=3-token gate
+    # already keeps this safe against subject-naming queries ("Chcem
+    # vacsie balenie ryze" is 5 tokens), so a literal phrase addition
+    # is enough - no new subsystem needed.
     if len(tokenize(normalized_message)) <= 3 and any(
         marker in normalized_message
-        for marker in ("k tomu", "co este", "este nieco", "dopln", "hodia", "odporuc", "kostk", "a co", "a este")
+        for marker in ("k tomu", "co este", "este nieco", "dopln", "hodia", "odporuc", "kostk", "a co", "a este", "vacsie balenie", "mensie balenie")
     ):
         return True
     return normalized_message in {
