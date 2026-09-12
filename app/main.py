@@ -8042,6 +8042,42 @@ FAQ_CATEGORY_MARKERS = {
     "nakup": ("objednav", "kosik", "nakup", "skladom"),
 }
 
+# V2.21l (former C6, v221_faq_0014): best_direct_faq_answer()/
+# direct_faq_answer_by_question_markers() only ever match against the
+# Slovak "Otázka" text in data/knowledge.json - is_faq_intent() already
+# recognizes English phrasing (FAQ_INTENT_MARKERS has "pay by card",
+# "store", etc.), but nothing downstream bridges that English phrasing to
+# the Slovak record it names, so is_faq_intent()==True with zero
+# retrievable answer silently fell through the entire routing cascade to
+# the generic product_search fallback instead. This is a narrow,
+# concept-bound bridge (NOT a general English->Slovak dictionary): each
+# entry names a specific, already-existing FAQ concept via the SAME
+# required_markers tuple its Slovak shortcut above already uses, so it
+# can only ever resolve to that one authoritative record. All english
+# markers must be present (specific enough to require the actual
+# question, not just one common word) - confirmed 0 blast-radius hits
+# against data/products.json for the marker combination below.
+FAQ_EN_CONCEPT_BRIDGE: tuple[dict[str, tuple[str, ...]], ...] = (
+    {
+        # data/knowledge.json FAQ #14, "Môžem zaplatiť kartou priamo v
+        # predajni?" - the in-store card payment sub-question (distinct
+        # from the generic payment-methods record above/below it).
+        "en_markers": ("pay", "card"),
+        "en_context_markers": ("store", "shop"),
+        "sk_markers": ("kartou", "predajni"),
+    },
+)
+
+
+def _faq_en_concept_bridge_answer(normalized_message: str, loaded_knowledge: dict) -> str | None:
+    for concept in FAQ_EN_CONCEPT_BRIDGE:
+        if all(marker in normalized_message for marker in concept["en_markers"]) and any(
+            marker in normalized_message for marker in concept["en_context_markers"]
+        ):
+            answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=concept["sk_markers"])
+            if answer:
+                return answer
+    return None
 
 def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
     normalized_message = normalize(message)
@@ -8158,6 +8194,13 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         card_types_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("platobne", "metody"))
         if card_types_answer:
             return card_types_answer
+    # V2.21l (former C6, v221_faq_0014): the Slovak-only shortcuts above
+    # can never fire for an English question - bridge known FAQ concepts
+    # (see FAQ_EN_CONCEPT_BRIDGE) before falling through to the
+    # Slovak-token scoring loop below, which always scores 0 for English.
+    en_bridge_answer = _faq_en_concept_bridge_answer(normalized_message, loaded_knowledge)
+    if en_bridge_answer:
+        return en_bridge_answer
     # V2.18d.4 (C3 FAQ retrieval topic mismatch): a bare "how can I pay"
     # question (no in-store/card-specific qualifier) must resolve to the
     # complete payment-methods answer (covers COD/bank transfer/card/

@@ -3655,6 +3655,42 @@ class TestFAQ:
             assert answer
             assert "predajni" in main.normalize(answer), query
 
+    def test_faq_en_concept_bridge_resolves_instore_card_payment(self, knowledge):
+        # V2.21l (former C6, v221_faq_0014): is_faq_intent() already
+        # recognizes this as English FAQ phrasing (FAQ_INTENT_MARKERS has
+        # "pay by card"/"store"), but best_direct_faq_answer() only ever
+        # matched the Slovak "Otázka" text, so retrieval silently returned
+        # None and the query fell through to product_search. The concept
+        # bridge must resolve it to the SAME record the Slovak phrasing
+        # above already resolves to.
+        answer = main.best_direct_faq_answer("Can I pay by card directly in your physical store?", knowledge)
+        assert answer
+        assert "predajni" in main.normalize(answer)
+
+    def test_faq_en_concept_bridge_does_not_hijack_product_query(self, knowledge):
+        # Negative control: "card" and "store" both present, but with no
+        # "pay" word, this reads as a product question (gift cards sold in
+        # the store), not the in-store-card-payment FAQ. The bridge
+        # requires all of ("pay", "card") plus a store/shop context word,
+        # so a bare card+store mention alone must not fabricate an FAQ hit.
+        assert main.best_direct_faq_answer("Do you have any gift cards in your store?", knowledge) is None
+
+    def test_faq_en_concept_bridge_scoped_to_known_concept_only(self, knowledge):
+        # Negative control: an unrelated English question sharing no
+        # concept markers must still return no FAQ answer (no generic
+        # translation fallback was introduced).
+        assert main.best_direct_faq_answer("Do you sell soy sauce?", knowledge) is None
+
+    def test_faq_en_concept_bridge_does_not_affect_generic_payment_wording(self, knowledge):
+        # Regression: the bridge must not interfere with the existing
+        # bare-payment-question shortcut (test_faq_generic_payment_
+        # question_gets_full_methods_list above) - it only fires on the
+        # english-specific marker combination, never on Slovak text.
+        answer = main.best_direct_faq_answer("ako mozem zaplatit?", knowledge)
+        normalized = main.normalize(answer)
+        assert "dobierka" in normalized
+        assert "predajni" not in normalized
+
     def test_faq_intent_detects_slovak_loyalty_program_wording(self):
         # Regression: FAQ_INTENT_MARKERS only had the English "loyalty",
         # so a Slovak question about "vernostny program" never even reached
@@ -3893,11 +3929,13 @@ class TestFAQ:
             assert not main.is_faq_intent(query), query
 
     def test_faq_0014_precedence_case_untouched(self, knowledge):
-        # C6 FAQ_PRECEDENCE_OVERRIDE (out of scope for C5/this sprint) -
-        # is_faq_intent() already returned True for this query before
-        # V2.21f and must remain unaffected by it; the full-pipeline
-        # override that still routes it elsewhere is a separate,
-        # unaddressed mechanism.
+        # Former C6 "FAQ_PRECEDENCE_OVERRIDE" - the V2.21j forensic found
+        # this was never a precedence bug: is_faq_intent() already
+        # returned True here (must remain unaffected by V2.21f and any
+        # later change). The actual cause was a retrieval-layer gap
+        # (no English->Slovak concept bridge), fixed in V2.21l - see
+        # test_faq_en_concept_bridge_resolves_instore_card_payment above
+        # for the full-pipeline resolution.
         assert main.is_faq_intent("Can I pay by card directly in your physical store?")
 
     def test_faq_cash_on_delivery_with_courier_beats_generic_delivery_methods(self, knowledge):
