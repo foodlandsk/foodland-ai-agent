@@ -8066,6 +8066,63 @@ FAQ_EN_CONCEPT_BRIDGE: tuple[dict[str, tuple[str, ...]], ...] = (
         "en_context_markers": ("store", "shop"),
         "sk_markers": ("kartou", "predajni"),
     },
+    {
+        # V2.21m (audit: "run the C6-style audit across the other 12 FAQ
+        # concepts") - data/knowledge.json FAQ #6, "Kedy je doprava
+        # zadarmo?" - free-shipping threshold. "shipping" alone is too
+        # broad (also fires for delivery-time/methods questions); paired
+        # with "free" it is specific to this record. 0 blast-radius hits
+        # against data/products.json for "shipping"+"free".
+        "en_markers": ("shipping",),
+        "en_context_markers": ("free",),
+        "sk_markers": ("doprava", "zadarmo"),
+    },
+    {
+        # V2.21m - FAQ #12, "Ake platobne metody Foodland podporuje?" -
+        # the generic payment-methods list (distinct from the in-store
+        # card sub-question above). 0 blast-radius hits for
+        # "payment"+"method".
+        "en_markers": ("payment",),
+        "en_context_markers": ("method",),
+        "sk_markers": ("platobne", "metody"),
+    },
+    {
+        # V2.21m - FAQ #45, "Ma Foodland kamennu predajnu? Kde ju najdem a
+        # ake ma otvaracie hodiny?" - physical store location/hours. Bare
+        # "store" is already a broad FAQ_INTENT_MARKERS entry on its own;
+        # requiring "physical" alongside it keeps this bridge entry
+        # concept-specific (a bare "do you have this in store?" product
+        # question has no reason to also say "physical"). 0 blast-radius
+        # hits for "physical"+"store". The existing "parkovanie"/"parking"
+        # shortcut above this bridge in best_direct_faq_answer() already
+        # intercepts a physical-store PARKING question before reaching
+        # here, so no overlap with that concept.
+        "en_markers": ("physical",),
+        "en_context_markers": ("store",),
+        "sk_markers": ("kamennu", "najdem"),
+    },
+    {
+        # V2.21m - FAQ #16, "Ako postupovat, ak mi prisiel poskodeny
+        # produkt?" - damaged-item complaint procedure. 0 blast-radius
+        # hits for "damaged"+"complaint" (a bare "is this product
+        # damaged?" question, with no "complaint" wording, correctly
+        # stays unmatched here).
+        "en_markers": ("damaged",),
+        "en_context_markers": ("complaint",),
+        "sk_markers": ("poskodeny", "produkt"),
+    },
+    {
+        # V2.21m - FAQ #10, "Dorucujete tovar domov aj s dobierkou?" -
+        # this is the SAME record the existing Slovak "domov"+"dobierkou"
+        # shortcut above already resolves a bare "Da sa objednavka
+        # zaplatit na dobierku?" to (v221_faq_0006's own golden query) -
+        # bridging to the SAME record keeps the English and Slovak
+        # phrasings of this exact question consistent with each other.
+        # 0 blast-radius hits for "cash"+"delivery".
+        "en_markers": ("cash",),
+        "en_context_markers": ("delivery",),
+        "sk_markers": ("domov", "dobierkou"),
+    },
 )
 
 

@@ -3691,6 +3691,72 @@ class TestFAQ:
         assert "dobierka" in normalized
         assert "predajni" not in normalized
 
+    def test_faq_en_concept_bridge_free_shipping(self, knowledge):
+        # V2.21m: FAQ #6 ("Kedy je doprava zadarmo?"). "shipping" alone is
+        # already a broad FAQ_INTENT_MARKERS/is_faq_intent trigger - the
+        # bridge additionally requires "free" so a bare shipping-methods/
+        # time question doesn't collide with this specific record.
+        answer = main.best_direct_faq_answer("From what order amount is shipping free?", knowledge)
+        assert answer
+        assert "49" in answer
+
+    def test_faq_en_concept_bridge_free_shipping_negative_control(self, knowledge):
+        # Negative control: "shipping" without "free" must not fabricate
+        # this specific record (falls through to the generic scoring loop
+        # unaffected, same as before this bridge entry existed).
+        assert main.best_direct_faq_answer("Do you sell shipping boxes?", knowledge) is None
+
+    def test_faq_en_concept_bridge_payment_methods(self, knowledge):
+        # V2.21m: FAQ #12 ("Ake platobne metody Foodland podporuje?").
+        answer = main.best_direct_faq_answer("What payment methods do you accept on Foodland?", knowledge)
+        assert answer
+        assert "kartou" in main.normalize(answer)
+
+    def test_faq_en_concept_bridge_payment_methods_negative_control(self, knowledge):
+        # Negative control: "method" without "payment" must not fabricate
+        # this record (e.g. a cooking-method product-advice question).
+        assert main.best_direct_faq_answer("What's the best method to cook basmati rice?", knowledge) is None
+
+    def test_faq_en_concept_bridge_store_location(self, knowledge):
+        # V2.21m: FAQ #45 ("Ma Foodland kamennu predajnu? Kde ju najdem...").
+        # Requires "physical"+"store" together - bare "store" is already a
+        # broad FAQ_INTENT_MARKERS entry, so gating on "physical" keeps
+        # this bridge entry from firing on every store-related mention.
+        answer = main.best_direct_faq_answer("Do you have a physical store, where can I find it?", knowledge)
+        assert answer
+        assert "vajnorska" in main.normalize(answer)
+
+    def test_faq_en_concept_bridge_store_location_negative_control(self, knowledge):
+        # Negative control: "store" without "physical" is a plain product
+        # availability question, not a store-location FAQ.
+        assert main.best_direct_faq_answer("Do you have this product in store?", knowledge) is None
+
+    def test_faq_en_concept_bridge_damaged_complaint(self, knowledge):
+        # V2.21m: FAQ #16 ("Ako postupovat, ak mi prisiel poskodeny produkt?").
+        answer = main.best_direct_faq_answer("My package arrived damaged, how do I file a complaint?", knowledge)
+        assert answer
+        assert "reklamacie@foodland.sk" in answer
+
+    def test_faq_en_concept_bridge_damaged_complaint_negative_control(self, knowledge):
+        # Negative control: "damaged" without "complaint" is a plain
+        # product-condition question, not a complaint-procedure FAQ.
+        assert main.best_direct_faq_answer("Is this product damaged or expired?", knowledge) is None
+
+    def test_faq_en_concept_bridge_cash_on_delivery(self, knowledge):
+        # V2.21m: bridges to the SAME record ("domov"+"dobierkou") the
+        # existing Slovak shortcut already resolves the equivalent bare
+        # "Da sa objednavka zaplatit na dobierku?" (v221_faq_0006) to -
+        # keeps the English and Slovak phrasings of this exact question
+        # consistent with each other.
+        answer = main.best_direct_faq_answer("Can I pay for my order cash on delivery?", knowledge)
+        assert answer
+        assert "dobierkou" in main.normalize(answer)
+
+    def test_faq_en_concept_bridge_cash_on_delivery_negative_control(self, knowledge):
+        # Negative control: "cash" without "delivery" must not fabricate
+        # this record.
+        assert main.best_direct_faq_answer("Do you accept cash payments in store?", knowledge) is None
+
     def test_faq_intent_detects_slovak_loyalty_program_wording(self):
         # Regression: FAQ_INTENT_MARKERS only had the English "loyalty",
         # so a Slovak question about "vernostny program" never even reached
