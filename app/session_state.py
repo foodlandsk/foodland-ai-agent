@@ -500,6 +500,16 @@ _CONTACT_TOPIC_PHRASE_MARKERS = (
     # "telefonicky kontakt" (adjective form) and "zakaznicku podporu" are
     # distinct real phrasings for the same ask (V2.20 faq_0015).
     "telefonicky kontakt", "zakaznicku podporu", "zakaznickej podpory", "zakaznicka podpora",
+    # V2.21o (former FAQ_EN_INTENT_MISS cluster, v221_faq_0010): this
+    # helper was entirely Slovak, so an English contact question never
+    # reached is_contact_query() at all. Same phrase-only discipline as
+    # above (never a bare "contact" - see the docstring's blast-radius
+    # note on "kontakt s potravinami"/food-contact-safe packaging, which
+    # has the exact same English-language collision risk with a bare
+    # "contact" word). 0 blast-radius hits confirmed against
+    # data/products.json for each full phrase below.
+    "how can i contact you", "how do i contact you", "how can i reach you",
+    "contact details", "your phone number", "customer support",
 )
 
 

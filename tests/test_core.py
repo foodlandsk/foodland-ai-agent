@@ -3757,6 +3757,57 @@ class TestFAQ:
         # this record.
         assert main.best_direct_faq_answer("Do you accept cash payments in store?", knowledge) is None
 
+    def test_faq_en_contact_phrase_reaches_gate_and_answer(self, knowledge):
+        # V2.21o (former FAQ_EN_INTENT_MISS cluster, v221_faq_0010):
+        # _CONTACT_TOPIC_PHRASE_MARKERS was entirely Slovak - is_contact_query()
+        # returning True already triggers the existing "kontaktovat"+"telefon"
+        # retrieval shortcut in best_direct_faq_answer() unchanged, so this
+        # needed only the phrase-list extension, no separate bridge entry.
+        msg = "How can I contact you if I have a question about my order?"
+        assert main._is_contact_query(msg)
+        answer = main.best_direct_faq_answer(msg, knowledge)
+        assert answer
+        assert "eshop@foodland.sk" in answer
+
+    def test_faq_en_contact_phrase_negative_controls(self, knowledge):
+        # Negative controls: bare "contact" without a full phrase match
+        # must not fabricate this record - same phrase-only discipline
+        # that already protects the Slovak side (docstring: "kontakt s
+        # potravinami" / food-contact-safe packaging).
+        for msg in (
+            "Does this product have any direct skin contact warnings?",
+            "I want to contact the brand about this product",
+            "Is this packaging food-contact safe?",
+        ):
+            assert not main._is_contact_query(msg), msg
+            assert main.best_direct_faq_answer(msg, knowledge) is None, msg
+
+    def test_faq_en_registration_word_form_reaches_gate_and_answer(self, knowledge):
+        # V2.21o (former FAQ_EN_INTENT_MISS cluster, v221_faq_0007): the
+        # English verb infinitive "register" shares no substring with
+        # either the Slovak "registr" stem or the existing English
+        # "registration" noun marker (off by one letter: "regist-e-r" vs
+        # "regist-r"). Requires a shopping-context word alongside it
+        # (mirrors the existing odkial+pochadz/obchod+web conjunction
+        # pattern) so a bare "register" mention elsewhere stays safe.
+        msg = "Do I need to register to place an order?"
+        assert main.is_faq_intent(msg)
+        answer = main.best_direct_faq_answer(msg, knowledge)
+        assert answer
+        assert "registracie" in main.normalize(answer)
+
+    def test_faq_en_registration_word_form_negative_controls(self, knowledge):
+        # Negative controls: "register" without a shopping-context word
+        # must not fabricate this record - guards against the realistic
+        # "registered trademark" collision this conjunction is designed
+        # to avoid.
+        for msg in (
+            "Is this a registered trademark product?",
+            "I want to register my product warranty",
+            "Can I buy this without an account?",
+        ):
+            assert not main.is_faq_intent(msg), msg
+
     def test_faq_intent_detects_slovak_loyalty_program_wording(self):
         # Regression: FAQ_INTENT_MARKERS only had the English "loyalty",
         # so a Slovak question about "vernostny program" never even reached

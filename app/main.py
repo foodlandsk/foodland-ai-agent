@@ -7992,7 +7992,21 @@ def is_faq_intent(message: str) -> bool:
     # online channel, this FAQ's actual topic) is narrow enough to be
     # safe, deliberately excluding the much more common "obchod"+"cena"
     # pairing (a specific product's in-store price, not this FAQ).
-    return "obchod" in normalized_message and "web" in normalized_message
+    if "obchod" in normalized_message and "web" in normalized_message:
+        return True
+    # V2.21o (former FAQ_EN_INTENT_MISS cluster, v221_faq_0007): bare
+    # "register" is a common English word with a real collision risk
+    # (e.g. "registered trademark" wording) - confirmed 0 blast-radius
+    # hits against data/products.json, but requiring a shopping-context
+    # word alongside it (mirroring the odkial+pochadz/obchod+web pattern
+    # above) keeps this narrow even for messages this check has never
+    # seen. The Slovak "registr" stem above already covers registrovat/
+    # registracia natively; this only adds the English verb infinitive,
+    # which shares no substring with either "registr" or the existing
+    # "registration" marker.
+    return "register" in normalized_message and any(
+        word in normalized_message for word in ("order", "shop", "purchase", "buy", "account")
+    )
 
 
 _ADDRESS_PATTERN = re.compile(
@@ -8122,6 +8136,18 @@ FAQ_EN_CONCEPT_BRIDGE: tuple[dict[str, tuple[str, ...]], ...] = (
         "en_markers": ("cash",),
         "en_context_markers": ("delivery",),
         "sk_markers": ("domov", "dobierkou"),
+    },
+    {
+        # V2.21o (former FAQ_EN_INTENT_MISS cluster, v221_faq_0007) - FAQ
+        # #1, "Musim sa pred objednanim registrovat?". Even after the
+        # is_faq_intent() conjunction above lets this English phrasing
+        # through, best_direct_faq_answer() still only matches Slovak
+        # text - same "register"+shopping-context requirement as the
+        # intent-gate conjunction, so this can only fire once that gate
+        # has already fired too.
+        "en_markers": ("register",),
+        "en_context_markers": ("order", "shop", "purchase", "buy", "account"),
+        "sk_markers": ("registrovat", "objednanim"),
     },
 )
 
