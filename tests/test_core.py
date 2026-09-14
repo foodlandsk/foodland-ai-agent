@@ -3865,6 +3865,84 @@ class TestFAQ:
         for msg in ("How much does shipping cost?", "How long does shipping take?"):
             assert main.best_direct_faq_answer(msg, knowledge) is None, msg
 
+    def test_faq_en_return_no_reason_reaches_gate_and_answer(self, knowledge):
+        # V2.21r (former V2.21p FAQ_EN_INTENT_MISS cluster, v221_faq_0004,
+        # selected as next-lowest-risk after V2.21q's shipping/countries
+        # fix): FAQ_INTENT_MARKERS has no English "return" marker at all
+        # (only "refund", a different concept). Requires "return" AND
+        # "reason" together (mirrors the odkial+pochadz/obchod+web/
+        # register+context/ship+countries conjunction pattern) so a bare
+        # "return" mention about a specific product stays safe.
+        msg = "How do I return an item without giving a reason?"
+        assert main.is_faq_intent(msg)
+        answer = main.best_direct_faq_answer(msg, knowledge)
+        assert answer
+        assert "udania dôvodu" in answer or "udania dovodu" in main.normalize(answer)
+
+    def test_faq_en_return_no_reason_slovak_equivalent_unchanged(self, knowledge):
+        # Regression: the Slovak equivalent must resolve to the exact
+        # same record, unaffected by the new English conjunction.
+        answer = main.best_direct_faq_answer(
+            "Ako mam postupovat, ak chcem vratit tovar bez udania dovodu?", knowledge
+        )
+        assert answer
+        assert "udania dovodu" in main.normalize(answer)
+
+    def test_faq_en_return_no_reason_negative_controls(self, knowledge):
+        # Negative controls: bare "return" without "reason" must not
+        # fabricate this record - each realistic collision was confirmed
+        # BEFORE this fix to resolve correctly via product_search/its own
+        # FAQ concept (V2.21p forensic), so the conjunction must not
+        # hijack them.
+        for msg in (
+            # V2.21p-confirmed collision: a specific-product return
+            # request, not the company-wide no-reason-needed policy.
+            "I want to return this jasmine rice, it arrived expired",
+            # replacement-shaped request, not a policy question
+            "I want to return this and get a replacement fish sauce instead",
+            "I'd like a replacement instead of a refund",
+            # damaged-item wording shares no vocabulary with "reason"
+            "This item arrived damaged, what should I do?",
+            # broader return-policy phrasing without "reason" - a known,
+            # intentional false negative of this narrow conjunction
+            # (documented, not fixed here - see V2.21r report Section F)
+            "What is your return policy?",
+        ):
+            assert main.best_direct_faq_answer(msg, knowledge) is None, msg
+
+    def test_faq_en_return_no_reason_competing_intent_controls(self, knowledge):
+        # Competing-intent controls: confirm the pre-existing "refund"
+        # marker collision (unrelated to this fix, already present on
+        # main before V2.21r) is not made WORSE by this change - it must
+        # still fall through to product_search exactly as before.
+        assert main.is_faq_intent("This product arrived damaged, can I get a refund?")
+        assert main.best_direct_faq_answer("This product arrived damaged, can I get a refund?", knowledge) is None
+
+    def test_faq_en_return_no_reason_nearby_faq_unaffected(self, knowledge):
+        # Nearby-FAQ control: the V2.21m damaged/complaint concept must
+        # remain unaffected by this new return/reason conjunction.
+        answer = main.best_direct_faq_answer(
+            "My package arrived damaged, how do I file a complaint?", knowledge
+        )
+        assert answer
+        assert "reklamacie@foodland.sk" in answer
+
+    def test_faq_en_return_no_reason_preserves_v221q_shipping_fix(self, knowledge):
+        # Recent-fix protection: V2.21q's shipping/countries bridge must
+        # be unaffected by this change.
+        answer = main.best_direct_faq_answer("Which countries do you ship to?", knowledge)
+        assert answer
+        assert "krajin" in main.normalize(answer)
+
+    def test_faq_en_product_origin_remains_deferred(self, knowledge):
+        # V2.21r explicitly defers v221_faq_0013 (product/origin) to a
+        # future sprint - it collides with a DIFFERENT capability
+        # (product_advice) and needs its own dedicated negative-control
+        # phase (V2.21p Section L). Must remain unchanged by this commit.
+        msg = "Where do your products come from?"
+        assert not main.is_faq_intent(msg)
+        assert main.best_direct_faq_answer(msg, knowledge) is None
+
     def test_faq_intent_detects_slovak_loyalty_program_wording(self):
         # Regression: FAQ_INTENT_MARKERS only had the English "loyalty",
         # so a Slovak question about "vernostny program" never even reached

@@ -8022,9 +8022,30 @@ def is_faq_intent(message: str) -> bool:
     # countries word alongside it (mirroring the odkial+pochadz/
     # obchod+web/register+context pattern above) excludes that case while
     # still matching the actual "which countries do you ship to" wording.
-    return "ship" in normalized_message and any(
+    if "ship" in normalized_message and any(
         word in normalized_message for word in ("countries", "country")
-    )
+    ):
+        return True
+    # V2.21r (former V2.21p FAQ_EN_INTENT_MISS cluster, v221_faq_0004,
+    # selected as the next-lowest-risk of the two cases remaining after
+    # V2.21q - see the V2.21p forensic collision matrix): FAQ_INTENT_
+    # MARKERS has no English marker for the "return without a reason"
+    # concept at all (only "refund", a different, unrelated concept - a
+    # pre-existing bare marker already known to collide with product
+    # queries, not addressed here). A bare "return" marker would hijack
+    # a specific-product return/replacement request ("I want to return
+    # this jasmine rice"/"...and get a replacement fish sauce instead",
+    # both confirmed via the V2.21p forensic to resolve correctly via
+    # product_search today) into this company-wide no-reason-needed
+    # policy FAQ instead - requiring "reason" alongside it (mirroring
+    # the odkial+pochadz/obchod+web/register+context/ship+countries
+    # pattern above) excludes that case while still matching the actual
+    # "without giving a reason" wording. Known, accepted limitation:
+    # a broader phrasing without the word "reason" (e.g. "what is your
+    # return policy?") stays unmatched by design - narrower coverage was
+    # chosen over any collision risk, consistent with every prior
+    # conjunction in this function.
+    return "return" in normalized_message and "reason" in normalized_message
 
 
 _ADDRESS_PATTERN = re.compile(
@@ -8178,6 +8199,18 @@ FAQ_EN_CONCEPT_BRIDGE: tuple[dict[str, tuple[str, ...]], ...] = (
         "en_markers": ("ship",),
         "en_context_markers": ("countries", "country"),
         "sk_markers": ("krajin", "dorucuje"),
+    },
+    {
+        # V2.21r (former V2.21p FAQ_EN_INTENT_MISS cluster, v221_faq_0004)
+        # - FAQ #22, "Mozem vratit tovar bez udania dovodu?". Even after
+        # the is_faq_intent() conjunction above lets this English
+        # phrasing through, best_direct_faq_answer() still only matches
+        # Slovak text - same "return"+"reason" requirement as the
+        # intent-gate conjunction, so this can only fire once that gate
+        # has already fired too.
+        "en_markers": ("return",),
+        "en_context_markers": ("reason",),
+        "sk_markers": ("vratit", "udania"),
     },
 )
 
