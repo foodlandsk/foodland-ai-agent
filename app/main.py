@@ -8004,8 +8004,26 @@ def is_faq_intent(message: str) -> bool:
     # registracia natively; this only adds the English verb infinitive,
     # which shares no substring with either "registr" or the existing
     # "registration" marker.
-    return "register" in normalized_message and any(
+    if "register" in normalized_message and any(
         word in normalized_message for word in ("order", "shop", "purchase", "buy", "account")
+    ):
+        return True
+    # V2.21q (former V2.21p FAQ_EN_INTENT_MISS cluster, v221_faq_0009,
+    # selected as the lowest-risk of the three remaining cases - see the
+    # V2.21p forensic collision matrix): bare "ship" shares no substring
+    # with the existing "shipping"/"delivery"/"courier" markers, and
+    # "countries"/"krajin" was never in FAQ_INTENT_MARKERS at all - it
+    # only lives inside a retrieval-only shortcut in
+    # best_direct_faq_answer(), unreachable without this gate already
+    # open. A bare "ship" marker would hijack a specific-product shipping
+    # question ("can you ship this ramen to Germany?", confirmed via
+    # data/products.json + a live product_search result in the V2.21p
+    # forensic) into this company-wide FAQ instead - requiring a country/
+    # countries word alongside it (mirroring the odkial+pochadz/
+    # obchod+web/register+context pattern above) excludes that case while
+    # still matching the actual "which countries do you ship to" wording.
+    return "ship" in normalized_message and any(
+        word in normalized_message for word in ("countries", "country")
     )
 
 
@@ -8148,6 +8166,18 @@ FAQ_EN_CONCEPT_BRIDGE: tuple[dict[str, tuple[str, ...]], ...] = (
         "en_markers": ("register",),
         "en_context_markers": ("order", "shop", "purchase", "buy", "account"),
         "sk_markers": ("registrovat", "objednanim"),
+    },
+    {
+        # V2.21q (former V2.21p FAQ_EN_INTENT_MISS cluster, v221_faq_0009)
+        # - FAQ #8, "Do ktorych krajin Foodland doruca?". Even after the
+        # is_faq_intent() conjunction above lets this English phrasing
+        # through, best_direct_faq_answer() still only matches Slovak
+        # text - same "ship"+country-word requirement as the intent-gate
+        # conjunction, so this can only fire once that gate has already
+        # fired too.
+        "en_markers": ("ship",),
+        "en_context_markers": ("countries", "country"),
+        "sk_markers": ("krajin", "dorucuje"),
     },
 )
 

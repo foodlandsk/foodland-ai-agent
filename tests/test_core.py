@@ -3808,6 +3808,63 @@ class TestFAQ:
         ):
             assert not main.is_faq_intent(msg), msg
 
+    def test_faq_en_shipping_countries_reaches_gate_and_answer(self, knowledge):
+        # V2.21q (former V2.21p FAQ_EN_INTENT_MISS cluster, v221_faq_0009,
+        # lowest-risk of the three remaining cases): bare "ship" shares no
+        # substring with the existing "shipping"/"delivery"/"courier"
+        # markers, and "countries"/"krajin" was never in FAQ_INTENT_MARKERS
+        # at all (only inside a retrieval-only shortcut, unreachable
+        # without the gate already open). Requires "ship" AND a country/
+        # countries word together (mirrors the odkial+pochadz/obchod+web/
+        # register+context conjunction pattern) so a bare "ship" mention
+        # about a specific product stays safe.
+        msg = "Which countries do you ship to?"
+        assert main.is_faq_intent(msg)
+        answer = main.best_direct_faq_answer(msg, knowledge)
+        assert answer
+        assert "krajin" in main.normalize(answer)
+
+    def test_faq_en_shipping_countries_slovak_equivalent_unchanged(self, knowledge):
+        # Regression: the existing Slovak "krajin"+"dorucuje" shortcut
+        # must resolve to the exact same record, unaffected by the new
+        # English conjunction.
+        answer = main.best_direct_faq_answer("Do ktorych krajin viete tovar doruciit?", knowledge)
+        assert answer
+        assert "krajin" in main.normalize(answer)
+
+    def test_faq_en_shipping_countries_negative_controls(self, knowledge):
+        # Negative controls: bare "ship" or bare "country"/"countries"
+        # alone must not fabricate this record - each realistic collision
+        # was confirmed BEFORE this fix to resolve correctly via
+        # product_search/product_information (V2.21p forensic), so the
+        # conjunction must not hijack them.
+        for msg in (
+            # V2.21p-confirmed collision: a specific-product shipping
+            # question, not the company-wide "which countries" FAQ.
+            "Can you ship this ramen to Germany?",
+            # product country filter / imported-products wording
+            "Show me products from Japan",
+            "Do you have any imported products from Thailand?",
+            # a real catalog brand name containing bare "country"
+            # (FL_4070, "Country Style cervena kari pasta LOBO") -
+            # confirmed via data/products.json blast-radius check.
+            "Do you have the Country Style curry paste?",
+            # delivery/availability-by-country wording sharing "country"
+            # but not "ship"
+            "Can this be delivered to my country?",
+            "Is this available in my country?",
+            "What country is this soy sauce from?",
+        ):
+            assert main.best_direct_faq_answer(msg, knowledge) is None, msg
+
+    def test_faq_en_shipping_countries_nearby_faq_unaffected(self, knowledge):
+        # Nearby-FAQ control: generic English shipping cost/time phrasing
+        # (a different, still-unfixed FAQ concept) must not be
+        # accidentally captured by this "countries" conjunction either -
+        # it should stay exactly as unresolved as before this change.
+        for msg in ("How much does shipping cost?", "How long does shipping take?"):
+            assert main.best_direct_faq_answer(msg, knowledge) is None, msg
+
     def test_faq_intent_detects_slovak_loyalty_program_wording(self):
         # Regression: FAQ_INTENT_MARKERS only had the English "loyalty",
         # so a Slovak question about "vernostny program" never even reached
