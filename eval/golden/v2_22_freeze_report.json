@@ -1,0 +1,93 @@
+{
+  "sprint": "V2.22a",
+  "source_baseline_sha": "ee7810376a2c20f9d422775e81eee2db50c9d83a",
+  "total_scenario_count": 122,
+  "total_scored_count": 122,
+  "total_pending_count": 0,
+  "dev_count": 93,
+  "holdout_count": 29,
+  "language_distribution": {
+    "sk": 112,
+    "en": 10
+  },
+  "intent_distribution": {
+    "ALLERGEN_SAFETY": 5,
+    "ALREADY_HAVE": 2,
+    "AMBIGUITY": 3,
+    "AVAILABILITY_PRICE": 3,
+    "BRAND_CONSTRAINT": 6,
+    "BUDGET_REASONING": 3,
+    "CATEGORY_DISCOVERY": 6,
+    "COMPARISON": 4,
+    "CROSS_SELL": 3,
+    "CULTURAL_AUTHENTICITY": 2,
+    "DIETARY_SAFETY": 2,
+    "FAQ": 15,
+    "FOLLOW_UP": 5,
+    "GENERAL_CULINARY": 4,
+    "INSUFFICIENT_DATA": 3,
+    "KITCHENWARE": 2,
+    "MULTI_CONSTRAINT": 3,
+    "NEGATION": 4,
+    "OUT_OF_DOMAIN": 4,
+    "PRODUCT_ADVICE": 6,
+    "PRODUCT_INFORMATION": 3,
+    "PRODUCT_SEARCH": 16,
+    "QUANTITY_REASONING": 2,
+    "RECIPE": 6,
+    "RECIPE_TO_PRODUCTS": 6,
+    "REPLACEMENT": 4
+  },
+  "risk_distribution": {
+    "HIGH": 13,
+    "MEDIUM": 0,
+    "NORMAL": 109
+  },
+  "multi_turn_count": 5,
+  "safety_sensitive_count": 7,
+  "independence_distribution_overall": {
+    "HIGH": 111,
+    "MEDIUM": 11
+  },
+  "independence_distribution_holdout": {
+    "HIGH": 26,
+    "MEDIUM": 3
+  },
+  "source_class_distribution": {
+    "FRESH_INDEPENDENT": 122
+  },
+  "duplication_audit": {
+    "exact_duplicates_with_v218_v220_v221_corpus": [],
+    "near_duplicates_with_v218_v220_v221_corpus": [],
+    "internal_semantic_duplicates": [],
+    "historical_corpus_message_count": 354,
+    "low_independence_holdout_cases": 0
+  },
+  "governance_flags": {
+    "NEW_V222_ADVISOR_EXECUTIONS": 0,
+    "CURRENT_MODEL_OUTPUT_USED_AS_TRUTH": false,
+    "V221_HOLDOUT_REUSED_AS_BLIND": false,
+    "SCENARIO_DELETED_TO_IMPROVE_SCORE": false,
+    "EXPECTATION_WEAKENED_FOR_MODEL": false,
+    "SCORER_SPECIAL_CASE_ADDED": false,
+    "SPLIT_CHANGED_AFTER_EXECUTION": false,
+    "HOLDOUT_INSPECTED_BEFORE_FREEZE": false
+  },
+  "gt_review_gate": {
+    "GT_VALID": true,
+    "GT_AUTHORITY_ALLOWED": true,
+    "CONTRACT_DETERMINISTIC_ENOUGH": true,
+    "NO_CURRENT_OUTPUT_DEPENDENCY": true
+  },
+  "freeze_gate": {
+    "GT_VALIDATION_PASS": true,
+    "SCHEMA_VALIDATION_PASS": true,
+    "DUPLICATION_AUDIT_PASS": true,
+    "HOLDOUT_LEAKAGE_PASS": true,
+    "INDEPENDENCE_AUDIT_PASS": true,
+    "MANIFEST_VALID": true,
+    "ADVISOR_EXECUTION_COUNT": 0,
+    "CURRENT_MODEL_OUTPUT_USED_AS_TRUTH": false,
+    "REVEALED_V221_HOLDOUT_USED_AS_BLIND": false
+  }
+}
