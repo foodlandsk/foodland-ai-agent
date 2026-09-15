@@ -8045,7 +8045,27 @@ def is_faq_intent(message: str) -> bool:
     # return policy?") stays unmatched by design - narrower coverage was
     # chosen over any collision risk, consistent with every prior
     # conjunction in this function.
-    return "return" in normalized_message and "reason" in normalized_message
+    if "return" in normalized_message and "reason" in normalized_message:
+        return True
+    # V2.21t (v221_faq_0013, the final case in the V2.21n EN FAQ intent-
+    # miss chain, per the V2.21s forensic): English store-level sourcing
+    # phrasing ("where do your products come from") has no marker at all -
+    # Slovak "odkial"+"pochadz" already covers this concept (V2.20n) but
+    # the English equivalent falls through FAQ_INTENT_MARKERS entirely.
+    # V2.21s empirically confirmed a bare "where"+"come" marker would
+    # hijack specific-product origin/authenticity questions that resolve
+    # correctly via product_search today ("where does this curry paste/
+    # kimchi come from", "what country is this fish sauce from", "is this
+    # an authentic Thai curry paste", "where is this rice made", "where
+    # do you source your kimchi from" - all confirmed unaffected by this
+    # fix) - requiring "your"/"you" alongside "where"+"come" (same
+    # conjunction discipline as every case above) keeps this narrow to
+    # the company-directed store-level phrasing, deliberately excluding
+    # every product-directed phrasing in that control set (none of them
+    # pair "your"/"you" with "come").
+    return "where" in normalized_message and "come" in normalized_message and (
+        "your" in normalized_message or "you" in normalized_message
+    )
 
 
 _ADDRESS_PATTERN = re.compile(
@@ -8211,6 +8231,18 @@ FAQ_EN_CONCEPT_BRIDGE: tuple[dict[str, tuple[str, ...]], ...] = (
         "en_markers": ("return",),
         "en_context_markers": ("reason",),
         "sk_markers": ("vratit", "udania"),
+    },
+    {
+        # V2.21t (former V2.21n EN FAQ intent-miss cluster, v221_faq_0013,
+        # the final case in the chain) - FAQ #49, "Odkial pochadzaju vase
+        # produkty?". Even after the is_faq_intent() conjunction above lets
+        # this English phrasing through, best_direct_faq_answer() still
+        # only matches Slovak text - same "where"+"come"+"your"/"you"
+        # requirement as the intent-gate conjunction, so this can only fire
+        # once that gate has already fired too.
+        "en_markers": ("where", "come"),
+        "en_context_markers": ("your", "you"),
+        "sk_markers": ("odkial", "pochadz"),
     },
 )
 

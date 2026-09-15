@@ -3934,14 +3934,91 @@ class TestFAQ:
         assert answer
         assert "krajin" in main.normalize(answer)
 
-    def test_faq_en_product_origin_remains_deferred(self, knowledge):
-        # V2.21r explicitly defers v221_faq_0013 (product/origin) to a
-        # future sprint - it collides with a DIFFERENT capability
-        # (product_advice) and needs its own dedicated negative-control
-        # phase (V2.21p Section L). Must remain unchanged by this commit.
+    def test_faq_en_product_origin_now_resolves(self, knowledge):
+        # V2.21t (final case in the V2.21n EN FAQ intent-miss chain,
+        # per the V2.21s forensic): the store-level sourcing question
+        # now reaches FAQ #49 in English, same as the Slovak phrasing.
         msg = "Where do your products come from?"
+        assert main.is_faq_intent(msg)
+        answer = main.best_direct_faq_answer(msg, knowledge)
+        assert answer
+        assert "vietnamu" in main.normalize(answer)
+
+    def test_faq_en_product_origin_preserves_slovak_equivalent(self, knowledge):
+        # Nearby-language control: the pre-existing "odkial"+"pochadz"
+        # conjunction (V2.20n) must be unaffected by this English fix.
+        msg = "Odkial pochadzaju vase produkty?"
+        assert main.is_faq_intent(msg)
+        answer = main.best_direct_faq_answer(msg, knowledge)
+        assert answer
+        assert "vietnamu" in main.normalize(answer)
+
+    # V2.21s forensic mandatory six-query preservation contract: each of
+    # these currently resolves correctly via product_search (a specific
+    # product/category match) and must NOT be hijacked into the generic
+    # company-wide sourcing FAQ by the new "where"+"come"+"your"/"you"
+    # conjunction - none of them pair "your"/"you" with "come".
+    def test_faq_en_product_origin_collision_curry_paste(self, knowledge):
+        msg = "Where does this curry paste come from?"
         assert not main.is_faq_intent(msg)
         assert main.best_direct_faq_answer(msg, knowledge) is None
+
+    def test_faq_en_product_origin_collision_kimchi(self, knowledge):
+        msg = "Where does this kimchi come from?"
+        assert not main.is_faq_intent(msg)
+        assert main.best_direct_faq_answer(msg, knowledge) is None
+
+    def test_faq_en_product_origin_collision_fish_sauce_country(self, knowledge):
+        msg = "What country is this fish sauce from?"
+        assert not main.is_faq_intent(msg)
+        assert main.best_direct_faq_answer(msg, knowledge) is None
+
+    def test_faq_en_product_origin_collision_authentic_curry_paste(self, knowledge):
+        msg = "Is this an authentic Thai curry paste?"
+        assert not main.is_faq_intent(msg)
+        assert main.best_direct_faq_answer(msg, knowledge) is None
+
+    def test_faq_en_product_origin_collision_rice_made(self, knowledge):
+        msg = "Where is this rice made?"
+        assert not main.is_faq_intent(msg)
+        assert main.best_direct_faq_answer(msg, knowledge) is None
+
+    def test_faq_en_product_origin_collision_source_your_kimchi(self, knowledge):
+        # Adversarial near-miss: contains "your"/"you" but not "come" -
+        # must stay excluded on the "come" requirement.
+        msg = "Where do you source your kimchi from?"
+        assert not main.is_faq_intent(msg)
+        assert main.best_direct_faq_answer(msg, knowledge) is None
+
+    # V2.21s Section 8 adversarial controls: realistic boundary paraphrases
+    # that deliberately stay unmatched - narrower coverage was chosen over
+    # broadening the semantic envelope beyond the V2.21s-authorized gate.
+    def test_faq_en_product_origin_adversarial_noodles_category(self, knowledge):
+        # Known, accepted boundary: "your"+"come"+"where" is the full
+        # V2.21s-authorized envelope, and a category name incidentally
+        # inside a company-directed possessive phrasing falls inside it -
+        # narrowing further (e.g. requiring the literal word "products")
+        # is out of scope for this bounded repair (Section 8: do not turn
+        # unhandled paraphrases into additional implementation work).
+        # The FAQ #49 answer is a reasonable, non-harmful response to a
+        # category-level sourcing question, unlike the six mandatory
+        # collision controls above (which lose a specific product match).
+        msg = "Where do your noodles come from?"
+        assert main.is_faq_intent(msg)
+
+    def test_faq_en_product_origin_adversarial_source_this_product(self, knowledge):
+        msg = "Where do you source this fish sauce from?"
+        assert not main.is_faq_intent(msg)
+
+    def test_faq_en_product_origin_adversarial_originate_paraphrase(self, knowledge):
+        # Accepted false negative by design - no "come" in this phrasing.
+        msg = "Where do your products originate?"
+        assert not main.is_faq_intent(msg)
+
+    def test_faq_en_product_origin_adversarial_which_countries_paraphrase(self, knowledge):
+        # Accepted false negative by design - no "come" in this phrasing.
+        msg = "Which countries are your products from?"
+        assert not main.is_faq_intent(msg)
 
     def test_faq_intent_detects_slovak_loyalty_program_wording(self):
         # Regression: FAQ_INTENT_MARKERS only had the English "loyalty",
