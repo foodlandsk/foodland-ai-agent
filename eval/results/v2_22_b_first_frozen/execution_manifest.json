@@ -1,0 +1,72 @@
+{
+  "v222_version": "V2.22b",
+  "run_id_dev": "v222b_unknown_52479668",
+  "run_id_holdout": "v222b_unknown_6887e3cd",
+  "freeze_sha": "f203e343918d0c17ca5e40c94efa047c7e0d4026",
+  "execution_source_sha": "f203e343918d0c17ca5e40c94efa047c7e0d4026",
+  "execution_sha_note": "The runner's internal _get_commit() recorded 'unknown' inside dev_raw.json/holdout_raw.json because its subprocess git call failed in this execution environment (same known quirk as V2.21b's own run_manifest.json). Independently verified via direct `git rev-parse HEAD` immediately before the start gate, immediately after DEV, and immediately after HOLDOUT - all three f203e343918d0c17ca5e40c94efa047c7e0d4026, unchanged. Raw files left exactly as produced, not patched.",
+  "scenario_file_hash": "3e79a759744f75ae3044f24a29731596bafd37488135dea8903fd8fcf51baef3",
+  "manifest_hash_note": "eval/golden/v2_22_manifest.json itself is not separately hashed inside itself; its own content_hash fields (dev/holdout) are the authoritative per-split hashes, both verified matching at execution time.",
+  "catalog_snapshot_hash": "c2881106d6efc60eca3a5d2a9741f4af994268b8bc44fbf7c825f6441420634a",
+  "faq_snapshot_hash": "e64515f1965df86b51c1029e4f8b150d6b30842c614972ae5d2198d02f89cea3",
+  "recipes_snapshot_hash": "6dbee2d07d35a728954bf361a8d727e4365442a41982a1301dcd6348161b06d5",
+  "runner_version": "scripts/run_v222_benchmark.py (V2.22b, mirrors scripts/run_v221_benchmark.py's V2.21b protocol exactly)",
+  "execution_context": "EVALUATION",
+  "customer_writes": 0,
+  "analytics_writes": 0,
+  "profile_writes": 0,
+  "learning_writes": 0,
+  "dev_counts": {
+    "total": 93,
+    "scored_denominator": 93,
+    "pass": 52,
+    "fail": 41,
+    "error": 0,
+    "pending": 0,
+    "micro_score": 0.5591397849462365
+  },
+  "holdout_counts": {
+    "total": 29,
+    "scored_denominator": 29,
+    "pass": 17,
+    "fail": 12,
+    "error": 0,
+    "pending": 0,
+    "micro_score": 0.5862068965517241
+  },
+  "combined_counts": {
+    "total": 122,
+    "scored_denominator": 122,
+    "pass": 69,
+    "fail": 53,
+    "error": 0,
+    "pending": 0,
+    "micro_score": 0.5655737704918032
+  },
+  "advisor_executions": {
+    "scenarios_executed": 122,
+    "advisor_calls": 127,
+    "note": "advisor_calls counts one make_session_chat_fn() call per turn (multi-turn scenarios make >1 call); scenarios_executed counts distinct scenarios (122 = 93 DEV + 29 HOLDOUT)."
+  },
+  "pending_count_unchanged_from_freeze": true,
+  "denominator_changed_after_execution": false,
+  "scorer_changed_during_v222b": false,
+  "gt_changed_during_v222b": false,
+  "split_changed_after_freeze": false,
+  "historical_first_frozen_run": true,
+  "mutable": false,
+  "do_not_overwrite": true,
+  "holdout_status_after_run": "REVEALED_REGRESSION",
+  "post_run_production_hashes": {
+    "app/main.py": "d16aa2971ee54ebc9f5943594f6a0ff1b285894b481104b56317f46438399869",
+    "app/retrieval.py": "7fb4137eeb8be4d81e7a5ff12ab23b8e5bb09894a9e4aebfb497790b8752155f",
+    "app/query_constraints.py": "1a59d3944b1291f2fe52271b59354cff9203460ceeaee7a34f1b60cae0e5765e",
+    "app/intelligence_diagnostics/v222_factory.py": "566922da477824b285600dabef85ee2ca13bca03c4a90a9b71f485fb328e38e6",
+    "app/intelligence_diagnostics/v221_scorer.py": "4124a29f774d262eb47c3cfdc7ff9132c87df32622d7bf16acdb25dee0f48139",
+    "eval/golden/v2_22_scenarios.json": "3e79a759744f75ae3044f24a29731596bafd37488135dea8903fd8fcf51baef3",
+    "eval/golden/v2_22_manifest.json": "adee17074d2cb79585261aa0317d35274270139b77c03fdb27a62ba29d478113",
+    "data/products.json": "c2881106d6efc60eca3a5d2a9741f4af994268b8bc44fbf7c825f6441420634a",
+    "data/knowledge.json": "a516fcf842f2e5c33ecc8fa29ff192e14b125d7e20d4ebf8606ea054828e7829"
+  },
+  "historical_declaration": "THIS IS THE IMMUTABLE FIRST FROZEN V2.22 RESULT."
+}

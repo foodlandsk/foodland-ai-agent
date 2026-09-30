@@ -1,0 +1,417 @@
+{
+  "execution_sha": "unknown",
+  "scenario_freeze_hash": "15b47035e03b50d0b720a5fa08bd66da041f8f0ea3842c87fba62f7030ebc8eb",
+  "split_filter": "HOLDOUT",
+  "run_id": "v222b_unknown_6887e3cd",
+  "results": [
+    {
+      "scenario_id": "v222_allergen_safety_0001",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "936c26f70d44bf546622a9fce1f86ef226bab7a0eac04c7d9282afe90b50b1c5",
+      "state": "PASS",
+      "observed_intent": "allergen_safety",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Pri alergii alebo intolerancii na lepok vám nechcem odporučiť produkt len podľa názvu. Prosím overte zloženie a alergény v detaile konkrétneho produktu. Ak riešite konkrétny produkt, rozhodujúca je etiketa. Ak mi pošlete názov produktu, pomôžem vám nájsť jeho detail na Foodland.sk."
+    },
+    {
+      "scenario_id": "v222_ambiguous_query_0001",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "a10d462b31e06f3893e10105159f87e5232e32599089c203b14b110d456c09b3",
+      "state": "PASS",
+      "observed_intent": "related_products",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "K beginner kit odporúčam hlavne tieto súvisiace produkty: Sójová omáčka citrónová Ponzu KIKKOMAN 250ml; Sezamový olej 100% LEE KUM KEE 207 ml; Ryžový ocot CHINKIANG HENGSHUN 550ml. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti."
+    },
+    {
+      "scenario_id": "v222_availability_or_price_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "97411037a8d802c6a306df8b6e092bb8110f08c92d8035fdc4b911897649816d",
+      "state": "PASS",
+      "observed_intent": "product_search",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Presne tento variant momentálne v ponuke nevidím. Najbližšie možnosti (1 nájdených):"
+    },
+    {
+      "scenario_id": "v222_brand_constraint_0004",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "6433d2f4bb004bd6cc2e11b841e4f31dd5deecb1f1d46cce09bc8c7f9dd9ff57",
+      "state": "PASS",
+      "observed_intent": "product_search",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Kimchi základ KIKKOMAN 1180g; Kimchi Nakladaná kapusta MAT KIMCHI JONGGA 300g; Kimchi nakrajaná vegánska JONGGA 300g. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v222_budget_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "788d410e2a01dc36edb9973899e40b540c3bfb8ff826869580d2518e0fac970b",
+      "state": "PASS",
+      "observed_intent": "product_search",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 26 produktov v kategórii \"Sriracha omáčka\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v222_category_discovery_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "5c2e7ad7cc26671487e3f5a897fbbaae107699137c67f6d1c7716a32e2f8d28d",
+      "state": "PASS",
+      "observed_intent": "product_search",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 10 produktov v kategórii \"Ryžový ocot\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v222_cross_sell_0001",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "72f52d5243b9b9489981975b40c5bd88c9f11991f4af9f624c8609a5c3aa4b72",
+      "state": "PASS",
+      "observed_intent": "related_products",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "K ramenu odporúčam hlavne tieto súvisiace produkty: Miso pasta HIKARI ENJUKU KOJI MUTENKA 375g; Ochutené pražené riasy Wakame 5g; KIMCHI Ramen OTTOGI - 120g. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti."
+    },
+    {
+      "scenario_id": "v222_cultural_authenticity_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "358d4b2457308611359f5c9343d98bc5932a587f895b4b364db96ade174c463e",
+      "state": "PASS",
+      "observed_intent": "product_search",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 94 produktov v kategórii \"Instantná polievka\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v222_dietary_safety_0001",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "02a57afffcf838b8447cf14941a1907a6b1ca830cbf0d48e54fc27cab6a6e2e1",
+      "state": "FAIL",
+      "observed_intent": "product_search",
+      "failed_invariants": [
+        {
+          "invariant": "requires_uncertainty",
+          "expected": "",
+          "observed": "ano, gochujang v tomto variante mame v ponuke:",
+          "reason": "expected at least one hedge/uncertainty phrase"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Áno, gochujang v tomto variante máme v ponuke:"
+    },
+    {
+      "scenario_id": "v222_faq_0004",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "ba23461da8ca0d9f322f4eb5ca9bf239f5be411e863769bf2bcfd7b8c9a539e7",
+      "state": "FAIL",
+      "observed_intent": "product_search",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:faq",
+          "expected": "faq",
+          "observed": "product_search",
+          "reason": "expected intent in ['faq']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Japonský koláč Mochi Kakao a Čokoláda Q Brand 80g; Kokosový olej KTC 500g; PHO GA instantná kuracia rezancová polievka v kelímku OH! RICEY 71g. Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v222_faq_0008",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "df0ec9c7ac413ddf1c87389e47209aa13f152e91e9cbb5b913ef91b88461192a",
+      "state": "PASS",
+      "observed_intent": "faq",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Áno, v predajni Foodland na Starej Vajnorskej 19 v Bratislave (areál REMPO), počas otváracích hodín Po–Pi 8:00–18:00, So 9:00–20:00, Ne 9:00–15:00."
+    },
+    {
+      "scenario_id": "v222_faq_0012",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "9fae865b80fab49cb733e514e58f93742456a91ae73666887579c27e621615e3",
+      "state": "PASS",
+      "observed_intent": "faq",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Dobierka, bankový prevod, platba kartou online cez 24-Pay, TatraPay, GoPay a PayPal."
+    },
+    {
+      "scenario_id": "v222_follow_up_0004",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "bdea81f88246890963779fe7aa5426839efea5e3c0d94eecd9a284b9c3e7f4d7",
+      "state": "FAIL",
+      "observed_intent": "product_search",
+      "failed_invariants": [
+        {
+          "invariant": "product_title_contains_any:ryžový",
+          "expected": "ryžový",
+          "observed": "jazminova ryza royal umbrella 1kg; jazminova ryza royal umbrella 2 kg; jazminova ryza royal umbrella 20 lbs (9,07 kg); jazminova ryza royal umbrella 40 lbs (18,16 kg); wonton polievkovy zaklad lobo 40",
+          "reason": "expected a product title containing one of ['ryzovy']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Jazmínová ryža Royal Umbrella 1kg; Jazmínová ryža Royal Umbrella 2 kg; Jazmínová ryža Royal Umbrella 20 lbs (9,07 kg). Ďalšie odporúčania sú nižšie."
+    },
+    {
+      "scenario_id": "v222_general_culinary_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "e0984b52f0e436db4e3c81fb1a23520120fda3aa1969588cecb8b9dbb8f2a599",
+      "state": "PASS",
+      "observed_intent": "related_products",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "K beginner kit odporúčam hlavne tieto súvisiace produkty: Sójová omáčka citrónová Ponzu KIKKOMAN 250ml; Sezamový olej 100% LEE KUM KEE 207 ml; Ryžový ocot CHINKIANG HENGSHUN 550ml. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti."
+    },
+    {
+      "scenario_id": "v222_insufficient_data_0001",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "0f43bd2cdb17bf779749a2beb51c26313ef47306a8eb353cef03d548169b0beb",
+      "state": "PASS",
+      "observed_intent": "product_search",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Presné výživové údaje, napríklad kalórie, k jednotlivým produktom nemám overené - odporúčam pozrieť etiketu produktu alebo kontaktovať výrobcu priamo."
+    },
+    {
+      "scenario_id": "v222_multi_constraint_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "d0ba9abe1cf8df043003063ffb32a96ba47d034ccf233f465047dba51c2d48bc",
+      "state": "PASS",
+      "observed_intent": "product_search",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Áno, gochujang v tomto variante máme v ponuke:"
+    },
+    {
+      "scenario_id": "v222_negation_0001",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "46f0ec2e4ba8ee1bae48d6365c737066d4cffc492f64ba6d6217470278f0cd32",
+      "state": "FAIL",
+      "observed_intent": "related_products",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search",
+          "expected": "product_search",
+          "observed": "related_products",
+          "reason": "expected intent in ['product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K kari odporúčam hlavne tieto súvisiace produkty: Kokosové mlieko s dužinou TG 290ml; Jazmínová ryža VJ Platinium 5 kg; Rybacia omáčka Premium MEGACHEF 200ml. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti."
+    },
+    {
+      "scenario_id": "v222_out_of_domain_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "7e8156274faf9ee3e632cf8af4f4ed1cef403cb7b14fddad820272da84251777",
+      "state": "PASS",
+      "observed_intent": "unknown",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Na toto neviem spoľahlivo odpovedať ako Foodland poradkyňa. Skúste sa opýtať na produkty, objednávku, dopravu alebo platbu na Foodland.sk."
+    },
+    {
+      "scenario_id": "v222_out_of_domain_0004",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "b08400917195d12cb9672338c746da5279b4957a65db150f6ed72d8106143db6",
+      "state": "FAIL",
+      "observed_intent": "product_search",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:out_of_domain|unknown",
+          "expected": "out_of_domain|unknown",
+          "observed": "product_search",
+          "reason": "expected intent in ['out_of_domain', 'unknown']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "I found these most relevant products: Instantná rezance pancit canton chow mein originál LUCKY ME 60g; Dashima sušený kelp PAKU PAKU 100g; Kombu - Kelp morské riasy sušené - WANG KOREA 170g. More recommendations are below."
+    },
+    {
+      "scenario_id": "v222_product_advice_0001",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "79324db83b963d11f9296af2c3a985c16f19cdf478675a6aa1d8998fd3725e8d",
+      "state": "FAIL",
+      "observed_intent": "product_advice",
+      "failed_invariants": [
+        {
+          "invariant": "answer_contains_semantic_concept:kimchi",
+          "expected": "kimchi",
+          "observed": "mame 4 produktov v kategorii \"gochujang\":",
+          "reason": "expected answer to contain one of ['kimchi']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 4 produktov v kategórii \"Gochujang\":"
+    },
+    {
+      "scenario_id": "v222_product_advice_0006",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "c0cd7292699453eccb366e8b5927af3c3da36d525b30a58dfe7b9833d214fc59",
+      "state": "FAIL",
+      "observed_intent": "article_products",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_advice|product_search",
+          "expected": "product_advice|product_search",
+          "observed": "article_products",
+          "reason": "expected intent in ['product_advice', 'product_search']"
+        },
+        {
+          "invariant": "answer_contains_semantic_concept:thajske kari",
+          "expected": "thajske kari",
+          "observed": "k miso polievka odporucam hlavne tieto suvisiace produkty: miso pasta hikari enjuku koji mutenka 375g; miso pasta biela shinshu hikari 400g; bio cervena miso pa",
+          "reason": "expected answer to contain one of ['thajske kari']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K miso polievka odporúčam hlavne tieto súvisiace produkty: Miso pasta HIKARI ENJUKU KOJI MUTENKA 375g; Miso pasta biela SHINSHU HIKARI 400g; BIO červená miso pasta HIKARI 500g. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti."
+    },
+    {
+      "scenario_id": "v222_product_comparison_0001",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "436731daeb1061ac37e2e74de81406701dde4c69d18a14f92b8e6babe21661a2",
+      "state": "FAIL",
+      "observed_intent": "product_advice",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_comparison|comparison|product_search",
+          "expected": "product_comparison|comparison|product_search",
+          "observed": "product_advice",
+          "reason": "expected intent in ['product_comparison', 'comparison', 'product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Áno, gochujang v tomto variante máme v ponuke:"
+    },
+    {
+      "scenario_id": "v222_product_information_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "2116cdf3bd66b716a1ce833c7b70cde7adca7f94175567b41a6b9db586e3bf75",
+      "state": "PASS",
+      "observed_intent": "product_search",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Áno, sriracha omáčka v tomto variante máme v ponuke:"
+    },
+    {
+      "scenario_id": "v222_product_search_0004",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "51561d2c806b2ccc87ea46822b3eab78f3af28676ef75ce171211422565a5674",
+      "state": "FAIL",
+      "observed_intent": "related_products",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search",
+          "expected": "product_search",
+          "observed": "related_products",
+          "reason": "expected intent in ['product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K rybacia omacka odporúčam hlavne tieto súvisiace produkty: Rybacia omáčka Premium MEGACHEF 200ml; Sójová omáčka citrónová Ponzu KIKKOMAN 250ml; Tamari sójová omáčka bezlepková KIKKOMAN 20L. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti."
+    },
+    {
+      "scenario_id": "v222_product_search_0008",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "d877aaef0fd2fad76aeff117f098baba5a9accb392809b32f1894b5540617138",
+      "state": "PASS",
+      "observed_intent": "product_search",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 26 produktov v kategórii \"Sriracha omáčka\". Tu sú najrelevantnejšie:"
+    },
+    {
+      "scenario_id": "v222_product_search_0012",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "a2de2b6b5c9f9154196893e29bbf9754ba1e624377df32182d6fac833da1d700",
+      "state": "PASS",
+      "observed_intent": "product_search",
+      "failed_invariants": [],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 78 produktov v 5 kategóriách. Tu sú tie najväčšie:\n- Basmati ryža (20)\n- Ryža (19)\n- Jazmínová ryža (14)\n- Lepkavá ryža (13)\n- Ryža na sushi (12)"
+    },
+    {
+      "scenario_id": "v222_recipe_only_0004",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "ad7c3e5d48edcc1ae0f1418e4c86739454abdc8dc076e83f1ef04aa75f95517c",
+      "state": "FAIL",
+      "observed_intent": "recipe",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_only|recipe_to_products",
+          "expected": "recipe_only|recipe_to_products",
+          "observed": "recipe",
+          "reason": "expected intent in ['recipe_only', 'recipe_to_products']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie."
+    },
+    {
+      "scenario_id": "v222_recipe_to_products_0003",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "e162f57a87381d204bc1ba7d6b3b2ec279109b3d40a0546cb0db2c0fea96af4c",
+      "state": "FAIL",
+      "observed_intent": "related_products",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe_only",
+          "expected": "recipe_to_products|recipe_only",
+          "observed": "related_products",
+          "reason": "expected intent in ['recipe_to_products', 'recipe_only']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Pripravila som nákupný zoznam pre miso polievka: 6 položiek nájdete na Foodland.sk a 2 čerstvých alebo doplnkových surovín si doplňte mimo e-shopu."
+    },
+    {
+      "scenario_id": "v222_replacement_0002",
+      "split": "HOLDOUT",
+      "execution_sha": "unknown",
+      "scenario_hash": "b14e806e6c1cab7e9349ca6329d6ad65e0c1983479c9eed7143a8a70b4915db3",
+      "state": "FAIL",
+      "observed_intent": "replacement_products",
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:replacement|product_search",
+          "expected": "replacement|product_search",
+          "observed": "replacement_products",
+          "reason": "expected intent in ['replacement', 'product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Sójová omáčka citrónová Ponzu KIKKOMAN 250ml; Tamari sójová omáčka bezlepková KIKKOMAN 20L; Hubová vegetariánska omáčka DEK SOM BOON 350g. Ďalšie odporúčania sú nižšie."
+    }
+  ]
+}

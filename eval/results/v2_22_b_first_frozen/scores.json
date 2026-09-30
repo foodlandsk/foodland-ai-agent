@@ -1,0 +1,277 @@
+{
+  "combined_counts": {
+    "total": 122,
+    "scored_denominator": 122,
+    "pass": 69,
+    "fail": 53,
+    "error": 0,
+    "pending": 0,
+    "micro_score": 0.5655737704918032
+  },
+  "dev_counts": {
+    "total": 93,
+    "scored_denominator": 93,
+    "pass": 52,
+    "fail": 41,
+    "error": 0,
+    "pending": 0,
+    "micro_score": 0.5591397849462365
+  },
+  "holdout_counts": {
+    "total": 29,
+    "scored_denominator": 29,
+    "pass": 17,
+    "fail": 12,
+    "error": 0,
+    "pending": 0,
+    "micro_score": 0.5862068965517241
+  },
+  "by_capability": {
+    "ALLERGEN_SAFETY": {
+      "pass": 4,
+      "fail": 1,
+      "error": 0,
+      "n": 5,
+      "score": 0.8
+    },
+    "ALREADY_HAVE": {
+      "pass": 1,
+      "fail": 1,
+      "error": 0,
+      "n": 2,
+      "score": 0.5
+    },
+    "AMBIGUITY": {
+      "pass": 3,
+      "fail": 0,
+      "error": 0,
+      "n": 3,
+      "score": 1.0
+    },
+    "AVAILABILITY_PRICE": {
+      "pass": 3,
+      "fail": 0,
+      "error": 0,
+      "n": 3,
+      "score": 1.0
+    },
+    "BRAND_CONSTRAINT": {
+      "pass": 5,
+      "fail": 1,
+      "error": 0,
+      "n": 6,
+      "score": 0.8333333333333334
+    },
+    "BUDGET_REASONING": {
+      "pass": 2,
+      "fail": 1,
+      "error": 0,
+      "n": 3,
+      "score": 0.6666666666666666
+    },
+    "CATEGORY_DISCOVERY": {
+      "pass": 4,
+      "fail": 2,
+      "error": 0,
+      "n": 6,
+      "score": 0.6666666666666666
+    },
+    "CROSS_SELL": {
+      "pass": 2,
+      "fail": 1,
+      "error": 0,
+      "n": 3,
+      "score": 0.6666666666666666
+    },
+    "CULTURAL_AUTHENTICITY": {
+      "pass": 2,
+      "fail": 0,
+      "error": 0,
+      "n": 2,
+      "score": 1.0
+    },
+    "DIETARY_SAFETY": {
+      "pass": 1,
+      "fail": 1,
+      "error": 0,
+      "n": 2,
+      "score": 0.5
+    },
+    "FAQ": {
+      "pass": 10,
+      "fail": 5,
+      "error": 0,
+      "n": 15,
+      "score": 0.6666666666666666
+    },
+    "FOLLOW_UP": {
+      "pass": 2,
+      "fail": 3,
+      "error": 0,
+      "n": 5,
+      "score": 0.4
+    },
+    "GENERAL_CULINARY": {
+      "pass": 4,
+      "fail": 0,
+      "error": 0,
+      "n": 4,
+      "score": 1.0
+    },
+    "INSUFFICIENT_DATA": {
+      "pass": 3,
+      "fail": 0,
+      "error": 0,
+      "n": 3,
+      "score": 1.0
+    },
+    "KITCHENWARE": {
+      "pass": 1,
+      "fail": 1,
+      "error": 0,
+      "n": 2,
+      "score": 0.5
+    },
+    "MULTI_CONSTRAINT": {
+      "pass": 3,
+      "fail": 0,
+      "error": 0,
+      "n": 3,
+      "score": 1.0
+    },
+    "NEGATION": {
+      "pass": 3,
+      "fail": 1,
+      "error": 0,
+      "n": 4,
+      "score": 0.75
+    },
+    "OUT_OF_DOMAIN": {
+      "pass": 1,
+      "fail": 3,
+      "error": 0,
+      "n": 4,
+      "score": 0.25
+    },
+    "PRODUCT_ADVICE": {
+      "pass": 1,
+      "fail": 5,
+      "error": 0,
+      "n": 6,
+      "score": 0.16666666666666666
+    },
+    "COMPARISON": {
+      "pass": 1,
+      "fail": 3,
+      "error": 0,
+      "n": 4,
+      "score": 0.25
+    },
+    "PRODUCT_INFORMATION": {
+      "pass": 3,
+      "fail": 0,
+      "error": 0,
+      "n": 3,
+      "score": 1.0
+    },
+    "PRODUCT_SEARCH": {
+      "pass": 9,
+      "fail": 7,
+      "error": 0,
+      "n": 16,
+      "score": 0.5625
+    },
+    "QUANTITY_REASONING": {
+      "pass": 1,
+      "fail": 1,
+      "error": 0,
+      "n": 2,
+      "score": 0.5
+    },
+    "RECIPE": {
+      "pass": 0,
+      "fail": 6,
+      "error": 0,
+      "n": 6,
+      "score": 0.0
+    },
+    "RECIPE_TO_PRODUCTS": {
+      "pass": 0,
+      "fail": 6,
+      "error": 0,
+      "n": 6,
+      "score": 0.0
+    },
+    "REPLACEMENT": {
+      "pass": 0,
+      "fail": 4,
+      "error": 0,
+      "n": 4,
+      "score": 0.0
+    }
+  },
+  "by_language": {
+    "sk": {
+      "pass": 64,
+      "fail": 48,
+      "error": 0,
+      "n": 112,
+      "score": 0.5714285714285714
+    },
+    "en": {
+      "pass": 5,
+      "fail": 5,
+      "error": 0,
+      "n": 10,
+      "score": 0.5
+    }
+  },
+  "by_risk_level": {
+    "HIGH": {
+      "pass": 8,
+      "fail": 5,
+      "error": 0,
+      "n": 13,
+      "score": 0.6153846153846154
+    },
+    "NORMAL": {
+      "pass": 61,
+      "fail": 48,
+      "error": 0,
+      "n": 109,
+      "score": 0.5596330275229358
+    }
+  },
+  "by_turn_shape": {
+    "single_turn": {
+      "pass": 67,
+      "fail": 50,
+      "error": 0,
+      "n": 117,
+      "score": 0.5726495726495726
+    },
+    "multi_turn": {
+      "pass": 2,
+      "fail": 3,
+      "error": 0,
+      "n": 5,
+      "score": 0.4
+    }
+  },
+  "by_safety_sensitive": {
+    "safety_sensitive": {
+      "pass": 5,
+      "fail": 2,
+      "error": 0,
+      "n": 7,
+      "score": 0.7142857142857143
+    },
+    "not_safety_sensitive": {
+      "pass": 64,
+      "fail": 51,
+      "error": 0,
+      "n": 115,
+      "score": 0.5565217391304348
+    }
+  }
+}

@@ -1,0 +1,1378 @@
+{
+  "note": "PRELIMINARY ONLY. Read-only failure inventory from the V2.22b first frozen blind evaluation. No repair authorization follows from this file.",
+  "total_fail_or_error": 53,
+  "inventory": [
+    {
+      "scenario_id": "v222_allergen_safety_0005",
+      "split": "DEV",
+      "intent_family": "ALLERGEN_SAFETY",
+      "language": "sk",
+      "risk_level": "HIGH",
+      "message": "Je ryžový ocot Mizkan vhodný pre celiatikov?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "requires_uncertainty",
+        "no_allergen_certainty_without_evidence"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "requires_uncertainty",
+          "expected": "",
+          "observed": "tieto varianty mame v ponuke:",
+          "reason": "expected at least one hedge/uncertainty phrase"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Tieto varianty máme v ponuke:",
+      "error_class": null,
+      "preliminary_cluster": "I_SAFETY_UNCERTAINTY_NOT_EXPRESSED"
+    },
+    {
+      "scenario_id": "v222_already_have_0001",
+      "split": "DEV",
+      "intent_family": "ALREADY_HAVE",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Mám doma kimchi, čo ešte potrebujem na Kimchi Jjigae?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:recipe_to_products|related_products|product_search",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "products_nonempty",
+          "expected": "",
+          "observed": "0 products",
+          "reason": "expected at least one product"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Nemám aktívny nákupný zoznam ani vyhľadávanie, na ktoré by som to mohla naviazať - čo hľadáte?",
+      "error_class": null,
+      "preliminary_cluster": "H_ZERO_RESULT_ALREADY_HAVE_OR_CROSS_SELL"
+    },
+    {
+      "scenario_id": "v222_brand_constraint_0005",
+      "split": "DEV",
+      "intent_family": "BRAND_CONSTRAINT",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Chcem kari pastu, ale nie značku Cock Brand.",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "forbidden_brand:cock brand"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "forbidden_brand:cock brand",
+          "expected": "cock brand",
+          "observed": "cock brand; cock brand; cock brand; cock brand; cock brand; cock brand; cock brand; cock brand",
+          "reason": "forbidden brand(s) found: ['cock brand']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Zelená kari pasta - COCK BRAND 50g; Červená kari pasta COCK BRAND 50 g; Červená kari pasta COCK BRAND 400g. Ďalšie odporúčania sú nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "G_NEGATED_BRAND_EXCLUSION_NOT_APPLIED"
+    },
+    {
+      "scenario_id": "v222_budget_0001",
+      "split": "DEV",
+      "intent_family": "BUDGET_REASONING",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Mám 10 eur, akú rybaciu omáčku si za to môžem kúpiť?",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search",
+          "expected": "product_search",
+          "observed": "related_products",
+          "reason": "expected intent in ['product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K rybacia omacka odporúčam hlavne tieto súvisiace produkty: Rybacia omáčka Premium MEGACHEF 200ml; Sójová omáčka citrónová Ponzu KIKKOMAN 250ml; Tamari sójová omáčka bezlepková KIKKOMAN 20L. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_category_discovery_0001",
+      "split": "DEV",
+      "intent_family": "CATEGORY_DISCOVERY",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Aké máte rybacie omáčky?",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:category_discovery|product_search",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:category_discovery|product_search",
+          "expected": "category_discovery|product_search",
+          "observed": "related_products",
+          "reason": "expected intent in ['category_discovery', 'product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K rybacia omacka odporúčam hlavne tieto súvisiace produkty: Rybacia omáčka Premium MEGACHEF 200ml; Sójová omáčka citrónová Ponzu KIKKOMAN 250ml; Tamari sójová omáčka bezlepková KIKKOMAN 20L. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_category_discovery_0004",
+      "split": "DEV",
+      "intent_family": "CATEGORY_DISCOVERY",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Aké sushi suroviny predávate?",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:category_discovery|product_search",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:category_discovery|product_search",
+          "expected": "category_discovery|product_search",
+          "observed": "related_products",
+          "reason": "expected intent in ['category_discovery', 'product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Pripravila som nákupný zoznam pre sushi: 7 položiek nájdete na Foodland.sk a 2 čerstvých alebo doplnkových surovín si doplňte mimo e-shopu.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_cross_sell_0003",
+      "split": "DEV",
+      "intent_family": "CROSS_SELL",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Beriem sushi ryžu, čo ešte budem potrebovať na sushi?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:cross_sell|related_products|product_search",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "products_nonempty",
+          "expected": "",
+          "observed": "0 products",
+          "reason": "expected at least one product"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Nemám aktívny nákupný zoznam ani vyhľadávanie, na ktoré by som to mohla naviazať - čo hľadáte?",
+      "error_class": null,
+      "preliminary_cluster": "H_ZERO_RESULT_ALREADY_HAVE_OR_CROSS_SELL"
+    },
+    {
+      "scenario_id": "v222_faq_0001",
+      "split": "DEV",
+      "intent_family": "FAQ",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Musím mať účet, aby som mohol nakupovať na Foodlande?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:faq",
+          "expected": "faq",
+          "observed": "product_search",
+          "reason": "expected intent in ['faq']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Kimchi Nakladaná kapusta MAT KIMCHI JONGGA 300g; Mat Kimchi BIBIGO 1000g; Mat Kimchi BIBIGO 500g. Ďalšie odporúčania sú nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "C_FAQ_INTENT_GATE_GAP_FRESH_PHRASING"
+    },
+    {
+      "scenario_id": "v222_faq_0007",
+      "split": "DEV",
+      "intent_family": "FAQ",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Odkiaľ Foodland dováža svoje produkty?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:faq",
+          "expected": "faq",
+          "observed": "product_search",
+          "reason": "expected intent in ['faq']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Jazmínová ryža FOODLAND 18 kg; Jazmínová ryža FOODLAND Premium 40 lbs (18,16 kg); Darčekový poukaz 50€. Ďalšie odporúčania sú nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "C_FAQ_INTENT_GATE_GAP_FRESH_PHRASING"
+    },
+    {
+      "scenario_id": "v222_faq_0013",
+      "split": "DEV",
+      "intent_family": "FAQ",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Čo ak si objednaný tovar neprevezmem?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:faq",
+          "expected": "faq",
+          "observed": "product_search",
+          "reason": "expected intent in ['faq']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som súvisiace informácie vo Foodland poradkyni.",
+      "error_class": null,
+      "preliminary_cluster": "C_FAQ_INTENT_GATE_GAP_FRESH_PHRASING"
+    },
+    {
+      "scenario_id": "v222_faq_0014",
+      "split": "DEV",
+      "intent_family": "FAQ",
+      "language": "en",
+      "risk_level": "NORMAL",
+      "message": "Where can I track my order status?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:faq",
+          "expected": "faq",
+          "observed": "product_search",
+          "reason": "expected intent in ['faq']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Nenašla som presný produkt. Skúste napísať názov, značku alebo kategóriu trochu inak.",
+      "error_class": null,
+      "preliminary_cluster": "C_FAQ_INTENT_GATE_GAP_FRESH_PHRASING"
+    },
+    {
+      "scenario_id": "v222_follow_up_0001",
+      "split": "DEV",
+      "intent_family": "FOLLOW_UP",
+      "language": "sk",
+      "risk_level": "HIGH",
+      "message": "A máte ju vo väčšom balení?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:product_search|follow_up|replacement",
+        "products_nonempty",
+        "product_title_contains_any:sriracha"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "product_title_contains_any:sriracha",
+          "expected": "sriracha",
+          "observed": "arasidy vo wasabi koh-kae 230 g; arasidy vo wasabi golden turtle 140g; edamame vo wasabi golden turtle 140g; arasidy vo wasabi khao shong 140 g; okra vo slanej vode royal orient 400g; sojove klicky vo",
+          "reason": "expected a product title containing one of ['sriracha']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Arašidy vo wasabi KOH-KAE 230 g; Arašidy vo wasabi GOLDEN TURTLE 140g; Edamame vo wasabi GOLDEN TURTLE 140g. Ďalšie odporúčania sú nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "K_FOLLOW_UP_SUBJECT_LOST_ON_VAGUE_CONTINUATION"
+    },
+    {
+      "scenario_id": "v222_follow_up_0003",
+      "split": "DEV",
+      "intent_family": "FOLLOW_UP",
+      "language": "sk",
+      "risk_level": "HIGH",
+      "message": "A niečo iné, prosím?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:product_search|follow_up|replacement",
+        "products_nonempty",
+        "product_title_contains_any:kari"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "product_title_contains_any:kari",
+          "expected": "kari",
+          "observed": "kukuricne cukriky bap viet 400g; japonske krekery arare khao shong 180g; zmrzlina mochi rozmanite pochutky buono 156g; zberacka s drevenou rukovatou 28 cm; ryzovy skrob taiky 400g; samokypriacia muka ",
+          "reason": "expected a product title containing one of ['kari']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Kukuričné cukriky BAP VIET 400g; Japonské krekery Arare KHAO SHONG 180g; Zmrzlina mochi rozmanité pochúťky BUONO 156g. Ďalšie odporúčania sú nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "K_FOLLOW_UP_SUBJECT_LOST_ON_VAGUE_CONTINUATION"
+    },
+    {
+      "scenario_id": "v222_kitchenware_0001",
+      "split": "DEV",
+      "intent_family": "KITCHENWARE",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Predávate misky na matcha čaj?",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:product_search|category_discovery",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search|category_discovery",
+          "expected": "product_search|category_discovery",
+          "observed": "related_products",
+          "reason": "expected intent in ['product_search', 'category_discovery']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K matcha odporúčam hlavne tieto súvisiace produkty: Lávový koláč - Matcha UNICO, 200g; Zahustené sladené kondenzované mlieko LONGEVITY 397g; Maltóza tekutá ZW 500g. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_out_of_domain_0001",
+      "split": "DEV",
+      "intent_family": "OUT_OF_DOMAIN",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Bude dnes v Bratislave pršať?",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:out_of_domain|unknown",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:out_of_domain|unknown",
+          "expected": "out_of_domain|unknown",
+          "observed": "related_products",
+          "reason": "expected intent in ['out_of_domain', 'unknown']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K special occasion odporúčam hlavne tieto súvisiace produkty: Suši ryža KIMPO 9,07 kg; Morské riasy Yaki nori na Kimbap GIMBAPGIM NBH 50 listov; Wasabi pasta v tube S&B 90g. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.",
+      "error_class": null,
+      "preliminary_cluster": "J_OUT_OF_DOMAIN_MISROUTED_TO_PRODUCT_INTENT"
+    },
+    {
+      "scenario_id": "v222_out_of_domain_0003",
+      "split": "DEV",
+      "intent_family": "OUT_OF_DOMAIN",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Aký je najlepší mobilný telefón v roku 2026?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:out_of_domain|unknown",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:out_of_domain|unknown",
+          "expected": "out_of_domain|unknown",
+          "observed": "product_search",
+          "reason": "expected intent in ['out_of_domain', 'unknown']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Čierna fazuľa omáčka LEE KUM KEE 226 g; RAMYUN SHIN CUP instantné rezance NONGSHIM 114g; Ryžový ocot CHINKIANG GOLD PLUM 550ml. Ďalšie odporúčania sú nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "J_OUT_OF_DOMAIN_MISROUTED_TO_PRODUCT_INTENT"
+    },
+    {
+      "scenario_id": "v222_product_advice_0002",
+      "split": "DEV",
+      "intent_family": "PRODUCT_ADVICE",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Aká je chuť miso pasty?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:product_advice|product_search",
+        "answer_contains_semantic_concept:thajske kari"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "answer_contains_semantic_concept:thajske kari",
+          "expected": "thajske kari",
+          "observed": "nasla som tieto najrelevantnejsie produkty: aka miso polievka prasok s tofu lobo 30g; instantna aka miso polievka s&b 30g; bio cervena miso pasta hikari 500g. d",
+          "reason": "expected answer to contain one of ['thajske kari']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: AKA MISO polievka prášok s tofu LOBO 30g; Instantná Aka Miso polievka S&B 30g; BIO červená miso pasta HIKARI 500g. Ďalšie odporúčania sú nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "E_PRODUCT_ADVICE_ANSWER_MISSING_EXPECTED_CONCEPT"
+    },
+    {
+      "scenario_id": "v222_product_advice_0003",
+      "split": "DEV",
+      "intent_family": "PRODUCT_ADVICE",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Na čo sa používa ryžový ocot MIZKAN?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:product_advice|product_search",
+        "answer_contains_semantic_concept:sushi rolky"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "answer_contains_semantic_concept:sushi rolky",
+          "expected": "sushi rolky",
+          "observed": "tieto varianty mame v ponuke:",
+          "reason": "expected answer to contain one of ['sushi rolky']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Tieto varianty máme v ponuke:",
+      "error_class": null,
+      "preliminary_cluster": "E_PRODUCT_ADVICE_ANSWER_MISSING_EXPECTED_CONCEPT"
+    },
+    {
+      "scenario_id": "v222_product_advice_0005",
+      "split": "DEV",
+      "intent_family": "PRODUCT_ADVICE",
+      "language": "en",
+      "risk_level": "NORMAL",
+      "message": "What is gochujang used for?",
+      "observed_intent": "product_advice",
+      "expected_invariants": [
+        "intent_is:product_advice|product_search",
+        "answer_contains_semantic_concept:kimchi"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "answer_contains_semantic_concept:kimchi",
+          "expected": "kimchi",
+          "observed": "mame 4 produktov v kategorii \"gochujang\":",
+          "reason": "expected answer to contain one of ['kimchi']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 4 produktov v kategórii \"Gochujang\":",
+      "error_class": null,
+      "preliminary_cluster": "E_PRODUCT_ADVICE_ANSWER_MISSING_EXPECTED_CONCEPT"
+    },
+    {
+      "scenario_id": "v222_product_comparison_0003",
+      "split": "DEV",
+      "intent_family": "COMPARISON",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Čo je lepšie - kokosové mlieko Chaokoh alebo Bamboo Tree?",
+      "observed_intent": "product_advice",
+      "expected_invariants": [
+        "intent_is:product_comparison|comparison|product_search",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_comparison|comparison|product_search",
+          "expected": "product_comparison|comparison|product_search",
+          "observed": "product_advice",
+          "reason": "expected intent in ['product_comparison', 'comparison', 'product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Áno, kokosové mlieko v tomto variante máme v ponuke:",
+      "error_class": null,
+      "preliminary_cluster": "D_COMPARISON_QUESTION_ROUTES_TO_PRODUCT_ADVICE"
+    },
+    {
+      "scenario_id": "v222_product_comparison_0004",
+      "split": "DEV",
+      "intent_family": "COMPARISON",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Aký je rozdiel medzi ryžovým octom Mizkan a Obento?",
+      "observed_intent": "product_advice",
+      "expected_invariants": [
+        "intent_is:product_comparison|comparison|product_search",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_comparison|comparison|product_search",
+          "expected": "product_comparison|comparison|product_search",
+          "observed": "product_advice",
+          "reason": "expected intent in ['product_comparison', 'comparison', 'product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Áno, ryžový ocot v tomto variante máme v ponuke:",
+      "error_class": null,
+      "preliminary_cluster": "D_COMPARISON_QUESTION_ROUTES_TO_PRODUCT_ADVICE"
+    },
+    {
+      "scenario_id": "v222_product_search_0002",
+      "split": "DEV",
+      "intent_family": "PRODUCT_SEARCH",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Hľadám kórejské kimchi v pohári alebo vrecku.",
+      "observed_intent": "product_comparison",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:kimchi"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search",
+          "expected": "product_search",
+          "observed": "product_comparison",
+          "reason": "expected intent in ['product_search']"
+        },
+        {
+          "invariant": "products_nonempty",
+          "expected": "",
+          "observed": "0 products",
+          "reason": "expected at least one product"
+        },
+        {
+          "invariant": "product_title_contains_any:kimchi",
+          "expected": "kimchi",
+          "observed": "",
+          "reason": "expected a product title containing one of ['kimchi']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Ktoré dva produkty presne chcete porovnať, a čo je pre Vás dôležitejšie - cena, veľkosť balenia, alebo konkrétne použitie?",
+      "error_class": null,
+      "preliminary_cluster": "F_ALEBO_PHRASING_TRIGGERS_COMPARISON_MISROUTE"
+    },
+    {
+      "scenario_id": "v222_product_search_0005",
+      "split": "DEV",
+      "intent_family": "PRODUCT_SEARCH",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Máte v ponuke matcha čaj?",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:matcha"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search",
+          "expected": "product_search",
+          "observed": "related_products",
+          "reason": "expected intent in ['product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K matcha odporúčam hlavne tieto súvisiace produkty: Lávový koláč - Matcha UNICO, 200g; Zahustené sladené kondenzované mlieko LONGEVITY 397g; Maltóza tekutá ZW 500g. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_product_search_0006",
+      "split": "DEV",
+      "intent_family": "PRODUCT_SEARCH",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Zháňam tofu na prípravu ázijského jedla.",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:tofu"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search",
+          "expected": "product_search",
+          "observed": "related_products",
+          "reason": "expected intent in ['product_search']"
+        },
+        {
+          "invariant": "product_title_contains_any:tofu",
+          "expected": "tofu",
+          "observed": "sojova omacka citronova ponzu kikkoman 250ml; sezamovy olej 100% lee kum kee 207 ml; ryzovy ocot chinkiang hengshun 550ml; sriracha mayo omacka uni-eagle 200ml; mirin - sladke ryzove vino na varenie a",
+          "reason": "expected a product title containing one of ['tofu']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K beginner kit odporúčam hlavne tieto súvisiace produkty: Sójová omáčka citrónová Ponzu KIKKOMAN 250ml; Sezamový olej 100% LEE KUM KEE 207 ml; Ryžový ocot CHINKIANG HENGSHUN 550ml. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_product_search_0007",
+      "split": "DEV",
+      "intent_family": "PRODUCT_SEARCH",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Chcem miso pastu na polievku.",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:miso pasta"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search",
+          "expected": "product_search",
+          "observed": "related_products",
+          "reason": "expected intent in ['product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K miso polievka odporúčam hlavne tieto súvisiace produkty: Miso pasta HIKARI ENJUKU KOJI MUTENKA 375g; Dashi Bonito Stock SHIMAYA 40 g; AKA MISO polievka prášok s tofu LOBO 30g. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_product_search_0009",
+      "split": "DEV",
+      "intent_family": "PRODUCT_SEARCH",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Máte wasabi prášok alebo pastu?",
+      "observed_intent": "product_comparison",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:wasabi"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search",
+          "expected": "product_search",
+          "observed": "product_comparison",
+          "reason": "expected intent in ['product_search']"
+        },
+        {
+          "invariant": "products_nonempty",
+          "expected": "",
+          "observed": "0 products",
+          "reason": "expected at least one product"
+        },
+        {
+          "invariant": "product_title_contains_any:wasabi",
+          "expected": "wasabi",
+          "observed": "",
+          "reason": "expected a product title containing one of ['wasabi']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Ktoré dva produkty presne chcete porovnať, a čo je pre Vás dôležitejšie - cena, veľkosť balenia, alebo konkrétne použitie?",
+      "error_class": null,
+      "preliminary_cluster": "F_ALEBO_PHRASING_TRIGGERS_COMPARISON_MISROUTE"
+    },
+    {
+      "scenario_id": "v222_product_search_0013",
+      "split": "DEV",
+      "intent_family": "PRODUCT_SEARCH",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Zháňam kari pastu na thajské kari.",
+      "observed_intent": "use_case_advice",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:kari pasta"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search",
+          "expected": "product_search",
+          "observed": "use_case_advice",
+          "reason": "expected intent in ['product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Na kari/curry je kari pasta vhodná voľba. Možnosti nájdete nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_quantity_0001",
+      "split": "DEV",
+      "intent_family": "QUANTITY_REASONING",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Potrebujem sriracha omáčku na 20 porcií, aké veľké balenie mi odporúčate?",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:product_search|product_advice",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search|product_advice",
+          "expected": "product_search|product_advice",
+          "observed": "related_products",
+          "reason": "expected intent in ['product_search', 'product_advice']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K sriracha odporúčam hlavne tieto súvisiace produkty: Sriracha Mayo omáčka UNI-EAGLE 200ml; Sriracha Mayo omáčka UNI-EAGLE 740ml; Sriracha Mayo omáčka UNI-EAGLE 430 ml. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_recipe_only_0001",
+      "split": "DEV",
+      "intent_family": "RECIPE",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Ako pripravím Tom Yum polievku?",
+      "observed_intent": "recipe",
+      "expected_invariants": [
+        "intent_is:recipe_only|recipe_to_products",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_only|recipe_to_products",
+          "expected": "recipe_only|recipe_to_products",
+          "observed": "recipe",
+          "reason": "expected intent in ['recipe_only', 'recipe_to_products']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "A_GT_LEGACY_INTENT_LABEL_MISMATCH"
+    },
+    {
+      "scenario_id": "v222_recipe_only_0002",
+      "split": "DEV",
+      "intent_family": "RECIPE",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Aký je postup na kórejské Bulgogi?",
+      "observed_intent": "recipe",
+      "expected_invariants": [
+        "intent_is:recipe_only|recipe_to_products",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_only|recipe_to_products",
+          "expected": "recipe_only|recipe_to_products",
+          "observed": "recipe",
+          "reason": "expected intent in ['recipe_only', 'recipe_to_products']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som recept z Foodland.sk. Otvorte si ho nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "A_GT_LEGACY_INTENT_LABEL_MISMATCH"
+    },
+    {
+      "scenario_id": "v222_recipe_only_0003",
+      "split": "DEV",
+      "intent_family": "RECIPE",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Ako sa robí Japchae?",
+      "observed_intent": "recipe",
+      "expected_invariants": [
+        "intent_is:recipe_only|recipe_to_products",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_only|recipe_to_products",
+          "expected": "recipe_only|recipe_to_products",
+          "observed": "recipe",
+          "reason": "expected intent in ['recipe_only', 'recipe_to_products']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "A_GT_LEGACY_INTENT_LABEL_MISMATCH"
+    },
+    {
+      "scenario_id": "v222_recipe_only_0005",
+      "split": "DEV",
+      "intent_family": "RECIPE",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Ako uvariť Ma Po Tofu?",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:recipe_only|recipe_to_products",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_only|recipe_to_products",
+          "expected": "recipe_only|recipe_to_products",
+          "observed": "related_products",
+          "reason": "expected intent in ['recipe_only', 'recipe_to_products']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K mapo tofu odporúčam hlavne tieto súvisiace produkty: AKA MISO polievka prášok s tofu LOBO 30g; Čili pasta GOCHUJANG SEMPIO 500g; Sójová omáčka citrónová Ponzu KIKKOMAN 250ml. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_recipe_only_0006",
+      "split": "DEV",
+      "intent_family": "RECIPE",
+      "language": "en",
+      "risk_level": "NORMAL",
+      "message": "How do I make Shoyu Ramen?",
+      "observed_intent": "recipe",
+      "expected_invariants": [
+        "intent_is:recipe_only|recipe_to_products",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_only|recipe_to_products",
+          "expected": "recipe_only|recipe_to_products",
+          "observed": "recipe",
+          "reason": "expected intent in ['recipe_only', 'recipe_to_products']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "I found recipes on Foodland.sk. Pick one from the recommendations below.",
+      "error_class": null,
+      "preliminary_cluster": "A_GT_LEGACY_INTENT_LABEL_MISMATCH"
+    },
+    {
+      "scenario_id": "v222_recipe_to_products_0001",
+      "split": "DEV",
+      "intent_family": "RECIPE_TO_PRODUCTS",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Pomôž mi nakúpiť suroviny na Bulgogi.",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:recipe_to_products|recipe_only",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe_only",
+          "expected": "recipe_to_products|recipe_only",
+          "observed": "related_products",
+          "reason": "expected intent in ['recipe_to_products', 'recipe_only']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Pripravila som nákupný zoznam pre bulgogi: 8 položiek nájdete na Foodland.sk a 3 čerstvých alebo doplnkových surovín si doplňte mimo e-shopu.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_recipe_to_products_0002",
+      "split": "DEV",
+      "intent_family": "RECIPE_TO_PRODUCTS",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Čo potrebujem kúpiť na Kimchi Jjigae?",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:recipe_to_products|recipe_only",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe_only",
+          "expected": "recipe_to_products|recipe_only",
+          "observed": "related_products",
+          "reason": "expected intent in ['recipe_to_products', 'recipe_only']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Pripravila som nákupný zoznam pre jjigae: 8 položiek nájdete na Foodland.sk a 3 čerstvých alebo doplnkových surovín si doplňte mimo e-shopu.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_recipe_to_products_0004",
+      "split": "DEV",
+      "intent_family": "RECIPE_TO_PRODUCTS",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Potrebujem suroviny na Yakiudon.",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:recipe_to_products|recipe_only",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe_only",
+          "expected": "recipe_to_products|recipe_only",
+          "observed": "related_products",
+          "reason": "expected intent in ['recipe_to_products', 'recipe_only']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Pripravila som nákupný zoznam pre udon: 8 položiek nájdete na Foodland.sk a 3 čerstvých alebo doplnkových surovín si doplňte mimo e-shopu.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_recipe_to_products_0005",
+      "split": "DEV",
+      "intent_family": "RECIPE_TO_PRODUCTS",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Aké produkty potrebujem na Tom Yum polievku?",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:recipe_to_products|recipe_only",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe_only",
+          "expected": "recipe_to_products|recipe_only",
+          "observed": "related_products",
+          "reason": "expected intent in ['recipe_to_products', 'recipe_only']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K tom yum odporúčam hlavne tieto súvisiace produkty: Čerstvá citrónová tráva 200g; Sušený galangal COCK BRAND 57g; Limetkové kaffirové listy mrazené 100g. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_recipe_to_products_0006",
+      "split": "DEV",
+      "intent_family": "RECIPE_TO_PRODUCTS",
+      "language": "en",
+      "risk_level": "NORMAL",
+      "message": "What do I need to buy for Pad see ew style noodles?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:recipe_to_products|recipe_only",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe_only",
+          "expected": "recipe_to_products|recipe_only",
+          "observed": "product_search",
+          "reason": "expected intent in ['recipe_to_products', 'recipe_only']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "I put together a shopping list for What do I need to buy for Pad see ew style noodles?; the Foodland.sk items below are ready to add to your cart.",
+      "error_class": null,
+      "preliminary_cluster": "L_GT_SCENARIO_AUTHORING_INCONSISTENCY"
+    },
+    {
+      "scenario_id": "v222_replacement_0001",
+      "split": "DEV",
+      "intent_family": "REPLACEMENT",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Nemáte gochujang od Sempio? Čím ho môžem nahradiť?",
+      "observed_intent": "replacement_products",
+      "expected_invariants": [
+        "intent_is:replacement|product_search",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:replacement|product_search",
+          "expected": "replacement|product_search",
+          "observed": "replacement_products",
+          "reason": "expected intent in ['replacement', 'product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Čili pasta Gochujang Ofood DAESANG 500g. Ďalšie odporúčania sú nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "A_GT_LEGACY_INTENT_LABEL_MISMATCH"
+    },
+    {
+      "scenario_id": "v222_replacement_0003",
+      "split": "DEV",
+      "intent_family": "REPLACEMENT",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Čím môžem nahradiť ryžový ocot Mizkan?",
+      "observed_intent": "replacement_products",
+      "expected_invariants": [
+        "intent_is:replacement|product_search",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:replacement|product_search",
+          "expected": "replacement|product_search",
+          "observed": "replacement_products",
+          "reason": "expected intent in ['replacement', 'product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Tieto varianty máme v ponuke:",
+      "error_class": null,
+      "preliminary_cluster": "A_GT_LEGACY_INTENT_LABEL_MISMATCH"
+    },
+    {
+      "scenario_id": "v222_replacement_0004",
+      "split": "DEV",
+      "intent_family": "REPLACEMENT",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Aká je náhrada za kokosové mlieko Chaokoh?",
+      "observed_intent": "replacement_products",
+      "expected_invariants": [
+        "intent_is:replacement|product_search",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:replacement|product_search",
+          "expected": "replacement|product_search",
+          "observed": "replacement_products",
+          "reason": "expected intent in ['replacement', 'product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Kokosové mlieko BAMBOO TREE 1000ml. Ďalšie odporúčania sú nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "A_GT_LEGACY_INTENT_LABEL_MISMATCH"
+    },
+    {
+      "scenario_id": "v222_dietary_safety_0001",
+      "split": "HOLDOUT",
+      "intent_family": "DIETARY_SAFETY",
+      "language": "sk",
+      "risk_level": "HIGH",
+      "message": "Som vegán, môžem jesť gochujang od Daesang?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "requires_uncertainty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "requires_uncertainty",
+          "expected": "",
+          "observed": "ano, gochujang v tomto variante mame v ponuke:",
+          "reason": "expected at least one hedge/uncertainty phrase"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Áno, gochujang v tomto variante máme v ponuke:",
+      "error_class": null,
+      "preliminary_cluster": "I_SAFETY_UNCERTAINTY_NOT_EXPRESSED"
+    },
+    {
+      "scenario_id": "v222_faq_0004",
+      "split": "HOLDOUT",
+      "intent_family": "FAQ",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Prišiel mi poškodený tovar, čo teraz?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:faq",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:faq",
+          "expected": "faq",
+          "observed": "product_search",
+          "reason": "expected intent in ['faq']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Japonský koláč Mochi Kakao a Čokoláda Q Brand 80g; Kokosový olej KTC 500g; PHO GA instantná kuracia rezancová polievka v kelímku OH! RICEY 71g. Ďalšie odporúčania sú nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "C_FAQ_INTENT_GATE_GAP_FRESH_PHRASING"
+    },
+    {
+      "scenario_id": "v222_follow_up_0004",
+      "split": "HOLDOUT",
+      "intent_family": "FOLLOW_UP",
+      "language": "sk",
+      "risk_level": "HIGH",
+      "message": "Toto nechcem, ukáž mi inú značku.",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:product_search|follow_up|replacement",
+        "products_nonempty",
+        "product_title_contains_any:ryžový"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "product_title_contains_any:ryžový",
+          "expected": "ryžový",
+          "observed": "jazminova ryza royal umbrella 1kg; jazminova ryza royal umbrella 2 kg; jazminova ryza royal umbrella 20 lbs (9,07 kg); jazminova ryza royal umbrella 40 lbs (18,16 kg); wonton polievkovy zaklad lobo 40",
+          "reason": "expected a product title containing one of ['ryzovy']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Jazmínová ryža Royal Umbrella 1kg; Jazmínová ryža Royal Umbrella 2 kg; Jazmínová ryža Royal Umbrella 20 lbs (9,07 kg). Ďalšie odporúčania sú nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "K_FOLLOW_UP_SUBJECT_LOST_ON_VAGUE_CONTINUATION"
+    },
+    {
+      "scenario_id": "v222_negation_0001",
+      "split": "HOLDOUT",
+      "intent_family": "NEGATION",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Chcem kari pastu, ale nie pikantnú.",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:kari"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search",
+          "expected": "product_search",
+          "observed": "related_products",
+          "reason": "expected intent in ['product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K kari odporúčam hlavne tieto súvisiace produkty: Kokosové mlieko s dužinou TG 290ml; Jazmínová ryža VJ Platinium 5 kg; Rybacia omáčka Premium MEGACHEF 200ml. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_out_of_domain_0004",
+      "split": "HOLDOUT",
+      "intent_family": "OUT_OF_DOMAIN",
+      "language": "en",
+      "risk_level": "NORMAL",
+      "message": "Can you help me fix my car engine?",
+      "observed_intent": "product_search",
+      "expected_invariants": [
+        "intent_is:out_of_domain|unknown",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:out_of_domain|unknown",
+          "expected": "out_of_domain|unknown",
+          "observed": "product_search",
+          "reason": "expected intent in ['out_of_domain', 'unknown']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "I found these most relevant products: Instantná rezance pancit canton chow mein originál LUCKY ME 60g; Dashima sušený kelp PAKU PAKU 100g; Kombu - Kelp morské riasy sušené - WANG KOREA 170g. More recommendations are below.",
+      "error_class": null,
+      "preliminary_cluster": "J_OUT_OF_DOMAIN_MISROUTED_TO_PRODUCT_INTENT"
+    },
+    {
+      "scenario_id": "v222_product_advice_0001",
+      "split": "HOLDOUT",
+      "intent_family": "PRODUCT_ADVICE",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Čo je gochujang a na čo sa používa?",
+      "observed_intent": "product_advice",
+      "expected_invariants": [
+        "intent_is:product_advice|product_search",
+        "answer_contains_semantic_concept:kimchi"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "answer_contains_semantic_concept:kimchi",
+          "expected": "kimchi",
+          "observed": "mame 4 produktov v kategorii \"gochujang\":",
+          "reason": "expected answer to contain one of ['kimchi']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Máme 4 produktov v kategórii \"Gochujang\":",
+      "error_class": null,
+      "preliminary_cluster": "E_PRODUCT_ADVICE_ANSWER_MISSING_EXPECTED_CONCEPT"
+    },
+    {
+      "scenario_id": "v222_product_advice_0006",
+      "split": "HOLDOUT",
+      "intent_family": "PRODUCT_ADVICE",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Aký je rozdiel v použití miso pasty v kuchyni?",
+      "observed_intent": "article_products",
+      "expected_invariants": [
+        "intent_is:product_advice|product_search",
+        "answer_contains_semantic_concept:thajske kari"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_advice|product_search",
+          "expected": "product_advice|product_search",
+          "observed": "article_products",
+          "reason": "expected intent in ['product_advice', 'product_search']"
+        },
+        {
+          "invariant": "answer_contains_semantic_concept:thajske kari",
+          "expected": "thajske kari",
+          "observed": "k miso polievka odporucam hlavne tieto suvisiace produkty: miso pasta hikari enjuku koji mutenka 375g; miso pasta biela shinshu hikari 400g; bio cervena miso pa",
+          "reason": "expected answer to contain one of ['thajske kari']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K miso polievka odporúčam hlavne tieto súvisiace produkty: Miso pasta HIKARI ENJUKU KOJI MUTENKA 375g; Miso pasta biela SHINSHU HIKARI 400g; BIO červená miso pasta HIKARI 500g. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.",
+      "error_class": null,
+      "preliminary_cluster": "E_PRODUCT_ADVICE_ANSWER_MISSING_EXPECTED_CONCEPT"
+    },
+    {
+      "scenario_id": "v222_product_comparison_0001",
+      "split": "HOLDOUT",
+      "intent_family": "COMPARISON",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Aký je rozdiel medzi gochujangom od Daesang a od Sempio?",
+      "observed_intent": "product_advice",
+      "expected_invariants": [
+        "intent_is:product_comparison|comparison|product_search",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_comparison|comparison|product_search",
+          "expected": "product_comparison|comparison|product_search",
+          "observed": "product_advice",
+          "reason": "expected intent in ['product_comparison', 'comparison', 'product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Áno, gochujang v tomto variante máme v ponuke:",
+      "error_class": null,
+      "preliminary_cluster": "D_COMPARISON_QUESTION_ROUTES_TO_PRODUCT_ADVICE"
+    },
+    {
+      "scenario_id": "v222_product_search_0004",
+      "split": "HOLDOUT",
+      "intent_family": "PRODUCT_SEARCH",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Predávate rybaciu omáčku?",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:product_search",
+        "products_nonempty",
+        "product_title_contains_any:rybacia omáčka"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:product_search",
+          "expected": "product_search",
+          "observed": "related_products",
+          "reason": "expected intent in ['product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "K rybacia omacka odporúčam hlavne tieto súvisiace produkty: Rybacia omáčka Premium MEGACHEF 200ml; Sójová omáčka citrónová Ponzu KIKKOMAN 250ml; Tamari sójová omáčka bezlepková KIKKOMAN 20L. Pozrite si odporúčania nižšie, zoradila som ich podľa relevantnosti.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_recipe_only_0004",
+      "split": "HOLDOUT",
+      "intent_family": "RECIPE",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Recept na Nasi Goreng, prosím.",
+      "observed_intent": "recipe",
+      "expected_invariants": [
+        "intent_is:recipe_only|recipe_to_products",
+        "answer_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_only|recipe_to_products",
+          "expected": "recipe_only|recipe_to_products",
+          "observed": "recipe",
+          "reason": "expected intent in ['recipe_only', 'recipe_to_products']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som recepty z Foodland.sk. Vyberte si z odporúčaní nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "A_GT_LEGACY_INTENT_LABEL_MISMATCH"
+    },
+    {
+      "scenario_id": "v222_recipe_to_products_0003",
+      "split": "HOLDOUT",
+      "intent_family": "RECIPE_TO_PRODUCTS",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Chcem nakúpiť ingrediencie na Miso polievku.",
+      "observed_intent": "related_products",
+      "expected_invariants": [
+        "intent_is:recipe_to_products|recipe_only",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:recipe_to_products|recipe_only",
+          "expected": "recipe_to_products|recipe_only",
+          "observed": "related_products",
+          "reason": "expected intent in ['recipe_to_products', 'recipe_only']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Pripravila som nákupný zoznam pre miso polievka: 6 položiek nájdete na Foodland.sk a 2 čerstvých alebo doplnkových surovín si doplňte mimo e-shopu.",
+      "error_class": null,
+      "preliminary_cluster": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH"
+    },
+    {
+      "scenario_id": "v222_replacement_0002",
+      "split": "HOLDOUT",
+      "intent_family": "REPLACEMENT",
+      "language": "sk",
+      "risk_level": "NORMAL",
+      "message": "Aká je alternatíva k rybacej omáčke Megachef?",
+      "observed_intent": "replacement_products",
+      "expected_invariants": [
+        "intent_is:replacement|product_search",
+        "products_nonempty"
+      ],
+      "failed_invariants": [
+        {
+          "invariant": "intent_is:replacement|product_search",
+          "expected": "replacement|product_search",
+          "observed": "replacement_products",
+          "reason": "expected intent in ['replacement', 'product_search']"
+        }
+      ],
+      "errored_invariants": [],
+      "answer_excerpt": "Našla som tieto najrelevantnejšie produkty: Sójová omáčka citrónová Ponzu KIKKOMAN 250ml; Tamari sójová omáčka bezlepková KIKKOMAN 20L; Hubová vegetariánska omáčka DEK SOM BOON 350g. Ďalšie odporúčania sú nižšie.",
+      "error_class": null,
+      "preliminary_cluster": "A_GT_LEGACY_INTENT_LABEL_MISMATCH"
+    }
+  ]
+}

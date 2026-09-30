@@ -1,0 +1,276 @@
+{
+  "note": "PRELIMINARY ONLY. These are hypotheses derived from symptom clustering, not verified root causes. No repair authorization follows from this file. Required chain before any change: FAIL -> BENCHMARK SELF-INTEGRITY -> GT VALIDATION -> DATA SUFFICIENCY -> REPRODUCTION -> ROOT-CAUSE CLASSIFICATION -> HUMAN/BOUNDED REVIEW -> ONE CHANGE.",
+  "total_fail_count": 53,
+  "clusters": [
+    {
+      "cluster_id": "A_GT_LEGACY_INTENT_LABEL_MISMATCH",
+      "preliminary_class": "POSSIBLE_EVALUATOR_DEFECT",
+      "fail_count": 9,
+      "dev_count": 7,
+      "holdout_count": 2,
+      "high_risk_count": 0,
+      "representative_scenarios": [
+        "v222_recipe_only_0001",
+        "v222_recipe_only_0002",
+        "v222_recipe_only_0003",
+        "v222_recipe_only_0006",
+        "v222_replacement_0001"
+      ],
+      "all_scenario_ids": [
+        "v222_recipe_only_0001",
+        "v222_recipe_only_0002",
+        "v222_recipe_only_0003",
+        "v222_recipe_only_0006",
+        "v222_replacement_0001",
+        "v222_replacement_0003",
+        "v222_replacement_0004",
+        "v222_recipe_only_0004",
+        "v222_replacement_0002"
+      ],
+      "description": "GT used the canonical V2 intent name (e.g. recipe_only, replacement) instead of the raw legacy intent string chat() actually returns (e.g. recipe, replacement_products) - app.intent.LEGACY_INTENT_MAP maps one to the other, but the V2.21/V2.22 scorer reads result[intent] raw, never through that mapping. This looks like a GT/evaluator vocabulary mismatch in the scenario authoring, not a behavioral Advisor defect - the underlying behavior may well be correct.",
+      "confidence": "HIGH",
+      "next_forensic_need": "Independent reproduction outside this frozen run (fresh main.chat() calls, not reusing these result artifacts) before any root-cause claim or repair proposal."
+    },
+    {
+      "cluster_id": "B_BARE_CATEGORY_ROUTES_AWAY_FROM_PRODUCT_SEARCH",
+      "preliminary_class": "POSSIBLE_ROUTING_GAP",
+      "fail_count": 17,
+      "dev_count": 14,
+      "holdout_count": 3,
+      "high_risk_count": 0,
+      "representative_scenarios": [
+        "v222_budget_0001",
+        "v222_category_discovery_0001",
+        "v222_category_discovery_0004",
+        "v222_kitchenware_0001",
+        "v222_product_search_0005"
+      ],
+      "all_scenario_ids": [
+        "v222_budget_0001",
+        "v222_category_discovery_0001",
+        "v222_category_discovery_0004",
+        "v222_kitchenware_0001",
+        "v222_product_search_0005",
+        "v222_product_search_0006",
+        "v222_product_search_0007",
+        "v222_product_search_0013",
+        "v222_quantity_0001",
+        "v222_recipe_only_0005",
+        "v222_recipe_to_products_0001",
+        "v222_recipe_to_products_0002",
+        "v222_recipe_to_products_0004",
+        "v222_recipe_to_products_0005",
+        "v222_negation_0001",
+        "v222_product_search_0004",
+        "v222_recipe_to_products_0003"
+      ],
+      "description": "A bare category/ingredient/recipe-shopping request routes to related_products (or once, use_case_advice) instead of the expected product_search/category_discovery/recipe_to_products intent - the single largest cluster by far (17/53). Needs reproduction before concluding whether this is a genuine routing gap or an acceptable alternate intent GT should have allowed.",
+      "confidence": "HIGH",
+      "next_forensic_need": "Independent reproduction outside this frozen run (fresh main.chat() calls, not reusing these result artifacts) before any root-cause claim or repair proposal."
+    },
+    {
+      "cluster_id": "C_FAQ_INTENT_GATE_GAP_FRESH_PHRASING",
+      "preliminary_class": "POSSIBLE_ROUTING_GAP",
+      "fail_count": 5,
+      "dev_count": 4,
+      "holdout_count": 1,
+      "high_risk_count": 0,
+      "representative_scenarios": [
+        "v222_faq_0001",
+        "v222_faq_0007",
+        "v222_faq_0013",
+        "v222_faq_0014",
+        "v222_faq_0004"
+      ],
+      "all_scenario_ids": [
+        "v222_faq_0001",
+        "v222_faq_0007",
+        "v222_faq_0013",
+        "v222_faq_0014",
+        "v222_faq_0004"
+      ],
+      "description": "Fresh FAQ phrasings distinct from the V2.21n-repaired set (registration, sourcing via a different verb, no-show, EN order-tracking, damaged-item via an uncovered phrasing) fall through to product_search - same architectural shape as the V2.21n/V2.21t FAQ-intent-marker chain, on different phrasings.",
+      "confidence": "HIGH",
+      "next_forensic_need": "Independent reproduction outside this frozen run (fresh main.chat() calls, not reusing these result artifacts) before any root-cause claim or repair proposal."
+    },
+    {
+      "cluster_id": "D_COMPARISON_QUESTION_ROUTES_TO_PRODUCT_ADVICE",
+      "preliminary_class": "POSSIBLE_ROUTING_GAP",
+      "fail_count": 3,
+      "dev_count": 2,
+      "holdout_count": 1,
+      "high_risk_count": 0,
+      "representative_scenarios": [
+        "v222_product_comparison_0003",
+        "v222_product_comparison_0004",
+        "v222_product_comparison_0001"
+      ],
+      "all_scenario_ids": [
+        "v222_product_comparison_0003",
+        "v222_product_comparison_0004",
+        "v222_product_comparison_0001"
+      ],
+      "description": "Comparison-framed questions (aky je rozdiel medzi X a Y / co je lepsie X alebo Y) route to product_advice, losing the multi-product comparison framing.",
+      "confidence": "MEDIUM",
+      "next_forensic_need": "Independent reproduction outside this frozen run (fresh main.chat() calls, not reusing these result artifacts) before any root-cause claim or repair proposal."
+    },
+    {
+      "cluster_id": "E_PRODUCT_ADVICE_ANSWER_MISSING_EXPECTED_CONCEPT",
+      "preliminary_class": "POSSIBLE_GT_PROBLEM",
+      "fail_count": 5,
+      "dev_count": 3,
+      "holdout_count": 2,
+      "high_risk_count": 0,
+      "representative_scenarios": [
+        "v222_product_advice_0002",
+        "v222_product_advice_0003",
+        "v222_product_advice_0005",
+        "v222_product_advice_0001",
+        "v222_product_advice_0006"
+      ],
+      "all_scenario_ids": [
+        "v222_product_advice_0002",
+        "v222_product_advice_0003",
+        "v222_product_advice_0005",
+        "v222_product_advice_0001",
+        "v222_product_advice_0006"
+      ],
+      "description": "Either intent correctly resolves to product_advice but the answer text does not literally contain the cited Products_AI usage/taste term, or intent misroutes to product_search/article_products entirely. GT assumed the Products_AI field text is echoed verbatim in the answer - that assumption was never verified pre-freeze (correctly, per the blind-evaluation discipline) and may itself be wrong (a presentation/paraphrase difference, not a factual error).",
+      "confidence": "HIGH",
+      "next_forensic_need": "Independent reproduction outside this frozen run (fresh main.chat() calls, not reusing these result artifacts) before any root-cause claim or repair proposal."
+    },
+    {
+      "cluster_id": "F_ALEBO_PHRASING_TRIGGERS_COMPARISON_MISROUTE",
+      "preliminary_class": "POSSIBLE_ROUTING_GAP",
+      "fail_count": 2,
+      "dev_count": 2,
+      "holdout_count": 0,
+      "high_risk_count": 0,
+      "representative_scenarios": [
+        "v222_product_search_0002",
+        "v222_product_search_0009"
+      ],
+      "all_scenario_ids": [
+        "v222_product_search_0002",
+        "v222_product_search_0009"
+      ],
+      "description": "A bare product query naming two packaging/format options with \"alebo\" (or) - wasabi powder OR paste, kimchi in a jar OR bag - gets misclassified as a product-vs-product comparison request (0 products returned) instead of a single product_search with either form acceptable. A specific, actionable lexical trigger pattern.",
+      "confidence": "MEDIUM",
+      "next_forensic_need": "Independent reproduction outside this frozen run (fresh main.chat() calls, not reusing these result artifacts) before any root-cause claim or repair proposal."
+    },
+    {
+      "cluster_id": "G_NEGATED_BRAND_EXCLUSION_NOT_APPLIED",
+      "preliminary_class": "POSSIBLE_ROUTING_GAP",
+      "fail_count": 1,
+      "dev_count": 1,
+      "holdout_count": 0,
+      "high_risk_count": 0,
+      "representative_scenarios": [
+        "v222_brand_constraint_0005"
+      ],
+      "all_scenario_ids": [
+        "v222_brand_constraint_0005"
+      ],
+      "description": "A kari pasta request excluding Cock Brand returned ONLY Cock Brand products (8/8) - the exclusion was not applied at all for this phrasing, despite \"ale nie \" being an existing V2.21i-era marker. Single scenario but correctness-relevant; worth reproducing.",
+      "confidence": "LOW",
+      "next_forensic_need": "Independent reproduction outside this frozen run (fresh main.chat() calls, not reusing these result artifacts) before any root-cause claim or repair proposal."
+    },
+    {
+      "cluster_id": "H_ZERO_RESULT_ALREADY_HAVE_OR_CROSS_SELL",
+      "preliminary_class": "POSSIBLE_RETRIEVAL_GAP",
+      "fail_count": 2,
+      "dev_count": 2,
+      "holdout_count": 0,
+      "high_risk_count": 0,
+      "representative_scenarios": [
+        "v222_already_have_0001",
+        "v222_cross_sell_0003"
+      ],
+      "all_scenario_ids": [
+        "v222_already_have_0001",
+        "v222_cross_sell_0003"
+      ],
+      "description": "An already-have-framed recipe question and a cross-sell-framed follow-up both returned 0 products.",
+      "confidence": "MEDIUM",
+      "next_forensic_need": "Independent reproduction outside this frozen run (fresh main.chat() calls, not reusing these result artifacts) before any root-cause claim or repair proposal."
+    },
+    {
+      "cluster_id": "I_SAFETY_UNCERTAINTY_NOT_EXPRESSED",
+      "preliminary_class": "POSSIBLE_SAFETY_GAP",
+      "fail_count": 2,
+      "dev_count": 1,
+      "holdout_count": 1,
+      "high_risk_count": 2,
+      "representative_scenarios": [
+        "v222_allergen_safety_0005",
+        "v222_dietary_safety_0001"
+      ],
+      "all_scenario_ids": [
+        "v222_allergen_safety_0005",
+        "v222_dietary_safety_0001"
+      ],
+      "description": "A celiac-safety question about rice vinegar and a vegan-safety question about gochujang both received confident-sounding product listings with no hedge/uncertainty language, despite data/products.json having no dietary-certification field for either SKU. HIGH RISK - this is the kind of gap an independent safety-focused benchmark exists to surface.",
+      "confidence": "MEDIUM",
+      "next_forensic_need": "Independent reproduction outside this frozen run (fresh main.chat() calls, not reusing these result artifacts) before any root-cause claim or repair proposal."
+    },
+    {
+      "cluster_id": "J_OUT_OF_DOMAIN_MISROUTED_TO_PRODUCT_INTENT",
+      "preliminary_class": "POSSIBLE_ROUTING_GAP",
+      "fail_count": 3,
+      "dev_count": 2,
+      "holdout_count": 1,
+      "high_risk_count": 0,
+      "representative_scenarios": [
+        "v222_out_of_domain_0001",
+        "v222_out_of_domain_0003",
+        "v222_out_of_domain_0004"
+      ],
+      "all_scenario_ids": [
+        "v222_out_of_domain_0001",
+        "v222_out_of_domain_0003",
+        "v222_out_of_domain_0004"
+      ],
+      "description": "Realistic out-of-domain drift (weather, phone recommendations, car engine help) routes to a product intent (related_products/product_search) instead of an honest domain-boundary response.",
+      "confidence": "MEDIUM",
+      "next_forensic_need": "Independent reproduction outside this frozen run (fresh main.chat() calls, not reusing these result artifacts) before any root-cause claim or repair proposal."
+    },
+    {
+      "cluster_id": "K_FOLLOW_UP_SUBJECT_LOST_ON_VAGUE_CONTINUATION",
+      "preliminary_class": "POSSIBLE_MULTI_TURN_STATE_GAP",
+      "fail_count": 3,
+      "dev_count": 2,
+      "holdout_count": 1,
+      "high_risk_count": 3,
+      "representative_scenarios": [
+        "v222_follow_up_0001",
+        "v222_follow_up_0003",
+        "v222_follow_up_0004"
+      ],
+      "all_scenario_ids": [
+        "v222_follow_up_0001",
+        "v222_follow_up_0003",
+        "v222_follow_up_0004"
+      ],
+      "description": "A vague multi-turn continuation (bigger package?, something else please?, I do not want this, show me another brand) loses the prior turns product subject and searches on the follow-up text alone, returning unrelated products. HIGH RISK - matches the exact failure shape multi-turn session-continuity design exists to prevent.",
+      "confidence": "MEDIUM",
+      "next_forensic_need": "Independent reproduction outside this frozen run (fresh main.chat() calls, not reusing these result artifacts) before any root-cause claim or repair proposal."
+    },
+    {
+      "cluster_id": "L_GT_SCENARIO_AUTHORING_INCONSISTENCY",
+      "preliminary_class": "POSSIBLE_GT_PROBLEM",
+      "fail_count": 1,
+      "dev_count": 1,
+      "holdout_count": 0,
+      "high_risk_count": 0,
+      "representative_scenarios": [
+        "v222_recipe_to_products_0006"
+      ],
+      "all_scenario_ids": [
+        "v222_recipe_to_products_0006"
+      ],
+      "description": "v222_recipe_to_products_0006 message asks about \"Pad see ew\" but the scenario ground-truth reasoning was grounded in a DIFFERENT Recipes entry (Yakiudon) - a genuine authoring inconsistency in V2.22a, discovered only now because pre-freeze inspection of Advisor behavior was correctly forbidden. \"Pad see ew\" does not appear in data/knowledge.json Recipes at all.",
+      "confidence": "LOW",
+      "next_forensic_need": "Independent reproduction outside this frozen run (fresh main.chat() calls, not reusing these result artifacts) before any root-cause claim or repair proposal."
+    }
+  ]
+}
