@@ -2154,6 +2154,13 @@ FAQ_INTENT_MARKERS = (
     # confirmed 0 blast-radius hits against data/products.json.
     "prihlas",
     "nevidim",
+    # V2.22f fix (v222_faq_0013): "neprevezmem"/"neprevezme"/"neprevezmu"
+    # (will not collect/pick up an order) is the no-show FAQ's own
+    # distinguishing verb, narrow and rare enough to be a flat marker on
+    # its own - existing "objednav" does not match this declension
+    # ("objednany", not "objednav..."). Confirmed 0 blast-radius hits
+    # against data/products.json.
+    "neprevezm",
 )
 
 SHOPPING_LIST_MARKERS = (
@@ -8343,7 +8350,17 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         )
         if delivery_answer:
             return delivery_answer
-    if any(marker in normalized_message for marker in ("nevyzdvihol", "nevyzdvihla", "neprevzal", "neprevzala", "no-show", "noshow", "nevyzdvihnem", "neprebral")):
+    if any(marker in normalized_message for marker in ("nevyzdvihol", "nevyzdvihla", "neprevzal", "neprevzala", "no-show", "noshow", "nevyzdvihnem", "neprebral", "neprevezm")):
+        # V2.22f fix (v222_faq_0013): bare "neprevezm" stem added
+        # alongside the existing declensions above - "Co ak si
+        # objednany tovar neprevezmem?" previously fell through this
+        # shortcut entirely (none of the prior markers matched
+        # "neprevezmem" as a bare verb with no negation-of-pickup
+        # framing word) into the generic scoring loop below, where it
+        # tied 2-2 with the unrelated "pick up in person" FAQ and lost
+        # the tie purely on document order. Confirmed 0 blast-radius
+        # hits for bare "neprevezm" against data/products.json (same
+        # check as the FAQ_INTENT_MARKERS addition above).
         no_show_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("neprevezmem",))
         if no_show_answer:
             return no_show_answer
