@@ -7989,8 +7989,25 @@ def is_faq_intent(message: str) -> bool:
     # flat FAQ_INTENT_MARKERS entry - only the "odkial"+"pochadz"
     # conjunction (the store-sourcing FAQ question, V2.20 faq_0011) is
     # narrow enough to be safe.
-    if "odkial" in normalized_message and "pochadz" in normalized_message:
+    if "odkial" in normalized_message and (
+        "pochadz" in normalized_message or "dovaz" in normalized_message
+    ):
         return True
+    # V2.22g fix (v222_faq_0007): "dovaza"/"dovazat" (imports/to import) is
+    # a legitimate synonym for "pochadza" (originates from) in this exact
+    # sourcing question, reusing the existing "odkial" gate so the
+    # conjunction stays exactly as narrow as the pochadz case above.
+    # Confirmed 0 blast-radius hits for odkial+dovaz against
+    # data/products.json.
+    if "poskoden" in normalized_message and "prisiel" in normalized_message:
+        return True
+    # V2.22g fix (v222_faq_0004): bare "poskoden" (damaged) has a real
+    # collision risk (2 hits in data/products.json - genuine product
+    # descriptions using "pred poskodenim" for packaging/protection), so
+    # requiring "prisiel" (arrived) alongside it - the customer's own
+    # framing for a delivered-damaged-item report - keeps this narrow.
+    # Confirmed 0 blast-radius hits for poskoden+prisiel against
+    # data/products.json.
     # V2.21f fix (faq_0012): bare "obchod" has 12 blast-radius hits in
     # data/products.json descriptions (same order as "pochadz" above)
     # and, more importantly, commonly names a genuine PRODUCT query
