@@ -8511,9 +8511,24 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
 
         if normalized_question and normalized_question in normalized_message:
             score += 20
-        if normalized_category and normalized_category in normalized_message:
+        # V2.22h fix (faq_0001 category-bonus investigation): "Nakup" is
+        # the largest FAQ category (11/52 records) and both its own name
+        # and its marker list ("objednav", "kosik", "nakup", "skladom")
+        # are generic enough to appear in almost any shopping-related
+        # sentence, giving a flat +22 to all 11 records regardless of
+        # which is actually relevant and swamping genuine token-overlap
+        # signal from every other, more specific category. Confirmed via
+        # a full sweep: exempting "nakup" from both bonuses below causes
+        # 0 self-consistency regressions (all 52 FAQ questions still
+        # match themselves) and 0 diffs across all 44 FAQ-gated scenarios
+        # in eval/golden/{v2_18,v2_20,v2_21,v2_22}_scenarios.json, while
+        # fixing/improving fresh paraphrases that previously collapsed to
+        # the wrong "how to order" answer regardless of actual topic.
+        if normalized_category and normalized_category != "nakup" and normalized_category in normalized_message:
             score += 12
         for category_name, markers in FAQ_CATEGORY_MARKERS.items():
+            if category_name == "nakup":
+                continue
             if normalized_category == category_name and any(marker in normalized_message for marker in markers):
                 score += 10
         if (
