@@ -8085,6 +8085,19 @@ def is_faq_intent(message: str) -> bool:
         "my order" in normalized_message or "order status" in normalized_message
     ):
         return True
+    # V2.22l fix (v222_faq_0001): "mandatory registration" framing
+    # ("musim mat ucet", "potrebujem ucet", "je ucet povinny", "da sa
+    # nakupit bez registracie") has no marker at all - bare "ucet" is
+    # too generic (risk of an unrelated invoice/accounting-account
+    # collision), so requiring a necessity word alongside an
+    # account/registration word keeps this narrow. Confirmed 0
+    # blast-radius hits for every marker and the full conjunction
+    # against data/products.json.
+    if any(
+        word in normalized_message
+        for word in ("musim", "potrebujem", "povinn", "bez registracie", "bez uctu")
+    ) and any(word in normalized_message for word in ("registr", "ucet")):
+        return True
     # V2.21t (v221_faq_0013, the final case in the V2.21n EN FAQ intent-
     # miss chain, per the V2.21s forensic): English store-level sourcing
     # phrasing ("where do your products come from") has no marker at all -
@@ -8435,6 +8448,28 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         card_types_answer = direct_faq_answer_by_question_markers(loaded_knowledge, required_markers=("platobne", "metody"))
         if card_types_answer:
             return card_types_answer
+    # V2.22l fix (v222_faq_0001, V2.22k governance review): FAQ #2
+    # ("Musim sa pred objednanim registrovat?") legitimately stays in
+    # category "Nakup" (owner-confirmed - see V2.22j/k), so it never
+    # gets the Registracia category bonus that FAQ #28 (registration
+    # process) and FAQ #32 (account benefits) get - on raw token
+    # overlap alone it loses to both siblings even though neither
+    # answers "is it mandatory". Same conjunction as the intent-gate
+    # fix above (mandatory-framing word + account/registration word)
+    # routes directly to FAQ #2 before the generic scoring loop can
+    # confuse it with its process/benefits siblings - confirmed via a
+    # 13-query paraphrase matrix (5 mandatory-family correct, 6
+    # process/benefits/self-consistency queries unaffected). Confirmed
+    # 0 blast-radius hits against data/products.json.
+    if any(
+        word in normalized_message
+        for word in ("musim", "potrebujem", "povinn", "bez registracie", "bez uctu")
+    ) and any(word in normalized_message for word in ("registr", "ucet")):
+        mandatory_registration_answer = direct_faq_answer_by_question_markers(
+            loaded_knowledge, required_markers=("musim", "registrovat")
+        )
+        if mandatory_registration_answer:
+            return mandatory_registration_answer
     # V2.21l (former C6, v221_faq_0014): the Slovak-only shortcuts above
     # can never fire for an English question - bridge known FAQ concepts
     # (see FAQ_EN_CONCEPT_BRIDGE) before falling through to the
