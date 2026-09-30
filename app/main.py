@@ -8071,6 +8071,20 @@ def is_faq_intent(message: str) -> bool:
     # conjunction in this function.
     if "return" in normalized_message and "reason" in normalized_message:
         return True
+    # V2.22i fix (v222_faq_0014): English order-tracking has no marker
+    # at all. Bare "track"+"order" was tried first but collides with a
+    # product-purchase sentence naming its own product mid-order (e.g.
+    # "Track this ramen order", "I want to order track pants") - one
+    # narrowing iteration to "my order"/"order status" as the context
+    # phrase (matching the customer's own framing in v222_faq_0014 and
+    # its near paraphrases) excludes both control collisions while
+    # still covering "track my order[ status]" phrasing. Confirmed 0
+    # blast-radius hits for track+"my order" and track+"order status"
+    # against data/products.json.
+    if "track" in normalized_message and (
+        "my order" in normalized_message or "order status" in normalized_message
+    ):
+        return True
     # V2.21t (v221_faq_0013, the final case in the V2.21n EN FAQ intent-
     # miss chain, per the V2.21s forensic): English store-level sourcing
     # phrasing ("where do your products come from") has no marker at all -
@@ -8267,6 +8281,21 @@ FAQ_EN_CONCEPT_BRIDGE: tuple[dict[str, tuple[str, ...]], ...] = (
         "en_markers": ("where", "come"),
         "en_context_markers": ("your", "you"),
         "sk_markers": ("odkial", "pochadz"),
+    },
+    {
+        # V2.22i (v222_faq_0014) - FAQ #45, "Kde mozem sledovat stav
+        # svojej objednavky?". Even after the is_faq_intent() conjunction
+        # above lets this English phrasing through, best_direct_faq_
+        # answer() still only matches Slovak text - same "track"+"my
+        # order"/"order status" requirement as the intent-gate
+        # conjunction (narrowed after a collision control - see that
+        # comment), so this can only fire once that gate has already
+        # fired too. sk_markers confirmed unique within data/
+        # knowledge.json FAQ (matches only this one record's question
+        # text).
+        "en_markers": ("track",),
+        "en_context_markers": ("my order", "order status"),
+        "sk_markers": ("sledov", "objednavky"),
     },
 )
 
