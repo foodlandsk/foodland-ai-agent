@@ -4803,6 +4803,28 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             "intent": "product_search",
         }
 
+    # V2.23d (V2.23c root-cause: FAQ_RETRIEVAL_GAP, real-customer seed
+    # rc-186acdd43f93) - an invoice/order-support request ("faktura k
+    # poslednej objednavke") previously fell through FAQ retrieval (no
+    # matching FAQ record exists) and every other branch all the way to
+    # the generic product_search fallback, returning unrelated products.
+    # This is a narrow, routing-only fix (no data/knowledge.json edit):
+    # an honest capability-absence answer, same tier/shape as the
+    # missing_composition/nutrition_data/product_dating branches above -
+    # never fabricates order/invoice/account data, always points to the
+    # same authoritative human support channel already used elsewhere in
+    # this file (missing_composition_answer()).
+    if is_invoice_support_query(chat_request.message):
+        updated_profile = update_user_memory(profile_key, chat_request.message, "invoice_support", [], [])
+        log_question(chat_request.message, client_key, 0, intent="invoice_support", session_id=session_id, primary_intent="invoice_support", subject="", interaction_id=interaction_id)
+        return {
+            "answer": invoice_support_answer(query_language),
+            "products": [],
+            "knowledge": knowledge_summary({}),
+            "memory": public_user_memory_summary(updated_profile),
+            "intent": "invoice_support",
+        }
+
     # V2.13b (docs/workflow-precedence-before-v2.13b.md, rt0010): the
     # old inline condition treated allergen_product_query() returning ""
     # as "not applicable", when it is often a DELIBERATE zero-safe-
@@ -10566,6 +10588,60 @@ def product_dating_uncertainty_answer(lang: str = "sk") -> str:
     return (
         "Presné údaje o dátume výroby, šarži alebo spotrebe k jednotlivým produktom "
         "nemám overené - odporúčam pozrieť etiketu produktu alebo kontaktovať výrobcu priamo."
+    )
+
+
+# V2.23d fix (V2.23c root-cause: FAQ_RETRIEVAL_GAP) - data/knowledge.json
+# has no FAQ entry about obtaining an invoice for an order (confirmed
+# absent from all 52 FAQ records, V2.23b/V2.23c), so a message like
+# "faktura k poslednej objednavke" previously fell through FAQ retrieval,
+# recipe, and every other branch all the way to the generic product_
+# search fallback, returning unrelated products - reproduced live,
+# V2.23c. This sprint is routing-only (no data/knowledge.json edit
+# authorized - Section 17 of the V2.23d mandate), so the fix lives
+# entirely here: the bare "faktur"/"invoice" stem is unambiguous in this
+# catalog (confirmed 0 blast-radius hits against data/products.json and
+# data/knowledge.json - no product title or existing FAQ question uses
+# this word in any other sense), so it is allowed to fire on its own.
+# The generic "doklad" (document/receipt) word is NOT unambiguous on its
+# own (app/explanation.py already uses "doklad" to mean "proof"/
+# "evidence" in an unrelated, non-invoice sense - "nemam doklad na to,
+# ze..."), so it only counts here when paired with an order-context word,
+# same narrowing principle as the FAQ_EN_CONCEPT_BRIDGE entries above use
+# for their own context-marker pairs.
+INVOICE_SUPPORT_CORE_MARKERS = ("faktur", "invoice")
+INVOICE_SUPPORT_DOCUMENT_MARKERS = ("doklad",)
+INVOICE_SUPPORT_ORDER_CONTEXT_MARKERS = (
+    "objednav", "nakup", "order", "posledna objednavka", "last order",
+)
+
+
+def is_invoice_support_query(message: str) -> bool:
+    normalized_message = normalize(message)
+    if any(marker in normalized_message for marker in INVOICE_SUPPORT_CORE_MARKERS):
+        return True
+    return any(marker in normalized_message for marker in INVOICE_SUPPORT_DOCUMENT_MARKERS) and any(
+        marker in normalized_message for marker in INVOICE_SUPPORT_ORDER_CONTEXT_MARKERS
+    )
+
+
+def invoice_support_answer(lang: str = "sk") -> str:
+    # No account/order data exists anywhere in this system to query (see
+    # the V2.9 reset-request comment elsewhere in this file) - this
+    # answer never claims otherwise, and always points to the same real
+    # human support channel missing_composition_answer() already uses.
+    if lang == "en":
+        return (
+            "I don't have direct access to individual order or account data, so I can't "
+            "look up or generate an invoice myself. Please contact our support team directly "
+            "at eshop@foodland.sk or +421 2 4468 1527 (include your order number if you have "
+            "it) and they will send you the invoice for that order."
+        )
+    return (
+        "K faktúre ku konkrétnej objednávke nemám priamy prístup - neviem si zobraziť "
+        "detail objednávky ani faktúru sama vygenerovať. Napíšte nám prosím priamo na "
+        "eshop@foodland.sk alebo zavolajte na +421 2 4468 1527 (ak máte číslo objednávky, "
+        "uveďte ho) a náš tím vám faktúru k danej objednávke rád zašle."
     )
 
 
