@@ -1175,18 +1175,37 @@ class TestSearchProducts:
         # V2.20g control: the override must require BOTH the kitchenware
         # term AND the sushi subject - a genuine sushi food/ingredient
         # question (no kitchenware word) must keep its existing behavior.
+        #
+        # V2.23g-CI3 (session/personalization isolation fix, root-caused in
+        # V2.23g-CI2): this test's 3 calls are ONE deliberate conversation
+        # (query 2/3 rely on use-case state query 1 sets), so they must
+        # keep sharing identity with EACH OTHER - but without an explicit
+        # client_id/session_id, that shared identity previously fell back
+        # to anon-hash(client_key) keyed only by the fake "127.0.0.1" host,
+        # the same fallback hundreds of OTHER tests in this file also hit.
+        # That let an unrelated test's accumulated personalize_products()
+        # profile state (see app.main.get_user_memory/load_user_memories -
+        # a process-global, never-reset-between-tests singleton) leak into
+        # this test's own ranking depending on full-suite execution order,
+        # reproduced live in CI (run 36904788322) though not locally.
+        # Explicit, unique-to-this-test ids give this conversation its own
+        # isolated session AND personalization identity - shared across
+        # its OWN 3 calls (unchanged intent), isolated from every other
+        # test. No production code changed.
+        client_id = "v223gci3_sushi_wasabi_isolation"
+        session_id = "v223gci3_sushi_wasabi_isolation"
         request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
 
-        result = main.chat(main.ChatRequest(message="co sa hodi k sushi?", limit=6), request)
+        result = main.chat(main.ChatRequest(message="co sa hodi k sushi?", limit=6, client_id=client_id, session_id=session_id), request)
         assert result.get("intent") == "related_products"
         titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
         assert any("wasabi" in t or "nori" in t for t in titles)
 
-        result = main.chat(main.ChatRequest(message="aku ryzu na sushi mate?", limit=6), request)
+        result = main.chat(main.ChatRequest(message="aku ryzu na sushi mate?", limit=6, client_id=client_id, session_id=session_id), request)
         titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
         assert titles and "ryz" in titles[0]
 
-        result = main.chat(main.ChatRequest(message="mate wasabi na sushi?", limit=6), request)
+        result = main.chat(main.ChatRequest(message="mate wasabi na sushi?", limit=6, client_id=client_id, session_id=session_id), request)
         titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
         assert titles and "wasabi" in titles[0]
 
