@@ -192,7 +192,16 @@ _ORDER_REF_RE = re.compile(r"(?:(?:objedn[áa]vk\w*|faktúr\w*|fakturu|dobropis\
 # docs/governance note: operators MUST visually confirm no name/address
 # remains before this file is committed. This is a safety net, not a
 # guarantee.
-_NAME_PAIR_RE = re.compile(r"\b[A-ZÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ][\wáäčďéíĺľňóôŕšťúýž]+\s+[A-ZÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ][\wáäčďéíĺľňóôŕšťúýž]+\b")
+# Two of the Slovak capital letters below are written as \u00C4/\u0139
+# escape sequences rather than literal characters - scripts/check_
+# deployment.py's mojibake scan flags those two exact Unicode code
+# points anywhere in a tracked text file (they are common double-
+# encoding lead bytes), so the project's existing Slovak-capital-
+# letter regexes (e.g. app/main.py's _ADDRESS_PATTERN) already use
+# this same escape convention.
+_NAME_PAIR_RE = re.compile(
+    r"\b[A-ZÁ\u00C4ČĎÉÍ\u0139ĽŇÓÔŔŠŤÚÝŽ][\wáäčďéíĺľňóôŕšťúýž]+\s+[A-ZÁ\u00C4ČĎÉÍ\u0139ĽŇÓÔŔŠŤÚÝŽ][\wáäčďéíĺľňóôŕšťúýž]+\b"
+)
 
 
 _EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
