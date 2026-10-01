@@ -138,6 +138,13 @@ SOURCE_TYPES = (
     "SANITIZED_AI_CHAT_FAILURE",
     "MANUAL_STAFF_REPORT",
     "PRODUCTION_INCIDENT_NOTE",
+    # V2.23b (Section 16) - a deterministic semantic mutation of an
+    # already-approved real-customer seed, created for paraphrase
+    # robustness. MUST NEVER be confused with a real-customer source -
+    # kept as its own explicit value rather than overloading one of the
+    # four above, so a reader (or a future filter) can never mistake one
+    # for the other.
+    "SYNTHETIC_MUTATION",
 )
 
 # --- ALREADY_HAVE entity states (Section 9/10) ------------------------------
@@ -179,6 +186,33 @@ REVIEW_DECISIONS = (
 HUMAN_REVIEW_PENDING = "PENDING"
 HUMAN_REVIEW_REVIEWED = "REVIEWED"
 HUMAN_REVIEW_STATUSES = (HUMAN_REVIEW_PENDING, HUMAN_REVIEW_REVIEWED)
+
+# Role-based reviewer identifiers (Section 4 of the V2.23b mandate) - used
+# when no real named individual is appropriate/available to attach to a
+# review record. Never a fabricated person's name.
+REVIEWER_ROLE_BUSINESS_OWNER = "BUSINESS_OWNER"
+REVIEWER_ROLE_HUMAN_REVIEWER = "HUMAN_REVIEWER"
+REVIEWER_ROLES = (REVIEWER_ROLE_BUSINESS_OWNER, REVIEWER_ROLE_HUMAN_REVIEWER)
+
+# --- reproduction / first-divergence (V2.23b, Sections 8/11/22-24) ---------
+# Recorded on the HumanReview event, not on the candidate itself - keeps
+# candidates.jsonl a pure, immutable record of the original intake, with
+# reproduction/diagnosis evidence living in the same append-only place as
+# the review decision that used it. This is diagnostic evidence only
+# (Section 21: "reproduction is not GT") - it never substitutes for a
+# trusted ground_truth_authority.
+REPRODUCED = "REPRODUCED"
+NOT_REPRODUCED = "NOT_REPRODUCED"
+PARTIAL = "PARTIAL"
+ENVIRONMENT_BLOCKED = "ENVIRONMENT_BLOCKED"
+NOT_ATTEMPTED = "NOT_ATTEMPTED"
+REPRODUCTION_STATUSES = (REPRODUCED, NOT_REPRODUCED, PARTIAL, ENVIRONMENT_BLOCKED, NOT_ATTEMPTED)
+
+FIRST_DIVERGENCE_STAGES = (
+    "INTENT", "RETRIEVAL", "RANKING", "COMPOSITION", "PRESENTATION", "STATE", "UNKNOWN",
+)
+CONFIDENCE_LOW, CONFIDENCE_MEDIUM, CONFIDENCE_HIGH = "LOW", "MEDIUM", "HIGH"
+CONFIDENCE_LEVELS = (CONFIDENCE_LOW, CONFIDENCE_MEDIUM, CONFIDENCE_HIGH)
 
 
 # --- sanitization -----------------------------------------------------------
@@ -247,7 +281,16 @@ class TurnContext:
 
 @dataclass(frozen=True)
 class HumanReview:
-    """Section 17 - append-only, never mutates the original candidate."""
+    """Section 17 - append-only, never mutates the original candidate.
+
+    V2.23b additions (reproduction_status / suspected_first_divergence /
+    suspected_first_divergence_confidence, reviewer_role): deliberately
+    placed HERE rather than on ScenarioCandidate - reproduction/diagnosis
+    is evidence gathered as part of ONE review action, not a property of
+    the original intake, and this keeps the append-only/never-mutate
+    invariant intact without needing any "update candidate" code path.
+    Per Section 21 of the mandate, a REPRODUCED status is diagnostic
+    confirmation only - it never substitutes for `authority`."""
     candidate_id: str
     reviewer: str
     reviewed_at: float
@@ -257,12 +300,24 @@ class HumanReview:
     forbidden_behavior: tuple[str, ...] = ()
     authority: str | None = None
     notes: str = ""
+    reviewer_role: str | None = None
+    reproduction_status: str = NOT_ATTEMPTED
+    suspected_first_divergence: str | None = None
+    suspected_first_divergence_confidence: str | None = None
 
     def __post_init__(self) -> None:
         if self.decision not in REVIEW_DECISIONS:
             raise CandidateValidationError(f"unknown review decision {self.decision!r}")
         if not self.reviewer or not self.reviewer.strip():
             raise CandidateValidationError("human review requires a non-empty reviewer identity")
+        if self.reviewer_role is not None and self.reviewer_role not in REVIEWER_ROLES:
+            raise CandidateValidationError(f"unknown reviewer_role {self.reviewer_role!r}")
+        if self.reproduction_status not in REPRODUCTION_STATUSES:
+            raise CandidateValidationError(f"unknown reproduction_status {self.reproduction_status!r}")
+        if self.suspected_first_divergence is not None and self.suspected_first_divergence not in FIRST_DIVERGENCE_STAGES:
+            raise CandidateValidationError(f"unknown suspected_first_divergence {self.suspected_first_divergence!r}")
+        if self.suspected_first_divergence_confidence is not None and self.suspected_first_divergence_confidence not in CONFIDENCE_LEVELS:
+            raise CandidateValidationError(f"unknown confidence {self.suspected_first_divergence_confidence!r}")
         if self.decision == REVIEW_APPROVE_AS_SCENARIO:
             if self.authority not in TRUSTED_AUTHORITIES:
                 raise CandidateValidationError(
@@ -503,6 +558,10 @@ def apply_human_review(
     forbidden_behavior: tuple[str, ...] = (),
     authority: str | None = None,
     notes: str = "",
+    reviewer_role: str | None = None,
+    reproduction_status: str = NOT_ATTEMPTED,
+    suspected_first_divergence: str | None = None,
+    suspected_first_divergence_confidence: str | None = None,
     path: Path = REVIEWS_PATH,
 ) -> HumanReview:
     """Records a review decision as an immutable, append-only event
@@ -516,6 +575,9 @@ def apply_human_review(
         candidate_id=candidate.candidate_id, reviewer=reviewer, reviewed_at=time.time(),
         decision=decision, expected_intent=expected_intent, expected_behavior=expected_behavior,
         forbidden_behavior=tuple(forbidden_behavior), authority=authority, notes=notes,
+        reviewer_role=reviewer_role, reproduction_status=reproduction_status,
+        suspected_first_divergence=suspected_first_divergence,
+        suspected_first_divergence_confidence=suspected_first_divergence_confidence,
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
@@ -524,7 +586,10 @@ def apply_human_review(
             "reviewed_at": review.reviewed_at, "decision": review.decision,
             "expected_intent": review.expected_intent, "expected_behavior": review.expected_behavior,
             "forbidden_behavior": list(review.forbidden_behavior), "authority": review.authority,
-            "notes": review.notes,
+            "notes": review.notes, "reviewer_role": review.reviewer_role,
+            "reproduction_status": review.reproduction_status,
+            "suspected_first_divergence": review.suspected_first_divergence,
+            "suspected_first_divergence_confidence": review.suspected_first_divergence_confidence,
         }, ensure_ascii=False, sort_keys=True) + "\n")
     return review
 

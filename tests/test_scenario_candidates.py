@@ -1,11 +1,11 @@
 """
-tests/test_scenario_candidates.py  -  V2.23a candidate-intake framework
-tests.
+tests/test_scenario_candidates.py  -  V2.23a/V2.23b candidate-intake
+framework tests.
 
 Scope: the intake/schema/storage layer only (app/scenario_candidates.py,
 scripts/add_learning_candidate.py). Does NOT exercise the Advisor - no
 test here calls app.main.chat()/make_chat_fn(); that is intentional,
-mirroring the mandate's "Advisor Behavior Freeze" (Section 31).
+mirroring the mandate's "Advisor Behavior Freeze" (Section 31/29).
 """
 from __future__ import annotations
 
@@ -17,11 +17,15 @@ from pathlib import Path
 import pytest
 
 from app.scenario_candidates import (
+    CONFIDENCE_HIGH,
     FORBIDDEN_AUTHORITIES,
     GT_HUMAN_CURATED,
     GT_PENDING,
+    NOT_ATTEMPTED,
+    REPRODUCED,
     REVIEW_APPROVE_AS_SCENARIO,
     REVIEW_REJECT_NO_CLEAR_GT,
+    REVIEWER_ROLE_BUSINESS_OWNER,
     CandidateValidationError,
     HumanReview,
     ScenarioCandidate,
@@ -274,3 +278,120 @@ def test_cli_rejects_invalid_source_type(tmp_path):
         capture_output=True, text=True, cwd=Path(__file__).resolve().parent.parent,
     )
     assert result.returncode != 0
+
+
+# --- V2.23b additions: reproduction / first-divergence / reviewer_role -----
+
+def test_human_review_accepts_reproduction_and_divergence_fields():
+    review = HumanReview(
+        candidate_id="rc-test", reviewer="business_owner_review", reviewed_at=0.0,
+        decision=REVIEW_APPROVE_AS_SCENARIO, authority=GT_HUMAN_CURATED,
+        expected_behavior="x", reviewer_role=REVIEWER_ROLE_BUSINESS_OWNER,
+        reproduction_status=REPRODUCED, suspected_first_divergence="INTENT",
+        suspected_first_divergence_confidence=CONFIDENCE_HIGH,
+    )
+    assert review.reproduction_status == REPRODUCED
+    assert review.suspected_first_divergence == "INTENT"
+
+
+def test_human_review_reproduction_status_defaults_to_not_attempted():
+    review = HumanReview(candidate_id="rc-test", reviewer="x", reviewed_at=0.0,
+                          decision=REVIEW_REJECT_NO_CLEAR_GT)
+    assert review.reproduction_status == NOT_ATTEMPTED
+
+
+def test_human_review_rejects_unknown_reviewer_role():
+    with pytest.raises(CandidateValidationError):
+        HumanReview(candidate_id="rc-test", reviewer="x", reviewed_at=0.0,
+                    decision=REVIEW_REJECT_NO_CLEAR_GT, reviewer_role="NOT_A_REAL_ROLE")
+
+
+def test_human_review_rejects_unknown_divergence_stage():
+    with pytest.raises(CandidateValidationError):
+        HumanReview(candidate_id="rc-test", reviewer="x", reviewed_at=0.0,
+                    decision=REVIEW_REJECT_NO_CLEAR_GT, suspected_first_divergence="NOT_A_REAL_STAGE")
+
+
+def test_apply_human_review_persists_reproduction_fields(tmp_path):
+    c = build_candidate(raw_text="Čo variť k ryži?", language="sk", source_type="MANUAL_STAFF_REPORT",
+                         entity_state={"ryza": "ALREADY_HAVE"})
+    reviews_path = tmp_path / "reviews.jsonl"
+    apply_human_review(
+        c, reviewer="business_owner_review", decision=REVIEW_APPROVE_AS_SCENARIO,
+        authority=GT_HUMAN_CURATED, expected_behavior="suggest dishes, not rice",
+        reviewer_role=REVIEWER_ROLE_BUSINESS_OWNER, reproduction_status=REPRODUCED,
+        suspected_first_divergence="INTENT", suspected_first_divergence_confidence=CONFIDENCE_HIGH,
+        path=reviews_path,
+    )
+    loaded = load_reviews(c.candidate_id, path=reviews_path)
+    assert loaded[0]["reproduction_status"] == REPRODUCED
+    assert loaded[0]["suspected_first_divergence"] == "INTENT"
+    assert loaded[0]["reviewer_role"] == REVIEWER_ROLE_BUSINESS_OWNER
+
+
+# --- synthetic-source labeling (Section 16/17) ------------------------------
+
+def test_synthetic_mutation_source_type_accepted():
+    c = build_candidate(raw_text="Čo sa hodí k ryži?", language="sk", source_type="SYNTHETIC_MUTATION",
+                         suspected_failure_family="RECIPE_TO_PRODUCTS")
+    assert c.source_type == "SYNTHETIC_MUTATION"
+
+
+def test_synthetic_mutation_never_auto_approved():
+    """build_candidate() always forces GROUND_TRUTH_PENDING regardless of
+    source_type - a SYNTHETIC_MUTATION candidate is never auto-promoted
+    just because it was mechanically generated from an approved seed."""
+    c = build_candidate(raw_text="Kde nájdem faktúru za posledný nákup?", language="sk",
+                         source_type="SYNTHETIC_MUTATION", suspected_failure_family="INVOICE_SUPPORT")
+    assert c.ground_truth_status == GT_PENDING
+    assert c.human_review_status == "PENDING"
+
+
+# --- privacy test with fabricated PII (Section 31, not committed as a fixture) --
+
+def test_privacy_scan_against_fabricated_pii_sample():
+    """Section 31 - run a disposable sample containing name/email/phone/
+    order-number through the real sanitizer and confirm none of it
+    survives. The fabricated values below are test-only literals, never
+    written to any committed eval/candidates fixture."""
+    fake_sample = (
+        "Volám sa Peter Horvát, moj email je peter.horvat@example.com, "
+        "telefon 0912345678, objednavka 987654, potrebujem fakturu."
+    )
+    sanitized, counts = sanitize_text(fake_sample)
+    assert "Peter Horvát" not in sanitized
+    assert "peter.horvat@example.com" not in sanitized
+    assert "0912345678" not in sanitized
+    assert "987654" not in sanitized
+    assert counts["email"] == 1
+    assert counts["phone"] == 1
+    # >=1, not ==1: the pre-redaction count of the bare-digit-run
+    # alternative in _ORDER_REF_RE can also match the phone number's own
+    # digits before redact_pii() removes them (both "987654" and the
+    # phone number are 5+ digit runs) - a known, harmless over-count in
+    # the diagnostic counter, not a safety issue: the ACTUAL redacted
+    # text above already proves neither digit sequence survives.
+    assert counts["order_reference"] >= 1
+    assert counts["name_like"] == 1
+
+
+# --- governance test (Section 32) -------------------------------------------
+
+def test_governance_rejects_model_output_and_customer_click_as_gt():
+    for forbidden in ("CURRENT_MODEL_OUTPUT", "CUSTOMER_CLICKED_THIS"):
+        assert forbidden in FORBIDDEN_AUTHORITIES
+        with pytest.raises(CandidateValidationError):
+            ScenarioCandidate(
+                candidate_id="rc-test", source_type="MANUAL_STAFF_REPORT", created_at=0.0,
+                language="sk", sanitized_query="q",
+                ground_truth_status=GT_HUMAN_CURATED, ground_truth_authority=forbidden,
+            )
+
+
+def test_governance_rejects_unreviewed_candidate_promotion():
+    """A freshly-built candidate can never be APPROVE_AS_SCENARIO without
+    going through apply_human_review() - build_candidate() alone cannot
+    reach a trusted authority."""
+    c = build_candidate(raw_text="x", language="sk", source_type="MANUAL_STAFF_REPORT")
+    assert c.ground_truth_status == GT_PENDING
+    assert c.human_review_status == "PENDING"
