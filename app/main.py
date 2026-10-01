@@ -5450,10 +5450,22 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         related_subject = memory_subject
     needs_composition_caution = is_composition_caution_search(contextual_message)
     structured_presentation = None
-    if _related_products_forced:
-        matches = related_products_for_subject(products, knowledge, related_subject, chat_request.limit)
-    elif already_have_subject:
+    # V2.23g (Section 3 of the mandate: ALREADY_HAVE must be excluded from
+    # MATCH/ALTERNATIVE even when recipe-shopping language also forces the
+    # RELATED_PRODUCTS workflow) - already_have_subject is checked BEFORE
+    # _related_products_forced now, not after: "Co sa hodi k ryzi?"/"Co
+    # mozem spravit s ryzou?" both carry recipe-shopping language (so
+    # _related_products_forced=True) AND, after the V2.23g implicit-context
+    # detector above, already_have_subject="ryza" - the OLD order let
+    # _related_products_forced win and still recommended bare rice back to
+    # a customer who just said they already have it. Reproduced live
+    # before this reorder. No existing explicit "mam X" case in the
+    # corpus relied on the opposite precedence (confirmed via full
+    # pytest + V2.22 DEV diagnostic, V2.23g report).
+    if already_have_subject:
         matches = complement_products_for_subject(products, already_have_subject, chat_request.limit)
+    elif _related_products_forced:
+        matches = related_products_for_subject(products, knowledge, related_subject, chat_request.limit)
     # V2.12.2 (docs/query-semantics.md, Section 34/106) - "sushi_rice" is a
     # second legacy special_subject (predating V2.4/V2.5) superseded the
     # same way "plain_rice" already was: SPECIAL_PRODUCT_QUERIES["sushi_rice"]
@@ -10400,6 +10412,59 @@ def is_article_relevant_product(product: dict, subject: str) -> bool:
 _ALREADY_HAVE_CLAUSE_END_RE = re.compile(r"[,.;!?]")
 
 
+# V2.23g (V2.23f fix shape C, Section 6) - implicit ownership/context
+# framing: "co varit/uvarit/spravit/urobit/pripravit k/s/so/zo/z <alias>"
+# and the "co sa hodi k <alias>" idiom imply the customer already has
+# the named ingredient and is asking what to cook WITH it / what pairs
+# with it. The explicit-marker loop in detect_already_have_subject()
+# below only covers "mam X"-style phrasing (confirmed gap, V2.23a/b/c/f -
+# "Co variit k ryzi?" has no explicit marker at all). Deliberately
+# narrower than every pattern the V2.23g mandate's Section 6 listed as
+# allowed: a BARE "co k X"/"co s X" with no cooking verb was found too
+# ambiguous on its own (V2.23g Section 19 - "Co s ryzou?" could just as
+# easily mean "what's wrong with the rice" or an unrelated aside) and is
+# intentionally NOT matched here - only the verb-anchored subset below
+# is, which is sufficient for the canonical seed and its two true
+# paraphrases while staying conservative on genuinely ambiguous input.
+# Generic (keyed off the same ALREADY_HAVE_SUBJECT_MAP as the explicit
+# path - not hardcoded to rice, V2.23g Section 30/31).
+ALREADY_HAVE_IMPLICIT_ACTION_OPENERS = (
+    "co varit", "co uvarit", "co spravit", "co urobit", "co pripravit",
+    "co mozem spravit", "co mozem urobit", "co mozem pripravit", "co mozem uvarit",
+    "co sa hodi", "co sa ide",
+)
+
+ALREADY_HAVE_IMPLICIT_PREPOSITIONS = (" k ", " s ", " so ", " zo ", " z ")
+
+# Explicit purchase/recommendation language always wins over the
+# implicit-context inference above (V2.23g Section 7) - "Aku ryzu mam
+# kupit?"/"Odporuc mi jazminovu ryzu."/"Ktora ryza je najlepsia?" must
+# never be reinterpreted as ALREADY_HAVE just because they also happen
+# to contain a subject alias.
+ALREADY_HAVE_PURCHASE_INTENT_OVERRIDE_MARKERS = (
+    "kupit", "potrebujem", "odporuc", "najlepsi", "ktora ", "ktory ", "ktore ",
+)
+
+
+def _detect_implicit_already_have_subject(padded_message: str) -> str | None:
+    if any(marker in padded_message for marker in ALREADY_HAVE_PURCHASE_INTENT_OVERRIDE_MARKERS):
+        return None
+    if not any(opener in padded_message for opener in ALREADY_HAVE_IMPLICIT_ACTION_OPENERS):
+        return None
+    for preposition in ALREADY_HAVE_IMPLICIT_PREPOSITIONS:
+        idx = padded_message.find(preposition)
+        if idx == -1:
+            continue
+        clause_start = idx + len(preposition)
+        end_match = _ALREADY_HAVE_CLAUSE_END_RE.search(padded_message, clause_start)
+        clause_end = end_match.start() if end_match else len(padded_message)
+        clause_text = padded_message[clause_start:clause_end]
+        for subject_key, aliases in ALREADY_HAVE_SUBJECT_MAP.items():
+            if any(alias in clause_text for alias in aliases):
+                return subject_key
+    return None
+
+
 def detect_already_have_subject(message: str) -> str | None:
     """Detekuje vzor 'mám X / kúpil som X / vlastním X' a vracia kanonický kľúč subjektu."""
     normalized_message = normalize(message)
@@ -10444,7 +10509,7 @@ def detect_already_have_subject(message: str) -> str | None:
         for subject_key, aliases in ALREADY_HAVE_SUBJECT_MAP.items():
             if any(alias in clause_text for alias in aliases):
                 return subject_key
-    return None
+    return _detect_implicit_already_have_subject(padded_message)
 
 
 def complement_products_for_subject(products_list: list, subject_key: str, limit: int) -> list[dict]:
