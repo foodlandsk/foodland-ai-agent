@@ -44,6 +44,75 @@ class TestIntentIs:
 
 
 # --------------------------------------------------------------------
+# intent_is - V2.24d authorized legacy<->canonical intent aliases
+# (V2.24c: recipe->recipe_only and replacement_products->replacement
+# are the ONLY two aliases verified collision-free across the full
+# V2.22 DEV set - this is deliberately NOT a general legacy-intent
+# translator, see AUTHORIZED_INTENT_ALIASES's own module docstring).
+# --------------------------------------------------------------------
+
+
+class TestIntentIsAuthorizedAliases:
+    def test_recipe_alias_satisfies_recipe_only(self):
+        r = score_invariant("intent_is:recipe_only|recipe_to_products", _result(intent="recipe"))
+        assert r.state == PASS
+        assert r.observed == "recipe"  # raw diagnostics preserved, never overwritten
+
+    def test_replacement_products_alias_satisfies_replacement(self):
+        r = score_invariant("intent_is:replacement|product_search", _result(intent="replacement_products"))
+        assert r.state == PASS
+        assert r.observed == "replacement_products"
+
+    def test_alias_does_not_satisfy_unrelated_expectation(self):
+        r = score_invariant("intent_is:faq", _result(intent="recipe"))
+        assert r.state == FAIL
+
+    def test_reverse_direction_not_authorized(self):
+        # One-way only: raw "recipe_only"/"replacement" observed values
+        # (which the Advisor never actually emits) must NOT be treated
+        # as satisfying a raw-legacy expectation - no symmetry assumed.
+        r = score_invariant("intent_is:recipe", _result(intent="recipe_only"))
+        assert r.state == FAIL
+
+    def test_non_authorized_legacy_mapping_unchanged(self):
+        # related_products->cross_sell was explicitly REJECTED in V2.24c
+        # (confirmed negative collision) - must remain untouched.
+        r = score_invariant("intent_is:cross_sell", _result(intent="related_products"))
+        assert r.state == FAIL
+
+    def test_related_products_still_satisfies_its_own_literal_expectation(self):
+        # The exact collision V2.24b/c found: a golden scenario that
+        # expects "related_products" literally must keep passing.
+        r = score_invariant(
+            "intent_is:recipe_to_products|related_products|product_search",
+            _result(intent="related_products"),
+        )
+        assert r.state == PASS
+
+    def test_unknown_intent_not_aliased(self):
+        r = score_invariant("intent_is:product_search", _result(intent="use_case_advice"))
+        assert r.state == FAIL
+
+    def test_none_intent_not_aliased(self):
+        r = score_invariant("intent_is:recipe_only", _result(intent=None))
+        assert r.state == FAIL
+
+    def test_empty_string_intent_not_aliased(self):
+        r = score_invariant("intent_is:recipe_only", _result(intent=""))
+        assert r.state == FAIL
+
+    def test_no_transitive_alias_expansion(self):
+        # recipe->recipe_only must not transitively imply anything about
+        # replacement_products->replacement or any third label.
+        r = score_invariant("intent_is:replacement", _result(intent="recipe"))
+        assert r.state == FAIL
+
+    def test_identity_mapping_behavior_unchanged(self):
+        r = score_invariant("intent_is:product_search", _result(intent="product_search"))
+        assert r.state == PASS
+
+
+# --------------------------------------------------------------------
 # products_nonempty / products_empty
 # --------------------------------------------------------------------
 

@@ -191,10 +191,37 @@ def _answer_text(result: dict) -> str:
     return normalize(result.get("answer") or "")
 
 
+# V2.24d (V2.24c-authorized, narrowest safe repair) - a small, scorer-
+# owned, LOCAL alias table - never the global app.intent.LEGACY_INTENT_MAP
+# wrapper (V2.24b proved that globally unsafe: it collapsed
+# "related_products" into "cross_sell", breaking an already-passing
+# golden scenario that explicitly accepts "related_products" as its own
+# label, and its unmapped-value fallback to "product_search" produced a
+# second, spurious pass unrelated to any real equivalence - see
+# v222_already_have_0002 / v222_product_search_0013 in the V2.24b/c
+# reports). Each entry here was individually verified collision-free
+# across the full V2.22 DEV set (V2.24c) before being added - this is
+# deliberately NOT meant to grow into a general legacy-intent
+# translator; a new entry needs the same scenario-by-scenario collision
+# check V2.24c did, not just "it seems equivalent". One-way only (raw
+# legacy observed -> canonical expected): the Advisor never actually
+# emits the canonical spelling as a raw intent value, so the reverse
+# direction has no real case to support and is intentionally not
+# implemented. This module still imports nothing from app.main/
+# app.advisor_engine/app.evaluation.adapter/app.intent - this table is
+# its own, independent of (and may drift from) LEGACY_INTENT_MAP.
+AUTHORIZED_INTENT_ALIASES = {
+    "recipe": "recipe_only",
+    "replacement_products": "replacement",
+}
+
+
 def _h_intent_is(arg: str, result: dict):
-    observed = str(result.get("intent"))
+    raw_observed = result.get("intent")
+    observed = str(raw_observed)
     alternatives = [a.strip() for a in arg.split("|")] if arg else []
-    passed = result.get("intent") in alternatives
+    alias_observed = AUTHORIZED_INTENT_ALIASES.get(raw_observed) if raw_observed else None
+    passed = raw_observed in alternatives or (alias_observed is not None and alias_observed in alternatives)
     return passed, observed, f"expected intent in {alternatives!r}"
 
 
