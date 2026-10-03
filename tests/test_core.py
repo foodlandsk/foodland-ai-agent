@@ -2530,6 +2530,40 @@ class TestIntentDetection:
             assert not main.detect_out_of_domain(query), query
             assert main.detect_related_subject(query) == "asian_snack", query
 
+    def test_out_of_domain_v222_weather_and_phone(self):
+        # V2.24h fix (V2.22 Cluster J, v222_out_of_domain_0001/0003): bare
+        # weather-rain and mobile-phone-adjective phrasings fell through
+        # detect_out_of_domain() entirely - "pocasie" shares no substring
+        # with the infinitive "prsat", and the existing "mobil telefon"/
+        # "aky telefon"/"kupim telefon" markers do not match the adjacent
+        # adjective phrase "mobilny telefon".
+        assert main.detect_out_of_domain("Bude dnes v Bratislave prsat?")
+        assert main.detect_out_of_domain("Aky je najlepsi mobilny telefon v roku 2026?")
+
+        request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
+        for query in (
+            "Bude dnes v Bratislave prsat?",
+            "Aky je najlepsi mobilny telefon v roku 2026?",
+        ):
+            result = main.chat(main.ChatRequest(message=query, limit=8), request)
+            assert result.get("intent") == "unknown", query
+            assert not result.get("products"), query
+
+    def test_out_of_domain_new_markers_do_not_break_contact_or_culinary(self):
+        # Negative controls (V2.24h): the new "mobilny telefon" phrase
+        # marker must not collide with bare "telefon"-based contact/FAQ
+        # phrasing, and the new "prsat" marker must not collide with
+        # weather-adjacent culinary phrasing that does not contain it.
+        for query in (
+            "Ake mate telefonne cislo?",
+            "Telefon na podporu",
+            "Kam vam mozem zavolat?",
+            "Aky je telefonicky kontakt na zakaznicku podporu?",
+            "Aky recept je vhodny na dazdivy den?",
+            "Varenie pocas dazdivych dni, co uvarit?",
+        ):
+            assert not main.detect_out_of_domain(query), query
+
     def test_category_discovery_detects_generic_inventory_questions(self):
         # Real user report: "aku kategoriu produktov mate?" (a generic
         # "what do you sell" question, no specific product/subject named)

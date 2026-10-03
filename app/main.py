@@ -3009,6 +3009,11 @@ OUT_OF_DOMAIN_MARKERS = (
     "opravujete telefon",
     "poistenie auta",
     "pocasie",
+    # V2.24h fix (v222_out_of_domain_0001): "prsat" (infinitive "to
+    # rain") shares no substring with "pocasie" above. Confirmed 0
+    # blast-radius hits against data/products.json, FAQ, and Recipes,
+    # and 0 collisions across all 93 DEV golden scenarios.
+    "prsat",
     "basen",
     "letenk",
     "prack",
@@ -3049,6 +3054,15 @@ OUT_OF_DOMAIN_MARKERS = (
     "mobil telefon",
     "kupim telefon",
     "aky telefon",
+    # V2.24h fix (v222_out_of_domain_0003): "mobilny telefon"
+    # (adjective form "mobile phone") - the existing "mobil telefon"/
+    # "aky telefon"/"kupim telefon" entries above do not match this
+    # exact adjacent phrase. Confirmed 0 blast-radius hits against
+    # data/products.json, FAQ, and Recipes; explicitly confirmed 0
+    # collision against "telefon"/"telefonicky"/"telefonne cislo"/
+    # "zavolat" contact phrasing, and 0 collisions across all 93 DEV
+    # golden scenarios.
+    "mobilny telefon",
     # --- oblecenie a obuv ---
     "oblecen",
     "topank",
