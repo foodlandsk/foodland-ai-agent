@@ -354,11 +354,15 @@ class TestExplicitTargetOverridesGenericWord:
         # Cross-capability regression: V2.16a's payment-followup mechanism
         # must remain unaffected by adding two more topics to the same
         # fallback block.
+        # V2.26: the FAQ import added a real, grounded Apple Pay/Google
+        # Pay answer, and "A Apple Pay?" now directly matches it via
+        # FAQ_INTENT_MARKERS instead of recalling the generic payment
+        # list - still "faq", just a more specific grounded answer now.
         sid = "v2161a-crosscheck-payment"
         _chat("Ako mozem zaplatit?", sid)
         r = _chat("A Apple Pay?", sid)
         assert r.get("intent") == "faq"
-        assert "apple" not in r.get("answer", "").lower()
+        assert "apple" in r.get("answer", "").lower()
 
 
 # ---------------------------------------------------------------------------

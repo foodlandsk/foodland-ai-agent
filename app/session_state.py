@@ -509,6 +509,15 @@ _CONTACT_TOPIC_PHRASE_MARKERS = (
     # "contact" word). 0 blast-radius hits confirmed against
     # data/products.json for each full phrase below.
     "how can i contact you", "how do i contact you", "how can i reach you",
+    # V2.26 fix (FAQ-import reachability gap): "Ako kontaktujem
+    # podporu e-shopu?" uses neither "zakaznicku podporu" nor any
+    # existing phrase above. "kontaktuj" is the verb stem
+    # (kontaktujem/kontaktujete/kontaktuje), structurally distinct
+    # from the bare noun "kontakt" this docstring already avoids (the
+    # food-contact-packaging collision uses "kontakt s"/"priamy
+    # kontakt", never the verb form). Confirmed 0 blast-radius hits
+    # against data/products.json.
+    "kontaktuj",
     "contact details", "your phone number", "customer support",
 )
 

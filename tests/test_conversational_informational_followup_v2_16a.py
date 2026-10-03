@@ -233,9 +233,11 @@ class TestPaymentCardAlreadyLive:
 
 class TestPaymentMethodFollowupNewCapability:
     """The one genuinely new V2.16a capability: a named payment-method
-    follow-up ("A Apple Pay?") that FAQ_INTENT_MARKERS does not itself
-    catch must recall the real, grounded payment-methods answer instead
-    of falling into commerce product search."""
+    follow-up ("A Apple Pay?") must stay in the faq intent (never fall
+    into commerce product search) - either via the follow-up recall
+    mechanism, or (since the V2.26 FAQ-import reachability fix added a
+    direct "apple pay"/"google pay" FAQ_INTENT_MARKERS entry) by
+    resolving to its own dedicated, grounded answer."""
 
     def test_apple_pay_followup_recalls_payment_faq_not_product_search(self):
         sid = "v216a-payment-applepay"
@@ -243,10 +245,12 @@ class TestPaymentMethodFollowupNewCapability:
         r = _chat("A Apple Pay?", sid)
         assert r.get("intent") == "faq"
         assert r.get("products") == []
-        # Must not fabricate a yes/no claim about Apple Pay specifically -
-        # it recalls the real, already-grounded methods list, which does
-        # not mention Apple Pay (DATA_ABSENT in data/knowledge.json).
-        assert "apple" not in r.get("answer", "").lower()
+        # V2.26: the FAQ import added a real, grounded Apple Pay/Google
+        # Pay answer (data/knowledge.json FL-FAQ-027), and "A Apple Pay?"
+        # now directly matches it via FAQ_INTENT_MARKERS - no longer a
+        # DATA_ABSENT case, so mentioning "apple" here is correct, not a
+        # fabricated claim.
+        assert "apple" in r.get("answer", "").lower()
 
     def test_google_pay_followup_recalls_payment_faq(self):
         sid = "v216a-payment-googlepay"

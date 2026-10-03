@@ -2145,7 +2145,6 @@ FAQ_INTENT_MARKERS = (
     "store",
     "park",
     "kariet",
-    "adresa",
     "dodan",
     "pockanie",
     "odber",
@@ -2161,6 +2160,21 @@ FAQ_INTENT_MARKERS = (
     # ("objednany", not "objednav..."). Confirmed 0 blast-radius hits
     # against data/products.json.
     "neprevezm",
+    # "heslo" (password, Slovak) - only the English "password" marker
+    # existed. Confirmed 0 blast-radius hits against data/products.json.
+    "heslo",
+    # "potvrdzovaci" (confirmation, adjective) - "Neprisiel mi
+    # potvrdzovaci e-mail." Confirmed 0 blast-radius hits against
+    # data/products.json.
+    "potvrdzovaci",
+    # "adres" (stem, replacing the old flat "adresa") - the old
+    # marker did not match declined forms ("adresu", "adrese", ...),
+    # e.g. "Mozem zmenit adresu po objednani?". A strict superset of
+    # "adresa" (every message it matched still matches this), so
+    # replacing rather than adding alongside it avoids the exact
+    # substring-collision scripts/consistency_audit.py checks for.
+    # Confirmed 0 blast-radius hits against data/products.json.
+    "adres",
 )
 
 SHOPPING_LIST_MARKERS = (
@@ -8148,9 +8162,107 @@ def is_faq_intent(message: str) -> bool:
     # the company-directed store-level phrasing, deliberately excluding
     # every product-directed phrasing in that control set (none of them
     # pair "your"/"you" with "come").
-    return "where" in normalized_message and "come" in normalized_message and (
+    if "where" in normalized_message and "come" in normalized_message and (
         "your" in normalized_message or "you" in normalized_message
-    )
+    ):
+        return True
+    # V2.26 fix (FAQ-import reachability gap, same conjunction
+    # discipline as every case above): each of the following pairs a
+    # question's own distinguishing word(s) so the gate stays narrow -
+    # every pair confirmed 0 blast-radius hits against data/
+    # products.json (title+description+product_type+brand).
+    # FL-FAQ-009: "Ako mozem na Foodlande objednat tovar?" - a
+    # how-do-I-order META question. Deliberately NOT a bare
+    # "objednat" marker: confirmed via direct testing that the bare
+    # infinitive (unlike the existing "objednav" marker's narrower
+    # real-world usage) is common enough in genuine "I want to order
+    # <product>" action statements ("Chcem si objednat jazminovu
+    # ryzu") to swallow them into FAQ with 0 products. "ako" (how)
+    # keeps this to the meta-question framing only.
+    if "ako" in normalized_message and "objednat" in normalized_message:
+        return True
+    # FL-FAQ-029: "V baliku mi chyba produkt, co mam robit?" - a
+    # missing-item complaint, distinct from SHOPPING_LIST_MARKERS'
+    # existing "co mi chyba" (what ingredient am I missing), which has
+    # no "balik" (package) qualifier.
+    if "balik" in normalized_message and "chyba" in normalized_message:
+        return True
+    # FL-FAQ-030: "Dostal som iny produkt, nez som si objednal."
+    if "dostal" in normalized_message and "objednal" in normalized_message:
+        return True
+    # Gift-voucher availability ("Predava Foodland darcekove
+    # poukazy?") - product_search ranks the real voucher products
+    # (which do exist) far below unrelated results for this generic
+    # phrasing, so this FAQ answer is the better response. "predava"
+    # (stem) also covers "predavate" (you sell) without a separate
+    # entry. Deliberately not a bare "poukaz" marker, which would also
+    # swallow an explicit purchase intent ("chcem kupit poukaz 30 eur")
+    # that should surface the real product instead.
+    if "predava" in normalized_message and "poukaz" in normalized_message:
+        return True
+    # FL-FAQ-001: "Co je Foodland?" - bare "co je" alone would be far
+    # too broad (matches almost any product question pattern);
+    # requiring the company's own name alongside it keeps this narrow.
+    if "co je" in normalized_message and "foodland" in normalized_message:
+        return True
+    # "Ako sa dozviem o akciach a zlavach?" (how do I learn about
+    # promotions/discounts) - deliberately not a bare "dozviem"
+    # marker: confirmed via direct testing that it swallows a
+    # genuine product-recommendation question ("Dozviem sa, aka ryza
+    # je najlepsia na sushi?") into FAQ with 0 products. Pairing with
+    # "akcia"/"zlava" (the question's own topic words) keeps this
+    # narrow.
+    if "dozviem" in normalized_message and (
+        "akcia" in normalized_message or "zlava" in normalized_message
+    ):
+        return True
+    # FL-FAQ-002: "Odkedy Foodland posobi na Slovensku?" -
+    # deliberately not "odkedy"+"foodland" (confirmed via direct
+    # testing that it swallows a stock-availability-by-date question,
+    # "Odkedy mate skladom FOODLAND ryzu?", into FAQ with 0 products)
+    # - "posobi" (operates) is the question's own distinguishing verb.
+    if "odkedy" in normalized_message and "posobi" in normalized_message:
+        return True
+    # FL-FAQ-008: "Co mam uviest pri otazke na dostupnost?" - bare
+    # "dostupnost" (availability) is too generic (stock-check context),
+    # so pairing it with "uviest" (to state/provide) targets this
+    # specific "what info should I include" question.
+    if "uviest" in normalized_message and "dostupnost" in normalized_message:
+        return True
+    # FL-FAQ-010: "Kde zadam zlavovy kupon?" (where do I enter a
+    # discount code) - distinct from the existing "discount code"
+    # English marker, which has no Slovak equivalent.
+    if "zadam" in normalized_message and "kupon" in normalized_message:
+        return True
+    # FL-FAQ-013: "Mozem nakupovat na firmu?" (can I buy as a
+    # company) - a permission/policy question. Deliberately not a
+    # bare "na firmu" marker: confirmed via direct testing that it
+    # swallows a genuine bulk-purchase product question ("Chcem
+    # nakupovat ryzu na firmu, kolko kusov odporucate?") into FAQ
+    # with 0 products. "mozem" (can I) keeps this to the permission-
+    # question framing only.
+    if "mozem" in normalized_message and "na firmu" in normalized_message:
+        return True
+    # FL-FAQ-027: Apple Pay / Google Pay support.
+    if "apple pay" in normalized_message or "google pay" in normalized_message:
+        return True
+    # FL-FAQ-038: "Ako zistim, ci je konkretny produkt skladom?" - a
+    # general how-do-I-check-availability process question (not a
+    # single-SKU stock claim for one named product, which should keep
+    # routing to product_search instead) - "zistim"+"skladom" targets
+    # this specific framing without swallowing "je ryza skladom?".
+    if "zistim" in normalized_message and "skladom" in normalized_message:
+        return True
+    # FL-FAQ-039: "Aky datum trvanlivosti ma balenie, ktore dostanem?"
+    # - requiring "dostanem" (which I will receive) alongside the
+    # phrase excludes a general product-browsing question that
+    # happens to ask about shelf life ("Ukaz mi produkty na dlhu
+    # trvanlivost, aky je ich datum trvanlivosti?", confirmed via
+    # direct testing to otherwise swallow it into FAQ with 0
+    # products).
+    if "datum trvanlivosti" in normalized_message and "dostanem" in normalized_message:
+        return True
+    return False
 
 
 _ADDRESS_PATTERN = re.compile(
@@ -8602,14 +8714,16 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
         if not answer:
             continue
 
-        # FAQ_scope == "Len uvedeny produkt a balenie" marks a record as
-        # explicitly single-SKU-scoped (product-specific allergen/usage
-        # trivia, e.g. one Kikkoman SKU's gluten content) - the EN-SK
+        # A record whose OWN question names a specific brand (e.g. one
+        # Kikkoman SKU's gluten content) is single-SKU-scoped - the EN-SK
         # ingredient-word bridge in tokenize() (soy/fish/sauce ->
         # sojova/rybia/omacka) otherwise lets these collide with generic
-        # English questions that never mention the product at all.
-        scope = str(record.get("FAQ_scope") or "")
-        if normalize(scope).startswith("len uveden"):
+        # English questions that never mention the product at all. Keyed
+        # on the brand name itself (not FAQ_scope, which several general-
+        # process answers also carry as an unrelated "re-verify per
+        # product" compliance caveat - e.g. FL-FAQ-038/039 ask a general
+        # "how do I check stock/expiry" question and must stay reachable).
+        if "kikkoman" in normalize(question):
             continue
         # Kategoria == "Recepty": recipe answers inherently list many
         # ingredient words (fish sauce, soy sauce, ...), which the same
