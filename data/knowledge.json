@@ -70436,47 +70436,91 @@
       {
         "Kategória": "Nákup",
         "Otázka": "Ako môžem na Foodlande objednať tovar?",
-        "Odpoveď": "Vyberiete si produkty a vložíte ich do košíka, vyplníte doručovaciu adresu a kontaktné údaje, zvolíte spôsob dopravy a platby a objednávku potvrdíte. Po odoslaní dostanete e-mailové potvrdenie.",
+        "Odpoveď": "Vyberte si produkt a požadovaný variant a vložte ho do košíka. Potom skontrolujte obsah, vyberte dopravu a platbu, vyplňte svoje údaje a odošlite objednávku.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-009",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "buy"
+        ],
+        "FAQ_aliases": [
+          "Ako si objednám tovar?"
+        ]
       },
       {
         "Otázka": "Musím sa pred objednaním registrovať?",
-        "Odpoveď": "Nie, objednávať môžete aj bez registrácie. Registrácia však zjednodušuje opakované objednávky a sledovanie ich stavu.",
+        "Odpoveď": "Nie, registrácia nie je povinná. Nakúpiť u nás môžete aj bez registrácie. Ak si vytvoríte účet počas objednávky, získate prehľad o svojich nákupoch, možnosť využívať kreditný systém a jednoduchšie opakované objednávanie.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-011",
+        "Kategória": "Nákup",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-02",
+        "FAQ_scope": "Registrácia vo Foodland e-shope podľa potvrdenia používateľa; konkrétne pravidlá kreditného systému nie sú súčasťou tejto odpovede.",
+        "FAQ_source_ids": [
+          "buy",
+          "foodland_confirmation_registration"
+        ],
+        "FAQ_aliases": [
+          "Musím sa zaregistrovať?"
+        ]
       },
       {
         "Otázka": "Aké spôsoby doručenia si môžem pri objednávke vybrať?",
-        "Odpoveď": "Na výber je osobný odber v predajni v Bratislave, doručenie kuriérom Packeta na výdajné miesto alebo domov, a doručenie prepravcami DPD či GLS.",
+        "Odpoveď": "Vybrať si môžete osobný odber, Packetu alebo kuriéra DPD/GLS. Možnosti dostupné pre vašu adresu a objednávku nájdete v košíku.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-016",
+        "Kategória": "Doprava",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "buy"
+        ],
+        "FAQ_aliases": [
+          "Aké možnosti dopravy ponúkate?"
+        ]
       },
       {
         "Otázka": "Aké spôsoby platby sú k dispozícii?",
-        "Odpoveď": "Hotovosť alebo karta pri osobnom odbere, platobná karta online (24-Pay), GoPay, PayPal, bankový prevod alebo dobierka pri doručení kuriérom.",
+        "Odpoveď": "Pri osobnom odbere môžete platiť hotovosťou alebo kartou. Ponúkame aj bankový prevod, dobierku a online platby cez 24Pay, GoPay a PayPal. Možnosti pre vašu objednávku nájdete v košíku.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-025",
+        "Kategória": "Platby",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "buy"
+        ],
+        "FAQ_aliases": [
+          "Aké spôsoby platby sú dostupné?"
+        ]
       },
       {
         "Otázka": "Môžem si objednaný tovar vyzdvihnúť osobne?",
@@ -70487,52 +70531,96 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Doprava"
       },
       {
         "Otázka": "Ako zistím, či je konkrétny produkt skladom?",
-        "Odpoveď": "Dostupnosť vidíte priamo v e-shope. Pri väčších alebo firemných objednávkach môžete napísať na eshop@foodland.sk s odkazom na produkt a požadovaným množstvom – tím vám dostupnosť overí.",
+        "Odpoveď": "Dostupnosť si pozrite pri konkrétnom variante výrobku. Ak údaj nie je jasný alebo potrebujete väčšie množstvo, pošlite našim kolegom na eshop@foodland.sk odkaz na produkt a požadovaný počet kusov.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-038",
+        "Kategória": "Produkty",
+        "FAQ_status": "runtime_required",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Len uvedený produkt a balenie",
+        "FAQ_source_ids": [
+          "soy"
+        ],
+        "FAQ_aliases": [
+          "Je produkt práve skladom?"
+        ]
       },
       {
         "Kategória": "Doprava",
         "Otázka": "Kedy je doprava zadarmo?",
-        "Odpoveď": "Doprava je zadarmo nad 49 € pre nefiremných (súkromných) zákazníkov. Pri objednávkách pod túto sumu závisí cena dopravy od viacerých faktorov – najmä od hmotnosti balíka (produkty sú rozdelené do váhových kategórií, ktoré sa určia až po vložení do košíka) a od zvoleného spôsobu platby (dobierka, bankový prevod, platobná brána). Presnú cenu dopravy preto najlepšie zistíte tak, že si vyskladate objednávku a prejdete až ku košíku – tam sa ešte pred potvrdením objednávky zobrazí celková cena vrátane dopravy, takže viete presne, koľko zaplatíte, ešte než sa rozhodnete objednávku dokončiť.",
+        "Odpoveď": "Pre nefiremných zákazníkov na slovenskej stránke ponúkame dopravu zdarma nad 49 €. Či sa uplatní na vašu adresu a objednávku, uvidíte v košíku.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-023",
+        "FAQ_status": "runtime_required",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "home"
+        ],
+        "FAQ_aliases": [
+          "Je doprava zdarma nad 49 €?"
+        ]
       },
       {
         "Otázka": "Ako dlho trvá doručenie objednávky?",
-        "Odpoveď": "Pri objednávke do 12:00 doručujú DPD/GLS/Nagel zvyčajne do 72 hodín v rámci Európy. Packeta doručuje do 3 pracovných dní na Slovensku (4 dni do ČR/Rakúska).",
+        "Odpoveď": "Na stránke dopravy uvádzame doručenie do 3 pracovných dní, pri Packete do Česka a Rakúska do 4 dní. Ak potrebujete overiť termín pre konkrétnu objednávku a adresu, obráťte sa, prosím, na našich kolegov na eshop@foodland.sk.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-021",
+        "Kategória": "Doprava",
+        "FAQ_status": "runtime_required",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "SK; iné trhy overiť samostatne",
+        "FAQ_source_ids": [
+          "ship_sk"
+        ],
+        "FAQ_aliases": [
+          "Ako dlho trvá doručenie?"
+        ]
       },
       {
         "Otázka": "Do ktorých krajín Foodland doručuje?",
-        "Odpoveď": "Kuriéri DPD, GLS a Nagel doručujú do viacerých krajín Európy. Packeta doručuje len na Slovensko, do Česka a Maďarska.",
+        "Odpoveď": "Napíšte nám, prosím, do ktorej krajiny chcete objednávku doručiť. Dostupné možnosti nájdete v košíku po zadaní adresy; s overením vám pomôžu aj naši kolegovia na eshop@foodland.sk.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-022",
+        "Kategória": "Doprava",
+        "FAQ_status": "runtime_required",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "ship_en"
+        ],
+        "FAQ_aliases": [
+          "Doručujete do mojej krajiny?"
+        ]
       },
       {
         "Otázka": "Ako funguje vyzdvihnutie na výdajnom mieste Packeta?",
@@ -70543,7 +70631,8 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Doprava"
       },
       {
         "Otázka": "Doručujete tovar domov aj s dobierkou?",
@@ -70554,7 +70643,8 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Doprava"
       },
       {
         "Otázka": "Môžem si tovar vyzdvihnúť osobne bez poštovného?",
@@ -70565,12 +70655,13 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Doprava"
       },
       {
         "Kategória": "Platby",
         "Otázka": "Aké platobné metódy Foodland podporuje?",
-        "Odpoveď": "Dobierka, bankový prevod, platba kartou online cez 24-Pay, TatraPay, GoPay a PayPal.",
+        "Odpoveď": "Pri osobnom odbere môžete platiť hotovosťou alebo kartou. Ponúkame aj bankový prevod, dobierku a online platby cez 24Pay, GoPay a PayPal. Možnosti pre vašu objednávku nájdete v košíku.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
@@ -70588,18 +70679,30 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Platby"
       },
       {
         "Otázka": "Môžem zaplatiť kartou priamo v predajni?",
-        "Odpoveď": "Áno, v predajni v Bratislave môžete platiť kartou alebo v hotovosti.",
+        "Odpoveď": "Áno, v predajni pri osobnom odbere u nás môžete platiť kartou aj v hotovosti.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-026",
+        "Kategória": "Platby",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "SK; iné trhy overiť samostatne",
+        "FAQ_source_ids": [
+          "ship_sk"
+        ],
+        "FAQ_aliases": [
+          "Môžem platiť pri osobnom odbere kartou?"
+        ]
       },
       {
         "Otázka": "Čo ak platím dobierkou pri doručení kuriérom?",
@@ -70610,41 +70713,74 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Platby"
       },
       {
         "Kategória": "Reklamácie",
         "Otázka": "Ako postupovať, ak mi prišiel poškodený produkt?",
-        "Odpoveď": "Kontaktujte reklamacie@foodland.sk, priložte fotografiu poškodeného tovaru a číslo objednávky. Foodland odpovedá do 3 pracovných dní.",
+        "Odpoveď": "Mrzí nás, že výrobok prišiel poškodený. Napíšte nám na reklamacie@foodland.sk, uveďte číslo objednávky a opíšte poškodenie. Priložte, prosím, fotografie výrobku a faktúry.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-028",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "claims"
+        ],
+        "FAQ_aliases": [
+          "Prišiel poškodený výrobok. Čo mám spraviť?"
+        ]
       },
       {
         "Otázka": "V balíku mi chýba produkt, čo mám robiť?",
-        "Odpoveď": "Chýbajúci produkt nahláste do 3 dní od doručenia na reklamacie@foodland.sk alebo eshop@foodland.sk s číslom objednávky.",
+        "Odpoveď": "Mrzí nás, že v balíku niečo chýba. Pošlite nám na reklamacie@foodland.sk číslo objednávky, názov chýbajúceho výrobku a fotografiu faktúry. Pomôže aj fotografia obsahu balíka.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-029",
+        "Kategória": "Reklamácie",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "claims"
+        ],
+        "FAQ_aliases": [
+          "V balíku chýba zaplatený výrobok. Ako postupovať?"
+        ]
       },
       {
         "Otázka": "Dostal som iný produkt, než som si objednal. Ako postupovať?",
-        "Odpoveď": "Napíšte na reklamacie@foodland.sk s číslom objednávky a popisom rozdielu – Foodland zariadi výmenu alebo vrátenie peňazí.",
+        "Odpoveď": "Mrzí nás táto zámena. Napíšte nám na reklamacie@foodland.sk a uveďte číslo objednávky, čo ste objednali a čo vám prišlo. Priložte, prosím, fotografiu dodaného výrobku a faktúry.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-030",
+        "Kategória": "Reklamácie",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "claims"
+        ],
+        "FAQ_aliases": [
+          "Dostal som nesprávny produkt. Kam sa obrátiť?"
+        ]
       },
       {
         "Otázka": "Ako dlho trvá vybavenie reklamácie?",
@@ -70655,7 +70791,8 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Reklamácie"
       },
       {
         "Otázka": "Môžem reklamáciu vyriešiť osobne v predajni?",
@@ -70666,7 +70803,8 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Reklamácie"
       },
       {
         "Otázka": "Ako funguje vrátenie peňazí formou dobropisu?",
@@ -70677,7 +70815,8 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Reklamácie"
       },
       {
         "Kategória": "Vrátenie tovaru",
@@ -70700,7 +70839,8 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Vrátenie tovaru"
       },
       {
         "Otázka": "Ako dlho trvá vrátenie peňazí po odstúpení od zmluvy?",
@@ -70711,7 +70851,8 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Vrátenie tovaru"
       },
       {
         "Otázka": "Môžem tovar vrátiť alebo vymeniť osobne v predajni?",
@@ -70722,7 +70863,8 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Vrátenie tovaru"
       },
       {
         "Otázka": "Čo ak si pri objednávke neprevezmem tovar (no-show)?",
@@ -70733,7 +70875,8 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Vrátenie tovaru"
       },
       {
         "Kategória": "Registrácia",
@@ -70756,7 +70899,8 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Registrácia"
       },
       {
         "Otázka": "Zabudol som heslo, ako ho obnovím?",
@@ -70767,7 +70911,8 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Registrácia"
       },
       {
         "Otázka": "Môžem sa prihlásiť cez Google alebo Facebook?",
@@ -70778,18 +70923,20 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Registrácia"
       },
       {
         "Otázka": "Aké výhody má registrovaný účet?",
-        "Odpoveď": "Registrovaný zákazník má prehľad objednávok, môže si ukladať obľúbené produkty do wishlistu a nemusí pri každej objednávke znova zadávať doručovacie údaje.",
+        "Odpoveď": "Nie, registrácia nie je povinná. Nakúpiť u nás môžete aj bez registrácie. Ak si vytvoríte účet počas objednávky, získate prehľad o svojich nákupoch, možnosť využívať kreditný systém a jednoduchšie opakované objednávanie.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Registrácia"
       },
       {
         "Kategória": "Vernostný program",
@@ -70801,8 +70948,7 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI",
-        "Poznámka": "Overené priamym prehľadaním webu vrátane registračných a objednávkových formulárov – nenašiel sa žiadny bodový/vernostný systém, iba newsletter (pozri ďalšie otázky)."
+        "VI": "VI"
       },
       {
         "Otázka": "Ako sa dozviem o akciách a zľavách?",
@@ -70813,7 +70959,8 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Vernostný program"
       },
       {
         "Otázka": "Predáva Foodland darčekové poukazy?",
@@ -70825,7 +70972,8 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka": "Darčekové poukazy boli overené len na SK e-shope. Pre ostatné jazykové mutácie nebola zhodná stránka overená – odkazy CZ/AT/EN/PL/HU/VI smerujú na hlavnú stránku príslušnej mutácie."
+        "Poznámka": "Darčekové poukazy boli overené len na SK e-shope. Pre ostatné jazykové mutácie nebola zhodná stránka overená – odkazy CZ/AT/EN/PL/HU/VI smerujú na hlavnú stránku príslušnej mutácie.",
+        "Kategória": "Vernostný program"
       },
       {
         "Otázka": "Plánuje Foodland v budúcnosti spustiť vernostný program?",
@@ -70836,7 +70984,8 @@
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "Kategória": "Vernostný program"
       },
       {
         "Kategória": "Vernostný program",
@@ -70861,7 +71010,8 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka": "Peňažná hodnota 1 kreditu: 0,01 €."
+        "Poznámka": "Peňažná hodnota 1 kreditu: 0,01 €.",
+        "Kategória": "Vernostný program"
       },
       {
         "Otázka": "Od akej výšky nákupu môžem použiť kredity?",
@@ -70873,7 +71023,8 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka": "Minimálna výška nákupu pre využitie kreditu: 50 €."
+        "Poznámka": "Minimálna výška nákupu pre využitie kreditu: 50 €.",
+        "Kategória": "Vernostný program"
       },
       {
         "Otázka": "Musím použiť všetky kredity naraz?",
@@ -70885,7 +71036,8 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka": "Zákazník môže využiť ľubovoľný kredit do výšky nákupu."
+        "Poznámka": "Zákazník môže využiť ľubovoľný kredit do výšky nákupu.",
+        "Kategória": "Vernostný program"
       },
       {
         "Otázka": "Získam kredity aj pri objednávke, kde použijem kredity?",
@@ -70897,7 +71049,8 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka": "Kredit pripísať len za finančne uhradenú časť nákupu."
+        "Poznámka": "Kredit pripísať len za finančne uhradenú časť nákupu.",
+        "Kategória": "Vernostný program"
       },
       {
         "Otázka": "Dokedy platia moje kredity?",
@@ -70909,7 +71062,8 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka": "Obdobie pre vypršanie kreditu: 365 dní."
+        "Poznámka": "Obdobie pre vypršanie kreditu: 365 dní.",
+        "Kategória": "Vernostný program"
       },
       {
         "Otázka": "Upozorníte ma pred vypršaním kreditov?",
@@ -70921,7 +71075,8 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka": "1. notifikácia: 30 dní, 2. notifikácia: 7 dní."
+        "Poznámka": "1. notifikácia: 30 dní, 2. notifikácia: 7 dní.",
+        "Kategória": "Vernostný program"
       },
       {
         "Otázka": "Dajú sa kredity pripísať spätne?",
@@ -70933,24 +71088,37 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI",
-        "Poznámka": "Spätné pripisovanie kreditov zákazníkovi - odporúčané riešiť podporou, ak nemáme presnejšie pravidlo."
+        "Poznámka": "Spätné pripisovanie kreditov zákazníkovi - odporúčané riešiť podporou, ak nemáme presnejšie pravidlo.",
+        "Kategória": "Vernostný program"
       },
       {
         "Kategória": "Nákup",
         "Otázka": "Kde môžem sledovať stav svojej objednávky?",
-        "Odpoveď": "Ak ste registrovaný zákazník, stav objednávky si viete pozrieť priamo vo svojom účte na Foodland.sk. O priebehu objednávky (napr. o pripravenosti na osobný odber) vás zároveň informujeme e-mailom.",
+        "Odpoveď": "Stav objednávky nájdete v prijatých e-mailoch alebo po prihlásení do svojho zákazníckeho účtu. Ak potrebujete aktuálny stav overiť, napíšte nám na eshop@foodland.sk alebo zavolajte na +421 2 4468 1527 či +421 915 779 734. Pripravte si, prosím, číslo objednávky.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-015",
+        "FAQ_status": "runtime_required",
+        "FAQ_checked_at": "2026-10-02",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "terms",
+          "contact",
+          "foodland_confirmation_order_status"
+        ],
+        "FAQ_aliases": [
+          "Kde je moja objednávka?"
+        ]
       },
       {
         "Kategória": "Nákup",
         "Otázka": "Má Foodland kamennú predajňu? Kde ju nájdem a aké má otváracie hodiny?",
-        "Odpoveď": "Áno, predajňa Foodland sa nachádza na adrese Stará Vajnorská 3308/19, 831 04 Bratislava (areál REMPO). Otváracie hodiny: Po–Pi 8:00–18:00, So 9:00–20:00, Ne 9:00–15:00.",
+        "Odpoveď": "Predajňa Foodland sa nachádza na Starej Vajnorskej 19, 831 04 Bratislava, v areáli REMPO. Radi vás privítame od pondelka do piatka od 8:00 do 18:00, v sobotu od 9:00 do 20:00 a v nedeľu od 9:00 do 15:00. Otváracie hodiny počas sviatkov si, prosím, overte pred návštevou.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
@@ -70974,7 +71142,7 @@
       {
         "Kategória": "Nákup",
         "Otázka": "Sú ceny v kamennej predajni rovnaké ako na e-shope?",
-        "Odpoveď": "Áno, ceny sú v predajni aj na e-shope rovnaké. V predajni navyše nájdete širší sortiment vrátane čerstvých, chladených a mrazených produktov, ktoré e-shop neponúka.",
+        "Odpoveď": "Áno, ceny sú v predajni aj na e-shope rovnaké. V predajni navyše nájdete širší sortiment vrátane čerstvých, chladených a mrazených produktov, Mrazené a chladené výrobky si môžete objednať na osobný odber.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
@@ -70986,14 +71154,24 @@
       {
         "Kategória": "Nákup",
         "Otázka": "Je pri kamennej predajni parkovanie?",
-        "Odpoveď": "Áno, parkovanie je dostupné v rámci areálu podľa aktuálnej obsadenosti.",
+        "Odpoveď": "Áno, zaparkovať môžete v areáli podľa dostupnosti voľných miest.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
         "EN": "EN",
         "PL": "PL",
         "HU": "HU",
-        "VI": "VI"
+        "VI": "VI",
+        "ID": "FL-FAQ-007",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "contact"
+        ],
+        "FAQ_aliases": [
+          "Dá sa pri predajni parkovať?"
+        ]
       },
       {
         "Kategória": "Produkty",
@@ -71010,7 +71188,7 @@
       {
         "Kategória": "Produkty",
         "Otázka": "Čo znamená, ak produkt v e-shope nevidím alebo je vypredaný?",
-        "Odpoveď": "V e-shope zobrazujeme iba produkty, ktoré sú aktuálne skladom. Ak produkt v ponuke nevidíte, je momentálne vypredaný - skúste to prosím neskôr.",
+        "Odpoveď": "Dostupnosť si pozrite pri konkrétnom variante výrobku. Ak údaj nie je jasný alebo potrebujete väčšie množstvo, pošlite našim kolegom na eshop@foodland.sk odkaz na produkt a požadovaný počet kusov.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
@@ -71022,7 +71200,7 @@
       {
         "Kategória": "Nákup",
         "Otázka": "Ako vás môžem kontaktovať? Aký máte telefón a email na zákaznícku podporu?",
-        "Odpoveď": "Najrýchlejšie nás zastihnete e-mailom na eshop@foodland.sk alebo telefonicky na +421 2 4468 1527. Kamenná predajňa Foodland sa nachádza na adrese Stará Vajnorská 3308/19, 831 04 Bratislava (areál REMPO).",
+        "Odpoveď": "Napíšte nám na eshop@foodland.sk alebo zavolajte na +421 2 4468 1527 či +421 915 779 734. Radi vám pomôžeme. Našu predajňu nájdete na Starej Vajnorskej 19, 831 04 Bratislava, v areáli REMPO.",
         "SK": "SK",
         "CZ": "CZ",
         "AT": "AT",
@@ -71030,6 +71208,346 @@
         "PL": "PL",
         "HU": "HU",
         "VI": "VI"
+      },
+      {
+        "ID": "FL-FAQ-001",
+        "Kategória": "Obchod",
+        "Otázka": "Čo je Foodland?",
+        "Odpoveď": "Vo Foodlande nájdete ázijské potraviny, nápoje a kuchynské potreby pre domácu kuchyňu aj gastro prevádzky.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "about"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-002",
+        "Kategória": "Obchod",
+        "Otázka": "Odkedy Foodland pôsobí na Slovensku?",
+        "Odpoveď": "Na slovenskom trhu pôsobíme od roku 2003.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "about"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-003",
+        "Kategória": "Obchod",
+        "Otázka": "Predávate aj reštauráciám a veľkoodberateľom?",
+        "Odpoveď": "Áno, zásobujeme aj gastro prevádzky, predajcov a distribútorov. Napíšte nám, čo potrebujete, a naši kolegovia vám poskytnú informácie o individuálnych cenách a podmienkach.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "about"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-004",
+        "Kategória": "Kontakt",
+        "Otázka": "Kde nájdem kamennú predajňu?",
+        "Odpoveď": "Nájdete nás na Starej Vajnorskej 19, 831 04 Bratislava, v areáli REMPO.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "contact"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-005",
+        "Kategória": "Kontakt",
+        "Otázka": "Aké sú otváracie hodiny?",
+        "Odpoveď": "Radi vás privítame od pondelka do piatka od 8:00 do 18:00, v sobotu od 9:00 do 20:00 a v nedeľu od 9:00 do 15:00. Otváracie hodiny počas sviatkov si, prosím, overte pred návštevou.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "contact"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-006",
+        "Kategória": "Kontakt",
+        "Otázka": "Ako kontaktujem podporu e-shopu?",
+        "Odpoveď": "Napíšte nám na eshop@foodland.sk alebo zavolajte na +421 2 4468 1527 či +421 915 779 734. Radi vám pomôžeme. Našu predajňu nájdete na Starej Vajnorskej 19, 831 04 Bratislava, v areáli REMPO.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "contact"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-008",
+        "Kategória": "Kontakt",
+        "Otázka": "Čo mám uviesť pri otázke na dostupnosť?",
+        "Odpoveď": "Pošlite nám odkaz na produkt a množstvo, ktoré potrebujete. Ak sa pýtate na existujúcu objednávku, pripojte aj jej číslo.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "contact"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-010",
+        "Kategória": "Objednávka",
+        "Otázka": "Kde zadám zľavový kupón?",
+        "Odpoveď": "Zľavový kupón môžete uplatniť v nákupnom košíku. Pri jeho použití si pozrite podmienky konkrétnej akcie.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "buy"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-012",
+        "Kategória": "Objednávka",
+        "Otázka": "Neprišiel mi potvrdzovací e-mail. Čo mám spraviť?",
+        "Odpoveď": "Pozrite sa, prosím, aj do priečinka Spam alebo Reklamy. Ak potvrdenie nenájdete, napíšte nám na eshop@foodland.sk a naši kolegovia vám pomôžu.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "buy"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-013",
+        "Kategória": "Objednávka",
+        "Otázka": "Môžem nakupovať na firmu?",
+        "Odpoveď": "Áno. Pri objednávke uveďte obchodné meno, IČO, DIČ alebo IČ DPH a fakturačnú adresu, ak sa líši od doručovacej.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "terms"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-014",
+        "Kategória": "Objednávka",
+        "Otázka": "Môžem zmeniť adresu po objednaní?",
+        "Odpoveď": "Napíšte nám na eshop@foodland.sk a uveďte číslo objednávky a novú adresu. Naši kolegovia overia, či je zmena ešte možná, a potvrdia vám ju.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "contact"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-017",
+        "Kategória": "Doprava",
+        "Otázka": "Ako zistím cenu dopravy?",
+        "Odpoveď": "Presnú cenu dopravy uvidíte v košíku pri výbere doručenia. Závisí od hmotnosti zásielky a zvoleného spôsobu platby.",
+        "SK": "SK",
+        "FAQ_status": "runtime_required",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "SK; iné trhy overiť samostatne",
+        "FAQ_source_ids": [
+          "ship_sk"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-018",
+        "Kategória": "Doprava",
+        "Otázka": "Prečo sa prepravná hmotnosť líši od váhy výrobkov?",
+        "Odpoveď": "Do prepravnej hmotnosti započítavame aj obal zásielky, preto môže byť vyššia než samotná váha výrobkov.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "SK; iné trhy overiť samostatne",
+        "FAQ_source_ids": [
+          "ship_sk"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-019",
+        "Kategória": "Doprava",
+        "Otázka": "Ako môžem sledovať zásielku?",
+        "Odpoveď": "Po expedícii vám pošleme e-mail s číslom zásielky a odkazom na jej sledovanie. Dopravca vás môže o doručení informovať aj prostredníctvom SMS alebo telefonicky. Spôsob informovania závisí od konkrétnej dopravnej spoločnosti.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-02",
+        "FAQ_scope": "SK; iné trhy overiť samostatne",
+        "FAQ_source_ids": [
+          "ship_sk",
+          "foodland_confirmation_tracking"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-020",
+        "Kategória": "Doprava",
+        "Otázka": "Ako dostanem kód na vyzdvihnutie v Packete?",
+        "Odpoveď": "Keď bude zásielka pripravená na vyzdvihnutie, dostanete SMS a e-mail s kódom na jej prevzatie.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "SK; iné trhy overiť samostatne",
+        "FAQ_source_ids": [
+          "ship_sk"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-024",
+        "Kategória": "Doprava",
+        "Otázka": "Posielate mrazené a chladené potraviny kuriérom?",
+        "Odpoveď": "Mrazené a chladené výrobky nedoručujeme. Môžete si ich však objednať a osobne vyzdvihnúť v našej kamennej predajni na Starej Vajnorskej 19 v Bratislave, v areáli REMPO.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-02",
+        "FAQ_scope": "Všetky mrazené a chladené výrobky Foodland — iba osobný odber podľa potvrdenia používateľa.",
+        "FAQ_source_ids": [
+          "foodland_confirmation_cold_pickup",
+          "contact"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-027",
+        "Kategória": "Platby",
+        "Otázka": "Podporujete Apple Pay alebo Google Pay?",
+        "Odpoveď": "Pozrite si možnosti pri online platbe za svoju objednávku. Ak je Apple Pay alebo Google Pay dostupné, zobrazí sa medzi ponúkanými spôsobmi platby.",
+        "SK": "SK",
+        "FAQ_status": "runtime_required",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "buy"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-031",
+        "Kategória": "Reklamácie",
+        "Otázka": "Môžem reklamovať aj po troch dňoch?",
+        "Odpoveď": "Napíšte nám na reklamacie@foodland.sk a opíšte problém. Pripojte číslo objednávky a dostupné podklady, aby naši kolegovia mohli posúdiť váš konkrétny prípad.",
+        "SK": "SK",
+        "FAQ_status": "handoff_required",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "claims"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-032",
+        "Kategória": "Reklamácie",
+        "Otázka": "Môžem vrátiť potraviny bez udania dôvodu?",
+        "Odpoveď": "Možnosť vrátenia závisí od konkrétneho výrobku a okolností nákupu. Napíšte nám na eshop@foodland.sk číslo objednávky, názov výrobku a informáciu, či ste ho otvorili. Naši kolegovia vám vysvetlia ďalší postup.",
+        "SK": "SK",
+        "FAQ_status": "handoff_required",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "terms"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-033",
+        "Kategória": "Produkty",
+        "Otázka": "Je sójová omáčka KIKKOMAN 1000 ml bezlepková?",
+        "Odpoveď": "Táto sójová omáčka obsahuje pšenicu, preto ju neodporúčame ako bezlepkovú voľbu. Pri výbere siahnite po výrobku s overeným bezlepkovým označením.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Len uvedený produkt a balenie",
+        "FAQ_source_ids": [
+          "soy"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-034",
+        "Kategória": "Produkty",
+        "Otázka": "Je Kimchi základ KIKKOMAN 300 g vegánsky?",
+        "Odpoveď": "Tento kimchi základ obsahuje rybiu omáčku, preto nie je vhodný pre vegánsku stravu.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Len uvedený produkt a balenie",
+        "FAQ_source_ids": [
+          "kimchi"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-035",
+        "Kategória": "Produkty",
+        "Otázka": "Ako použijem ochutený sushi ocot KIKKOMAN 300 ml?",
+        "Odpoveď": "Na približne 360 g uvarenej sushi ryže použite 3 polievkové lyžice tohto ochuteného octu. Primiešajte ho, kým je ryža ešte teplá, a nechajte ju vychladnúť.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Len uvedený produkt a balenie",
+        "FAQ_source_ids": [
+          "vinegar"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-036",
+        "Kategória": "Recepty",
+        "Otázka": "Aké suroviny potrebujem na Phở Bò?",
+        "Odpoveď": "Na Phở Bò podľa nášho receptu potrebujete hovädzí vývar, ryžové rezance, aromatické koreniny, bylinky a rybaciu omáčku. Hoisin a srirachu môžete pridať podľa chuti pri servírovaní.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "pho"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-037",
+        "Kategória": "Recepty",
+        "Otázka": "Má Foodland aj recepty?",
+        "Odpoveď": "Áno, v našej sekcii receptov nájdete napríklad phở, sushi, ramen, kimchi aj Pad Thai. Môžete si tak vybrať jedlo aj suroviny na jeho prípravu.",
+        "SK": "SK",
+        "FAQ_status": "source_backed",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "recipes"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-039",
+        "Kategória": "Produkty",
+        "Otázka": "Aký dátum trvanlivosti má balenie, ktoré dostanem?",
+        "Odpoveď": "Presný dátum trvanlivosti konkrétneho balenia vám overia naši kolegovia. Pošlite im na eshop@foodland.sk odkaz na výrobok a množstvo, ktoré potrebujete.",
+        "SK": "SK",
+        "FAQ_status": "handoff_required",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Len uvedený produkt a balenie",
+        "FAQ_source_ids": [
+          "soy"
+        ]
+      },
+      {
+        "ID": "FL-FAQ-040",
+        "Kategória": "Jazyky",
+        "Otázka": "Prečo sa pýtate na krajinu doručenia, keď píšem po nemecky?",
+        "Odpoveď": "Krajinu doručenia potrebujeme poznať, aby sme vám poradili s dopravou a platbou. Aj keď spolu komunikujeme po nemecky, objednávku môžete chcieť doručiť do inej krajiny.",
+        "SK": "SK",
+        "FAQ_status": "runtime_required",
+        "FAQ_checked_at": "2026-10-01",
+        "FAQ_scope": "Podľa uvedeného zdroja; nepreberať automaticky do inej mutácie",
+        "FAQ_source_ids": [
+          "ship_de"
+        ]
       }
     ],
     "Products_AI": [
@@ -77942,7 +78460,7 @@
     "CrossSell": 2140,
     "Recipes": 55,
     "Magazine": 60,
-    "FAQ": 52,
+    "FAQ": 78,
     "Products_AI": 130,
     "IntentMapping": 318
   }

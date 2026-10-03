@@ -398,7 +398,7 @@ class TestCharacterization_rt0024_FIXED_C3_FAQ_TOPIC_MISMATCH:
         response = _engine_chat("ako mozem zaplatit?", "ae-c3-generic", evaluation_context())
         assert response.get("intent") == "faq"
         normalized = m.normalize(response.get("answer") or "")
-        assert "dobierka" in normalized
+        assert "dobierk" in normalized
         assert "kartou" in normalized
 
     def test_instore_card_question_still_functional(self):

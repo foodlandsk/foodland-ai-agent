@@ -57,7 +57,7 @@ def _chat(message: str, session_id: str, limit: int = 8) -> dict:
 
 
 STORE_QUESTION = "Kde sa nachádza kamenná predajňa Foodland?"
-CANONICAL_ADDRESS_FRAGMENT_STREET = "Stará Vajnorská 3308/19"
+CANONICAL_ADDRESS_FRAGMENT_STREET = "Starej Vajnorskej 19"
 CANONICAL_ADDRESS_FRAGMENT_CITY = "831 04 Bratislava"
 CANONICAL_MAPS_URL = "https://maps.app.goo.gl/3tFJ4P6w2pj88xAP8"
 GENERIC_MAPS_SEARCH_PREFIX = "https://www.google.com/maps/search/"

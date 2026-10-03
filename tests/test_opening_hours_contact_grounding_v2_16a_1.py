@@ -83,7 +83,7 @@ HOURS_QUESTION = "Kedy mate otvorene?"
 CONTACT_QUESTION = "Ako vas mozem kontaktovat?"
 PHONE = "+421 2 4468 1527"
 EMAIL = "eshop@foodland.sk"
-ADDRESS_FRAGMENT = "Stará Vajnorská"
+ADDRESS_FRAGMENT = "Starej Vajnorskej"
 
 
 # ---------------------------------------------------------------------------

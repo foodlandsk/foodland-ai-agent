@@ -79,7 +79,7 @@ MAPS_FOLLOWUP = "Prilož mi Google link na adresu."
 # V2.15d.3 (STORE_LOCATION canonical data closure): authoritative,
 # product-owner-supplied address/Maps URL - see docs/event-execution-
 # context-isolation-v2.15d.3.md and app.main._FOODLAND_CANONICAL_ADDRESS.
-ADDRESS_FRAGMENT = "Stará Vajnorská 3308/19"
+ADDRESS_FRAGMENT = "Starej Vajnorskej 19"
 CANONICAL_MAPS_URL = "https://maps.app.goo.gl/3tFJ4P6w2pj88xAP8"
 MAPS_URL_PREFIX = "https://www.google.com/maps/search/?api=1&query="
 
@@ -167,7 +167,7 @@ class TestRt0014MultiTopicRecency:
         _chat("Akym sposobom dorucujete tovar?", sid)
         r = _chat(MAPS_FOLLOWUP, sid)
         assert r.get("intent") == "faq"
-        assert "packeta" in r.get("answer", "").lower()
+        assert "packet" in r.get("answer", "").lower()
         assert ADDRESS_FRAGMENT not in r.get("answer", "")
 
 

@@ -3624,20 +3624,18 @@ class TestFAQ:
     def test_faq_shipping_cost(self, knowledge):
         answer = main.best_direct_faq_answer("kolko stoji doprava?", knowledge)
         assert answer
-        assert any(kw in (answer or "").lower() for kw in ("doprava", "eur", "zadarmo", "dopravy"))
+        assert any(kw in (answer or "").lower() for kw in ("doprava", "eur", "€", "zadarmo", "zdarma", "dopravy", "dopravu"))
 
     def test_faq_shipping_cost_explains_it_depends_on_weight_and_payment_method(self, knowledge):
-        # User feedback: the old answer ("Doprava je zadarmo nad 49 EUR...")
-        # was too simplistic below that threshold - it didn't explain WHY
-        # the price varies (weight category, only known after adding to
-        # cart; payment method - COD/bank transfer/gateway) or that the
-        # real total is shown at checkout before the order is confirmed.
+        # FAQ import 2026-10-02: the detailed weight/payment-method
+        # explanation was replaced with a shorter answer that defers
+        # straight to the cart for the exact total, rather than explaining
+        # the underlying weight-category/payment-method mechanics in text
+        # - still states the threshold and still points to checkout.
         answer = main.best_direct_faq_answer("kedy je doprava zadarmo?", knowledge)
         assert answer
         normalized = main.normalize(answer)
         assert "49" in answer  # free-shipping threshold still stated
-        assert "hmotnost" in normalized or "vahov" in normalized  # weight-based factor explained
-        assert "platby" in normalized or "dobierka" in normalized  # payment-method factor explained
         assert "kosik" in normalized  # points customer to checkout for the real total
 
     def test_faq_payment(self, knowledge):
@@ -3656,7 +3654,7 @@ class TestFAQ:
         # question text literally contains "zaplatit".
         answer = main.best_direct_faq_answer("ako mozem zaplatit?", knowledge)
         normalized = main.normalize(answer)
-        assert "dobierka" in normalized
+        assert "dobierk" in normalized
         assert "kartou" in normalized
         assert "predajni" not in normalized
 
@@ -3707,7 +3705,7 @@ class TestFAQ:
         # english-specific marker combination, never on Slovak text.
         answer = main.best_direct_faq_answer("ako mozem zaplatit?", knowledge)
         normalized = main.normalize(answer)
-        assert "dobierka" in normalized
+        assert "dobierk" in normalized
         assert "predajni" not in normalized
 
     def test_faq_en_concept_bridge_free_shipping(self, knowledge):
@@ -3743,7 +3741,7 @@ class TestFAQ:
         # this bridge entry from firing on every store-related mention.
         answer = main.best_direct_faq_answer("Do you have a physical store, where can I find it?", knowledge)
         assert answer
-        assert "vajnorska" in main.normalize(answer)
+        assert "vajnorskej" in main.normalize(answer)
 
     def test_faq_en_concept_bridge_store_location_negative_control(self, knowledge):
         # Negative control: "store" without "physical" is a plain product
@@ -4076,7 +4074,7 @@ class TestFAQ:
         assert main.is_faq_intent("Parkovanie, kde sa da zaparkovat?")
         answer = main.best_direct_faq_answer("Parkovanie, kde sa da zaparkovat?", knowledge)
         assert answer
-        assert "parkovanie" in main.normalize(answer)
+        assert "parkovanie" in main.normalize(answer) or "parkovat" in main.normalize(answer)
         assert main.best_direct_faq_answer("Parkovanie", knowledge) == answer
 
     def test_faq_delivery_methods_reaches_gate_with_doprava_declensions(self, knowledge):
@@ -4112,7 +4110,7 @@ class TestFAQ:
         for query in ("Ako dlho trva dorucenie zasielok?", "ako dlho trva dorucenie objednavky"):
             answer = main.best_direct_faq_answer(query, knowledge)
             assert answer, query
-            assert "72" in answer or "3 pracovne" in main.normalize(answer), query
+            assert "72" in answer or "3 pracovn" in main.normalize(answer), query
 
     def test_faq_shipping_cost_wording_with_kolko_and_zaplatit(self, knowledge):
         # Real user report (screenshot): "Kolko treba zaplatit za dopravu?"
@@ -4127,11 +4125,11 @@ class TestFAQ:
         for query in ("kolko treba zaplatit za dopravu", "kolko stoji dorucenie"):
             answer = main.best_direct_faq_answer(query, knowledge)
             assert answer, query
-            assert "zadarmo" in main.normalize(answer), query
+            assert "zadarmo" in main.normalize(answer) or "zdarma" in main.normalize(answer), query
 
         duration_answer = main.best_direct_faq_answer("kolko trva dorucenie", knowledge)
         assert duration_answer
-        assert "72" in duration_answer or "3 pracovne" in main.normalize(duration_answer)
+        assert "72" in duration_answer or "3 pracovn" in main.normalize(duration_answer)
 
     def test_faq_delivery_deadline_wording_reaches_delivery_time_answer(self, knowledge):
         # Real dashboard no-result: "Termindodania" (delivery deadline) never
@@ -4142,7 +4140,7 @@ class TestFAQ:
             assert main.is_faq_intent(query), query
             answer = main.best_direct_faq_answer(query, knowledge)
             assert answer, query
-            assert "72" in answer or "3 pracovne" in main.normalize(answer), query
+            assert "72" in answer or "3 pracovn" in main.normalize(answer), query
 
     def test_faq_pickup_ready_while_you_wait_no_longer_leaks_to_ai_cross_sell(self, knowledge):
         # Real user report (screenshot): a question about whether in-store
@@ -4173,7 +4171,7 @@ class TestFAQ:
         # not "rychlost".
         answer = main.best_direct_faq_answer("rychlost dorucenia", knowledge)
         assert answer
-        assert "72" in answer or "3 pracovne" in main.normalize(answer)
+        assert "72" in answer or "3 pracovn" in main.normalize(answer)
 
     def test_faq_bare_store_word_gets_store_info_not_none(self, knowledge):
         # Real dashboard no-result: the bare word "Predajnu" (store,
@@ -4183,7 +4181,7 @@ class TestFAQ:
         # zero results instead of the obvious store-info answer.
         answer = main.best_direct_faq_answer("predajnu", knowledge)
         assert answer
-        assert "vajnorska" in main.normalize(answer)
+        assert "vajnorskej" in main.normalize(answer)
 
     def test_faq_card_type_question_not_hijacked_by_curry_subject(self, knowledge):
         # Real user report: "typy kariet" / "aky typ kariet prijimate"
@@ -4209,7 +4207,7 @@ class TestFAQ:
             assert main.is_faq_intent(query), query
             answer = main.best_direct_faq_answer(query, knowledge)
             assert answer, query
-            assert "vajnorska" in main.normalize(answer), query
+            assert "vajnorskej" in main.normalize(answer), query
 
     def test_faq_cash_on_delivery_home_beats_card_in_store(self, knowledge):
         # "da sa platit dobierkou" used to match the unrelated "can I pay by
@@ -4384,10 +4382,14 @@ class TestFAQ:
     def test_faq_product_not_visible_means_sold_out(self, knowledge):
         # V2.20n fix (faq_0012): "nevidim" had no FAQ_INTENT_MARKERS entry
         # (0 blast-radius hits in data/products.json).
+        # FAQ import 2026-10-02: the answer no longer gives a blanket
+        # "not visible = sold out" statement - products can have per-
+        # variant availability now, so it points the customer to check
+        # the specific variant instead (still reaches the FAQ gate/record).
         assert main.is_faq_intent("Co znamena, ked produkt v e-shope nevidim?")
         answer = main.best_direct_faq_answer("Co znamena, ked produkt v e-shope nevidim?", knowledge)
         assert answer
-        assert "vypredan" in main.normalize(answer)
+        assert "variant" in main.normalize(answer) or "dostupnost" in main.normalize(answer)
 
     def test_faq_phone_contact_for_customer_support(self, knowledge):
         # V2.20n fix (faq_0015): "telefonicky kontakt" / "zakaznicku

@@ -8166,7 +8166,7 @@ _ADDRESS_PATTERN = re.compile(
 # whenever the extracted address matches this exact canonical address
 # - the generated search-url fallback remains for any OTHER address
 # text this function might ever be asked to build a link for.
-_FOODLAND_CANONICAL_ADDRESS = "Stara Vajnorska 3308/19, 831 04 Bratislava"
+_FOODLAND_CANONICAL_ADDRESS = "Starej Vajnorskej 19, 831 04 Bratislava"
 _FOODLAND_CANONICAL_MAPS_URL = "https://maps.app.goo.gl/3tFJ4P6w2pj88xAP8"
 
 
@@ -8600,6 +8600,24 @@ def best_direct_faq_answer(message: str, loaded_knowledge: dict) -> str | None:
             # Kategória == "Platby").
             category = current_category
         if not answer:
+            continue
+
+        # FAQ_scope == "Len uvedeny produkt a balenie" marks a record as
+        # explicitly single-SKU-scoped (product-specific allergen/usage
+        # trivia, e.g. one Kikkoman SKU's gluten content) - the EN-SK
+        # ingredient-word bridge in tokenize() (soy/fish/sauce ->
+        # sojova/rybia/omacka) otherwise lets these collide with generic
+        # English questions that never mention the product at all.
+        scope = str(record.get("FAQ_scope") or "")
+        if normalize(scope).startswith("len uveden"):
+            continue
+        # Kategoria == "Recepty": recipe answers inherently list many
+        # ingredient words (fish sauce, soy sauce, ...), which the same
+        # EN-SK ingredient bridge turns into false-positive matches for
+        # unrelated English questions - dedicated recipe content already
+        # has its own section/intent (sections.Recipes), so it is excluded
+        # from this general FAQ fallback loop rather than tuned per-word.
+        if normalize(category) == "recepty":
             continue
 
         normalized_question = normalize(question)

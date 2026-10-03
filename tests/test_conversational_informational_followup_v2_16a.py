@@ -110,7 +110,7 @@ class TestStoreLocationRegression:
         _chat(STORE_QUESTION, sid)
         r = _chat("Posli mi mapu.", sid)
         assert r.get("intent") == "faq"
-        assert "Stará Vajnorská 3308/19" in r.get("answer", "")
+        assert "Starej Vajnorskej 19" in r.get("answer", "")
         assert "maps.app.goo.gl/3tFJ4P6w2pj88xAP8" in r.get("answer", "")
 
     def test_store_address_wording_variant(self):
@@ -118,7 +118,7 @@ class TestStoreLocationRegression:
         _chat("Kde mate predajnu?", sid)
         r = _chat("Ako sa tam dostanem?", sid)
         assert r.get("intent") == "faq"
-        assert "Stará Vajnorská" in r.get("answer", "")
+        assert "Starej Vajnorskej" in r.get("answer", "")
 
 
 # ---------------------------------------------------------------------------
