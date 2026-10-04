@@ -349,6 +349,100 @@ class TestLooksLikeComparisonRequest:
         assert cmp.looks_like_comparison_request("Kikkoman alebo Yamasa?")
 
 
+class TestLooksLikeComparisonRequestBrandAware:
+    """V2.24l-bis - Cluster F (F_ALEBO_PHRASING_TRIGGERS_COMPARISON_MISROUTE).
+
+    The previous bare-"alebo" gate used whole-message token count as its
+    safety boundary; V2.24l proved that is not a safe boundary (a real
+    full-suite regression: a legitimate multiword two-brand comparison
+    was wrongly rejected). This class locks in the replacement signal -
+    an existing catalog brand set, already available to the only real
+    caller (execute_comparison() already receives `products`) - with no
+    new retrieval and no hardcoded brand names in this module."""
+
+    KNOWN_BRANDS = frozenset({"kikkoman", "yamasa"})
+
+    def test_bare_alebo_with_distinct_known_brands_is_comparison(self):
+        assert cmp.looks_like_comparison_request(
+            "Kikkoman alebo Yamasa?", known_brands=self.KNOWN_BRANDS
+        )
+
+    def test_hard_regression_multiword_distinct_brands_is_comparison(self):
+        """V2.24l's exact negative collision: both fragments are long
+        (brand + multiword product noun) but each names a distinct
+        recognized brand - must remain a comparison regardless of
+        fragment length. Permanent regression lock, mirrors
+        tests/test_recommendation_explanation_v2_16e.py::
+        TestWhyThisFollowup::test_why_not_other_after_clear_winner_comparison."""
+        assert cmp.looks_like_comparison_request(
+            "Kikkoman sojova omacka alebo Yamasa sojova omacka?",
+            known_brands=self.KNOWN_BRANDS,
+        )
+
+    def test_cluster_f_target_0002_no_brand_on_either_side_is_not_comparison(self):
+        assert not cmp.looks_like_comparison_request(
+            "Hladam korejske kimchi v pohari alebo vrecku.",
+            known_brands=self.KNOWN_BRANDS,
+        )
+
+    def test_cluster_f_target_0009_no_brand_on_either_side_is_not_comparison(self):
+        assert not cmp.looks_like_comparison_request(
+            "Mate wasabi prasok alebo pastu?", known_brands=self.KNOWN_BRANDS
+        )
+
+    def test_same_brand_both_sides_is_not_a_distinct_brand_comparison(self):
+        assert not cmp.looks_like_comparison_request(
+            "Kikkoman sojova omacka alebo Kikkoman teriyaki omacka?",
+            known_brands=self.KNOWN_BRANDS,
+        )
+
+    def test_unconditional_markers_are_unaffected_by_known_brands(self):
+        assert cmp.looks_like_comparison_request("Kikkoman vs Yamasa?", known_brands=self.KNOWN_BRANDS)
+        assert cmp.looks_like_comparison_request("Porovnaj Kikkoman a Yamasa", known_brands=self.KNOWN_BRANDS)
+
+    def test_rozdiel_exclusion_is_unaffected_by_known_brands(self):
+        assert not cmp.looks_like_comparison_request(
+            "aky je rozdiel medzi mirin a rizovym octom?", known_brands=self.KNOWN_BRANDS
+        )
+
+    def test_no_known_brands_falls_back_to_original_token_count_heuristic(self):
+        """Backward compatibility: internal recursive callers in this
+        module (_split_explicit_pair/is_bare_comparison_followup) never
+        pass known_brands - their behavior must be byte-for-byte
+        unchanged from the pre-V2.24l-bis heuristic."""
+        assert cmp.looks_like_comparison_request("Kikkoman alebo Yamasa?")
+        assert cmp.looks_like_comparison_request(
+            "Kikkoman sojova omacka alebo Yamasa sojova omacka?"
+        )
+        assert not cmp.looks_like_comparison_request(
+            "Mozem sa na Foodlande prihlasit cez Google alebo Facebook?"
+        )
+
+    def test_real_catalog_brand_set_fixes_both_cluster_f_targets(self):
+        """Section 36 precedent (not only synthetic data) - same check
+        using the real Foodland catalog's brand field, exactly as
+        execute_comparison() derives it from its existing `products`
+        parameter."""
+        import json
+
+        products = json.loads((ROOT / "data" / "products.json").read_text(encoding="utf-8"))
+        known_brands = frozenset(
+            b.strip().lower() for p in products if (b := p.get("brand")) and b.strip()
+        )
+        assert "kikkoman" in known_brands
+        assert "yamasa" in known_brands
+
+        assert not cmp.looks_like_comparison_request(
+            "Hladam korejske kimchi v pohari alebo vrecku.", known_brands=known_brands
+        )
+        assert not cmp.looks_like_comparison_request(
+            "Mate wasabi prasok alebo pastu?", known_brands=known_brands
+        )
+        assert cmp.looks_like_comparison_request(
+            "Kikkoman sojova omacka alebo Yamasa sojova omacka?", known_brands=known_brands
+        )
+
+
 class TestExecuteComparisonHandler:
     """app.workflow_executor.execute_comparison() - the customer-facing
     integration point (Section 28/29)."""

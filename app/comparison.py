@@ -191,7 +191,7 @@ def _extract_ordinal_indices(message: str) -> list[int]:
     return indices
 
 
-def looks_like_comparison_request(message: str) -> bool:
+def looks_like_comparison_request(message: str, known_brands: frozenset = frozenset()) -> bool:
     """Deliberately does NOT reuse the full app.workflow_registry
     ._COMPARISON_MARKERS tuple verbatim - real regression found during
     implementation: that tuple includes "rozdiel" ("difference"),
@@ -206,25 +206,38 @@ def looks_like_comparison_request(message: str) -> bool:
     regression test (tests/test_session_contamination_v2_13b_1.py)
     before this exclusion was added. " vs "/"verzus"/" alebo " and the
     "porovnaj" (compare) verb stem are unambiguous enough to keep as
-    causal triggers; "rozdiel" is not."""
+    causal triggers; "rozdiel" is not.
+
+    V2.24l-bis (docs/recommendation-comparison-v2.14b.md, Cluster F):
+    the bare-"alebo" branch used to gate on whole-message token count
+    alone ("Kikkoman alebo Yamasa?" is short; "cez Google alebo
+    Facebook?" is long) - a real regression (V2.24l) proved token
+    count is NOT a safe boundary: "Kikkoman sójová omáčka alebo Yamasa
+    sójová omáčka?" is a legitimate comparison but has long fragments
+    on both sides. When an existing catalog brand set is supplied (the
+    caller already has `products` loaded for this request - no new
+    retrieval), the bare-"alebo" branch instead requires a DISTINCT
+    recognized brand on each side of the split, which correctly
+    separates genuine two-brand comparisons from "Hľadám kórejské
+    kimchi v pohári alebo vrecku." (names no brand on either side)
+    regardless of fragment length. Without a brand set (e.g. internal
+    recursive callers in this module that never pass one) the original
+    token-count heuristic is preserved unchanged for full backward
+    compatibility."""
     _CAUSAL_COMPARISON_MARKERS = (" vs ", "verzus")
-    # Bare word-boundary length, e.g. a genuine two-item request like
-    # "Kikkoman alebo Yamasa?" is short (3 tokens); a real regression
-    # found during V2.20 characterization (faq_0010) showed "alebo" (a
-    # common, everyday conjunction - "cez Google alebo Facebook?", "caj
-    # alebo kavu") firing as an unconditional causal trigger on ANY
-    # sentence that merely offers two non-product alternatives, not just
-    # bare comparison phrasing. Downgraded to require the WHOLE message
-    # be short enough to plausibly BE that bare phrase, same principle
-    # that already excludes "rozdiel" above (a broad word needs
-    # corroborating shape, not just presence) - "vs"/"verzus"/"porovnaj"
-    # remain unconditional, they are unambiguous in any sentence length.
     _BARE_ALEBO_MAX_TOKENS = 7
 
     normalized_for_check = normalize_for_check(message)
     has_marker = any(marker in normalized_for_check for marker in _CAUSAL_COMPARISON_MARKERS) or "porovna" in normalized_for_check
-    if not has_marker and " alebo " in normalized_for_check and len(normalized_for_check.split()) <= _BARE_ALEBO_MAX_TOKENS:
-        has_marker = True
+    if not has_marker and " alebo " in normalized_for_check:
+        if known_brands:
+            left_fragment, _, right_fragment = normalized_for_check.partition(" alebo ")
+            brand_left = next((brand for brand in known_brands if brand in left_fragment), None)
+            brand_right = next((brand for brand in known_brands if brand in right_fragment), None)
+            if brand_left and brand_right and brand_left != brand_right:
+                has_marker = True
+        elif len(normalized_for_check.split()) <= _BARE_ALEBO_MAX_TOKENS:
+            has_marker = True
     return has_marker or len(_extract_ordinal_indices(message)) >= 2
 
 

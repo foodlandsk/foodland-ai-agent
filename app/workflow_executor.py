@@ -670,7 +670,19 @@ def execute_comparison(
     from app.recommendation_evidence import CONFIDENCE_INSUFFICIENT
     from app.session_state import get_active_comparison_pair, set_active_comparison_pair, set_last_explanation
 
-    is_new_request = looks_like_comparison_request(chat_request.message)
+    # V2.24l-bis - Cluster F: the only existing-infrastructure signal
+    # needed to make the bare-"alebo" entry gate brand-aware is the
+    # catalog `brand` field already present on every loaded product -
+    # no new retrieval, no new cache, no hardcoded brand names.
+    def _product_brand(product: Any) -> str:
+        # Some callers (notably tests/test_integration.py's SAMPLE_PRODUCTS)
+        # pass plain dicts instead of app.feed.Product dataclass instances.
+        return (product.get("brand") if isinstance(product, dict) else getattr(product, "brand", None)) or ""
+
+    known_brands = frozenset(
+        brand.strip().lower() for product in products if (brand := _product_brand(product)) and brand.strip()
+    )
+    is_new_request = looks_like_comparison_request(chat_request.message, known_brands=known_brands)
     # V2.14f - bare follow-up ("a lacnejsiu?", "je ta drahsia lepsia?")
     # continues the LAST successfully resolved comparison instead of
     # falling through to generic search - never fabricates a pair, only
