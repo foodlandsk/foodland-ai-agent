@@ -3217,7 +3217,14 @@ def _call_openai_with_retry(client: OpenAI, messages: list[dict], model: str, ma
     return response.choices[0].message.content or ""
 
 
-app = FastAPI(title="Foodland AI Agent", version="0.1.0")
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    await start_feed_refresh_loop()
+    await start_learning_cycle_loop()
+    yield
+
+
+app = FastAPI(title="Foodland AI Agent", version="0.1.0", lifespan=lifespan)
 app.mount("/static", UTF8StaticFiles(directory=Path(__file__).parent), name="static")
 
 allowed_origins = [
@@ -11443,7 +11450,6 @@ def fallback_answer(
     return "Nenašla som presnú odpoveď. Skúste otázku napísať trochu inak."
 
 
-@app.on_event("startup")
 async def start_feed_refresh_loop() -> None:
     global feed_refresh_task
     refresh_minutes = int(os.getenv("FEED_REFRESH_MINUTES", "0"))
@@ -11485,7 +11491,6 @@ async def feed_refresh_loop(refresh_minutes: int) -> None:
             logger.error("Knowledge rebuild failed: %s", exc, exc_info=True)
 
 
-@app.on_event("startup")
 async def start_learning_cycle_loop() -> None:
     global learning_cycle_task
     if _LEARNING_CYCLE_MINUTES > 0 and _LEARNING_ENGINE_ENABLED:
