@@ -5462,6 +5462,20 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         # Hard switch (Section 27/84) - a concretely different, named
         # subject means the customer has moved on from sushi.
         _clear_use_case_state(memory)
+    if (
+        related_subject
+        and _is_selected_direct_shopping_query(routing_message)
+        and not wants_shopping_list(routing_message)
+        and not _query_resolves_to_confident_product_family(routing_message)
+    ):
+        # V2.24y (Contract 1, Selected-6 subcluster) - see
+        # _is_selected_direct_shopping_query() docstring above. Placed
+        # after the V2.9 sushi use-case block above (defense-in-depth
+        # consistency with V2.24v/w/x, even though none of the
+        # Selected-6 queries have a "sushi"-valued related_subject)
+        # rather than grouped with the confident-family guard higher
+        # up.
+        related_subject = None
     cross_sell_matches = cross_sell_products_for_message(products, knowledge, contextual_message, chat_request.limit)
     article_product_subject = (
         detect_article_product_subject(routing_message, articles)
@@ -10347,6 +10361,33 @@ def _query_resolves_to_confident_product_family(message: str) -> bool:
     except Exception:
         return False
     return parsed.family is not None and parsed.confidence in {"HIGH", "MEDIUM"}
+
+
+# V2.24y (Contract 1, Selected-6 subcluster isolated via the V2.24q-x
+# read-only contract review series - docs/query-semantics.md) - a
+# small, evidence-backed marker set for a self-contained direct-
+# shopping question ("Mate wasabi prasok alebo pastu?", "Zhanam tofu
+# na pripravu azijskeho jedla.") that the guard below must let clear
+# related_subject even though the EXISTING confident-family guard
+# above does not (conf_family is False for all 6 of these cases - the
+# taxonomy parser cannot confidently resolve a bare category word like
+# "rybacia omacka"/"matcha" to its own family, which is exactly why
+# that guard was deliberately narrow). Deliberately excludes "chcem "
+# - V2.24v found it collides with the genuine, repeatedly-tested
+# use-case activation idiom "chcem robit/varit <jedlo>" ("chcem robit
+# sushi", "chcem robit Pad Thai"), which no existing signal
+# (shop_lang, conf_family, wants_shopping_list, is_recipe_intent) can
+# separate from a bare direct-shopping "chcem <produkt>" - V2.24w/x
+# root-caused this and removed "chcem " rather than special-casing it.
+# wants_recipe_products() is never used here either (V2.24s finding:
+# it is a POSITIVE signal for entering related_products/recipe-
+# shopping-list behavior, not a signal for leaving it).
+_SELECTED_DIRECT_SHOPPING_MARKERS = ("mate ", "predavate", "hladam", "zhanam", "potrebujem")
+
+
+def _is_selected_direct_shopping_query(message: str) -> bool:
+    normalized_message = normalize(message)
+    return any(marker in normalized_message for marker in _SELECTED_DIRECT_SHOPPING_MARKERS)
 
 
 def detect_related_subject(message: str) -> str | None:
