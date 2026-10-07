@@ -285,6 +285,15 @@ class TestExcludedSubclustersUntouched:
         )
         assert r.get("intent") == "related_products"
 
-    def test_contract_2_recipe_only_0005_untouched(self):
-        r = _chat("Ako uvariť Ma Po Tofu?", "v224y-excl-contract2")
-        assert r.get("intent") == "related_products"
+    def test_contract_2_recipe_only_0005_guard_unaffected(self):
+        # Contract 2 itself was fixed separately (see
+        # tests/test_recipe_intent_slovak_uvar_marker.py - the
+        # RECIPE_INTENT_MARKERS "ako uvar" addition), so this message's
+        # overall intent is no longer related_products. What this test
+        # still proves, unchanged since V2.24y: the Selected-6
+        # related_subject guard itself does not fire for it - none of
+        # the 5 direct-shopping markers ("mate ", "predavate", "hladam",
+        # "zhanam", "potrebujem") appear in this message at all, so
+        # _is_selected_direct_shopping_query() is False regardless of
+        # the separate recipe-intent fix.
+        assert not m._is_selected_direct_shopping_query("Ako uvariť Ma Po Tofu?")

@@ -2755,6 +2755,16 @@ RECIPE_INTENT_MARKERS = (
     "ako spravim",
     "ako pripravim",
     "ako urobim",
+    # Contract 2 fix (V2.24q-z read-only contract review series,
+    # docs/query-semantics.md) - the Slovak "uvar" (cook/boil) verb
+    # stem had no entry at all here, unlike its Czech sibling "jak
+    # uvarim" below - "Ako uvarit Ma Po Tofu?" fell through
+    # is_recipe_intent() entirely and got misrouted into
+    # related_products (generic cross-sell) instead of the recipe
+    # workflow. Bare stem (not "ako uvarim" alone) so it also
+    # matches "ako uvaris"/"ako uvarite" without separate entries,
+    # same pattern as the bare-stem markers elsewhere in this tuple.
+    "ako uvar",
     # V2.20k fix: the impersonal/reflexive form ("how IS it made" -
     # a genuine, common Slovak recipe-question shape distinct from
     # the 1st-person forms above) was missing entirely, so "ako sa
