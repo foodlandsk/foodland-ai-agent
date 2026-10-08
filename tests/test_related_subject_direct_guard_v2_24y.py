@@ -270,11 +270,11 @@ class TestNegativeControls:
 class TestExcludedSubclustersUntouched:
     """Explicit controls for every out-of-scope group locked by
     V2.24u-x: product_search_0007, budget, dish-shaped A2, Contract 2.
-    None may be fixed or absorbed by the V2.24y sprint itself - two of
-    the four (Contract 2, product_search_0007) have since been fixed by
-    their own dedicated, separately-reviewed sprints; budget and
-    dish-shaped A2 remain open. See the per-test comments below for what
-    each test still protects after its debt was closed."""
+    None may be fixed or absorbed by the V2.24y sprint itself - three of
+    the four (Contract 2, product_search_0007, budget) have since been
+    fixed by their own dedicated, separately-reviewed sprints;
+    dish-shaped A2 remains open. See the per-test comments below for
+    what each test still protects after its debt was closed."""
 
     def test_product_search_0007_guard_unaffected(self):
         # The one case removed from Selected-7 to Selected-6 (V2.24w) -
@@ -296,12 +296,25 @@ class TestExcludedSubclustersUntouched:
         # separate V2.25f fix.
         assert not m._is_selected_direct_shopping_query("Chcem miso pastu na polievku.")
 
-    def test_budget_0001_still_related_products(self):
-        r = _chat(
-            "Mám 10 eur, akú rybaciu omáčku si za to môžem kúpiť?",
-            "v224y-excl-budget0001",
+    def test_budget_0001_guard_unaffected(self):
+        # "Mám 10 eur, akú rybaciu omáčku si za to môžem kúpiť?" was out
+        # of scope for V2.24y (that exclusion was always a per-sprint
+        # SCOPE LOCK, not a permanent GT claim - golden v222_budget_0001
+        # requires intent_is:product_search, AUTHORITATIVE_DATA). It was
+        # fixed separately in V2.26d (a new, independent
+        # _has_budget_constraint_frame() guard clause - see
+        # tests/test_budget_constraint_frame_v2_26d.py), following the
+        # exact same stale-assertion-update precedent already applied to
+        # product_search_0007 and Contract 2 above/below. What this test
+        # still proves, unchanged since V2.24y: the Selected-6
+        # related_subject guard itself does not fire for it - none of
+        # the 5 direct-shopping markers ("mate ", "predavate", "hladam",
+        # "zhanam", "potrebujem") appear in this message at all, so
+        # _is_selected_direct_shopping_query() is False regardless of
+        # the separate V2.26d fix.
+        assert not m._is_selected_direct_shopping_query(
+            "Mám 10 eur, akú rybaciu omáčku si za to môžem kúpiť?"
         )
-        assert r.get("intent") == "related_products"
 
     def test_contract_2_recipe_only_0005_guard_unaffected(self):
         # Contract 2 itself was fixed separately (see

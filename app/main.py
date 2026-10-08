@@ -5501,6 +5501,22 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         # indistinguishable from a bare direct-shopping "chcem <produkt>"
         # by any existing signal.
         related_subject = None
+    if (
+        related_subject
+        and _has_budget_constraint_frame(routing_message)
+        and not wants_shopping_list(routing_message)
+        and not _query_resolves_to_confident_product_family(routing_message)
+    ):
+        # V2.26d (BUDGET family) - independent, disjoint from the
+        # Selected-6 and V2.25f guards above (neither marker set
+        # recognizes a budget frame). _has_budget_constraint_frame()
+        # excludes a real EUR amount, never the bare ownership "mam
+        # <produkt>" idiom (no digit there), and conf_family/
+        # wants_shopping_list already correctly keep this inert for
+        # every budget-shaped query that some OTHER existing guard
+        # already routes correctly (budget_0002/0003,
+        # multi_constraint_0003).
+        related_subject = None
     cross_sell_matches = cross_sell_products_for_message(products, knowledge, contextual_message, chat_request.limit)
     article_product_subject = (
         detect_article_product_subject(routing_message, articles)
@@ -10435,6 +10451,26 @@ _USE_CASE_ACTION_FRAME_PATTERN = re.compile(
 def _has_use_case_action_frame(message: str) -> bool:
     normalized_message = normalize(message)
     return bool(_USE_CASE_ACTION_FRAME_PATTERN.search(normalized_message))
+
+# V2.26d (BUDGET family, V2.26a-c read-only target-selection/signal
+# contract review series, docs/query-semantics.md) - a separate,
+# narrow lexical signal for an absolute EUR budget constraint
+# ("Mam [N] eur..."/"do [N] eur"/"pod [N] eur"/"rozpocet [N] eur").
+# No prefix-word list is needed - a bare digit immediately followed by
+# "eur" is, on the full corpus, already a precise and sufficient
+# discriminator (verified read-only: 0 collisions against the
+# ownership "mam <produkt>" idiom, which never has a digit there).
+# Routing-only signal: this does NOT claim returned products respect
+# the stated budget (no price filtering - that is a separate, future,
+# unauthorized project; see filter_products()/_matches_price_range()
+# in app/search.py, which already exist but are wired only to the
+# standalone /products/filter endpoint, never to this chat pipeline).
+_BUDGET_CONSTRAINT_PATTERN = re.compile(r"\d+\s*eur\b")
+
+
+def _has_budget_constraint_frame(message: str) -> bool:
+    normalized_message = normalize(message)
+    return bool(_BUDGET_CONSTRAINT_PATTERN.search(normalized_message))
 
 
 def detect_related_subject(message: str) -> str | None:

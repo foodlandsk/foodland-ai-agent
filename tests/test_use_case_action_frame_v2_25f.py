@@ -207,12 +207,23 @@ class TestContract2Unaffected:
 
 
 class TestOpenDebtUnaffected:
-    """quantity/budget/dish-shaped A2 remain out of scope - characterized
-    as explicit controls, not fixed here."""
+    """quantity/dish-shaped A2 remain out of scope - characterized as
+    explicit controls, not fixed here. Budget was out of scope when this
+    file was written (V2.25f) but was fixed separately in V2.26d - see
+    test_budget_0001_guard_unaffected() below and
+    tests/test_budget_constraint_frame_v2_26d.py."""
 
-    def test_budget_0001_unchanged(self):
-        r = _chat("Mám 10 eur, akú rybaciu omáčku si za to môžem kúpiť?", "v225f-budget0001")
-        assert r.get("intent") == "related_products"
+    def test_budget_0001_guard_unaffected(self):
+        # Was "test_budget_0001_unchanged" (asserted intent ==
+        # "related_products") - that was always a per-sprint SCOPE LOCK
+        # for V2.25f, not a permanent GT claim, and budget_0001 was
+        # fixed separately in V2.26d (same precedent as
+        # product_search_0007/Contract 2 elsewhere in this series). What
+        # this test still proves, unchanged since V2.25f: this message
+        # does not contain the "chcem " V2.25f recovery marker at all,
+        # so _has_use_case_action_frame()'s caller clause never applied
+        # to it regardless of the separate V2.26d fix.
+        assert "chcem " not in m.normalize("Mám 10 eur, akú rybaciu omáčku si za to môžem kúpiť?")
 
     def test_quantity_0001_unchanged(self):
         r = _chat(
