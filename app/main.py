@@ -5486,6 +5486,21 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         # rather than grouped with the confident-family guard higher
         # up.
         related_subject = None
+    if (
+        related_subject
+        and "chcem " in normalize(routing_message)
+        and not wants_shopping_list(routing_message)
+        and not _query_resolves_to_confident_product_family(routing_message)
+        and not _has_use_case_action_frame(routing_message)
+    ):
+        # V2.25f (Contract 1 debt, product_search_0007) - independent,
+        # disjoint from the Selected-6 guard above (that marker set
+        # deliberately excludes "chcem "). _has_use_case_action_frame()
+        # excludes the genuine "chcem robit/varit/pripravit <jedlo>"
+        # use-case-activation idiom (V2.24v/w/x), which is otherwise
+        # indistinguishable from a bare direct-shopping "chcem <produkt>"
+        # by any existing signal.
+        related_subject = None
     cross_sell_matches = cross_sell_products_for_message(products, knowledge, contextual_message, chat_request.limit)
     article_product_subject = (
         detect_article_product_subject(routing_message, articles)
@@ -10398,6 +10413,28 @@ _SELECTED_DIRECT_SHOPPING_MARKERS = ("mate ", "predavate", "hladam", "zhanam", "
 def _is_selected_direct_shopping_query(message: str) -> bool:
     normalized_message = normalize(message)
     return any(marker in normalized_message for marker in _SELECTED_DIRECT_SHOPPING_MARKERS)
+
+# V2.25f (Contract 1 debt, product_search_0007 - V2.25a-e read-only
+# signal contract review series, docs/query-semantics.md) - a separate,
+# narrow lexical signal for the Slovak "chcem robit/varit/pripravit X"
+# use-case-activation idiom (V2.24v/w/x already found this idiom cannot
+# be told apart from a bare direct-shopping "chcem <produkt>" by any
+# existing signal - shop_lang, conf_family, wants_shopping_list,
+# is_recipe_intent). Deliberately does NOT touch
+# _SELECTED_DIRECT_SHOPPING_MARKERS/_is_selected_direct_shopping_query()
+# above - this is an independent, disjoint guard for the "chcem "
+# population that helper excludes. Word-boundary matched (not a bare
+# substring check) so "uvarit" ("ako uvariet") is never mistaken for the
+# "varit" stem - that would collide with the Contract 2 recipe path.
+_USE_CASE_ACTION_FRAME_STEMS = ("robit", "varit", "pripravit")
+_USE_CASE_ACTION_FRAME_PATTERN = re.compile(
+    r"\b(?:" + "|".join(_USE_CASE_ACTION_FRAME_STEMS) + r")\w*\b"
+)
+
+
+def _has_use_case_action_frame(message: str) -> bool:
+    normalized_message = normalize(message)
+    return bool(_USE_CASE_ACTION_FRAME_PATTERN.search(normalized_message))
 
 
 def detect_related_subject(message: str) -> str | None:
