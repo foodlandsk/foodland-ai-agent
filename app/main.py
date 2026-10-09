@@ -89,7 +89,7 @@ from app.product_normalizer import normalize_catalog
 from app.structured_search import hybrid_search_products as _hybrid_search_products
 from app.structured_search import build_structured_result_set as _build_structured_result_set
 from app.structured_search import format_result_set_products as _format_result_set_products
-from app.query_constraints import parse_structured_query, related_subject_suppression_span
+from app.query_constraints import extract_price_constraint, parse_structured_query, related_subject_suppression_span
 from app.ranking_config import get_active_ranking_profile, get_active_ranking_profile_version
 from app.ranking_config import CONFIG_DIR as _RANKING_PROFILE_DIR
 from app.ranking_config import is_active_profile_degraded as _ranking_profile_degraded
@@ -5724,6 +5724,29 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         else:
             matches = hybrid_cached_search_products(contextual_message, chat_request.limit)
     is_shopping_list_request = wants_shopping_list(contextual_message)
+    price_constraint = extract_price_constraint(chat_request.message)
+    if price_constraint is not None:
+        # V2.27e (FUTURE_PRICE_FILTERING_DEBT, V2.27a-d read-only
+        # architecture/contract/wiring review series,
+        # docs/query-semantics.md) - hard eligibility only, never a
+        # ranking signal (Section S/AE of the V2.27a-c contract):
+        # runs BEFORE personalize_products()/_track_presentation() so
+        # both rank and record only the already-eligible set. Reads
+        # effective_price directly off the already-formatted dict
+        # (format_product() always populates it) rather than
+        # re-deriving it. No widen-fetch in this version - the two
+        # real DEV targets (budget_0001/0003) both stay non-empty
+        # without one (live-verified, V2.27d Section F); the
+        # structured-retrieval path's own, separate, wider
+        # ranked_product_ids depth (V2.27d Section E) and the
+        # shopping-list-override functions bypassing `matches`
+        # entirely (V2.27d Section H) are both explicitly deferred,
+        # out of scope for this bounded sprint.
+        matches = [
+            product for product in matches
+            if product.get("effective_price") is not None
+            and product["effective_price"] <= price_constraint.price_max
+        ]
     if structured_presentation is None:
         matches = personalize_products(matches, user_profile)
     memory["active_result_set_id"] = structured_presentation.result_set_id if structured_presentation is not None else ""
