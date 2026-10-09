@@ -5337,6 +5337,15 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     special_subject = detect_special_product_subject(routing_message)
     replacement_subject = detect_replacement_subject(routing_message)
     related_subject = detect_related_subject(routing_message)
+    # V2.27h (structured-path price filter, V2.27a-g read-only
+    # architecture/contract/wiring review series,
+    # docs/query-semantics.md) - computed here, BEFORE both
+    # _build_structured_result_set() call sites below (the
+    # special_subject-driven one and the general one), not just
+    # before the general one as V2.27e originally did (that was
+    # only ever consumed by the LATER post-hoc matches filter,
+    # which still runs - see below).
+    price_constraint = extract_price_constraint(chat_request.message)
     # V2.13b (docs/workflow-precedence-before-v2.13b.md, rt0004): the
     # old unconditional "if special_subject: related_subject = None"
     # let a coarse, substring-based special_subject match (e.g.
@@ -5610,6 +5619,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             remove_size=_detect_size_removal(chat_request.message),
             remove_brand=_detect_brand_removal(chat_request.message),
             price_direction=_detect_price_direction(chat_request.message),
+            price_constraint=price_constraint,
         )
     ) is not None:
         # V2.4/V2.5 supersede the legacy "plain_rice" bare-"ryz" special-
@@ -5718,13 +5728,13 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
             remove_size=_detect_size_removal(chat_request.message),
             remove_brand=_detect_brand_removal(chat_request.message),
             price_direction=_detect_price_direction(chat_request.message),
+            price_constraint=price_constraint,
         ) if V2_STRUCTURED_RETRIEVAL_ENABLED else None
         if structured_presentation is not None:
             matches = _format_result_set_products(products, structured_presentation.initial_page_ids())
         else:
             matches = hybrid_cached_search_products(contextual_message, chat_request.limit)
     is_shopping_list_request = wants_shopping_list(contextual_message)
-    price_constraint = extract_price_constraint(chat_request.message)
     if price_constraint is not None:
         # V2.27e (FUTURE_PRICE_FILTERING_DEBT, V2.27a-d read-only
         # architecture/contract/wiring review series,

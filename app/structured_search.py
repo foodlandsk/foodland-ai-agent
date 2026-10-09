@@ -28,7 +28,7 @@ from typing import Callable
 from app.feed import Product
 from app.presentation import build_result_set
 from app.product_normalizer import NormalizedProduct
-from app.query_constraints import StructuredProductQuery, merge_constraints, parse_structured_query
+from app.query_constraints import PriceConstraint, StructuredProductQuery, merge_constraints, parse_structured_query
 from app.ranking import rank_candidates
 from app.ranking_config import RankingProfile
 from app.result_sets import ResultSet
@@ -125,6 +125,7 @@ def build_structured_result_set(
     remove_size: bool = False,
     remove_brand: bool = False,
     price_direction: str | None = None,
+    price_constraint: PriceConstraint | None = None,
 ) -> ResultSet | None:
     """V2.5 entry point: builds a full, pageable ResultSet, or None when
     structured retrieval cannot confidently answer this query (caller
@@ -149,7 +150,24 @@ def build_structured_result_set(
     the words "niečo"/"lacnejšie" themselves - a real regression caught
     by live multi-turn testing, spec Section 79). Re-ranks the already-
     valid candidate set by price after V2.4 ranking (Section 20 - never
-    changes eligibility, only final order)."""
+    changes eligibility, only final order).
+
+    `price_constraint` (V2.27h, V2.27a-g read-only architecture/contract
+    review series, docs/query-semantics.md) - an ABSOLUTE EUR hard
+    eligibility bound, semantically different from `price_direction`
+    above: filters `result`'s own id-lists (exact/valid/nearest) BEFORE
+    rank_candidates() ever sees them, so ranking only ever orders an
+    already-eligible set and matching_total (app.presentation.
+    build_result_set(), derived from exact_match_ids) is automatically
+    correct too - one filtering step fixes both. Also makes Show-More/
+    Show-All continuation correct for free: app.main._execute_resultset_
+    continuation() pages purely over whatever ranked_product_ids was
+    persisted on the ResultSet at creation time, with no re-filtering,
+    so filtering here (before that ResultSet is ever built) is
+    sufficient on its own. If every candidate is filtered out, returns
+    None - reuses the exact existing empty-bailout convention above
+    (each of this function's two call sites in app/main.py already has
+    its own pre-existing fallback for that case)."""
     try:
         index = get_structured_index(products, taxonomy_index, normalized_index)
         parsed = parse_structured_query(query_text, known_brands=index.known_brands)
@@ -165,6 +183,20 @@ def build_structured_result_set(
         if result.retrieval_mode == LEGACY_FALLBACK or not (result.valid_match_ids or result.nearest_match_ids):
             _log_shadow(result, legacy_fallback_used=True)
             return None
+
+        if price_constraint is not None:
+            price_by_id = {product.id: product.effective_price for product in products}
+
+            def _price_eligible(product_id: str) -> bool:
+                price = price_by_id.get(product_id)
+                return price is not None and price <= price_constraint.price_max
+
+            result.exact_match_ids = [pid for pid in result.exact_match_ids if _price_eligible(pid)]
+            result.valid_match_ids = [pid for pid in result.valid_match_ids if _price_eligible(pid)]
+            result.nearest_match_ids = [pid for pid in result.nearest_match_ids if _price_eligible(pid)]
+            if not (result.valid_match_ids or result.nearest_match_ids):
+                _log_shadow(result, legacy_fallback_used=True)
+                return None
 
         primary_ids = result.exact_match_ids or result.nearest_match_ids or result.valid_match_ids
         products_by_id = {product.id: product for product in products}
