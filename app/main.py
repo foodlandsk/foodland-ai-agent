@@ -5762,13 +5762,13 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     memory["active_result_set_id"] = structured_presentation.result_set_id if structured_presentation is not None else ""
     _track_presentation(memory, [product.get("id") for product in matches if product.get("id")])
     if is_shopping_list_request and related_subject == "sushi":
-        matches = sushi_shopping_core_products(products, matches, chat_request.limit)
+        matches = sushi_shopping_core_products(products, matches, chat_request.limit, price_constraint=price_constraint)
     if is_shopping_list_request and related_subject == "tom_yum":
-        matches = tom_yum_shopping_core_products(products, matches, chat_request.limit)
+        matches = tom_yum_shopping_core_products(products, matches, chat_request.limit, price_constraint=price_constraint)
     if is_shopping_list_request and related_subject == "kimchi_ramen":
-        matches = kimchi_ramen_shopping_core_products(products, matches, chat_request.limit)
+        matches = kimchi_ramen_shopping_core_products(products, matches, chat_request.limit, price_constraint=price_constraint)
     if is_shopping_list_request and related_subject not in {"sushi", "tom_yum", "kimchi_ramen"}:
-        matches = recipe_shopping_core_products(products, related_subject, matches, chat_request.limit)
+        matches = recipe_shopping_core_products(products, related_subject, matches, chat_request.limit, price_constraint=price_constraint)
     if special_subject == "sushi_rice":
         matches = sorted(
             matches,
@@ -7215,7 +7215,21 @@ def missing_ingredients_for_subject(subject: str | None, recipes: list[dict] | N
     return missing[:8]
 
 
-def sushi_shopping_core_products(products: list[Product], existing_matches: list[dict], limit: int) -> list[dict]:
+# V2.27j (shopping-list budget interaction, V2.27a-i read-only
+# architecture/contract/wiring review series, docs/query-semantics.md) -
+# shared eligibility check for the 4 curated shopping-list-override
+# functions below. `existing_matches` is NOT re-checked here (it is
+# already price-filtered upstream, before these functions are ever
+# called - see the price_constraint block above this cascade) - only
+# each function's own hardcoded-ingredient picks need this.
+def _shopping_core_price_eligible(product: dict, price_constraint) -> bool:
+    price = product.get("effective_price")
+    return price is not None and price <= price_constraint.price_max
+
+
+def sushi_shopping_core_products(
+    products: list[Product], existing_matches: list[dict], limit: int, price_constraint=None,
+) -> list[dict]:
     queries = ["sushi ryza", "ryzovy ocot", "wasabi", "nori", "nakladany zazvor", "sojova omacka"]
     seen: set[str] = set()
     recommendations: list[dict] = []
@@ -7227,13 +7241,24 @@ def sushi_shopping_core_products(products: list[Product], existing_matches: list
         seen.add(key)
         recommendations.append(product)
 
+    # Fetch a wider candidate pool per ingredient only when a budget is
+    # active (same x4 multiplier already used for exclusion-clause
+    # candidate depth - app.main._search_products_for_cache) - the top-5
+    # lexical match for an ingredient may not be the cheapest one.
+    fetch_count = 20 if price_constraint is not None else 5
     for query in queries:
-        for product in cached_search_products(products, query, 5):
+        for product in cached_search_products(products, query, fetch_count):
             title = normalize(product.get("title", ""))
             if query == "sushi ryza" and not ("ryza" in title and {"sushi", "susi"} & set(title.split())):
                 continue
+            if price_constraint is not None and not _shopping_core_price_eligible(product, price_constraint):
+                continue
             add_product(product)
             break
+        # Option A (V2.27i/j): no eligible candidate for this ingredient
+        # under the stated budget -> the ingredient is simply omitted,
+        # never substituted with a cheaper-but-wrong or pricier-but-right
+        # item - the loop above just moves on to the next query.
         if len(recommendations) >= limit:
             return recommendations[:limit]
 
@@ -7245,7 +7270,9 @@ def sushi_shopping_core_products(products: list[Product], existing_matches: list
     return recommendations[:limit]
 
 
-def tom_yum_shopping_core_products(products: list[Product], existing_matches: list[dict], limit: int) -> list[dict]:
+def tom_yum_shopping_core_products(
+    products: list[Product], existing_matches: list[dict], limit: int, price_constraint=None,
+) -> list[dict]:
     queries = [
         ("citronova trava", ("citronova trava",), ()),
         ("galangal", ("galangal",), ()),
@@ -7264,12 +7291,15 @@ def tom_yum_shopping_core_products(products: list[Product], existing_matches: li
         seen.add(key)
         recommendations.append(product)
 
+    fetch_count = 32 if price_constraint is not None else 8
     for query, required_terms, excluded_terms in queries:
-        for product in cached_search_products(products, query, 8):
+        for product in cached_search_products(products, query, fetch_count):
             title = normalize(product.get("title", ""))
             if any(term in title for term in excluded_terms):
                 continue
             if not all(term in title for term in required_terms):
+                continue
+            if price_constraint is not None and not _shopping_core_price_eligible(product, price_constraint):
                 continue
             add_product(product)
             break
@@ -7287,7 +7317,9 @@ def tom_yum_shopping_core_products(products: list[Product], existing_matches: li
     return recommendations[:limit]
 
 
-def kimchi_ramen_shopping_core_products(products: list[Product], existing_matches: list[dict], limit: int) -> list[dict]:
+def kimchi_ramen_shopping_core_products(
+    products: list[Product], existing_matches: list[dict], limit: int, price_constraint=None,
+) -> list[dict]:
     queries = [
         ("ramen rezance", ("ramen",), ()),
         ("kimchi", ("kimchi",), ("instant", "ramen", "ramyun", "rezance", "polievk", "omack")),
@@ -7308,12 +7340,15 @@ def kimchi_ramen_shopping_core_products(products: list[Product], existing_matche
         seen.add(key)
         recommendations.append(product)
 
+    fetch_count = 32 if price_constraint is not None else 8
     for query, required_terms, excluded_terms in queries:
-        for product in cached_search_products(products, query, 8):
+        for product in cached_search_products(products, query, fetch_count):
             title = normalize(product.get("title", ""))
             if any(term in title for term in excluded_terms):
                 continue
             if not all(term in title for term in required_terms):
+                continue
+            if price_constraint is not None and not _shopping_core_price_eligible(product, price_constraint):
                 continue
             add_product(product)
             break
@@ -7343,6 +7378,7 @@ def recipe_core_product_candidates(
     required_terms: tuple[str, ...],
     excluded_terms: tuple[str, ...],
     limit: int = 5,
+    price_constraint=None,
 ) -> list[dict]:
     normalized_query = normalize(query)
     query_tokens = raw_tokens(query)
@@ -7382,10 +7418,19 @@ def recipe_core_product_candidates(
         ranked.append((score, product))
 
     ranked.sort(key=lambda item: item[0], reverse=True)
-    return [format_product(product) for _, product in ranked[:limit]]
+    formatted = [format_product(product) for _, product in ranked]
+    if price_constraint is not None:
+        # Already iterates the FULL catalog above (no separate
+        # candidate-depth widening needed here, unlike the 3 hardcoded
+        # functions above that search a truncated top-N) - just drop
+        # ineligible candidates before taking the top `limit`.
+        formatted = [product for product in formatted if _shopping_core_price_eligible(product, price_constraint)]
+    return formatted[:limit]
 
 
-def recipe_shopping_core_products(products: list[Product], subject: str | None, existing_matches: list[dict], limit: int) -> list[dict]:
+def recipe_shopping_core_products(
+    products: list[Product], subject: str | None, existing_matches: list[dict], limit: int, price_constraint=None,
+) -> list[dict]:
     if not subject or subject not in RECIPE_SHOPPING_CORE_QUERIES:
         return existing_matches
 
@@ -7400,7 +7445,9 @@ def recipe_shopping_core_products(products: list[Product], subject: str | None, 
         recommendations.append(product)
 
     for query, required_terms, excluded_terms in RECIPE_SHOPPING_CORE_QUERIES.get(subject, []):
-        for product in recipe_core_product_candidates(products, query, required_terms, excluded_terms, 5):
+        for product in recipe_core_product_candidates(
+            products, query, required_terms, excluded_terms, 5, price_constraint=price_constraint,
+        ):
             add_product(product)
             break
         if len(recommendations) >= limit:
