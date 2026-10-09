@@ -563,3 +563,161 @@ def merge_constraints(
         merged.explicit_constraints.discard("brand")
     merged.constraint_sources = {**base.constraint_sources, **addition.constraint_sources}
     return merged
+
+
+# V2.27c (Absolute EUR Price Constraint Parser - V2.27a-b read-only
+# architecture/contract review series, docs/query-semantics.md) - a
+# separate, independent pure parser for an EXPLICIT, absolute EUR budget
+# statement in a product-acquisition request. Deliberately NOT part of
+# StructuredProductQuery/merge_constraints above: V2.27b found that engine
+# requires a confidently-resolved taxonomy family to activate at all, so a
+# budget-shaped query with no confident family (the exact target,
+# budget_0001) would never reach it. Also deliberately independent of
+# app.main._has_budget_constraint_frame() (V2.26d) - that is a coarse
+# ROUTING signal ("is this turn budget-shaped enough to affect routing?"),
+# intentionally broad (bare "<digit> eur", no prefix requirement, accepts
+# "pod 5 eur"-style strict phrasing because low-stakes routing tolerance is
+# fine there). This is a HARD ELIGIBILITY parser instead ("is there a
+# concrete, unambiguous, supported absolute EUR constraint, and what is
+# it?") - false positives here would wrongly exclude valid products, so it
+# requires an explicit accepted budget-frame word immediately before the
+# amount (V2.27c Section U/AC - "Produkt stojí 10 eur."/"Minul som 10
+# eur."/"Doprava stojí 5 eur." must NOT parse, unlike the routing helper).
+#
+# NOT wired into /chat in this sprint (V2.27c scope lock) - routing,
+# retrieval, ranking, session, filter_products()/_matches_price_range(),
+# and _has_budget_constraint_frame() are all unmodified.
+_PRICE_CONSTRAINT_NUMBER = r"(?<![a-zA-Z0-9-])\d+(?:\.\d{1,2})?(?![.\d])"
+# Any bare "<amount> eur" anywhere in the message, with NO prefix-word
+# requirement - used only to detect multiple competing amounts (ambiguity
+# guard below), never to emit a constraint by itself.
+_ANY_EUR_AMOUNT_RE = re.compile(_PRICE_CONSTRAINT_NUMBER + r"\s*eur\b")
+# Explicit upper-bound budget-frame words. "pod"/"nad"/"menej ako"/"viac
+# ako" (strict < / >) and "okolo"/"cca"/"asi"/"priblizne" (approximate) are
+# deliberately absent - filter_products()/_matches_price_range() only
+# support inclusive bounds, and "around 10" is not an exact constraint
+# (V2.27b/c Sections M/N/O-P) - omission here is sufficient rejection, no
+# separate strict/approximate-rejection regex is needed since the overall
+# match simply never fires for them.
+_PRICE_MAX_PREFIXES = ("mam", "rozpocet", "maximalne", "najviac", "max", "do")
+_PRICE_MAX_SOURCE_BY_PREFIX = {
+    "mam": "mam_budget",
+    "rozpocet": "rozpocet",
+    "maximalne": "maximalne",
+    "najviac": "najviac",
+    "max": "max",
+    "do": "do",
+}
+_PRICE_MAX_RE = re.compile(
+    r"\b(?P<prefix>" + "|".join(_PRICE_MAX_PREFIXES) + r")\.?\s+"
+    r"(?P<amount>" + _PRICE_CONSTRAINT_NUMBER + r")\s*eur\b"
+)
+# Explicit range syntax ("od 5 do 10 eur", "5 az 10 eur", "medzi 5 a 10
+# eur") - deferred per V2.27b Section N (zero corpus evidence, no range
+# abstraction in StructuredProductQuery), but it MUST be detected and
+# rejected before _PRICE_MAX_RE runs, not merely left unhandled - "od 5 do
+# 10 eur" otherwise still matches _PRICE_MAX_RE on its own "do 10 eur"
+# tail, silently dropping the "od 5" lower bound and guessing a single
+# upper-bound intent the customer never stated alone (exactly what
+# Section M forbids: "Do not guess user intent").
+_PRICE_RANGE_RE = re.compile(
+    r"\bod\s+" + _PRICE_CONSTRAINT_NUMBER + r"\s+do\s+" + _PRICE_CONSTRAINT_NUMBER + r"\s*eur\b"
+    r"|" + _PRICE_CONSTRAINT_NUMBER + r"\s+az\s+" + _PRICE_CONSTRAINT_NUMBER + r"\s*eur\b"
+    r"|\bmedzi\s+" + _PRICE_CONSTRAINT_NUMBER + r"\s+a\s+" + _PRICE_CONSTRAINT_NUMBER + r"\s*eur\b"
+)
+# Narrow negation guard (Section S) - only the exact markers needed to
+# reject the corpus-shaped false positives ("nemusí to byť do 10 eur",
+# "nechcem limit 10 eur", "nemám rozpočet 10 eur", "nie do 10 eur"). Not a
+# general Slovak negation parser - deliberately a fixed, small set.
+_PRICE_NEGATION_MARKERS = ("nemusim", "nemusi", "nechcem", "nemam", "nie")
+_PRICE_CLAUSE_BOUNDARY = ".,;!?"
+
+
+@dataclass(frozen=True, slots=True)
+class PriceConstraint:
+    """An explicit, absolute EUR price constraint parsed from one chat
+    message - see extract_price_constraint() below. `price_min`/
+    `price_max` are always inclusive in this version (min_inclusive/
+    max_inclusive are reserved for a future strict-comparator extension -
+    V2.27b Section M - and are always True here, since "pod"/"nad" are
+    rejected rather than converted). EUR-only; no currency field (zero
+    corpus evidence for any other currency - V2.27b Section I)."""
+
+    price_min: float | None = None
+    price_max: float | None = None
+    min_inclusive: bool = True
+    max_inclusive: bool = True
+    source: str = ""
+
+
+def _price_clause_start(message: str, span_start: int) -> int:
+    boundary = -1
+    for ch in _PRICE_CLAUSE_BOUNDARY:
+        found = message.rfind(ch, 0, span_start)
+        if found > boundary:
+            boundary = found
+    return boundary + 1
+
+
+def _price_constraint_is_negated(message: str, span_start: int) -> bool:
+    clause_prefix = message[_price_clause_start(message, span_start):span_start]
+    return any(re.search(r"\b" + marker + r"\b", clause_prefix) for marker in _PRICE_NEGATION_MARKERS)
+
+
+def extract_price_constraint(message: str) -> PriceConstraint | None:
+    """Pure, deterministic. Returns a PriceConstraint only for an explicit,
+    unambiguous, non-negated absolute EUR upper-bound budget statement
+    ("Mám 10 eur", "do 10 eur", "max 10 eur", "najviac 10 eur", "rozpočet
+    10 eur" - bare digit + "eur" alone is NOT enough, unlike the V2.26d
+    routing helper - an accepted budget-frame word must immediately
+    precede the amount). Returns None for everything else: ownership
+    ("mám <produkt>"), quantity/weight/volume units, plain price-
+    information questions, relative price language ("lacnejší"),
+    approximate language ("okolo"/"cca"/"asi"), strict comparators
+    ("pod"/"nad"), non-EUR currencies, negated statements, zero/negative
+    amounts, and messages naming more than one competing EUR amount.
+
+    No side effects: no catalog/session/retrieval/ranking/network/LLM
+    access. Reuses app.search.normalize() like every other detector in
+    this module; "€" is replaced with " eur " on the RAW message first,
+    because normalize()'s NFKD-ASCII transliteration silently deletes "€"
+    with no trace (verified empirically - V2.27b Section H), so checking
+    for it after normalization would never work."""
+    prepared = message.replace("€", " eur ")
+    normalized = search_normalize(prepared).replace(",", ".")
+
+    if _PRICE_RANGE_RE.search(normalized):
+        # Range wins before any single-bound pattern is even attempted
+        # (Section W ordering) - detected and rejected (deferred), never
+        # silently collapsed into just its upper bound.
+        return None
+
+    amounts = list(_ANY_EUR_AMOUNT_RE.finditer(normalized))
+    if len(amounts) != 1:
+        # Zero mentions -> nothing to parse. More than one -> ambiguous
+        # ("do 10 eur alebo do 15 eur", "Mám 10 eur, možno 15 eur") - fail
+        # open rather than guessing which amount the customer meant
+        # (Section R).
+        return None
+
+    match = _PRICE_MAX_RE.search(normalized)
+    if match is None:
+        # The single EUR amount present has no accepted budget-frame word
+        # immediately before it (covers strict "pod"/"nad", approximate
+        # "okolo"/"cca"/"asi", and bare mentions like "Produkt stojí 10
+        # eur."/"Doprava stojí 5 eur." - Sections N/O/U/AC).
+        return None
+
+    if _price_constraint_is_negated(normalized, match.start()):
+        return None
+
+    value = float(match.group("amount"))
+    if value <= 0:
+        # Section T - "do 0 eur"/negative amounts are not actionable;
+        # negative numbers are already excluded by the number grammar's
+        # own lookbehind, this is a defensive backstop.
+        return None
+
+    prefix = match.group("prefix").rstrip(".")
+    source = _PRICE_MAX_SOURCE_BY_PREFIX.get(prefix, prefix)
+    return PriceConstraint(price_max=value, source=source)
