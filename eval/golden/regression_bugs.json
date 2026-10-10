@@ -342,7 +342,7 @@
       "critical": true,
       "expected_intent": "faq",
       "expected_answer_include": [
-        "Dobierka",
+        "dobierku",
         "kartou"
       ],
       "max_products": 0,
