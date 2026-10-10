@@ -234,7 +234,7 @@ def convert_to_base_unit(quantity: float, unit: str) -> tuple[float, str] | None
 
 
 _SERVINGS_PATTERN = re.compile(
-    r"\b(?:pre|na)\s+(\d{1,2})\s*(?:osob|osoby|osobu|ludi|ludia|luda|porci|porcie|porcii)\b",
+    r"\b(?:pre|na|asi|cca)\s+(\d{1,2})\s*(?:osob|osoby|osobu|ludi|ludia|luda|porci|porcie|porcii|hosti)\b",
     re.IGNORECASE,
 )
 
@@ -244,7 +244,20 @@ def extract_requested_servings(message: str) -> int | None:
     signal surfaced on RecipeShoppingPlan.requested_servings; does not by
     itself imply scaled quantities are available (Section 24/25 - see
     docs/recipe-knowledge-audit.md: no current recipe carries a structured
-    base quantity, so there is nothing to scale against today)."""
+    base quantity, so there is nothing to scale against today).
+
+    V2.28c - "asi"/"cca" added as approximate-count prefixes alongside
+    "pre"/"na" ("Robim pho ... asi 6 porcii" -> 6, golden corpus
+    regbug-adjacent case v220_basket_completeness_0002; "cca" added
+    alongside it as the same approximate-register word with zero corpus
+    counter-evidence, not independently corpus-attested yet). "hosti"
+    added to the noun alternation ("pre 6 hosti" -> 6) - zero corpus
+    occurrences of "host-" exist either way, so this is a collision-free,
+    not corpus-attested, narrow token addition. Deliberately NOT added:
+    "okolo" (278 unrelated hits in tests/mobile_ux_out_of_domain_3000.jsonl,
+    none quantity-related - no evidence), and no bare "<prefix> <word> <N>"
+    skip-logic (e.g. "pre rodinu 6 ludi") - that is a grammar change, not a
+    token addition, and stays out of scope here."""
     normalized = normalize(message)
     match = _SERVINGS_PATTERN.search(normalized)
     if not match:
