@@ -548,3 +548,85 @@ def compose_recipe_followup_answer(
         ) + "."
 
     return "" if lang == "en" else ""
+
+
+# ---------------------------------------------------------------------------
+# V2.29c - special-3 recipe-shopping DATA PORT ONLY (docs/none yet - see
+# tests/test_recipe_shopping_special3_v2_29c.py for the full parity
+# evidence). Ported from app.main's sushi_shopping_core_products()/
+# tom_yum_shopping_core_products()/kimchi_ramen_shopping_core_products()
+# verbatim, in the exact (query, required_terms, excluded_terms) tuple
+# shape app.main.RECIPE_SHOPPING_CORE_QUERIES already uses for its other
+# 47 dishes - so the SAME generic app.main.recipe_core_product_candidates()
+# scorer can consume these without any new field or matching mechanism.
+#
+# DELIBERATELY NOT wired into app.main.RECIPE_SHOPPING_CORE_QUERIES itself
+# (that dict is live production data read by app.cross_sell's
+# RECIPE_ROLE_INDEX, app.basket_completion, and app.recipe_graph's
+# dishes_by_id - adding keys there would be read by those real consumers
+# immediately, which is explicitly out of scope for a routing-frozen data-
+# port sprint). This dict is inert until a future sprint explicitly merges
+# it in as part of the routing flip.
+#
+# Sushi-rice precision guard (V2.29b's one identified bespoke heuristic:
+# legacy requires the title to contain "ryza" AND ("sushi" OR "susi") as a
+# token): proven empirically redundant with plain AND-required_terms on
+# the current catalog, not reproduced via any new OR-capable field.
+# Every real Slovak-catalog sushi-rice product title uses "Suši" (normalize()
+# folds "š"->"s", giving the token "susi") - the English "sushi" spelling
+# appears on exactly 22 catalog products, none of which are rice (sushi
+# boxes/knives/plate sets only). required_terms=("ryza", "susi") therefore
+# selects the identical 12-product candidate set the legacy OR-guard
+# selects on the current catalog snapshot (verified directly against
+# data/products.json - see the dedicated parity test). No app.main change,
+# no new dataclass field, no required_any_terms mechanism needed.
+#
+# NOT ported (out of scope - a presentation-padding behavior of the legacy
+# functions' own calling convention, with no equivalent concept in the
+# generic per-ingredient-candidate model): the existing_matches fallback-
+# fill step every legacy function runs when its curated queries don't
+# reach `limit`, including tom_yum's bespoke fallback exclusion of
+# "sojova omacka"/"sriracha" titles and kimchi_ramen's bespoke fallback
+# exclusion of kimchi+instant/ramen/ramyun/rezance/polievk titles. Those
+# two exclusions only ever apply to the FILLER step (already-found
+# unrelated matches padded on at the end), never to the curated ingredient
+# queries themselves - recipe_shopping_core_products() (the existing
+# generic function) has an unfiltered existing_matches fallback-fill of
+# its own already, identical in shape to the 44 other dishes' behavior,
+# so special-3 inherits that same, already-production-proven fallback
+# once migrated - no new fallback-exclusion mechanism is being proposed.
+SPECIAL3_SHOPPING_DEFINITIONS: dict[str, list[tuple[str, tuple[str, ...], tuple[str, ...]]]] = {
+    # Legacy sushi_shopping_core_products() applies NO required/excluded-term
+    # filter at all to 5 of its 6 ingredients (bare query strings, relying
+    # solely on cached_search_products()'s own lexical relevance + first-
+    # match) - ported here as empty tuples to match that exactly, not
+    # invented filters. Only "sushi ryza" carries a real filter in the
+    # legacy source (the OR-guard discussed above), ported as
+    # required_terms=("ryza", "susi").
+    "sushi": [
+        ("sushi ryza", ("ryza", "susi"), ()),
+        ("ryzovy ocot", (), ()),
+        ("wasabi", (), ()),
+        ("nori", (), ()),
+        ("nakladany zazvor", (), ()),
+        ("sojova omacka", (), ()),
+    ],
+    "tom_yum": [
+        ("citronova trava", ("citronova trava",), ()),
+        ("galangal", ("galangal",), ()),
+        ("kaffirove listy", ("kaffir", "kaffirov"), ("bambus", "kari list", "caj")),
+        ("rybacia omacka", ("rybacia omacka",), ()),
+        ("kokosove mlieko", ("kokosove mlieko",), ()),
+        ("tom yum pasta", ("tom yum", "pasta"), ("arasid", "riasy", "instant", "polievka v kelimku")),
+    ],
+    "kimchi_ramen": [
+        ("ramen rezance", ("ramen",), ()),
+        ("kimchi", ("kimchi",), ("instant", "ramen", "ramyun", "rezance", "polievk", "omack")),
+        ("gochujang", ("gochujang",), ()),
+        ("miso pasta", ("miso",), ()),
+        ("sojova omacka", ("sojova omacka",), ()),
+        ("dashi", ("dashi",), ()),
+        ("wakame", ("wakame",), ()),
+        ("nori", ("nori",), ()),
+    ],
+}
