@@ -76,7 +76,12 @@ def _decision_id_of(response: dict) -> str | None:
 
 SEARCH_QUERY = "jazminova ryza"
 COMPARISON_QUERY = "porovnaj Samyang Buldak a Nissin Demae Ramen"
-BASKET_QUERY = "co potrebujem na sushi"
+# V2.29d: swapped from "sushi" to "pho" - sushi now canonicalizes to
+# recipe_to_products/RECIPE_SHOPPING for this bare phrasing (Special-3
+# routing flip), so it no longer exercises basket_completion. "pho" is
+# used here purely as an arbitrary still-basket_completion-eligible
+# dish, not as a routing-contract assertion about sushi.
+BASKET_QUERY = "co potrebujem na pho"
 USE_CASE_QUERY = "ake kokosove mlieko na tom kha gai?"
 
 

@@ -309,10 +309,19 @@ class TestHardTopicSwitchesAfterPaymentTopic:
         assert r.get("intent") == "recipe"
 
     def test_use_case_hard_switch(self):
+        # V2.29d (Special-3 RECIPE_SHOPPING routing flip): "Co potrebujem
+        # na domace sushi?" (no already-have evidence) now canonicalizes
+        # to recipe_to_products/RECIPE_SHOPPING, same as every other
+        # curated dish's "co potrebujem na X" shopping question already
+        # did before this sprint - added as a third accepted outcome; the
+        # point of this test (a hard topic switch away from a prior,
+        # unrelated STORE_QUESTION context must land on a real commerce
+        # answer for the new topic, not stay stuck on the old one) still
+        # holds for all three.
         sid = "v216a-hardswitch-usecase"
         _chat(STORE_QUESTION, sid)
         r = _chat("Co potrebujem na domace sushi?", sid)
-        assert r.get("intent") in ("related_products", "use_case_advice")
+        assert r.get("intent") in ("related_products", "use_case_advice", "recipe_to_products")
 
     def test_comparison_hard_switch(self):
         sid = "v216a-hardswitch-comparison"

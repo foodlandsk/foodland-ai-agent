@@ -136,13 +136,30 @@ class TestWantsBasketCompletion:
 
 class TestCaseA_SushiBasket:
     def test_sushi_basket_resolves_all_roles(self):
+        # OLD CONTRACT (pre-V2.29d): intent=basket_completion,
+        # basket_use_case="sushi", per-role basket_roles with
+        # RESOLVED_PRODUCT statuses for sushi_rice/nori.
+        # NEW CONTRACT (V2.29d, Special-3 RECIPE_SHOPPING routing flip):
+        # intent=recipe_to_products, workflow_id=RECIPE_SHOPPING - sushi now
+        # joins TestCaseD/E below (pad_thai/tom_kha), where a bare "co
+        # potrebujem na X" with no already-have evidence already canonicalized
+        # to RECIPE_SHOPPING rather than BASKET_COMPLETION.
+        # WHY: Section 33/34 of the V2.29d spec - BASKET_COMPLETION is
+        # reserved for genuine already-have composition (TestCaseG below,
+        # still basket_completion); a bare shopping question must not win
+        # BASKET_COMPLETION merely on lexical overlap with its triggers.
         r = _chat("co potrebujem na sushi", "v214e-caseA")
-        assert r.get("intent") == "basket_completion"
-        assert r.get("basket_use_case") == "sushi"
-        statuses = {role["concept_id"]: role["status"] for role in r["basket_roles"]}
-        assert statuses["sushi_rice"] == "RESOLVED_PRODUCT"
-        assert statuses["nori"] == "RESOLVED_PRODUCT"
-        assert r.get("basket_fully_resolved") is True
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
+        plan = r.get("recipe_shopping_plan") or {}
+        assert plan.get("dish_id") == "sushi"
+        statuses = {
+            ing["ingredient_concept_id"]: ing["status"]
+            for section in plan.get("sections", {}).values()
+            for ing in section
+        }
+        assert statuses.get("sushi_rice") == "AVAILABLE"
+        assert statuses.get("nori") == "AVAILABLE"
 
 
 class TestCaseB_PhoBasket:
@@ -229,12 +246,24 @@ class TestCaseI_NoCatalogProductRole:
 
 class TestCaseJ_MultipleGroundedCandidates:
     def test_role_with_multiple_candidates_exposes_alternatives(self):
+        # Superseded like TestCaseA above (same V2.29d routing-contract
+        # change: bare "co potrebujem na sushi" now resolves through
+        # RECIPE_SHOPPING, not BASKET_COMPLETION) - a plan ingredient's
+        # candidate_product_ids is the RECIPE_SHOPPING analogue of
+        # basket_completion's alternative_product_ids (Section 18's original
+        # point - alternatives exposed separately from the one selection -
+        # still holds, just in the new response shape).
         r = _chat("co potrebujem na sushi", "v214e-caseJ")
-        sushi_rice_role = next(role for role in r["basket_roles"] if role["concept_id"] == "sushi_rice")
-        assert sushi_rice_role["recommended_product_id"] is not None
-        # Section 18 - alternatives are exposed separately, never counted
-        # as additional missing roles.
-        assert isinstance(sushi_rice_role["alternative_product_ids"], list)
+        plan = r.get("recipe_shopping_plan") or {}
+        sushi_rice_ing = next(
+            ing
+            for section in plan.get("sections", {}).values()
+            for ing in section
+            if ing["ingredient_concept_id"] == "sushi_rice"
+        )
+        assert sushi_rice_ing["selected_product_id"] is not None
+        assert isinstance(sushi_rice_ing["candidate_product_ids"], list)
+        assert len(sushi_rice_ing["candidate_product_ids"]) > 1
 
 
 class TestCaseK_RecipeRequestVsBasketRequest:
@@ -281,10 +310,16 @@ class TestCaseO_HardTopicSwitch:
 
 class TestCaseP_CrossSessionIsolation:
     def test_two_sessions_do_not_leak_basket_state(self):
+        # OLD CONTRACT: r_a.intent == "basket_completion" (see TestCaseA).
+        # NEW CONTRACT (V2.29d): r_a.intent == "recipe_to_products". The
+        # actual point of this test - that session B's plain rice search is
+        # not contaminated by session A's sushi context - is unaffected by
+        # which workflow session A's sushi query happens to use.
         r_a = _chat("co potrebujem na sushi", "v214e-caseP-a")
         r_b = _chat("hladam ryzu", "v214e-caseP-b")
-        assert r_a.get("intent") == "basket_completion"
-        assert r_b.get("intent") != "basket_completion"
+        assert r_a.get("intent") == "recipe_to_products"
+        assert r_b.get("intent") != "recipe_to_products"
+        assert r_b.get("workflow_id") != "RECIPE_SHOPPING"
 
 
 # --- permanent regression controls ------------------------------------------
@@ -323,7 +358,12 @@ class TestPermanentRoutingControls:
 
 class TestResponseContract:
     def test_basket_completion_response_has_required_fields(self):
-        r = _chat("co potrebujem na sushi", "v214e-contract")
+        # V2.29d: "co potrebujem na sushi" (no already-have evidence) no
+        # longer triggers basket_completion at all (see TestCaseA above) -
+        # switched to a query that still genuinely exercises it (real
+        # already-have evidence), to keep covering this response contract
+        # rather than deleting the coverage.
+        r = _chat("mam nori, co este potrebujem na sushi", "v214e-contract")
         assert "answer" in r
         assert "products" in r
         assert "intent" in r

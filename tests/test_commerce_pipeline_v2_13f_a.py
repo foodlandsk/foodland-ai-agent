@@ -229,14 +229,28 @@ class TestFastAndShoppingListBranchesIncludeMemoryAndIntent:
 
     def test_shopping_list_path_shape(self):
         # V2.14e (docs/basket-completion-v2.14e.md): "co potrebujem na
-        # sushi" is now intentionally answered by the new, richer
-        # role-based basket_completion path instead of falling through
-        # to a generic result_set/fast response - "basket_completion" is
-        # a deliberate, new, additional response_mode value (same
-        # precedent as V2.13g adding "llm"/"fallback"/"no_match").
+        # sushi" used to be answered by the new, richer role-based
+        # basket_completion path instead of falling through to a generic
+        # result_set/fast response - "basket_completion" is a deliberate,
+        # new, additional response_mode value (same precedent as V2.13g
+        # adding "llm"/"fallback"/"no_match").
+        #
+        # V2.29d (Special-3 RECIPE_SHOPPING routing flip): this same bare
+        # "co potrebujem na sushi" (no already-have evidence) now
+        # canonicalizes to recipe_to_products/RECIPE_SHOPPING instead (see
+        # tests/test_basket_completion_v2_14e.py::TestCaseA_SushiBasket),
+        # same as every other curated dish already did before this
+        # sprint. execute_recipe() never populates response_mode at all
+        # (a pre-existing gap shared by all 48 RECIPE_SHOPPING dishes, not
+        # specific to sushi or to this sprint) - added as a third
+        # acceptable branch here rather than widening the response_mode
+        # contract itself, which is out of this sprint's scope.
         r = _chat("co potrebujem na sushi", "cpv213fa-shoppinglist-shape")
         if r.get("response_mode") in {"shopping_list", "basket_completion"}:
             assert "memory" in r
             assert "intent" in r
+        elif r.get("intent") == "recipe_to_products":
+            assert r.get("workflow_id") == "RECIPE_SHOPPING"
+            assert "memory" in r
         else:
             assert r.get("response_mode") in {"result_set", "fast"}

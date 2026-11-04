@@ -135,20 +135,43 @@ class TestBasketFollowupContinuity:
         assert second.get("basket_use_case") == "pho"
 
     def test_what_else_followup_after_sushi(self):
-        _chat("Co potrebujem na sushi?", "v216d-t3b")
+        # OLD CONTRACT (pre-V2.29d): both turns intent=basket_completion,
+        # basket_use_case="sushi".
+        # NEW CONTRACT (V2.29d, Special-3 RECIPE_SHOPPING routing flip):
+        # "Co potrebujem na sushi?" (no already-have evidence) now
+        # canonicalizes to recipe_to_products/RECIPE_SHOPPING like every
+        # other curated dish, and the follow-up resolves against that same
+        # workflow's active_recipe instead of a basket_completion session.
+        # WHY: Section 14-23/33/34/63 of the V2.29d spec - session
+        # convergence onto RECIPE_SHOPPING, plus BASKET_COMPLETION being
+        # reserved for genuine already-have composition.
+        first = _chat("Co potrebujem na sushi?", "v216d-t3b")
+        assert first.get("intent") == "recipe_to_products"
+        assert first.get("workflow_id") == "RECIPE_SHOPPING"
         second = _chat("Co este potrebujem?", "v216d-t3b")
-        assert second.get("intent") == "basket_completion"
-        assert second.get("basket_use_case") == "sushi"
+        assert second.get("workflow_id") == "RECIPE_SHOPPING"
+        assert second.get("products")
 
     def test_followup_without_prior_basket_falls_through(self):
         r = _chat("Co este potrebujem?", "v216d-t3c")
         assert r.get("intent") != "basket_completion"
 
     def test_hard_switch_to_different_use_case(self):
-        _chat("Co potrebujem na pho?", "v216d-t3d")
+        # OLD CONTRACT: both turns intent=basket_completion, second turn's
+        # basket_use_case=="sushi" (verifying no state leak between the two
+        # basket_completion use cases within one session).
+        # NEW CONTRACT (V2.29d): pho stays basket_completion (unaffected -
+        # pho is not a RECIPE_SHOPPING_CORE_QUERIES dish), but sushi now
+        # switches INTO recipe_to_products/RECIPE_SHOPPING instead - the
+        # "hard switch" this test guards is now cross-workflow, not just
+        # cross-use-case, and must still show no state leak either way.
+        first = _chat("Co potrebujem na pho?", "v216d-t3d")
+        assert first.get("intent") == "basket_completion"
         r = _chat("Co potrebujem na sushi?", "v216d-t3d")
-        assert r.get("intent") == "basket_completion"
-        assert r.get("basket_use_case") == "sushi"
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
+        plan = r.get("recipe_shopping_plan") or {}
+        assert plan.get("dish_id") == "sushi"
 
     def test_informational_aside_answers_correctly_and_basket_still_resumes(self):
         # FAQ/allergen-safety run at a HIGHER precedence tier than

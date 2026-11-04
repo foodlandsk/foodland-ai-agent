@@ -94,15 +94,29 @@ def _chat_as_customer(message: str, session_id: str, limit: int = 5) -> dict:
 # ---------------------------------------------------------------------
 
 class TestCrossSellStructuralGapCharacterization:
+    # V2.29d note: the turn-1 fixture query was "co potrebujem na sushi"
+    # until the Special-3 RECIPE_SHOPPING routing flip. That phrasing now
+    # establishes an active_recipe (recipe_to_products/RECIPE_SHOPPING)
+    # rather than the memory_subject="sushi" state turn 2's "sushi ryza"
+    # needs for cross-sell continuation to engage (see app.main's own
+    # comment on `memory_subject` just above its cross-sell branch: "a
+    # truthy [related_subject] value... always diverts to the earlier
+    # `elif related_subject:` branch first"). Swapped to a bare mention
+    # with no shopping-list language at all ("Mam rad sushi.") - it still
+    # sets related_subject/memory_subject="sushi" via the legacy path
+    # (verified directly: recipe_subject is correctly nulled back to None
+    # for a bare mention per _NEW_BARE_DISH_SUBJECTS_REQUIRE_SHOPPING_INTENT),
+    # reproducing the exact session state these three tests characterize.
+
     def test_cross_sell_decision_still_computed_server_side(self):
-        _chat_as_customer("co potrebujem na sushi", "v215e3-cs-a")
+        _chat_as_customer("Mam rad sushi.", "v215e3-cs-a")
         r = _chat_as_customer("sushi ryza", "v215e3-cs-a")
         assert r.get("cross_sell_eligible") is True
         assert r.get("cross_sell_context_type")
         assert len(r.get("cross_sell") or []) > 0
 
     def test_cross_sell_products_are_a_separate_field_not_merged_into_products(self):
-        _chat_as_customer("co potrebujem na sushi", "v215e3-cs-b")
+        _chat_as_customer("Mam rad sushi.", "v215e3-cs-b")
         r = _chat_as_customer("sushi ryza", "v215e3-cs-b")
         cross_sell_ids = {p.get("id") for p in (r.get("cross_sell") or [])}
         product_ids = {p.get("id") for p in (r.get("products") or [])}
@@ -110,7 +124,7 @@ class TestCrossSellStructuralGapCharacterization:
         assert cross_sell_ids.isdisjoint(product_ids), "cross_sell must remain a distinct field, never merged into products"
 
     def test_cross_sell_has_no_decision_id_field_gate_a(self):
-        _chat_as_customer("co potrebujem na sushi", "v215e3-cs-c")
+        _chat_as_customer("Mam rad sushi.", "v215e3-cs-c")
         r = _chat_as_customer("sushi ryza", "v215e3-cs-c")
         assert r.get("cross_sell_eligible") is True
         assert "cross_sell_decision_id" not in r
@@ -181,8 +195,16 @@ class TestRecipeShoppingDecisionCorrelation:
         # Dishes outside recipe_graph_index.dishes_by_id fall back to the
         # legacy, evidence-free recipe_shopping_core_products() path -
         # honestly null, never fabricated.
-        r = _chat_as_customer("co potrebujem na sushi", "v215e3-rs-e")
-        assert r.get("intent") == "basket_completion"  # sushi is BASKET_V1, not recipe graph
+        #
+        # V2.29d (Special-3 RECIPE_SHOPPING routing flip): sushi is no
+        # longer this characterization's example - it IS now in
+        # recipe_graph_index.dishes_by_id (the whole point of the flip) and
+        # correctly gets a real recipe_shopping_decision_id, covered by
+        # tests/test_special3_recipe_shopping_routing_v2_29d.py instead.
+        # Swapped to "pho", a genuine BASKET_V1-eligible, not-in-recipe-
+        # graph dish, to keep exercising this specific characterization.
+        r = _chat_as_customer("co potrebujem na pho", "v215e3-rs-e")
+        assert r.get("intent") == "basket_completion"  # pho is BASKET_V1, not recipe graph
         assert not r.get("recipe_shopping_decision_id")
 
     def test_recommended_product_ids_match_plan_selected_ids(self):
@@ -352,7 +374,11 @@ class TestControlRegressionMatrix:
         assert r.get("comparison_decision_id")
 
     def test_basket_completion_unchanged(self):
-        r = _chat_as_customer("co potrebujem na sushi", "v215e3-basket-control")
+        # V2.29d: swapped probe dish from "sushi" to "pho" - sushi now
+        # canonicalizes to recipe_to_products/RECIPE_SHOPPING for this bare
+        # "co potrebujem" phrasing (Special-3 routing flip), so it is no
+        # longer a basket_completion control case. "pho" still is.
+        r = _chat_as_customer("co potrebujem na pho", "v215e3-basket-control")
         assert r.get("intent") == "basket_completion"
         assert r.get("basket_decision_id")
 

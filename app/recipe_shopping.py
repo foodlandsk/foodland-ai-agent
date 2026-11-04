@@ -560,13 +560,16 @@ def compose_recipe_followup_answer(
 # 47 dishes - so the SAME generic app.main.recipe_core_product_candidates()
 # scorer can consume these without any new field or matching mechanism.
 #
-# DELIBERATELY NOT wired into app.main.RECIPE_SHOPPING_CORE_QUERIES itself
-# (that dict is live production data read by app.cross_sell's
-# RECIPE_ROLE_INDEX, app.basket_completion, and app.recipe_graph's
-# dishes_by_id - adding keys there would be read by those real consumers
-# immediately, which is explicitly out of scope for a routing-frozen data-
-# port sprint). This dict is inert until a future sprint explicitly merges
-# it in as part of the routing flip.
+# V2.29d update: now MERGED into app.main.RECIPE_SHOPPING_CORE_QUERIES
+# (`RECIPE_SHOPPING_CORE_QUERIES = {**RECIPE_SHOPPING_CORE_QUERIES,
+# **_SPECIAL3_SHOPPING_DEFINITIONS}` right after the literal dict in
+# app/main.py) as part of the Special-3 routing flip - that dict is live
+# production data read by app.cross_sell's RECIPE_ROLE_INDEX,
+# app.basket_completion, and app.recipe_graph's dishes_by_id, all of
+# which now see sushi/tom_yum/kimchi_ramen exactly like the other 47
+# dishes. This dict itself is unchanged by that sprint (still the sole
+# source of truth for the three ported definitions below); only its
+# consumer wiring changed.
 #
 # Sushi-rice precision guard (V2.29b's one identified bespoke heuristic:
 # legacy requires the title to contain "ryza" AND ("sushi" OR "susi") as a

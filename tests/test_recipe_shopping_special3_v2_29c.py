@@ -284,39 +284,64 @@ class TestHelperLevelPlanBuilds:
 
 
 class TestRoutingImmutability:
-    """Section I/27 - THE critical gate: live /chat behavior for all three
-    special dishes must be byte-identical to pre-V2.29c. This sprint only
-    added inert data; it must not be reachable from any routing path."""
+    """Section I/27 - at V2.29c time, this class asserted live /chat
+    behavior for all three special dishes was byte-identical to
+    pre-V2.29c (data-port-only, no routing change yet).
+
+    V2.29d (Special-3 RECIPE_SHOPPING routing flip) intentionally
+    supersedes five of those assertions - documented per-test below
+    (old contract / new contract / why) rather than silently changed,
+    per the V2.29d sprint's own test-update-rationale requirement. The
+    remaining two (direct product search, sushi-rice special_subject
+    ranking) were never part of the routing-flip's scope and are
+    unchanged."""
 
     def test_sushi_routing_unchanged(self):
-        r = _chat("Aké sushi suroviny predávate?", "v229c-routing-sushi")
-        assert r.get("intent") == "related_products"
-        assert r.get("workflow_id") is None
+        # OLD CONTRACT (V2.29c): intent=related_products, workflow_id=None
+        # (legacy related_subject+wants_shopping_list() branch).
+        # NEW CONTRACT (V2.29d): intent=recipe_to_products,
+        # workflow_id=RECIPE_SHOPPING, same as the other 47 curated dishes.
+        # WHY: this is the explicit goal of V2.29d's routing flip - sushi
+        # is no longer excluded from the canonical recipe-shopping pipeline.
+        r = _chat("Aké sushi suroviny predávate?", "v229d-routing-sushi")
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
 
     def test_tom_yum_routing_unchanged(self):
-        r = _chat("Aké tom yum suroviny predávate?", "v229c-routing-tomyum")
-        assert r.get("intent") == "related_products"
-        assert r.get("workflow_id") is None
+        # Same V2.29c -> V2.29d contract change as test_sushi_routing_unchanged.
+        r = _chat("Aké tom yum suroviny predávate?", "v229d-routing-tomyum")
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
 
     def test_kimchi_ramen_routing_unchanged(self):
-        r = _chat("Aké kimchi ramen suroviny predávate?", "v229c-routing-kimchiramen")
-        assert r.get("intent") == "related_products"
-        assert r.get("workflow_id") is None
+        # Same V2.29c -> V2.29d contract change as test_sushi_routing_unchanged.
+        r = _chat("Aké kimchi ramen suroviny predávate?", "v229d-routing-kimchiramen")
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
 
     def test_sushi_shopping_list_routing_unchanged(self):
-        r = _chat("Nákupný zoznam na sushi.", "v229c-routing-sushi-zoznam")
-        assert r.get("intent") == "related_products"
-        assert r.get("workflow_id") is None
+        # Same V2.29c -> V2.29d contract change as test_sushi_routing_unchanged,
+        # for the "nakupny zoznam" shopping-list phrasing specifically.
+        r = _chat("Nákupný zoznam na sushi.", "v229d-routing-sushi-zoznam")
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
 
-    def test_sushi_session_followup_still_fails_as_before(self):
-        # Documents (does not fix) the known V2.29b finding: sushi's
-        # legacy path establishes no active_recipe, so this follow-up
-        # does not resolve. A future routing-flip sprint changes this;
-        # V2.29c must NOT change it yet.
-        sid = "v229c-routing-sushi-followup"
-        _chat("Nákupný zoznam na sushi.", sid)
+    def test_sushi_session_followup_now_resolves(self):
+        # OLD CONTRACT (V2.29c): workflow_id != RECIPE_SHOPPING on the
+        # follow-up turn (sushi's legacy path established no active_recipe,
+        # so "Co este potrebujem?" could not resolve against it).
+        # NEW CONTRACT (V2.29d): the follow-up resolves against a real
+        # active_recipe, same as every other RECIPE_SHOPPING dish.
+        # WHY: V2.29d's session-convergence mandate (Section 14-23) -
+        # build_recipe_shopping_plan() now runs for sushi, and
+        # app.workflow_executor.execute_recipe() calls _set_active_recipe()
+        # whenever a plan was built, exactly like the other 47 dishes.
+        sid = "v229d-routing-sushi-followup"
+        r1 = _chat("Nákupný zoznam na sushi.", sid)
+        assert r1.get("workflow_id") == "RECIPE_SHOPPING"
         r2 = _chat("Čo ešte potrebujem?", sid)
-        assert r2.get("workflow_id") != "RECIPE_SHOPPING"
+        assert r2.get("workflow_id") == "RECIPE_SHOPPING"
+        assert r2.get("products")
 
     def test_direct_product_search_unaffected(self):
         for text in ("Chcem sushi ryžu.", "Chcem ramen rezance.", "Chcem kimchi."):

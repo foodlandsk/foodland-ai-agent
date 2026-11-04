@@ -196,8 +196,16 @@ class TestSelected6Unaffected:
         assert r.get("intent") == "product_search"
 
     def test_rtp0005(self):
+        # OLD CONTRACT (pre-V2.29d): tom_yum had no RECIPE_SHOPPING
+        # destination, so this dish-shopping question fell through to the
+        # generic product_search fallback.
+        # NEW CONTRACT (V2.29d, Special-3 RECIPE_SHOPPING routing flip):
+        # intent=recipe_to_products/RECIPE_SHOPPING, same as the
+        # structurally identical "Ake tom yum suroviny predavate?"
+        # (Section 9 of the V2.29d spec).
         r = _chat("Aké produkty potrebujem na Tom Yum polievku?", "v225f-rtp0005")
-        assert r.get("intent") == "product_search"
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
 
 
 class TestContract2Unaffected:
@@ -233,8 +241,15 @@ class TestOpenDebtUnaffected:
         assert r.get("intent") == "related_products"
 
     def test_dish_shaped_a2_unchanged(self):
+        # OLD CONTRACT (pre-V2.29d): intent=related_products (sushi was
+        # excluded from the RECIPE_SHOPPING pipeline).
+        # NEW CONTRACT (V2.29d, Special-3 RECIPE_SHOPPING routing flip):
+        # intent=recipe_to_products/RECIPE_SHOPPING - one of the six
+        # target scenarios explicitly named in Section 9 of the V2.29d
+        # spec.
         r = _chat("Aké sushi suroviny predávate?", "v225f-disha2")
-        assert r.get("intent") == "related_products"
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
 
 
 class TestBrandConstraint0005RedundantNoOp:

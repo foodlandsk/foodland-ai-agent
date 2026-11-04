@@ -213,8 +213,16 @@ class TestChatLevelNonInterference:
         assert len(r.get("products") or []) == 20
 
     def test_dish_a2_unaffected(self):
+        # OLD CONTRACT (pre-V2.29d): intent=related_products (sushi was
+        # excluded from the RECIPE_SHOPPING pipeline).
+        # NEW CONTRACT (V2.29d, Special-3 RECIPE_SHOPPING routing flip):
+        # intent=recipe_to_products/RECIPE_SHOPPING - one of the six target
+        # scenarios explicitly named in Section 9 of the V2.29d spec. Still
+        # unaffected by this module's structured-path price filter either
+        # way - no parseable price constraint here.
         r = self._chat("Aké sushi suroviny predávate?", "v227h-chat-disha2")
-        assert r.get("intent") == "related_products"
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
 
     def test_price_information_unaffected(self):
         r = self._chat("Koľko stojí jazmínová ryža Royal Umbrella 1kg?", "v227h-chat-priceinfo")

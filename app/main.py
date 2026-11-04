@@ -183,6 +183,7 @@ from app.recipe_shopping import RECIPE_FOLLOWUP_INGREDIENT as _RF_INGREDIENT
 from app.recipe_shopping import RECIPE_FOLLOWUP_SELECTED as _RF_SELECTED
 from app.recipe_shopping import RECIPE_FOLLOWUP_PLAN_UPDATE as _RF_PLAN_UPDATE
 from app.recipe_shopping import STATUS_AVAILABLE as _RF_STATUS_AVAILABLE
+from app.recipe_shopping import SPECIAL3_SHOPPING_DEFINITIONS as _SPECIAL3_SHOPPING_DEFINITIONS
 from app.session_state import get_active_recipe as _get_active_recipe
 from app.session_state import set_active_recipe as _set_active_recipe
 from app.session_state import clear_recipe_state as _clear_recipe_state
@@ -2562,6 +2563,15 @@ RECIPE_SHOPPING_CORE_QUERIES = {
         ("rybacia omacka", ("rybacia omacka",), ()),
     ],
 }
+# V2.29d (Special-3 RECIPE_SHOPPING routing flip) - activates the
+# V2.29c-ported sushi/tom_yum/kimchi_ramen data (app.recipe_shopping.
+# SPECIAL3_SHOPPING_DEFINITIONS) by merging it into the live dict, so
+# the generic recipe-shopping pipeline (app.recipe_graph/app.recipe_
+# shopping/app.cross_sell/app.basket_completion all read this same
+# module-level dict) resolves these three dishes exactly like the
+# other 47 - see app.workflow_executor.execute_recipe() for the
+# paired routing-guard removal that makes them reachable.
+RECIPE_SHOPPING_CORE_QUERIES = {**RECIPE_SHOPPING_CORE_QUERIES, **_SPECIAL3_SHOPPING_DEFINITIONS}
 
 # V2.6 cross-sell mines these two curated dicts (recipe ingredient
 # roles, use-case companion products) - handed in once here rather
@@ -2809,6 +2819,21 @@ RECIPE_INTENT_MARKERS = (
     "bibimbap",
     "gyoza",
     "poke bowl",
+    # V2.29d (Special-3 RECIPE_SHOPPING routing flip) - same bare-
+    # dish-marker fix pattern as tom kha/pad thai/bibimbap/gyoza/
+    # poke bowl above: a bare mention of sushi/tom yum/kimchi ramen
+    # with no "recept"/how-to wording still needs to reach the
+    # recipe-shopping workflow for genuine shopping-list phrasing
+    # ("nakupny zoznam na sushi"). Like bibimbap/gyoza/poke bowl
+    # (not tom kha/pad thai), all three also name a real packaged
+    # product, so they are ALSO added to
+    # _NEW_BARE_DISH_SUBJECTS_REQUIRE_SHOPPING_INTENT below, gating
+    # them on genuine shopping-list language before granting
+    # recipe_subject - a bare "Co je sushi?"/"Chcem sushi ryzu."
+    # must not be forced into the recipe workflow.
+    "sushi",
+    "tom yum",
+    "kimchi ramen",
 )
 # V2.14d (Section 27-34, docs/use-case-recipe-data-quality-v2.14d.md) -
 # the subset of RECIPE_INTENT_MARKERS above that are bare dish NAMES
@@ -2821,7 +2846,7 @@ RECIPE_INTENT_MARKERS = (
 # lets a specific, resolvable use-case role win that narrow case
 # generically, without weakening recipe detection for every other
 # message (explicit "recept na X"/"co potrebujem na X" are unaffected).
-_BARE_DISH_RECIPE_MARKERS = ("tom kha", "pad thai", "bibimbap", "gyoza", "poke bowl")
+_BARE_DISH_RECIPE_MARKERS = ("tom kha", "pad thai", "bibimbap", "gyoza", "poke bowl", "sushi", "tom yum", "kimchi ramen")
 # V2.21d (C1 regression fix) - the three newer bare-dish RECIPE_INTENT_MARKERS
 # entries (bibimbap/gyoza/poke bowl) each also name a real packaged product
 # (e.g. "gyoza knedlicky", CROSS_SELL v221_cross_sell_0001), unlike
@@ -2829,7 +2854,7 @@ _BARE_DISH_RECIPE_MARKERS = ("tom kha", "pad thai", "bibimbap", "gyoza", "poke b
 # three must not force the recipe workflow without genuine shopping-list
 # language (wants_recipe_products()) alongside it. See the recipe_subject
 # guard in _chat_impl() that consumes this.
-_NEW_BARE_DISH_SUBJECTS_REQUIRE_SHOPPING_INTENT = frozenset({"bibimbap", "gyoza", "poke_bowl"})
+_NEW_BARE_DISH_SUBJECTS_REQUIRE_SHOPPING_INTENT = frozenset({"bibimbap", "gyoza", "poke_bowl", "sushi", "tom_yum", "kimchi_ramen"})
 
 RANDOM_RECIPE_INTENT_MARKERS = (
     "co dnes varit",
@@ -5112,6 +5137,25 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
     # unchanged blocks below) - not a new mechanism.
     if recipe_subject and detect_replacement_subject(routing_message):
         recipe_subject = None
+    # V2.29d (rt0004 regression, Special-3 RECIPE_SHOPPING routing flip)
+    # - adding "sushi" to RECIPE_INTENT_MARKERS/_BARE_DISH_RECIPE_MARKERS
+    # exposed a pre-existing precedence gap shared by every other bare-
+    # dish-marker dish (pad thai/tom kha/bibimbap/gyoza/poke bowl):
+    # wants_recipe_products()'s bare "produkt" substring marker also
+    # fires on an explicit companion/cross-sell request ("suvisiace
+    # produkty k sushi ryzi"), so _recipe_intent_is_bare_dish_marker_only()
+    # never even considers nulling recipe_subject for it (rt0004, a
+    # permanent regression lock predating this dish - see
+    # tests/test_recipe_basket_intelligence_v2_16d.py::TestPermanentRegressionControls::test_rt0004_related_products).
+    # Same fix pattern as the substitution-request null-out immediately
+    # above: is_product_cross_sell_request() already encodes exactly
+    # this "explicit companion/related-product request" semantics -
+    # reused directly, not reinvented, and unconditional (not just for
+    # special-3) since the gap always existed for every bare-dish-marker
+    # dish, this is simply the first one with a regression test that
+    # happened to probe it.
+    if recipe_subject and is_product_cross_sell_request(routing_message):
+        recipe_subject = None
     # V2.13e: recipe execution boundary (app.workflow_executor.execute_recipe)
     # - Block D (main recipe_subject handler) and Block E (recipe_followup_result
     # handler) moved verbatim, docs/recipe-state-machine-v2.13e.md. Called
@@ -5145,6 +5189,7 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         interaction_id=interaction_id or "",
         should_log_decision=execution_context.mode.value in ("CUSTOMER", "ADMIN_TEST"),
         learning_eligible=execution_context.is_customer_traffic,
+        price_constraint=extract_price_constraint(chat_request.message),
     )
     if _recipe_result is not None:
         return _recipe_result

@@ -149,22 +149,36 @@ class TestWantsShoppingListExclusion:
     workflows these phrasings deliberately route into."""
 
     def test_tom_yum_shopping_list_untouched(self):
+        # OLD CONTRACT (pre-V2.29d): intent=related_products (tom_yum had
+        # no RECIPE_SHOPPING destination for this phrasing).
+        # NEW CONTRACT (V2.29d, Special-3 RECIPE_SHOPPING routing flip):
+        # intent=recipe_to_products/RECIPE_SHOPPING, same as every other
+        # curated dish (Section 9 of the V2.29d spec).
         r = _chat("nákupný zoznam na tom yum", "v224y-wsl-tomyum")
-        assert r.get("intent") == "related_products"
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
 
     def test_kimchi_ramen_shopping_list_untouched(self):
+        # Same V2.29d contract change as test_tom_yum_shopping_list_untouched.
         r = _chat("nákupný zoznam na kimchi ramen", "v224y-wsl-kimchiramen")
-        assert r.get("intent") == "related_products"
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
 
     def test_ramen_hard_switch_untouched(self):
         r = _chat("Čo potrebujem na ramen?", "v224y-wsl-ramen")
         assert r.get("intent") in ("related_products", "recipe", "basket_completion", "use_case_advice")
 
     def test_dish_shaped_a2_category_discovery_0004_untouched(self):
-        # Out of scope (V2.24s A2 / V2.24t-x "dish-shaped" group) -
-        # wants_shopping_list=True here, same architecture as above.
+        # OLD CONTRACT (pre-V2.29d): intent=related_products (sushi was
+        # excluded from the RECIPE_SHOPPING pipeline; V2.24s A2 / V2.24t-x
+        # "dish-shaped" group, wants_shopping_list=True).
+        # NEW CONTRACT (V2.29d, Special-3 RECIPE_SHOPPING routing flip):
+        # intent=recipe_to_products/RECIPE_SHOPPING - this exact phrase is
+        # one of the six target scenarios explicitly named in Section 9 of
+        # the V2.29d spec.
         r = _chat("Aké sushi suroviny predávate?", "v224y-wsl-a2-cd0004")
-        assert r.get("intent") == "related_products"
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
 
     def test_recipe_to_products_0001_untouched(self):
         r = _chat("Pomôž mi nakúpiť suroviny na Bulgogi.", "v224y-wsl-rtp0001")

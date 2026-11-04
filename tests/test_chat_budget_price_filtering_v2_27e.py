@@ -133,8 +133,18 @@ class TestSelected6Unaffected:
         assert r.get("intent") == "product_search"
 
     def test_rtp0005(self):
+        # OLD CONTRACT (pre-V2.29d): tom_yum had no RECIPE_SHOPPING
+        # destination, so this dish-shopping question fell through to the
+        # generic product_search fallback.
+        # NEW CONTRACT (V2.29d, Special-3 RECIPE_SHOPPING routing flip):
+        # intent=recipe_to_products/RECIPE_SHOPPING, same as the structurally
+        # identical "Ake tom yum suroviny predavate?" (Section 9 of the
+        # V2.29d spec explicitly targets this phrase family for tom_yum).
+        # Unaffected by the price-filtering clause this test module covers
+        # either way - no parseable price constraint in this message.
         r = _chat("Aké produkty potrebujem na Tom Yum polievku?", "v227e-rtp0005")
-        assert r.get("intent") == "product_search"
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
 
 
 class TestProductSearch0007AndContract2Unaffected:
@@ -170,8 +180,16 @@ class TestOpenDebtUnaffected:
         assert len(r.get("products") or []) == 20
 
     def test_dish_a2_unchanged(self):
+        # OLD CONTRACT (pre-V2.29d): intent=related_products (sushi was
+        # excluded from the RECIPE_SHOPPING pipeline).
+        # NEW CONTRACT (V2.29d, Special-3 RECIPE_SHOPPING routing flip):
+        # intent=recipe_to_products/RECIPE_SHOPPING - this exact phrase is
+        # one of the six target scenarios explicitly named in Section 9 of
+        # the V2.29d spec. Still unaffected by this module's price-filtering
+        # clause either way - no parseable price constraint here.
         r = _chat("Aké sushi suroviny predávate?", "v227e-disha2")
-        assert r.get("intent") == "related_products"
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
 
 
 class TestPriceInfoAndSaleUnaffected:

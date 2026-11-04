@@ -59,8 +59,14 @@ class TestSushiShoppingListBudgetSynthetic:
     pack). Post-patch, every returned item must satisfy the budget."""
 
     def test_intent_unchanged(self):
+        # V2.29d (Special-3 RECIPE_SHOPPING routing flip): intent/
+        # workflow_id updated to the new canonical contract - the price-
+        # ceiling checks in the two sibling tests below are unaffected
+        # (still pass unmodified) thanks to the paired V2.29d price-
+        # filtering-parity fix in app.workflow_executor.execute_recipe().
         r = _chat("nákupný zoznam na sushi, mám 10 eur", "v227j-sushi-budget10")
-        assert r.get("intent") == "related_products"
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
 
     def test_all_products_satisfy_budget(self):
         r = _chat("nákupný zoznam na sushi, mám 10 eur", "v227j-sushi-budget10-prices")
@@ -99,21 +105,39 @@ class TestSushiShoppingListNoInterference:
     baseline (price_constraint defaults to None in all 4 functions)."""
 
     def test_sushi_unchanged(self):
+        # OLD CONTRACT (pre-V2.29d): intent=related_products, 7 products
+        # (the legacy sushi_shopping_core_products() builder's 6 curated
+        # queries plus one existing_matches fallback-fill pad).
+        # NEW CONTRACT (V2.29d, Special-3 RECIPE_SHOPPING routing flip):
+        # intent=recipe_to_products/RECIPE_SHOPPING, 6 products - one per
+        # curated ingredient role, no fallback-fill pad (V2.29c's data-port
+        # docstring explicitly documents that padding step as NOT ported -
+        # an intentional, acknowledged customer-visible difference, not a
+        # regression; see Section 25 of the V2.29d spec).
         r = _chat("nákupný zoznam na sushi", "v227j-sushi-noB")
         products = r.get("products") or []
-        assert r.get("intent") == "related_products"
-        assert len(products) == 7
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
+        assert len(products) == 6
 
     def test_tom_yum_unchanged(self):
+        # V2.29d: intent/workflow_id updated; count unaffected (still 6 -
+        # verified directly, this dish's 6 curated queries all resolve
+        # with no fallback-fill difference).
         r = _chat("nákupný zoznam na tom yum", "v227j-tomyum-noB")
         products = r.get("products") or []
-        assert r.get("intent") == "related_products"
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
         assert len(products) == 6
 
     def test_kimchi_ramen_unchanged(self):
+        # V2.29d: intent/workflow_id updated; count unaffected (still 8 -
+        # verified directly, this dish's 8 curated queries all resolve
+        # with no fallback-fill difference).
         r = _chat("nákupný zoznam na kimchi ramen", "v227j-kimchiramen-noB")
         products = r.get("products") or []
-        assert r.get("intent") == "related_products"
+        assert r.get("intent") == "recipe_to_products"
+        assert r.get("workflow_id") == "RECIPE_SHOPPING"
         assert len(products) == 8
 
     def test_pad_thai_unchanged(self):

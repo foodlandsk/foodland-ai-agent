@@ -410,6 +410,7 @@ def execute_recipe(
     interaction_id: str = "",
     should_log_decision: bool = False,
     learning_eligible: bool = False,
+    price_constraint: Any = None,
 ) -> WorkflowResult | None:
     """V2.13e - moved verbatim from its former two inline locations
     (docs/recipe-state-machine-v2.13e.md's "Block D" and "Block E").
@@ -452,7 +453,17 @@ def execute_recipe(
         if recipe_products and recipe_product_subject == "kimchi_ramen":
             recipe_products = m.kimchi_ramen_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
         recipe_shopping_plan = None
-        if recipe_products and recipe_product_subject not in {"sushi", "tom_yum", "kimchi_ramen"}:
+        # V2.29d (Special-3 RECIPE_SHOPPING routing flip) - the sushi/
+        # tom_yum/kimchi_ramen exclusion that used to gate this block is
+        # removed: app.main.RECIPE_SHOPPING_CORE_QUERIES now carries their
+        # ported data (V2.29c) too, so recipe_product_subject is reachable
+        # in recipe_graph_index.dishes_by_id for all three exactly like the
+        # other 47 dishes. The three sushi_/tom_yum_/kimchi_ramen_shopping_
+        # core_products() calls above still run first and are harmless -
+        # their output is only ever used as the `recipe_products` truthiness
+        # check here, then fully superseded by the real plan's ingredient-
+        # derived product list below when the plan build succeeds.
+        if recipe_products:
             if m.V2_STRUCTURED_RETRIEVAL_ENABLED and recipe_product_subject in recipe_graph_index.dishes_by_id:
                 try:
                     recipe_shopping_plan = m._build_recipe_shopping_plan(
@@ -476,6 +487,31 @@ def execute_recipe(
                 ]
             else:
                 recipe_products = m.recipe_shopping_core_products(products, recipe_product_subject, recipe_products, max(chat_request.limit, 8))
+        # V2.29d (price-filtering parity fix) - build_recipe_shopping_plan()
+        # has no price awareness at all (it selects per-ingredient-role
+        # candidates purely on lexical required/excluded terms), so an
+        # explicit budget ("...do 10 eur") was previously silently ignored
+        # for every RECIPE_SHOPPING dish, not just the newly-migrated
+        # special-3 ones - the legacy sushi_/tom_yum_/kimchi_ramen_shopping_
+        # core_products() builders above DID take a price_constraint, so
+        # special-3 would have newly regressed on this axis without this
+        # fix. Same hard-eligibility-only semantics as the existing
+        # post-hoc matches filter in app.main's chat() (V2.27e): a plain
+        # effective_price <= price_max check, never a ranking signal, no
+        # change to PriceConstraint/extract_price_constraint() itself -
+        # just applied here too, to the one list this function computes
+        # that that filter never reached. Also prunes `_plan_product_ids`
+        # in lockstep so the decision-log's recommended_product_ids below
+        # never cites a product the customer-visible response dropped.
+        if price_constraint is not None and recipe_products:
+            recipe_products = [
+                product for product in recipe_products
+                if product.get("effective_price") is not None
+                and product["effective_price"] <= price_constraint.price_max
+            ]
+            if recipe_shopping_plan is not None:
+                _kept_ids = {product.get("id") for product in recipe_products}
+                _plan_product_ids = [pid for pid in _plan_product_ids if pid in _kept_ids]
         # V2.15e.3 (docs/decision-observability-expansion-v2.15e.3.md)
         # - GATE C: recipe_shopping_plan already carries genuine per-
         # role evidence (candidate_product_ids/selected_product_id/
