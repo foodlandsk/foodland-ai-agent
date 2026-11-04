@@ -1,0 +1,34 @@
+{
+  "dataset_version": "1.0",
+  "domain": "v229g_dish_a2_recipe_shopping_matrix",
+  "note": "V2.29g (Dish-A2 Golden Contract Alignment) - codifies the canonical dish-shopping/category contract (intent=recipe_to_products, workflow_id=RECIPE_SHOPPING, non-empty products, active_recipe established) for the three special-3 dishes (sushi/tom_yum/kimchi_ramen), which V2.29d/e moved onto the same RECIPE_SHOPPING pipeline pad_thai already used (see conv_padthai_matrix_001 in v29_padthai_matrix.json, whose shape this mirrors). Additive only: the historical v222_category_discovery_0004 scenario (eval/golden/v2_22_scenarios.json, dormant/not part of the active evaluation engine - see V2.29f review) is left untouched, as is the existing conv_sushi_matrix_001 (v29_sushi_matrix.json).",
+  "cases": [
+    {
+      "id": "conv_dish_a2_sushi_001",
+      "session_id_prefix": "dish-a2-sushi",
+      "critical": true,
+      "turns": [
+        {"message": "Aké suroviny na sushi predávate?", "expected_workflow": "RECIPE_SHOPPING", "expected_recipe_plan_present": true, "expected_active_recipe_id": "sushi", "expected_products_nonempty": true, "note": "Dish-A2 contract: dish-shopping/category question for a former special-3 dish now resolves through the canonical recipe-shopping pipeline (V2.29d routing flip, V2.29e legacy builder retirement). Phrasing deliberately reordered from the historical 'Ake sushi suroviny predavate?' (eval/golden/v2_22_scenarios.json::v222_category_discovery_0004) to avoid an exact-text collision with that frozen, independent V2.22a corpus (tests/test_v222_scenario_factory.py's textual-freshness check) - same semantic query, same verified routing."},
+        {"message": "Čo ešte potrebujem?", "expected_workflow": "RECIPE_SHOPPING", "expected_recipe_plan_present": true, "expected_products_nonempty": true, "note": "Session continuity - active_recipe established on turn 1 must still resolve the follow-up."}
+      ]
+    },
+    {
+      "id": "conv_dish_a2_tomyum_001",
+      "session_id_prefix": "dish-a2-tomyum",
+      "critical": true,
+      "turns": [
+        {"message": "Aké Tom Yum suroviny predávate?", "expected_workflow": "RECIPE_SHOPPING", "expected_recipe_plan_present": true, "expected_active_recipe_id": "tom_yum", "expected_products_nonempty": true, "note": "Dish-A2 contract for a second former special-3 dish."},
+        {"message": "Čo ešte potrebujem?", "expected_workflow": "RECIPE_SHOPPING", "expected_recipe_plan_present": true, "expected_products_nonempty": true, "note": "Session continuity."}
+      ]
+    },
+    {
+      "id": "conv_dish_a2_kimchiramen_001",
+      "session_id_prefix": "dish-a2-kimchiramen",
+      "critical": true,
+      "turns": [
+        {"message": "Aké suroviny na kimchi ramen predávate?", "expected_workflow": "RECIPE_SHOPPING", "expected_recipe_plan_present": true, "expected_active_recipe_id": "kimchi_ramen", "expected_products_nonempty": true, "note": "Dish-A2 contract for the third former special-3 dish."},
+        {"message": "Čo ešte potrebujem?", "expected_workflow": "RECIPE_SHOPPING", "expected_recipe_plan_present": true, "expected_products_nonempty": true, "note": "Session continuity."}
+      ]
+    }
+  ]
+}
