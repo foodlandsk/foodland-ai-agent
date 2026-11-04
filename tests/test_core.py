@@ -1124,18 +1124,31 @@ class TestSearchProducts:
 
     def test_english_sushi_shopping_question_includes_sushi_rice_end_to_end(self):
         # V2.20 recipe_to_products_0005: the English phrasing never
-        # reached sushi_shopping_core_products() at all, so sushi rice -
-        # the one ingredient that function exists specifically to
-        # guarantee - never appeared in the answer.
+        # reached sushi_shopping_core_products() at all (V2.29e: deleted -
+        # sushi/tom_yum/kimchi_ramen resolve through the canonical
+        # recipe-shopping pipeline since V2.29d, which this same English-
+        # phrasing gap kept them excluded from until V2.29e closed it on
+        # wants_recipe_products() too), so sushi rice - the one ingredient
+        # this guaranteed - never appeared in the answer.
+        #
+        # Explicit, dedicated session_id (V2.29e) - this query now
+        # establishes a real active_recipe (it didn't pre-V2.29e), so it
+        # must not share the bare host="127.0.0.1"/default-session_id
+        # fixture other TestSearchProducts tests also use, or it leaks
+        # sushi session state into them.
         request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
-        result = main.chat(main.ChatRequest(message="What do I need from Foodland to make sushi at home?", limit=8), request)
+        result = main.chat(main.ChatRequest(message="What do I need from Foodland to make sushi at home?", limit=8, session_id="tc-english-sushi-shopping"), request)
         titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
         assert titles
         assert any(("susi ryza" in t or "sushi ryza" in t) for t in titles)
 
     def test_best_sushi_rice_chat_prioritizes_rice(self):
+        # Explicit, dedicated session_id (V2.29e) - see the note on
+        # test_english_sushi_shopping_question_includes_sushi_rice_end_to_end
+        # above for why the bare host="127.0.0.1"/default-session_id
+        # fixture is no longer safe to share across these tests.
         request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
-        result = main.chat(main.ChatRequest(message="Najlepsia sushi ryza", limit=5), request)
+        result = main.chat(main.ChatRequest(message="Najlepsia sushi ryza", limit=5, session_id="tc-best-sushi-rice"), request)
         titles = [nrm(product.get("title", "")) for product in result.get("products", [])]
 
         assert result.get("intent") == "product_search"
@@ -1161,11 +1174,16 @@ class TestSearchProducts:
             ("mate misku na sushi", "misk"),
             ("aky noz na sushi mate", "noz"),
         )):
-            # Distinct client per query - session memory from one query in
-            # this loop must not bleed into the next query's ranking.
+            # Distinct client AND session_id per query (V2.29e: a bare
+            # host-only default collides with other TestSearchProducts
+            # tests' shared host="127.0.0.1"/default-session_id fixture
+            # now that sushi queries can establish real active_recipe
+            # state) - session memory from one query in this loop must
+            # not bleed into the next query's ranking, or into any other
+            # test's.
             request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host=f"127.0.0.{index + 1}"))
             assert main.detect_related_subject(message) == "sushi", message  # sanity: alias still matches
-            result = main.chat(main.ChatRequest(message=message, limit=6), request)
+            result = main.chat(main.ChatRequest(message=message, limit=6, session_id=f"tc-sushi-kitchenware-{index}"), request)
             titles = [nrm(p.get("title", "")) for p in result.get("products", [])]
             assert result.get("intent") == "product_search", message
             assert titles, message
@@ -1233,8 +1251,12 @@ class TestSearchProducts:
         # existing honest "what are you looking for?" bailout - the fix
         # must not swallow real orphaned follow-ups.
         for index, message in enumerate(("nieco lacnejsie", "mate nieco lacnejsie ako toto?", "chcem drahsiu variantu")):
+            # Explicit, dedicated session_id per query (V2.29e) - same
+            # shared-fixture collision risk as the sushi tests above;
+            # this test's own premise ("no active result set") requires
+            # genuine isolation from whatever else may have run before it.
             request = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host=f"127.0.0.{index + 1}"))
-            result = main.chat(main.ChatRequest(message=message, limit=6), request)
+            result = main.chat(main.ChatRequest(message=message, limit=6, session_id=f"tc-price-direction-orphaned-{index}"), request)
             assert result.get("products") == [], message
             assert "nemam aktivny" in nrm(result.get("answer", "")), message
 

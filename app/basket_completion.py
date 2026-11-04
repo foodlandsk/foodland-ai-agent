@@ -24,10 +24,12 @@ role".
   mark_ingredient_selected) for continuity and defers entirely
   (returns None) whenever recipe_subject is already set, so pad_thai/
   tom_kha's existing, tested behavior is completely untouched.
-- app.recipe_graph has no dish entry for "sushi" at all (a deliberate,
-  pre-existing V2.8 scope decision - sushi's shopping list was always
-  handled by the separate, flat sushi_shopping_core_products()), so
-  pho/pad_thai/tom_kha/kari on one side and sushi on the other need a
+- app.recipe_graph had no dish entry for "sushi" at module-write time (a
+  deliberate, pre-existing V2.8 scope decision - sushi's shopping list
+  was handled by the separate, flat sushi_shopping_core_products(),
+  retired in V2.29e once V2.29d registered sushi in recipe_graph too -
+  see app.recipe_shopping.SPECIAL3_SHOPPING_DEFINITIONS), so historically
+  pho/pad_thai/tom_kha/kari on one side and sushi on the other needed a
   UNIFORM role-based abstraction that neither existing mechanism
   provides for all 5 Basket V1 use cases at once. This module supplies
   that uniform layer, built entirely on primitives that already exist:
@@ -115,14 +117,19 @@ _USE_CASE_TO_RECIPE_DISH_KEY = {
 #
 # Deliberately EXCLUDES "nakupny zoznam"/"do kosika" - a second real
 # regression found via the full pytest suite: "nakupny zoznam na sushi"
-# already has an existing, content-validated legacy path
-# (sushi_shopping_core_products() + shopping_list_for_response(), see
+# already has an existing, content-validated path (originally
+# sushi_shopping_core_products() + shopping_list_for_response(), now the
+# canonical app.recipe_shopping.build_recipe_shopping_plan() pipeline
+# since V2.29d/e - see
 # tests/test_core.py::test_sushi_shopping_list_uses_buyable_core_items_not_water)
 # that this module must not shadow - its response shape
 # ("shopping_list": {"available_on_foodland", "missing_ingredients"})
 # is different from and not a superset of this module's role-based
 # shape. Customers still reach this module's richer sushi basket via
-# "co potrebujem na sushi" (Section 20's own primary example).
+# "co potrebujem na sushi" when genuine already-have evidence is present
+# (Section 20's own primary example) - see
+# tests/test_special3_recipe_shopping_routing_v2_29d.py::TestAlreadyHaveBoundary
+# for the current, exact trigger condition after V2.29d.
 _BASKET_ACTION_MARKERS = (
     "co potrebujem", "co treba", "co mi chyba", "co chyba",
     "co este potrebujem", "co este treba", "co este chyba",

@@ -2202,7 +2202,11 @@ SHOPPING_LIST_MARKERS = (
     # functions at all (V2.20 recipe_to_products_0005) - those
     # already correctly include the recipe's core ingredient (e.g.
     # sushi rice), unlike the generic cross-sell related_products_
-    # for_subject() path it fell through to instead.
+    # for_subject() path it fell through to instead. (sushi_shopping_
+    # core_products()/tom_yum_.../kimchi_ramen_... were later retired in
+    # V2.29e once this same marker gap was ALSO closed on
+    # wants_recipe_products() - this comment block stays as the historical
+    # record of why these two marker strings exist at all.)
     "what do i need",
     "what do you need",
 )
@@ -5806,13 +5810,16 @@ def _chat_impl(chat_request: ChatRequest, request: Request, execution_context: _
         matches = personalize_products(matches, user_profile)
     memory["active_result_set_id"] = structured_presentation.result_set_id if structured_presentation is not None else ""
     _track_presentation(memory, [product.get("id") for product in matches if product.get("id")])
-    if is_shopping_list_request and related_subject == "sushi":
-        matches = sushi_shopping_core_products(products, matches, chat_request.limit, price_constraint=price_constraint)
-    if is_shopping_list_request and related_subject == "tom_yum":
-        matches = tom_yum_shopping_core_products(products, matches, chat_request.limit, price_constraint=price_constraint)
-    if is_shopping_list_request and related_subject == "kimchi_ramen":
-        matches = kimchi_ramen_shopping_core_products(products, matches, chat_request.limit, price_constraint=price_constraint)
-    if is_shopping_list_request and related_subject not in {"sushi", "tom_yum", "kimchi_ramen"}:
+    # V2.29e (Legacy Special-3 Builder Retirement) - the sushi/tom_yum/
+    # kimchi_ramen special-cased branches that used to call their own
+    # dedicated sushi_shopping_core_products()/tom_yum_.../kimchi_ramen_...
+    # builders here are removed; this generic recipe_shopping_core_
+    # products() call now covers all curated dishes uniformly (this
+    # whole block is itself only a fallback - the canonical path for
+    # genuine shopping-list requests is app.workflow_executor.
+    # execute_recipe(), which already returns earlier in app.main.chat()
+    # before this branch is ever reached).
+    if is_shopping_list_request:
         matches = recipe_shopping_core_products(products, related_subject, matches, chat_request.limit, price_constraint=price_constraint)
     if special_subject == "sushi_rice":
         matches = sorted(
@@ -7262,153 +7269,37 @@ def missing_ingredients_for_subject(subject: str | None, recipes: list[dict] | N
 
 # V2.27j (shopping-list budget interaction, V2.27a-i read-only
 # architecture/contract/wiring review series, docs/query-semantics.md) -
-# shared eligibility check for the 4 curated shopping-list-override
-# functions below. `existing_matches` is NOT re-checked here (it is
-# already price-filtered upstream, before these functions are ever
-# called - see the price_constraint block above this cascade) - only
-# each function's own hardcoded-ingredient picks need this.
+# shared eligibility check for the curated shopping-list-override
+# function below (recipe_shopping_core_products() - the sushi/tom_yum/
+# kimchi_ramen siblings this comment used to also describe were
+# retired in V2.29e: special-3 now resolve exclusively through the
+# canonical build_recipe_shopping_plan()/recipe_shopping_core_products()
+# pipeline, same as every other curated dish). `existing_matches` is
+# NOT re-checked here (it is already price-filtered upstream, before
+# this function is ever called - see the price_constraint block above
+# this cascade) - only its own hardcoded-ingredient picks need this.
 def _shopping_core_price_eligible(product: dict, price_constraint) -> bool:
     price = product.get("effective_price")
     return price is not None and price <= price_constraint.price_max
 
 
-def sushi_shopping_core_products(
-    products: list[Product], existing_matches: list[dict], limit: int, price_constraint=None,
-) -> list[dict]:
-    queries = ["sushi ryza", "ryzovy ocot", "wasabi", "nori", "nakladany zazvor", "sojova omacka"]
-    seen: set[str] = set()
-    recommendations: list[dict] = []
-
-    def add_product(product: dict) -> None:
-        key = product.get("id") or product.get("link") or product.get("title")
-        if not key or key in seen:
-            return
-        seen.add(key)
-        recommendations.append(product)
-
-    # Fetch a wider candidate pool per ingredient only when a budget is
-    # active (same x4 multiplier already used for exclusion-clause
-    # candidate depth - app.main._search_products_for_cache) - the top-5
-    # lexical match for an ingredient may not be the cheapest one.
-    fetch_count = 20 if price_constraint is not None else 5
-    for query in queries:
-        for product in cached_search_products(products, query, fetch_count):
-            title = normalize(product.get("title", ""))
-            if query == "sushi ryza" and not ("ryza" in title and {"sushi", "susi"} & set(title.split())):
-                continue
-            if price_constraint is not None and not _shopping_core_price_eligible(product, price_constraint):
-                continue
-            add_product(product)
-            break
-        # Option A (V2.27i/j): no eligible candidate for this ingredient
-        # under the stated budget -> the ingredient is simply omitted,
-        # never substituted with a cheaper-but-wrong or pricier-but-right
-        # item - the loop above just moves on to the next query.
-        if len(recommendations) >= limit:
-            return recommendations[:limit]
-
-    for product in existing_matches or []:
-        add_product(product)
-        if len(recommendations) >= limit:
-            break
-
-    return recommendations[:limit]
-
-
-def tom_yum_shopping_core_products(
-    products: list[Product], existing_matches: list[dict], limit: int, price_constraint=None,
-) -> list[dict]:
-    queries = [
-        ("citronova trava", ("citronova trava",), ()),
-        ("galangal", ("galangal",), ()),
-        ("kaffirove listy", ("kaffir", "kaffirov"), ("bambus", "kari list", "caj")),
-        ("rybacia omacka", ("rybacia omacka",), ()),
-        ("kokosove mlieko", ("kokosove mlieko",), ()),
-        ("tom yum pasta", ("tom yum", "pasta"), ("arasid", "riasy", "instant", "polievka v kelimku")),
-    ]
-    seen: set[str] = set()
-    recommendations: list[dict] = []
-
-    def add_product(product: dict) -> None:
-        key = product.get("id") or product.get("link") or product.get("title")
-        if not key or key in seen:
-            return
-        seen.add(key)
-        recommendations.append(product)
-
-    fetch_count = 32 if price_constraint is not None else 8
-    for query, required_terms, excluded_terms in queries:
-        for product in cached_search_products(products, query, fetch_count):
-            title = normalize(product.get("title", ""))
-            if any(term in title for term in excluded_terms):
-                continue
-            if not all(term in title for term in required_terms):
-                continue
-            if price_constraint is not None and not _shopping_core_price_eligible(product, price_constraint):
-                continue
-            add_product(product)
-            break
-        if len(recommendations) >= limit:
-            return recommendations[:limit]
-
-    for product in existing_matches or []:
-        title = normalize(product.get("title", ""))
-        if any(term in title for term in ("sojova omacka", "sriracha")):
-            continue
-        add_product(product)
-        if len(recommendations) >= limit:
-            break
-
-    return recommendations[:limit]
-
-
-def kimchi_ramen_shopping_core_products(
-    products: list[Product], existing_matches: list[dict], limit: int, price_constraint=None,
-) -> list[dict]:
-    queries = [
-        ("ramen rezance", ("ramen",), ()),
-        ("kimchi", ("kimchi",), ("instant", "ramen", "ramyun", "rezance", "polievk", "omack")),
-        ("gochujang", ("gochujang",), ()),
-        ("miso pasta", ("miso",), ()),
-        ("sojova omacka", ("sojova omacka",), ()),
-        ("dashi", ("dashi",), ()),
-        ("wakame", ("wakame",), ()),
-        ("nori", ("nori",), ()),
-    ]
-    seen: set[str] = set()
-    recommendations: list[dict] = []
-
-    def add_product(product: dict) -> None:
-        key = product.get("id") or product.get("link") or product.get("title")
-        if not key or key in seen:
-            return
-        seen.add(key)
-        recommendations.append(product)
-
-    fetch_count = 32 if price_constraint is not None else 8
-    for query, required_terms, excluded_terms in queries:
-        for product in cached_search_products(products, query, fetch_count):
-            title = normalize(product.get("title", ""))
-            if any(term in title for term in excluded_terms):
-                continue
-            if not all(term in title for term in required_terms):
-                continue
-            if price_constraint is not None and not _shopping_core_price_eligible(product, price_constraint):
-                continue
-            add_product(product)
-            break
-        if len(recommendations) >= limit:
-            return recommendations[:limit]
-
-    for product in existing_matches or []:
-        title = normalize(product.get("title", ""))
-        if "kimchi" in title and any(term in title for term in ("instant", "ramen", "ramyun", "rezance", "polievk")):
-            continue
-        add_product(product)
-        if len(recommendations) >= limit:
-            break
-
-    return recommendations[:limit]
+# V2.29e (Legacy Special-3 Builder Retirement) - sushi_shopping_core_
+# products()/tom_yum_shopping_core_products()/kimchi_ramen_shopping_
+# core_products() removed. V2.29d already made them unreachable for
+# every realistic shopping-list phrasing (sushi/tom_yum/kimchi_ramen
+# resolve through the canonical build_recipe_shopping_plan() pipeline,
+# same as the other 47 dishes); the one remaining gap (an English
+# "what do i need"/"what do you need" shopping question never
+# satisfying wants_recipe_products(), diverting onto these three plus
+# the generic related_products_for_subject() fallback - a pre-existing,
+# systemic asymmetry with wants_shopping_list() also affecting pad_thai)
+# is closed by two added markers on wants_recipe_products() above. Their
+# ingredient data (app.recipe_shopping.SPECIAL3_SHOPPING_DEFINITIONS,
+# merged into RECIPE_SHOPPING_CORE_QUERIES) and precision/parity
+# evidence (sushi-rice OR-guard equivalence, etc.) remain fully
+# documented in app/recipe_shopping.py and
+# tests/test_recipe_shopping_special3_v2_29c.py - rollback is
+# `git revert` of the V2.29e commit, not retained dead code.
 
 
 def product_field(product: Product | dict, key: str, default: str = "") -> str:
@@ -9022,6 +8913,21 @@ def wants_recipe_products(message: str) -> bool:
             # predavaju via substring (Slovak "predavat" - to sell).
             "predava",
             "nakupny zoznam",
+            # V2.29e (closes a wants_shopping_list()/wants_recipe_products()
+            # asymmetry the V2.20m fix above this function's sibling left
+            # unaddressed - that fix added English "what do i need"/"what
+            # do you need" phrasing to SHOPPING_LIST_MARKERS only, so an
+            # English shopping question like "What do I need for sushi?"
+            # set is_shopping_list_request=True but never satisfied this
+            # function, silently diverting bare-dish-marker dishes (sushi/
+            # tom_yum/pad_thai/bibimbap/...) away from the canonical
+            # RECIPE_SHOPPING pipeline onto older, narrower paths - for
+            # pad_thai specifically this produced a broken 0-product
+            # "recipe" response (recipe_subject stayed set but
+            # wants_recipe_products()==False yielded no products). Same
+            # fix pattern, same two literal marker strings, applied here.
+            "what do i need",
+            "what do you need",
             "co potrebujem",
             "co treba",
             "co mi chyba",

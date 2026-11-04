@@ -3,16 +3,24 @@ tests/test_recipe_shopping_special3_v2_29c.py  -  V2.29c data-port parity
 
 Verifies app.recipe_shopping.SPECIAL3_SHOPPING_DEFINITIONS (sushi/tom_yum/
 kimchi_ramen ported into the generic recipe-shopping data shape) against
-the live legacy builders (app.main.sushi_shopping_core_products() etc.),
-WITHOUT touching app.main.RECIPE_SHOPPING_CORE_QUERIES or any routing
-guard. Builds one ISOLATED RecipeGraphIndex locally (passed explicitly
-to build_recipe_shopping_plan(), never assigned to any module-level
-global) so the helper-level plan tests exercise the real graph machinery
-with zero production side effects.
+the legacy builders' filtering logic (reimplemented locally in
+TestProductParityPerIngredient._legacy_pick() below, NOT by calling the
+functions directly - app.main.sushi_shopping_core_products() and its two
+siblings were deleted in V2.29e's Legacy Special-3 Builder Retirement,
+after V2.29d made them unreachable for every realistic shopping-list
+phrasing), WITHOUT touching app.main.RECIPE_SHOPPING_CORE_QUERIES or any
+routing guard at the time this file was written. Builds one ISOLATED
+RecipeGraphIndex locally (passed explicitly to build_recipe_shopping_plan(),
+never assigned to any module-level global) so the helper-level plan tests
+exercise the real graph machinery with zero production side effects.
 
-Routing-immutability tests at the bottom prove /chat behavior for all
-three dishes is byte-identical to pre-V2.29c (same intent, same
-workflow_id) - this sprint ports DATA only, routing stays frozen.
+TestRoutingImmutability at the bottom originally proved /chat behavior
+for all three dishes was byte-identical to pre-V2.29c (V2.29c ported DATA
+only, routing stayed frozen) - V2.29d intentionally superseded five of
+those assertions (documented per-test, old contract/new contract/why) as
+part of the Special-3 RECIPE_SHOPPING routing flip; see
+tests/test_special3_recipe_shopping_routing_v2_29d.py for the current
+routing-contract coverage.
 """
 import os
 import sys

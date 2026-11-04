@@ -571,6 +571,18 @@ def compose_recipe_followup_answer(
 # source of truth for the three ported definitions below); only its
 # consumer wiring changed.
 #
+# V2.29e update: sushi_shopping_core_products()/tom_yum_shopping_core_
+# products()/kimchi_ramen_shopping_core_products() (the legacy functions
+# referenced below as the historical source of this data) are now
+# deleted from app/main.py - this dict was already the sole data owner
+# as of V2.29d, so their retirement changes nothing here. Retained as
+# "SPECIAL3_SHOPPING_DEFINITIONS" rather than inlined into
+# app.main.RECIPE_SHOPPING_CORE_QUERIES's literal: real, ongoing value
+# (not migration-only indirection) in keeping these three dishes'
+# definitions, and the precision/parity rationale below, physically
+# next to build_recipe_shopping_plan() rather than forcing every future
+# edit through app/main.py's much larger dict literal.
+#
 # Sushi-rice precision guard (V2.29b's one identified bespoke heuristic:
 # legacy requires the title to contain "ryza" AND ("sushi" OR "susi") as a
 # token): proven empirically redundant with plain AND-required_terms on

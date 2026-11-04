@@ -27,6 +27,18 @@ presented as golden-backed.
 
 Full pytest was run as a pre-commit gate before this file was added - see
 the V2.27j report for the exact baseline/post-patch comparison.
+
+V2.29e update: sushi_shopping_core_products()/tom_yum_shopping_core_
+products()/kimchi_ramen_shopping_core_products() are deleted (Legacy
+Special-3 Builder Retirement) - sushi/tom_yum/kimchi_ramen now resolve
+through the same canonical recipe-shopping pipeline as
+recipe_shopping_core_products()'s other 47 dishes, with an equivalent
+V2.29d-added price filter in app.workflow_executor.execute_recipe().
+Tests below that exercised the three deleted functions directly were
+replaced with canonical-behavior coverage (see TestHelperFunctionsDirectly's
+docstring note); the /chat-level budget tests for sushi/tom_yum/
+kimchi_ramen were already updated for the routing change in V2.29d and
+needed no further change here.
 """
 from __future__ import annotations
 
@@ -160,14 +172,26 @@ class TestHelperFunctionsDirectly:
         assert not m._shopping_core_price_eligible(ineligible, constraint)
         assert not m._shopping_core_price_eligible(missing, constraint)
 
-    def test_sushi_function_accepts_price_constraint_kwarg(self):
-        result = m.sushi_shopping_core_products(m.products, [], 8, price_constraint=PriceConstraint(price_max=10.0))
-        assert all(p.get("effective_price") is not None and p["effective_price"] <= 10.0 for p in result)
-
-    def test_sushi_function_default_unchanged(self):
-        with_default = m.sushi_shopping_core_products(m.products, [], 8)
-        without_kwarg = m.sushi_shopping_core_products(m.products, [], 8, price_constraint=None)
-        assert with_default == without_kwarg
+    # V2.29e (Legacy Special-3 Builder Retirement) - the two direct-call
+    # tests that used to live here, test_sushi_function_accepts_price_
+    # constraint_kwarg and test_sushi_function_default_unchanged, unit-
+    # tested app.main.sushi_shopping_core_products() directly (now
+    # deleted - sushi/tom_yum/kimchi_ramen resolve exclusively through
+    # the canonical recipe-shopping pipeline since V2.29d).
+    # OLD CONTRACT: sushi_shopping_core_products(products, [], limit,
+    # price_constraint=X) filters its own curated candidates to <= X,
+    # and produces byte-identical output whether price_constraint is
+    # omitted or passed explicitly as None.
+    # NEW CONTRACT: the equivalent price-eligibility guarantee for sushi
+    # now lives in app.workflow_executor.execute_recipe()'s post-hoc
+    # filter (added in V2.29d) and is already covered end-to-end by
+    # TestSushiShoppingListBudgetSynthetic.test_all_products_satisfy_budget
+    # and .test_tight_budget_omits_ingredients_rather_than_substituting
+    # above (via /chat, the only way that filter is reachable - it has
+    # no standalone public function to unit-test directly). The default-
+    # vs-explicit-None equivalence check has no canonical replacement:
+    # the new filter takes a single `price_constraint` parameter with no
+    # default-argument ambiguity to verify.
 
     def test_recipe_core_product_candidates_filters_by_price(self):
         candidates = m.recipe_core_product_candidates(

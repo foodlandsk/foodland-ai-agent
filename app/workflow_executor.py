@@ -446,23 +446,18 @@ def execute_recipe(
             else []
         )
         recipe_products = m.personalize_products(recipe_products, user_profile)
-        if recipe_products and recipe_product_subject == "sushi":
-            recipe_products = m.sushi_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
-        if recipe_products and recipe_product_subject == "tom_yum":
-            recipe_products = m.tom_yum_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
-        if recipe_products and recipe_product_subject == "kimchi_ramen":
-            recipe_products = m.kimchi_ramen_shopping_core_products(products, recipe_products, max(chat_request.limit, 8))
         recipe_shopping_plan = None
-        # V2.29d (Special-3 RECIPE_SHOPPING routing flip) - the sushi/
-        # tom_yum/kimchi_ramen exclusion that used to gate this block is
-        # removed: app.main.RECIPE_SHOPPING_CORE_QUERIES now carries their
-        # ported data (V2.29c) too, so recipe_product_subject is reachable
-        # in recipe_graph_index.dishes_by_id for all three exactly like the
-        # other 47 dishes. The three sushi_/tom_yum_/kimchi_ramen_shopping_
-        # core_products() calls above still run first and are harmless -
-        # their output is only ever used as the `recipe_products` truthiness
-        # check here, then fully superseded by the real plan's ingredient-
-        # derived product list below when the plan build succeeds.
+        # V2.29d (Special-3 RECIPE_SHOPPING routing flip) - app.main.
+        # RECIPE_SHOPPING_CORE_QUERIES now carries sushi/tom_yum/kimchi_ramen's
+        # ported data (V2.29c) too, so recipe_product_subject is reachable in
+        # recipe_graph_index.dishes_by_id for all three exactly like the
+        # other 47 dishes.
+        # V2.29e (Legacy Special-3 Builder Retirement) - the sushi_/tom_yum_/
+        # kimchi_ramen_shopping_core_products() pre-calls that used to run
+        # here (only ever feeding this `recipe_products` truthiness check,
+        # fully superseded by the real plan's ingredient-derived product
+        # list below whenever the plan build succeeds) are removed along
+        # with the now-deleted functions themselves.
         if recipe_products:
             if m.V2_STRUCTURED_RETRIEVAL_ENABLED and recipe_product_subject in recipe_graph_index.dishes_by_id:
                 try:
