@@ -156,17 +156,73 @@ whatever future sprint reads this data.
 | Tom Yum | 6 |
 | Kimchi Ramen | 8 |
 
+## V2.30b.1a update — Foodland website recipe sources
+
+V2.30b.1a added a second valid provenance source to this pack:
+
+```
+FOODLAND_RECIPE_ARTICLE  — a recipe published on an official foodland.sk page
+```
+
+(alongside the original `FOODLAND_EDITORIAL` provenance used for rows still
+awaiting a source). For each pilot dish, the canonical Foodland recipe page
+used is recorded in the new top-level `source_manifest` array
+(`dish_id`, `source_url`, `source_title`, `source_status`,
+`base_servings_evidence_status`).
+
+**What ingestion from a website source means in practice:**
+
+- Only a quantity/unit/servings value **explicitly printed on the Foodland
+  page** was entered — nothing was estimated, converted from packaging, or
+  inferred by an AI model. Every `AUTHORED` row carries the literal source
+  wording in `source_quantity_text` and the page URL in `source_reference`.
+- Each row also carries a `mapping_confidence` (`EXACT`, `HIGH`,
+  `AMBIGUOUS`, or `NO_MATCH`). Only `EXACT`/`HIGH` rows were allowed to move
+  to `AUTHORED` automatically. `AMBIGUOUS` and `NO_MATCH` rows stay
+  `NEEDS_AUTHORING` — for example, a kimchi ramen page that only says
+  "2 tbsp grated seaweed" without naming `wakame` or `nori` specifically
+  cannot be auto-assigned to either row.
+- **Servings ambiguity is never resolved silently.** If a Foodland page
+  states two different serving counts for the same dish (this happened for
+  Tom Kha Gai — "4 osoby / 8 porcií" in one sentence), `base_servings` stays
+  `null` and the dish gets a new `editorial_review_note` field explaining
+  the conflict, instead of guessing which number is right.
+- **Culinary/count units are preserved, never force-converted.** A
+  quantity stated in `PL`/`lyžica` (tbsp), `list` (leaf), `plátok` (slice),
+  `pohár` (cup), `stonka` (stalk), or `porcia` (portion) is recorded exactly
+  as published, with `scaling_unit_readiness` set to
+  `CULINARY_MEASURE_UNSUPPORTED` or `COUNT_UNIT_UNSUPPORTED` — the
+  package-count math simply won't run for that row yet, same limitation
+  as before this sprint.
+- **A deterministic multiplier expression may be normalized.** "2 x 400 ml"
+  was recorded as `quantity: 800, unit: "ml"` with the original "2 x 400ml"
+  text kept in `source_quantity_text` — this is the one case where this
+  sprint's rules allow arithmetic (exact, unit-safe, no density/culinary
+  assumption involved).
+- Ingredients a Foodland page mentions that aren't one of this dish's
+  canonical pilot ingredient rows (e.g. chicken, lime, shrimp stock) are
+  recorded for evidence only in the top-level
+  `unmapped_foodland_recipe_ingredients` array — they are never added to
+  production recipe-shopping definitions.
+- `AUTHORED` still only means "grounded in a real, checkable Foodland
+  source" — it is **not** `APPROVED`. A human editor must still review every
+  row (right source page? right mapping? faithful extraction?) and set
+  `approval_status`/`author_status` to `APPROVED` with `approved_by` and
+  `approved_at` before any future sprint may use this data.
+
 ## What happens after you approve data
 
 ```
-V2.30b.1  →  this draft authoring pack (done)
-          ↓
+V2.30b.1   →  draft authoring pack (done)
+V2.30b.1a  →  Foodland website source ingestion (done, partial - see
+              source_manifest / unmapped_foodland_recipe_ingredients)
+           ↓
    HUMAN AUTHORING + APPROVAL  (you / Foodland content team)
-          ↓
-V2.30b.2  →  approved-data validation (future sprint)
-          ↓
-V2.30c    →  production scaling activation / pilot validation (future sprint)
+           ↓
+V2.30b.2   →  approved-data validation (future sprint)
+           ↓
+V2.30c     →  production scaling activation / pilot validation (future sprint)
 ```
 
-Nothing after this sprint happens automatically. A human must fill in
-and approve the data first.
+Nothing after this sprint happens automatically. A human must review the
+authored rows, fill in the rest, and approve the data first.

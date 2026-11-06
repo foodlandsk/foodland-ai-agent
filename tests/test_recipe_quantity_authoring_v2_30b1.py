@@ -36,13 +36,19 @@ def dataset() -> dict:
     return json.loads(AUTHORING_PATH.read_text(encoding="utf-8"))
 
 
+FOODLAND_URL_PREFIX = "https://www.foodland.sk/"
+
+
 class TestDatasetTopLevel:
     def test_file_exists_and_parses(self, dataset):
         assert dataset["schema_version"] == 1
         assert dataset["created_for_sprint"] == "V2.30b.1"
 
-    def test_status_is_draft_not_approved(self, dataset):
-        assert dataset["status"] == "DRAFT_FOR_HUMAN_AUTHORING"
+    def test_status_is_pending_review_not_approved(self, dataset):
+        # V2.30b.1a grounded some rows against real Foodland recipe pages,
+        # moving the dataset from DRAFT_FOR_HUMAN_AUTHORING to
+        # PENDING_HUMAN_REVIEW - still never auto-approved.
+        assert dataset["status"] == "PENDING_HUMAN_REVIEW"
         assert dataset["status"] not in ("APPROVED", "PRODUCTION", "READY")
 
     def test_production_eligible_is_false(self, dataset):
@@ -51,6 +57,26 @@ class TestDatasetTopLevel:
     def test_pilot_dish_count_in_range(self, dataset):
         n = len(dataset["pilot_dishes"])
         assert 3 <= n <= 5, f"expected 3-5 pilot dishes, got {n}"
+
+    def test_source_manifest_entries_are_valid_foodland_urls(self, dataset):
+        manifest = dataset["source_manifest"]
+        dish_ids = {d["dish_id"] for d in dataset["pilot_dishes"]}
+        seen = set()
+        for entry in manifest:
+            assert entry["dish_id"] in dish_ids
+            seen.add(entry["dish_id"])
+            url = entry["source_url"]
+            assert url.startswith(FOODLAND_URL_PREFIX), f"non-Foodland source URL: {url}"
+            assert entry["source_type"] == "FOODLAND_RECIPE_ARTICLE"
+        assert seen == dish_ids, "every pilot dish must have a source_manifest entry"
+
+    def test_unmapped_foodland_ingredients_reference_known_dishes_and_urls(self, dataset):
+        dish_ids = {d["dish_id"] for d in dataset["pilot_dishes"]}
+        for row in dataset["unmapped_foodland_recipe_ingredients"]:
+            assert row["dish_id"] in dish_ids
+            assert row["foodland_url"].startswith(FOODLAND_URL_PREFIX)
+            assert row["source_ingredient"]
+            assert row["reason_not_mapped"]
 
 
 class TestDishLevelIntegrity:
@@ -66,11 +92,29 @@ class TestDishLevelIntegrity:
             assert dish["dish_id"] in known, f"{dish['dish_id']} is not a canonical RECIPE_SHOPPING_CORE_QUERIES dish"
 
     def test_no_fabricated_base_servings(self, dataset):
-        # Hard safety rule (Section 5/15) - every draft row must stay null
-        # unless a real source already grounded it. This sprint grounded
-        # none, so every dish's base_servings must currently be null.
+        # Hard safety rule (Section 5/15) - a non-null base_servings is only
+        # legitimate when it is grounded by a recorded base_servings_source
+        # that itself points at an official Foodland page. V2.30b.1a grounds
+        # pad_thai and tom_yum this way; every other dish stays null,
+        # including tom_kha, whose source states conflicting serving counts
+        # ("4 osoby / 8 porcií") and must not be silently resolved.
         for dish in dataset["pilot_dishes"]:
-            assert dish["base_servings"] is None, f"{dish['dish_id']} has a non-null base_servings with no source"
+            if dish["base_servings"] is None:
+                continue
+            assert isinstance(dish["base_servings"], int) and dish["base_servings"] > 0
+            source = dish["base_servings_source"]
+            assert source, f"{dish['dish_id']}: non-null base_servings requires base_servings_source"
+            assert FOODLAND_URL_PREFIX in source, (
+                f"{dish['dish_id']}: base_servings_source must reference an official Foodland URL"
+            )
+
+    def test_servings_conflict_dishes_stay_null_and_are_flagged(self, dataset):
+        for dish in dataset["pilot_dishes"]:
+            note = dish.get("editorial_review_note")
+            if note and "SERVINGS_SOURCE_CONFLICT" in note:
+                assert dish["base_servings"] is None, (
+                    f"{dish['dish_id']}: flagged SERVINGS_SOURCE_CONFLICT must keep base_servings null"
+                )
 
     def test_pending_dish_has_no_approval_fields(self, dataset):
         for dish in dataset["pilot_dishes"]:
@@ -125,18 +169,51 @@ class TestIngredientLevelIntegrity:
                 assert ing["author_status"] in ALLOWED_AUTHOR_STATUS, ing
 
     def test_no_fabricated_quantities(self, dataset):
-        # Hard safety rule (Section 5/9/15) - every ingredient quantity in
-        # this draft must be null. This is the single most important
-        # assertion in this file.
+        # Hard safety rule (Section 5/9/15), updated for V2.30b.1a: a
+        # non-null quantity is only legitimate when author_status is
+        # AUTHORED (never a bare NEEDS_AUTHORING guess) AND it carries a
+        # source_reference that is an official Foodland recipe-article URL
+        # with source_type FOODLAND_RECIPE_ARTICLE. This is still the single
+        # most important assertion in this file - it is what stops a
+        # fabricated/LLM-inferred/non-Foodland number from ever landing here.
         for dish in dataset["pilot_dishes"]:
             for ing in dish["ingredients"]:
-                assert ing["quantity"] is None, (
-                    f"{dish['dish_id']}/{ing['ingredient_concept_id']}: quantity must be null in this draft "
-                    f"(no authoritative source grounded it)"
+                if ing["quantity"] is None:
+                    assert ing["unit"] is None, (
+                        f"{dish['dish_id']}/{ing['ingredient_concept_id']}: unit must be null alongside a null quantity"
+                    )
+                    continue
+                assert ing["author_status"] == "AUTHORED", (
+                    f"{dish['dish_id']}/{ing['ingredient_concept_id']}: non-null quantity requires AUTHORED status"
                 )
-                assert ing["unit"] is None, (
-                    f"{dish['dish_id']}/{ing['ingredient_concept_id']}: unit must be null alongside a null quantity"
+                assert ing["unit"], (
+                    f"{dish['dish_id']}/{ing['ingredient_concept_id']}: non-null quantity requires a unit"
                 )
+                assert ing["source_type"] == "FOODLAND_RECIPE_ARTICLE", (
+                    f"{dish['dish_id']}/{ing['ingredient_concept_id']}: authored quantity requires source_type FOODLAND_RECIPE_ARTICLE"
+                )
+                ref = ing["source_reference"]
+                assert ref and ref.startswith(FOODLAND_URL_PREFIX), (
+                    f"{dish['dish_id']}/{ing['ingredient_concept_id']}: authored quantity requires an official Foodland source_reference"
+                )
+                assert ing["source_quantity_text"], (
+                    f"{dish['dish_id']}/{ing['ingredient_concept_id']}: authored quantity requires traceable source_quantity_text"
+                )
+
+    def test_authored_rows_have_high_confidence_mapping(self, dataset):
+        for dish in dataset["pilot_dishes"]:
+            for ing in dish["ingredients"]:
+                if ing["author_status"] == "AUTHORED" and ing["quantity"] is not None:
+                    assert ing["mapping_confidence"] in ("EXACT", "HIGH"), (
+                        f"{dish['dish_id']}/{ing['ingredient_concept_id']}: only EXACT/HIGH mapping confidence "
+                        f"may auto-populate a row (got {ing['mapping_confidence']!r})"
+                    )
+
+    def test_mapping_confidence_values_valid(self, dataset):
+        allowed = {"EXACT", "HIGH", "AMBIGUOUS", "NO_MATCH", None}
+        for dish in dataset["pilot_dishes"]:
+            for ing in dish["ingredients"]:
+                assert ing.get("mapping_confidence") in allowed, ing
 
     def test_needs_authoring_rows_have_no_source_reference(self, dataset):
         for dish in dataset["pilot_dishes"]:
@@ -189,6 +266,17 @@ class TestProductionIsolation:
                 if needle in text:
                     hits.append((path.name, needle))
         assert not hits, f"production code references the editorial draft: {hits}"
+
+    def test_authoring_file_now_has_populated_quantities(self, dataset):
+        # Sanity check that this test module is actually exercising the
+        # post-ingestion state, not a stale/empty draft (Section 48).
+        authored = [
+            ing
+            for dish in dataset["pilot_dishes"]
+            for ing in dish["ingredients"]
+            if ing["quantity"] is not None
+        ]
+        assert len(authored) >= 10, "expected the V2.30b.1a ingestion to have authored several rows"
 
     def test_real_dishes_still_have_null_quantity_and_package_count(self):
         import app.main as m

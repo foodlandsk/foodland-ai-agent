@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "dataset_version": "v2.30b.1-draft",
+  "dataset_version": "v2.30b.1a-authored",
   "created_for_sprint": "V2.30b.1",
-  "status": "DRAFT_FOR_HUMAN_AUTHORING",
+  "status": "PENDING_HUMAN_REVIEW",
   "authority": "FOODLAND_EDITORIAL",
   "production_eligible": false,
-  "note": "DRAFT editorial authoring pack. Not loaded by production runtime (see app/recipe_shopping.py - no reference to this file or to data/editorial/ anywhere in app/*.py). Every quantity/unit/base_servings field below is null by design: no authoritative Foodland-owned recipe-quantity source currently exists (V2.30a/V2.30b finding, docs/recipe-knowledge-audit.md). A human content editor must fill these in from a real approved Foodland source and set approval_status to APPROVED before any future sprint may wire this data into production scaling.",
+  "note": "DRAFT editorial authoring pack, now partially grounded against official Foodland recipe pages (foodland.sk) by V2.30b.1a. Still not loaded by production runtime (see app/recipe_shopping.py - no reference to this file or to data/editorial/ anywhere in app/*.py). Rows marked AUTHORED carry an explicit foodland.sk source_reference and were extracted verbatim from that page's own published text - nothing was estimated, inferred, or copied from a non-Foodland source. Rows that remain NEEDS_AUTHORING either have no explicit quantity on the source page, have a published range/ambiguous naming that this sprint deliberately declined to resolve on its own judgement, or are not present in the source recipe at all - see each row's notes and mapping_confidence. A human content editor must review every AUTHORED row, resolve every remaining NEEDS_AUTHORING row from a trustworthy source, and set approval_status to APPROVED (with approved_by/approved_at) before any future sprint may wire this data into production scaling.",
   "pilot_dishes": [
     {
       "dish_id": "pad_thai",
       "dish_name": "Pad Thai",
-      "base_servings": null,
-      "base_servings_source": null,
-      "approval_status": "PENDING",
+      "base_servings": 2,
+      "base_servings_source": "Foodland recipe page states '2 porcie' (https://www.foodland.sk/recepty/kuracie-pad-thai/)",
+      "approval_status": "AUTHORED",
       "approved_by": null,
       "approved_at": null,
       "reviewed_by": null,
@@ -21,12 +21,12 @@
         {
           "ingredient_concept_id": "rice_noodles",
           "ingredient_name": "Ryžové rezance",
-          "quantity": null,
-          "unit": null,
+          "quantity": 250,
+          "unit": "g",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+          "author_status": "AUTHORED",
           "scaling_unit_readiness": "MASS_VOLUME_READY",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -52,18 +52,20 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '250 g ryžových rezancov na Pad Thai' (Hlavné suroviny).",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "250 g ryžových rezancov na Pad Thai"
         },
         {
           "ingredient_concept_id": "tamarind_pasta",
           "ingredient_name": "Tamarind pasta",
-          "quantity": null,
-          "unit": null,
+          "quantity": 3,
+          "unit": "PL",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
-          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+          "author_status": "AUTHORED",
+          "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
             {
@@ -88,18 +90,20 @@
               "unit": "ml"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '3 PL tamarindu rozpusteného v teplej vode' (Na domácu omáčku). Tablespoon (PL) is a culinary measure - not converted to g/ml (no safe, unit-agnostic conversion exists; see sprint rule on tbsp conversions).",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "3 PL tamarindu rozpusteného v teplej vode"
         },
         {
           "ingredient_concept_id": "fish_sauce",
           "ingredient_name": "Rybacia omáčka",
-          "quantity": null,
-          "unit": null,
+          "quantity": 2,
+          "unit": "PL",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
-          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+          "author_status": "AUTHORED",
+          "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
             {
@@ -124,7 +128,9 @@
               "unit": "ml"
             }
           ],
-          "notes": null
+          "notes": "Foodland states '1-2 PL rybacej omáčky' in the quick seasoning list (Na dochutenie) and precisely '2 PL rybacej omáčky' in the detailed 'Na domácu omáčku' homemade-sauce breakdown. The two are consistent (2 falls within 1-2); authored at the more precise, directly-stated figure of 2 PL. Both source mentions are preserved above for traceability.",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "1-2 PL rybacej omáčky (Na dochutenie) / 2 PL rybacej omáčky (Na domácu omáčku)"
         },
         {
           "ingredient_concept_id": "palmovy_cukor",
@@ -160,7 +166,9 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland states '2 PL hnedého cukru' (brown sugar) in the homemade-sauce breakdown, not 'palmový cukor' (palm sugar) by name. Production's own ingredient-matcher required_terms for this concept is the generic token 'cukor' (any sugar) - see app/main.py recipe_shopping definitions - so brown sugar would satisfy the production matcher (mapping_confidence HIGH), but this sprint deliberately leaves the quantity unauthored pending explicit human confirmation that brown sugar is an acceptable reading of 'palmový cukor' for this dish, rather than resolving the substitution on its own judgement.",
+          "mapping_confidence": "HIGH",
+          "source_quantity_text": null
         },
         {
           "ingredient_concept_id": "arasidy",
@@ -196,16 +204,19 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland states a range - '30-50 g pražených arašidov' - with no single authoritative value published. Ingredient identity match is EXACT, but left unauthored rather than fabricating a midpoint or endpoint the page never states.",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": null
         }
-      ]
+      ],
+      "editorial_review_note": null
     },
     {
       "dish_id": "tom_kha",
       "dish_name": "Tom Kha Gai",
       "base_servings": null,
       "base_servings_source": null,
-      "approval_status": "PENDING",
+      "approval_status": "AUTHORED",
       "approved_by": null,
       "approved_at": null,
       "reviewed_by": null,
@@ -214,12 +225,12 @@
         {
           "ingredient_concept_id": "coconut_milk",
           "ingredient_name": "Kokosové mlieko",
-          "quantity": null,
-          "unit": null,
+          "quantity": 800,
+          "unit": "ml",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+          "author_status": "AUTHORED",
           "scaling_unit_readiness": "MASS_VOLUME_READY",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -245,18 +256,20 @@
               "unit": "ml"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '2 x 400ml plechovky kokosového mlieka (plnotučného)'. Deterministic multiplier normalization (2 x 400 ml = 800 ml) per sprint rule; original source expression preserved verbatim in source_quantity_text above.",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "2 x 400ml plechovky kokosového mlieka (plnotučného)"
         },
         {
           "ingredient_concept_id": "galangal",
           "ingredient_name": "Galangal",
-          "quantity": null,
-          "unit": null,
+          "quantity": 0.25,
+          "unit": "pohár",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
-          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+          "author_status": "AUTHORED",
+          "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
             {
@@ -267,18 +280,20 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '1/4 pohár koreňa galangalu...'. 'Pohár' (cup) is a culinary volume measure with no single universal ml equivalent (US vs. metric cup differ) - preserved faithfully, not converted, same as tbsp/tsp.",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "1/4 pohár koreňa galangalu, nakrájaný na 1/8 hrubé disky, šupky v poriadku (kus 2 palce)"
         },
         {
           "ingredient_concept_id": "citronova_trava",
           "ingredient_name": "Citrónová tráva",
-          "quantity": null,
-          "unit": null,
+          "quantity": 3,
+          "unit": "lyžica",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
-          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+          "author_status": "AUTHORED",
+          "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
             {
@@ -303,18 +318,20 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '3 lyžice jemne nasekanej citrónovej trávy...'.",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "3 lyžice jemne nasekanej citrónovej trávy - alebo použite pastu z citrónovej trávy."
         },
         {
           "ingredient_concept_id": "kaffirove_listy",
           "ingredient_name": "Kaffirové listy",
-          "quantity": null,
-          "unit": null,
+          "quantity": 8,
+          "unit": "list",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
-          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+          "author_status": "AUTHORED",
+          "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
             {
@@ -339,18 +356,20 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '8 kaffirových limetkových listov'. Contains the literal required term 'kaffir' used by production's own matcher for this concept.",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "8 kaffirových limetkových listov"
         },
         {
           "ingredient_concept_id": "fish_sauce",
           "ingredient_name": "Rybacia omáčka",
-          "quantity": null,
-          "unit": null,
+          "quantity": 3,
+          "unit": "polievková lyžica",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
-          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+          "author_status": "AUTHORED",
+          "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
             {
@@ -375,16 +394,19 @@
               "unit": "ml"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '3 polievkové lyžice rybacej omáčky (alebo vegánskej rybacej omáčky)'.",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "3 polievkové lyžice rybacej omáčky (alebo vegánskej rybacej omáčky)"
         }
-      ]
+      ],
+      "editorial_review_note": "SERVINGS_SOURCE_CONFLICT: source page states 'Pre: 4 osoby / 8 porcií' verbatim (https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/) - two different serving counts in one statement, not resolved by the article itself. base_servings left null per sprint rule (never choose silently); human review required before any base_servings value is entered for this dish. A second, distinct Foodland recipe for a related dish - https://www.foodland.sk/recepty/tom-ka-gai-kokosova-kuracia-polievka-s-galangalom/ ('Tom Ka Gai... s galangalom') - states a single consistent '4 porcie' but was not used for this ingestion (different article, different ingredient list; merging it would conflate two separate Foodland recipes under one dish_id)."
     },
     {
       "dish_id": "sushi",
       "dish_name": "Sushi",
       "base_servings": null,
       "base_servings_source": null,
-      "approval_status": "PENDING",
+      "approval_status": "AUTHORED",
       "approved_by": null,
       "approved_at": null,
       "reviewed_by": null,
@@ -393,12 +415,12 @@
         {
           "ingredient_concept_id": "sushi_rice",
           "ingredient_name": "Suši ryža",
-          "quantity": null,
-          "unit": null,
+          "quantity": 400,
+          "unit": "g",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/japonske-sushi-a-sashimi/",
+          "author_status": "AUTHORED",
           "scaling_unit_readiness": "MASS_VOLUME_READY",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -424,17 +446,19 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '400 g sushi ryže' (Pre sushi).",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "400 g sushi ryže"
         },
         {
           "ingredient_concept_id": "rice_vinegar",
           "ingredient_name": "Ryžový ocot",
-          "quantity": null,
-          "unit": null,
+          "quantity": 80,
+          "unit": "ml",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/japonske-sushi-a-sashimi/",
+          "author_status": "AUTHORED",
           "scaling_unit_readiness": "MASS_VOLUME_READY",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -460,7 +484,9 @@
               "unit": "ml"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '80 ml ryžového octu', part of the seasoning mix for the 400 g rice batch above.",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "80 ml ryžového octu"
         },
         {
           "ingredient_concept_id": "wasabi",
@@ -496,7 +522,9 @@
               "unit": "g"
             }
           ],
-          "notes": "Editorial flag: current top candidate products for this concept include non-wasabi-condiment items (e.g. a matcha gift set, wasabi-flavored peanuts/seaweed snacks) rather than wasabi paste/powder itself - the human author should verify which real wasabi product the quantity should be authored against before approval."
+          "notes": "Foodland page lists 'Wasabi' by name only (serving condiment), with no explicit quantity/unit stated anywhere on the page. Prior editorial flag retained: Editorial flag: current top candidate products for this concept include non-wasabi-condiment items (e.g. a matcha gift set, wasabi-flavored peanuts/seaweed snacks) rather than wasabi paste/powder itself - the human author should verify which real wasabi product the quantity should be authored against before approval.",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": null
         },
         {
           "ingredient_concept_id": "nori",
@@ -532,7 +560,9 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland page lists 'Nori (morské riasy)' by name only, with no explicit sheet count or weight stated anywhere on the page.",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": null
         },
         {
           "ingredient_concept_id": "nakladany_zazvor",
@@ -568,7 +598,9 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland page lists 'Nakladaný zázvor' by name only (serving condiment), with no explicit quantity stated anywhere on the page.",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": null
         },
         {
           "ingredient_concept_id": "sojova_omacka",
@@ -604,16 +636,19 @@
               "unit": "ml"
             }
           ],
-          "notes": null
+          "notes": "Foodland page lists 'Sójová omáčka' by name only (dipping condiment), with no explicit quantity stated anywhere on the page.",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": null
         }
-      ]
+      ],
+      "editorial_review_note": null
     },
     {
       "dish_id": "tom_yum",
       "dish_name": "Tom Yum",
-      "base_servings": null,
-      "base_servings_source": null,
-      "approval_status": "PENDING",
+      "base_servings": 4,
+      "base_servings_source": "Foodland recipe page states '4 porcie' (https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/)",
+      "approval_status": "AUTHORED",
       "approved_by": null,
       "approved_at": null,
       "reviewed_by": null,
@@ -622,13 +657,13 @@
         {
           "ingredient_concept_id": "citronova_trava",
           "ingredient_name": "Citrónová tráva",
-          "quantity": null,
-          "unit": null,
+          "quantity": 2,
+          "unit": "stonka",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
-          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+          "author_status": "AUTHORED",
+          "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
             {
@@ -653,18 +688,20 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '2 stonky citrónovej trávy, spodná polovica' (Aromatický základ).",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "2 stonky citrónovej trávy, spodná polovica"
         },
         {
           "ingredient_concept_id": "galangal",
           "ingredient_name": "Galangal",
-          "quantity": null,
-          "unit": null,
+          "quantity": 8,
+          "unit": "plátok",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
-          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+          "author_status": "AUTHORED",
+          "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
             {
@@ -675,18 +712,20 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '8 plátkov galangalu' (Aromatický základ).",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "8 plátkov galangalu"
         },
         {
           "ingredient_concept_id": "kaffirove_listy",
           "ingredient_name": "Kaffirové listy",
-          "quantity": null,
-          "unit": null,
+          "quantity": 6,
+          "unit": "list",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
-          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+          "author_status": "AUTHORED",
+          "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
             {
@@ -711,18 +750,20 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '6 listov makrut limetky'. Page uses the modern botanical synonym 'makrut limetka' throughout rather than 'kaffir' - same ingredient (Citrus hystrix leaves). Production's required_terms for this concept for the tom_yum dish is ('kaffir','kaffirov'), which this page's text does not literally contain, so mapped at HIGH confidence as a verified synonym rather than EXACT string match.",
+          "mapping_confidence": "HIGH",
+          "source_quantity_text": "6 listov makrut limetky"
         },
         {
           "ingredient_concept_id": "fish_sauce",
           "ingredient_name": "Rybacia omáčka",
-          "quantity": null,
-          "unit": null,
+          "quantity": 3,
+          "unit": "lyžica",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
-          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+          "author_status": "AUTHORED",
+          "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
             {
@@ -747,7 +788,9 @@
               "unit": "ml"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '3 lyžice rybej omáčky' (Dochutenie). 'Rybej' is a spelling variant of 'rybacej' (both mean fish sauce, same root).",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "3 lyžice rybej omáčky"
         },
         {
           "ingredient_concept_id": "coconut_milk",
@@ -783,7 +826,9 @@
               "unit": "ml"
             }
           ],
-          "notes": null
+          "notes": "CORE_CONCEPT_NOT_PRESENT_IN_SOURCE - this is the clear/sour Tom Yum Goong style; coconut milk is not mentioned anywhere on the page.",
+          "mapping_confidence": "NO_MATCH",
+          "source_quantity_text": null
         },
         {
           "ingredient_concept_id": "tom_yum_pasta",
@@ -819,16 +864,19 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "NO_MATCH - the page's only chili-paste ingredient is '1/4 šálky thajskej chilli pasty Nam Prik Pao', and the page explicitly warns 'Instantná Tom Yum pasta nie je náhradou za Nam Prik Pao v tomto recepte' (instant Tom Yum paste is NOT a substitute for Nam Prik Pao here). The one quantity the source gives cannot be attributed to the 'tom_yum_pasta' product concept without contradicting the source's own guidance; see unmapped_foodland_recipe_ingredients for the Nam Prik Pao quantity.",
+          "mapping_confidence": "NO_MATCH",
+          "source_quantity_text": null
         }
-      ]
+      ],
+      "editorial_review_note": null
     },
     {
       "dish_id": "kimchi_ramen",
       "dish_name": "Kimchi Ramen",
       "base_servings": null,
       "base_servings_source": null,
-      "approval_status": "PENDING",
+      "approval_status": "AUTHORED",
       "approved_by": null,
       "approved_at": null,
       "reviewed_by": null,
@@ -837,13 +885,13 @@
         {
           "ingredient_concept_id": "instant_noodles",
           "ingredient_name": "Ramen rezance",
-          "quantity": null,
-          "unit": null,
+          "quantity": 1,
+          "unit": "porcia",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
-          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/kimchi-ramen/",
+          "author_status": "AUTHORED",
+          "scaling_unit_readiness": "COUNT_UNIT_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
             {
@@ -868,17 +916,19 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '1 porcia ramenu' (Ďalšie). 'Porcia' is a count/package-portion unit, not a mass unit - not converted to g.",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "1 porcia ramenu"
         },
         {
           "ingredient_concept_id": "kimchi",
           "ingredient_name": "Kimchi",
-          "quantity": null,
-          "unit": null,
+          "quantity": 80,
+          "unit": "g",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/kimchi-ramen/",
+          "author_status": "AUTHORED",
           "scaling_unit_readiness": "MASS_VOLUME_READY",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -904,7 +954,9 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '80 g kimchi' (Kimchi vývar).",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "80 g kimchi"
         },
         {
           "ingredient_concept_id": "gochujang",
@@ -940,18 +992,20 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "CORE_CONCEPT_NOT_PRESENT_IN_SOURCE / NO_MATCH - the page's required chili ingredient is '1 čajová lyžička gochugaru' (Korean chili FLAKES), a different product from gochujang (chili PASTE). Production's own required_terms for this concept is the literal token 'gochujang' (see app/recipe_shopping.py), which the page never contains - its FAQ frames gochujang only as an unquantified optional substitute for gochugaru ('Ak ho nemáte, môžete použiť gochujang...'), so no quantity for gochujang itself is published.",
+          "mapping_confidence": "NO_MATCH",
+          "source_quantity_text": null
         },
         {
           "ingredient_concept_id": "miso",
           "ingredient_name": "Miso pasta",
-          "quantity": null,
-          "unit": null,
+          "quantity": 0.5,
+          "unit": "čajová lyžička",
           "requirement": "REQUIRED",
-          "source_type": "FOODLAND_EDITORIAL",
-          "source_reference": null,
-          "author_status": "NEEDS_AUTHORING",
-          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "source_type": "FOODLAND_RECIPE_ARTICLE",
+          "source_reference": "https://www.foodland.sk/recepty/kimchi-ramen/",
+          "author_status": "AUTHORED",
+          "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
             {
@@ -976,7 +1030,9 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "Foodland: '1/2 čajovej lyžičky miso pasty' (Kimchi vývar).",
+          "mapping_confidence": "EXACT",
+          "source_quantity_text": "1/2 čajovej lyžičky miso pasty"
         },
         {
           "ingredient_concept_id": "sojova_omacka",
@@ -1012,7 +1068,9 @@
               "unit": "ml"
             }
           ],
-          "notes": null
+          "notes": "CORE_CONCEPT_NOT_PRESENT_IN_SOURCE - soy sauce is not used anywhere in this Foodland Kimchi Ramen recipe.",
+          "mapping_confidence": "NO_MATCH",
+          "source_quantity_text": null
         },
         {
           "ingredient_concept_id": "dashi",
@@ -1048,7 +1106,9 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "CORE_CONCEPT_NOT_PRESENT_IN_SOURCE - dashi is not mentioned anywhere on this page.",
+          "mapping_confidence": "NO_MATCH",
+          "source_quantity_text": null
         },
         {
           "ingredient_concept_id": "wakame",
@@ -1084,7 +1144,9 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "AMBIGUOUS - the page states '2 polievkové lyžice strúhaných morských rias' (2 tbsp grated seaweed) generically, without naming 'wakame' specifically. Production's required_terms for this concept is the literal token 'wakame', absent from the page. Could plausibly be wakame or nori (see that row) - left pending human disambiguation rather than guessing which product concept the generic phrase refers to.",
+          "mapping_confidence": "AMBIGUOUS",
+          "source_quantity_text": null
         },
         {
           "ingredient_concept_id": "nori",
@@ -1120,9 +1182,420 @@
               "unit": "g"
             }
           ],
-          "notes": null
+          "notes": "AMBIGUOUS - same generic '2 polievkové lyžice strúhaných morských rias' phrase as the wakame row above. Production's required_terms for this concept is the literal token 'nori', absent from the page. Left pending human disambiguation rather than guessing.",
+          "mapping_confidence": "AMBIGUOUS",
+          "source_quantity_text": null
         }
-      ]
+      ],
+      "editorial_review_note": null
+    }
+  ],
+  "last_ingestion_sprint": "V2.30b.1a",
+  "source_manifest": [
+    {
+      "dish_id": "pad_thai",
+      "source_url": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+      "source_title": "Kuracie Pad Thai - Thajské pražené rezance s kuracím mäsom",
+      "source_type": "FOODLAND_RECIPE_ARTICLE",
+      "source_status": "FETCHED_OK",
+      "source_language": "sk",
+      "source_published_at": "2015-01-23",
+      "source_accessed_at": "2026-11-06",
+      "base_servings_evidence_status": "UNAMBIGUOUS",
+      "notes": "Single clear statement '2 porcie'. No conflicting serving statement found anywhere on the page."
+    },
+    {
+      "dish_id": "tom_kha",
+      "source_url": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+      "source_title": "Tom kha gai (Thajská kokosová kuracia polievka)",
+      "source_type": "FOODLAND_RECIPE_ARTICLE",
+      "source_status": "FETCHED_OK",
+      "source_language": "sk",
+      "source_published_at": "2021-06-18",
+      "source_accessed_at": "2026-11-06",
+      "base_servings_evidence_status": "SERVINGS_SOURCE_CONFLICT",
+      "notes": "Page states 'Pre: 4 osoby / 8 porcií' verbatim - two different serving counts in the same sentence, not resolved by the article's own wording. Per sprint rule (do not choose silently), base_servings is left null and flagged for human review rather than guessing which figure is the true baseline. A second, distinct Foodland recipe for a related dish exists at https://www.foodland.sk/recepty/tom-ka-gai-kokosova-kuracia-polievka-s-galangalom/ ('Tom Ka Gai... s galangalom', 15.03.2017) with a single consistent '4 porcie' statement and its own full ingredient list - it is a different published recipe (different ingredient set/quantities) and was NOT merged into this ingestion to avoid conflating two distinct Foodland articles under one dish_id. Flagged here as a human-review discovery, not ingested."
+    },
+    {
+      "dish_id": "sushi",
+      "source_url": "https://www.foodland.sk/recepty/japonske-sushi-a-sashimi/",
+      "source_title": "Japonské sushi a sashimi",
+      "source_type": "FOODLAND_RECIPE_ARTICLE",
+      "source_status": "FETCHED_OK",
+      "source_language": "sk",
+      "source_published_at": "2024-08-05",
+      "source_accessed_at": "2026-11-06",
+      "base_servings_evidence_status": "NOT_STATED",
+      "notes": "Page gives no serving/portion count anywhere (checked full page text) - it only states a rice quantity (400 g) and a seasoning mix, not a people/portion baseline."
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "source_title": "Tom Yum Goong - autentická thajská polievka plná chutí",
+      "source_type": "FOODLAND_RECIPE_ARTICLE",
+      "source_status": "FETCHED_OK",
+      "source_language": "sk",
+      "source_published_at": "2026-05-30",
+      "source_accessed_at": "2026-11-06",
+      "base_servings_evidence_status": "UNAMBIGUOUS",
+      "notes": "Single clear statement '4 porcie'. No conflicting serving statement found anywhere on the page."
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "source_url": "https://www.foodland.sk/recepty/kimchi-ramen/",
+      "source_title": "Kimchi Ramen - Rýchly recept na populárnu kórejsku polievku",
+      "source_type": "FOODLAND_RECIPE_ARTICLE",
+      "source_status": "FETCHED_OK",
+      "source_language": "sk",
+      "source_published_at": "2024-06-14",
+      "source_accessed_at": "2026-11-06",
+      "base_servings_evidence_status": "NOT_STATED",
+      "notes": "Page gives no overall dish serving/portion count. The only portion-like phrase, '1 porcia ramenu', names a single ramen-noodle-block unit, not the dish's total yield."
+    }
+  ],
+  "unmapped_foodland_recipe_ingredients": [
+    {
+      "dish_id": "pad_thai",
+      "source_ingredient": "Kuracie prsia (chicken breast)",
+      "quantity_text": "200 g",
+      "foodland_url": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "pad_thai",
+      "source_ingredient": "Sójové klíčky (soy sprouts)",
+      "quantity_text": "100 g",
+      "foodland_url": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "pad_thai",
+      "source_ingredient": "Jarná cibuľka (spring onion)",
+      "quantity_text": "1 ks",
+      "foodland_url": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "pad_thai",
+      "source_ingredient": "Cesnak, mrkva, koriander (garlic, carrot, coriander)",
+      "quantity_text": "no quantity stated",
+      "foodland_url": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "pad_thai",
+      "source_ingredient": "Limetka (lime)",
+      "quantity_text": "1 ks",
+      "foodland_url": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "pad_thai",
+      "source_ingredient": "Slnečnicový olej (sunflower oil)",
+      "quantity_text": "2 PL",
+      "foodland_url": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "pad_thai",
+      "source_ingredient": "Chilli pasta (chili paste)",
+      "quantity_text": "podľa chuti (to taste)",
+      "foodland_url": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+      "reason_not_mapped": "Non-numeric 'to taste' quantity; also not a pilot concept"
+    },
+    {
+      "dish_id": "pad_thai",
+      "source_ingredient": "Pad Thai omáčka (pre-made Pad Thai sauce)",
+      "quantity_text": "2 PL",
+      "foodland_url": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+      "reason_not_mapped": "A pre-made bottled sauce product, not one of the raw pilot ingredient concepts"
+    },
+    {
+      "dish_id": "pad_thai",
+      "source_ingredient": "Tenká sójová omáčka (thin soy sauce)",
+      "quantity_text": "1-2 PL",
+      "foodland_url": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "pad_thai",
+      "source_ingredient": "Ustricová omáčka (oyster sauce)",
+      "quantity_text": "2 PL",
+      "foodland_url": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "pad_thai",
+      "source_ingredient": "Biele korenie (white pepper)",
+      "quantity_text": "štipka (pinch)",
+      "foodland_url": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
+      "reason_not_mapped": "Non-numeric 'pinch' quantity; also not a pilot concept"
+    },
+    {
+      "dish_id": "tom_kha",
+      "source_ingredient": "Šalotka (shallot)",
+      "quantity_text": "1-2 ks",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_kha",
+      "source_ingredient": "Zázvor (fresh ginger - distinct ingredient from galangal on this page)",
+      "quantity_text": "1/4 pohár (cup)",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+      "reason_not_mapped": "Ginger is listed separately from galangal in this recipe; not a pilot concept"
+    },
+    {
+      "dish_id": "tom_kha",
+      "source_ingredient": "Kuracie mäso (chicken meat)",
+      "quantity_text": "250 g",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_kha",
+      "source_ingredient": "Šampiňóny / huby (mushrooms)",
+      "quantity_text": "220 g",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_kha",
+      "source_ingredient": "Kurací vývar (chicken stock)",
+      "quantity_text": "2 šálky (cups)",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_kha",
+      "source_ingredient": "Čili papričky (chili peppers)",
+      "quantity_text": "2-4 ks",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_kha",
+      "source_ingredient": "Soľ (salt)",
+      "quantity_text": "1 1/2 čajovej lyžičky",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_kha",
+      "source_ingredient": "Limetková šťava (lime juice)",
+      "quantity_text": "3 lyžice",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_kha",
+      "source_ingredient": "Cukor - palmový, kokosový alebo hnedý (sugar)",
+      "quantity_text": "2 čajové lyžičky",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
+      "reason_not_mapped": "No sugar row exists among this dish's 5 pilot ingredient concepts (unlike pad_thai, which has palmovy_cukor)"
+    },
+    {
+      "dish_id": "sushi",
+      "source_ingredient": "Voda (water, for cooking rice)",
+      "quantity_text": "600 ml",
+      "foodland_url": "https://www.foodland.sk/recepty/japonske-sushi-a-sashimi/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "sushi",
+      "source_ingredient": "Cukor (sugar, part of rice-seasoning mix)",
+      "quantity_text": "40 g",
+      "foodland_url": "https://www.foodland.sk/recepty/japonske-sushi-a-sashimi/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "sushi",
+      "source_ingredient": "Soľ (salt, part of rice-seasoning mix)",
+      "quantity_text": "10 g",
+      "foodland_url": "https://www.foodland.sk/recepty/japonske-sushi-a-sashimi/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "sushi",
+      "source_ingredient": "Čerstvé ryby - tuniak, losos, krevety (fresh fish/shrimp)",
+      "quantity_text": "no quantity stated",
+      "foodland_url": "https://www.foodland.sk/recepty/japonske-sushi-a-sashimi/",
+      "reason_not_mapped": "Fresh fish/seafood, not a Foodland packaged-goods ingredient concept in this pack"
+    },
+    {
+      "dish_id": "sushi",
+      "source_ingredient": "Avokádo (avocado)",
+      "quantity_text": "1 ks",
+      "foodland_url": "https://www.foodland.sk/recepty/japonske-sushi-a-sashimi/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "sushi",
+      "source_ingredient": "Uhorka (cucumber)",
+      "quantity_text": "1 ks",
+      "foodland_url": "https://www.foodland.sk/recepty/japonske-sushi-a-sashimi/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_ingredient": "Hlavy a škrupiny kreviet (shrimp heads/shells, for stock)",
+      "quantity_text": "z 12-15 kreviet",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_ingredient": "Neutrálny olej (neutral oil)",
+      "quantity_text": "1 lyžica",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_ingredient": "Voda (water, for stock)",
+      "quantity_text": "4 1/4 šálky",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_ingredient": "Daikon (optional, for stock)",
+      "quantity_text": "1/4 šálky, voliteľné",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_ingredient": "Cibuľa (onion, optional, for stock)",
+      "quantity_text": "1/4 šálky, voliteľné",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_ingredient": "Krevetový alebo kurací vývar (shrimp/chicken stock)",
+      "quantity_text": "4 šálky",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_ingredient": "Huby - hlivy ustricové a pod. (mushrooms)",
+      "quantity_text": "7 oz",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_ingredient": "Krevety (shrimp)",
+      "quantity_text": "12-15 ks",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_ingredient": "Thajská chilli pasta Nam Prik Pao",
+      "quantity_text": "1/4 šálky",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "reason_not_mapped": "Page explicitly states instant Tom Yum pasta is NOT a substitute for Nam Prik Pao here; see tom_yum_pasta row notes for the mapping-ambiguity analysis"
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_ingredient": "Limetková šťava (lime juice)",
+      "quantity_text": "1/2 šálky",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_ingredient": "Cukor (sugar)",
+      "quantity_text": "1 čajová lyžička",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_ingredient": "Koriander (cilantro, for serving)",
+      "quantity_text": "no quantity stated",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "tom_yum",
+      "source_ingredient": "Jazmínová ryža (jasmine rice, for serving)",
+      "quantity_text": "no quantity stated",
+      "foodland_url": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "source_ingredient": "Kimchi šťava (kimchi juice/brine)",
+      "quantity_text": "2 polievkové lyžice",
+      "foodland_url": "https://www.foodland.sk/recepty/kimchi-ramen/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "source_ingredient": "Kurací vývar (chicken broth)",
+      "quantity_text": "480 ml",
+      "foodland_url": "https://www.foodland.sk/recepty/kimchi-ramen/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "source_ingredient": "Gochugaru (Korean chili flakes - distinct product from gochujang paste)",
+      "quantity_text": "1 čajová lyžička",
+      "foodland_url": "https://www.foodland.sk/recepty/kimchi-ramen/",
+      "reason_not_mapped": "Different product from gochujang (see gochujang row notes); not itself one of the 8 pilot ingredient concepts"
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "source_ingredient": "Vajce (egg)",
+      "quantity_text": "1 ks",
+      "foodland_url": "https://www.foodland.sk/recepty/kimchi-ramen/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "source_ingredient": "Shiitake huby (shiitake mushrooms)",
+      "quantity_text": "2 ks",
+      "foodland_url": "https://www.foodland.sk/recepty/kimchi-ramen/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "source_ingredient": "Baby bok choy",
+      "quantity_text": "1 zväzok",
+      "foodland_url": "https://www.foodland.sk/recepty/kimchi-ramen/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "source_ingredient": "Jarná cibuľka (spring onion)",
+      "quantity_text": "1 ks",
+      "foodland_url": "https://www.foodland.sk/recepty/kimchi-ramen/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "source_ingredient": "Olej (cooking oil)",
+      "quantity_text": "1/2 čajovej lyžičky",
+      "foodland_url": "https://www.foodland.sk/recepty/kimchi-ramen/",
+      "reason_not_mapped": "Not one of the 5 canonical ingredient_concept_id rows authored for this dish in V2.30b.1"
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "source_ingredient": "Soľ (salt)",
+      "quantity_text": "podľa chuti (to taste)",
+      "foodland_url": "https://www.foodland.sk/recepty/kimchi-ramen/",
+      "reason_not_mapped": "Non-numeric 'to taste' quantity; also not a pilot concept"
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "source_ingredient": "Biele korenie (white pepper)",
+      "quantity_text": "podľa chuti (to taste)",
+      "foodland_url": "https://www.foodland.sk/recepty/kimchi-ramen/",
+      "reason_not_mapped": "Non-numeric 'to taste' quantity; also not a pilot concept"
     }
   ]
 }
