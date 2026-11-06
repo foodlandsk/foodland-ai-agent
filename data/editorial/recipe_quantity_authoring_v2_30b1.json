@@ -1,0 +1,1128 @@
+{
+  "schema_version": 1,
+  "dataset_version": "v2.30b.1-draft",
+  "created_for_sprint": "V2.30b.1",
+  "status": "DRAFT_FOR_HUMAN_AUTHORING",
+  "authority": "FOODLAND_EDITORIAL",
+  "production_eligible": false,
+  "note": "DRAFT editorial authoring pack. Not loaded by production runtime (see app/recipe_shopping.py - no reference to this file or to data/editorial/ anywhere in app/*.py). Every quantity/unit/base_servings field below is null by design: no authoritative Foodland-owned recipe-quantity source currently exists (V2.30a/V2.30b finding, docs/recipe-knowledge-audit.md). A human content editor must fill these in from a real approved Foodland source and set approval_status to APPROVED before any future sprint may wire this data into production scaling.",
+  "pilot_dishes": [
+    {
+      "dish_id": "pad_thai",
+      "dish_name": "Pad Thai",
+      "base_servings": null,
+      "base_servings_source": null,
+      "approval_status": "PENDING",
+      "approved_by": null,
+      "approved_at": null,
+      "reviewed_by": null,
+      "reviewed_at": null,
+      "ingredients": [
+        {
+          "ingredient_concept_id": "rice_noodles",
+          "ingredient_name": "Ryžové rezance",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_10507",
+              "title": "Ryžové rezance Bun Bo Hue - BAMBOO TREE - TUFOCO 400g",
+              "structured": true,
+              "value": 400.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_10834",
+              "title": "Červené ryžové tenké rezance SAVIVA 400g",
+              "structured": true,
+              "value": 400.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_10836",
+              "title": "Červené ryžové široké rezance SAVIVA 400g",
+              "structured": true,
+              "value": 400.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "tamarind_pasta",
+          "ingredient_name": "Tamarind pasta",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_3131",
+              "title": "Tamarind pasta na varenie THAI DANCER 435ml",
+              "structured": true,
+              "value": 435.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_3132",
+              "title": "Tamarind pasta na varenie THAI DANCER 250ml",
+              "structured": true,
+              "value": 435.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_8360",
+              "title": "Tamarind pasta na varenie THAI DANCER 1000ml",
+              "structured": true,
+              "value": 1000.0,
+              "unit": "ml"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "fish_sauce",
+          "ingredient_name": "Rybacia omáčka",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_106",
+              "title": "Rybacia omáčka SQUID BRAND 725 ml",
+              "structured": true,
+              "value": 725.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_107",
+              "title": "Rybacia omáčka SQUID BRAND 700 ml",
+              "structured": true,
+              "value": 700.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_115",
+              "title": "Rybacia omáčka 60N HANH PHUC 500ml",
+              "structured": true,
+              "value": 500.0,
+              "unit": "ml"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "palmovy_cukor",
+          "ingredient_name": "Palmový cukor",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_11475",
+              "title": "Palmový cukor RED DRAGO 454 g",
+              "structured": true,
+              "value": 454.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_1433",
+              "title": "Palmový cukor COCK BRAND 454 g",
+              "structured": true,
+              "value": 454.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_5630",
+              "title": "Palmový cukor LOTUS BRAND 1000 g",
+              "structured": true,
+              "value": 1000.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "arasidy",
+          "ingredient_name": "Arašidy",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_10472",
+              "title": "Arašidy obalené v cestíčku - kokosový krém príchuť KOH-KAE 230g",
+              "structured": true,
+              "value": 230.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_10473",
+              "title": "Arašidy vo wasabi KOH-KAE 230 g",
+              "structured": true,
+              "value": 230.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_10960",
+              "title": "Arašidy obalené v cestíčku - BBQ príchuť KOH-KAE 230g",
+              "structured": true,
+              "value": 230.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        }
+      ]
+    },
+    {
+      "dish_id": "tom_kha",
+      "dish_name": "Tom Kha Gai",
+      "base_servings": null,
+      "base_servings_source": null,
+      "approval_status": "PENDING",
+      "approved_by": null,
+      "approved_at": null,
+      "reviewed_by": null,
+      "reviewed_at": null,
+      "ingredients": [
+        {
+          "ingredient_concept_id": "coconut_milk",
+          "ingredient_name": "Kokosové mlieko",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_10217",
+              "title": "Kokosové mlieko BAMBOO TREE 1000ml",
+              "structured": true,
+              "value": 1000.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_11141",
+              "title": "Kokosové mlieko BAMBOO TREE 250ml",
+              "structured": true,
+              "value": 250.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_206",
+              "title": "Kokosové mlieko AROY-D 1000ml",
+              "structured": true,
+              "value": 1000.0,
+              "unit": "ml"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "galangal",
+          "ingredient_name": "Galangal",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_10931",
+              "title": "Sušený galangal COCK BRAND 57g",
+              "structured": true,
+              "value": 57.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "citronova_trava",
+          "ingredient_name": "Citrónová tráva",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_10187",
+              "title": "Citrónová tráva a zázvorová omáčka GOLDEN TURTLE 1000ml",
+              "structured": true,
+              "value": 1000.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_10763",
+              "title": "Citrónová tráva mrazená 250g",
+              "structured": true,
+              "value": 250.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_10934",
+              "title": "Sušená citrónová tráva COCK BRAND 100g",
+              "structured": true,
+              "value": 100.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "kaffirove_listy",
+          "ingredient_name": "Kaffirové listy",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_1501",
+              "title": "Limetkové kaffirové listy sušené COCK BRAND 10g",
+              "structured": true,
+              "value": 10.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_8064",
+              "title": "Limetkové kaffirové listy mrazené 100g",
+              "structured": true,
+              "value": 100.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_6489",
+              "title": "Sušené kaffirové limetkové listy THAI DANCER 25g",
+              "structured": true,
+              "value": 25.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "fish_sauce",
+          "ingredient_name": "Rybacia omáčka",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_106",
+              "title": "Rybacia omáčka SQUID BRAND 725 ml",
+              "structured": true,
+              "value": 725.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_107",
+              "title": "Rybacia omáčka SQUID BRAND 700 ml",
+              "structured": true,
+              "value": 700.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_115",
+              "title": "Rybacia omáčka 60N HANH PHUC 500ml",
+              "structured": true,
+              "value": 500.0,
+              "unit": "ml"
+            }
+          ],
+          "notes": null
+        }
+      ]
+    },
+    {
+      "dish_id": "sushi",
+      "dish_name": "Sushi",
+      "base_servings": null,
+      "base_servings_source": null,
+      "approval_status": "PENDING",
+      "approved_by": null,
+      "approved_at": null,
+      "reviewed_by": null,
+      "reviewed_at": null,
+      "ingredients": [
+        {
+          "ingredient_concept_id": "sushi_rice",
+          "ingredient_name": "Suši ryža",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_1081",
+              "title": "Suši ryža Japonská HARUKA 20 kg",
+              "structured": true,
+              "value": 20000.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_1109",
+              "title": "Suši ryža japonská HARUKA 1 kg",
+              "structured": true,
+              "value": 1000.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_11455",
+              "title": "Suši ryža SP Sensei Line 20kg",
+              "structured": true,
+              "value": 20000.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "rice_vinegar",
+          "ingredient_name": "Ryžový ocot",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_1346",
+              "title": "Ryžový ocot MIZKAN Suehiro 20L",
+              "structured": true,
+              "value": 20000.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_1600",
+              "title": "Ryžový ocot CHINKIANG HENGSHUN 550ml",
+              "structured": true,
+              "value": 550.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_3217",
+              "title": "Ryžový ocot OBENTO 250 ml",
+              "structured": true,
+              "value": 250.0,
+              "unit": "ml"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "wasabi",
+          "ingredient_name": "Wasabi",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PARTIAL_PACKAGE_SIZE",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_10324",
+              "title": "Matcha set Wasabi Ø13 cm | H7 cm 6042893",
+              "structured": false,
+              "value": null,
+              "unit": null
+            },
+            {
+              "product_id": "FL_10473",
+              "title": "Arašidy vo wasabi KOH-KAE 230 g",
+              "structured": true,
+              "value": 230.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_10792",
+              "title": "Chrumkavé morské riasy Wasabi príchuť BIBIGO 3x5g",
+              "structured": true,
+              "value": 15.0,
+              "unit": "g"
+            }
+          ],
+          "notes": "Editorial flag: current top candidate products for this concept include non-wasabi-condiment items (e.g. a matcha gift set, wasabi-flavored peanuts/seaweed snacks) rather than wasabi paste/powder itself - the human author should verify which real wasabi product the quantity should be authored against before approval."
+        },
+        {
+          "ingredient_concept_id": "nori",
+          "ingredient_name": "Nori (morské riasy)",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_1410",
+              "title": "Morské riasy na suši YAKI SUSHI NORI JHFOODS 10 listov",
+              "structured": true,
+              "value": 28.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_5451",
+              "title": "Morské riasy Yaki nori na Kimbap GIMBAPGIM NBH 50 listov",
+              "structured": true,
+              "value": 115.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_6925",
+              "title": "Pražené morské riasy YAKI SUSHI NORI SILVER JHFOODS 10 listov",
+              "structured": true,
+              "value": 28.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "nakladany_zazvor",
+          "ingredient_name": "Nakladaný zázvor",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_5763",
+              "title": "Nakladaný zázvor na suši - ružový 150g",
+              "structured": true,
+              "value": 150.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_6913",
+              "title": "Nakladaný zázvor na suši - ružový GOLDEN TURTLE 240g/160g",
+              "structured": true,
+              "value": 240.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_7519",
+              "title": "Nakladaný zázvor na suši (natural) HUTAKU 1,45kg",
+              "structured": true,
+              "value": 1450.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "sojova_omacka",
+          "ingredient_name": "Sójová omáčka",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_102",
+              "title": "Svetlá sójová omáčka DEK SOM BOON 300 ml",
+              "structured": true,
+              "value": 300.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_1026",
+              "title": "Sójová omáčka menej soli KIKKOMAN 150ml",
+              "structured": true,
+              "value": 150.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_10334",
+              "title": "Prémiová sladká tmavá sójová omáčka MEGACHEF 200 ml",
+              "structured": true,
+              "value": 200.0,
+              "unit": "ml"
+            }
+          ],
+          "notes": null
+        }
+      ]
+    },
+    {
+      "dish_id": "tom_yum",
+      "dish_name": "Tom Yum",
+      "base_servings": null,
+      "base_servings_source": null,
+      "approval_status": "PENDING",
+      "approved_by": null,
+      "approved_at": null,
+      "reviewed_by": null,
+      "reviewed_at": null,
+      "ingredients": [
+        {
+          "ingredient_concept_id": "citronova_trava",
+          "ingredient_name": "Citrónová tráva",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_10187",
+              "title": "Citrónová tráva a zázvorová omáčka GOLDEN TURTLE 1000ml",
+              "structured": true,
+              "value": 1000.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_10763",
+              "title": "Citrónová tráva mrazená 250g",
+              "structured": true,
+              "value": 250.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_10934",
+              "title": "Sušená citrónová tráva COCK BRAND 100g",
+              "structured": true,
+              "value": 100.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "galangal",
+          "ingredient_name": "Galangal",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_10931",
+              "title": "Sušený galangal COCK BRAND 57g",
+              "structured": true,
+              "value": 57.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "kaffirove_listy",
+          "ingredient_name": "Kaffirové listy",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_1501",
+              "title": "Limetkové kaffirové listy sušené COCK BRAND 10g",
+              "structured": true,
+              "value": 10.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_8064",
+              "title": "Limetkové kaffirové listy mrazené 100g",
+              "structured": true,
+              "value": 100.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_6489",
+              "title": "Sušené kaffirové limetkové listy THAI DANCER 25g",
+              "structured": true,
+              "value": 25.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "fish_sauce",
+          "ingredient_name": "Rybacia omáčka",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_106",
+              "title": "Rybacia omáčka SQUID BRAND 725 ml",
+              "structured": true,
+              "value": 725.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_107",
+              "title": "Rybacia omáčka SQUID BRAND 700 ml",
+              "structured": true,
+              "value": 700.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_115",
+              "title": "Rybacia omáčka 60N HANH PHUC 500ml",
+              "structured": true,
+              "value": 500.0,
+              "unit": "ml"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "coconut_milk",
+          "ingredient_name": "Kokosové mlieko",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_10217",
+              "title": "Kokosové mlieko BAMBOO TREE 1000ml",
+              "structured": true,
+              "value": 1000.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_11141",
+              "title": "Kokosové mlieko BAMBOO TREE 250ml",
+              "structured": true,
+              "value": 250.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_206",
+              "title": "Kokosové mlieko AROY-D 1000ml",
+              "structured": true,
+              "value": 1000.0,
+              "unit": "ml"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "tom_yum_pasta",
+          "ingredient_name": "Tom Yum pasta",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_3304",
+              "title": "Tom Yum pasta LOBO 400g",
+              "structured": true,
+              "value": 400.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_3823",
+              "title": "Tom Yum pasta LOBO 30g",
+              "structured": true,
+              "value": 30.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_394",
+              "title": "Tom Yum pasta COCK BRAND 227g",
+              "structured": true,
+              "value": 227.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        }
+      ]
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "dish_name": "Kimchi Ramen",
+      "base_servings": null,
+      "base_servings_source": null,
+      "approval_status": "PENDING",
+      "approved_by": null,
+      "approved_at": null,
+      "reviewed_by": null,
+      "reviewed_at": null,
+      "ingredients": [
+        {
+          "ingredient_concept_id": "instant_noodles",
+          "ingredient_name": "Ramen rezance",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_11672",
+              "title": "Instantné rezance NISSIN Demae Ramen Kuracie 100g",
+              "structured": true,
+              "value": 100.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_11680",
+              "title": "Instantné rezance NISSIN Demae Ramen s kačacou príchuťou 100 g",
+              "structured": true,
+              "value": 100.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_11704",
+              "title": "SAMYANG Buldak Quattro Cheese Pikantné kuracie ramen rezance 145 g",
+              "structured": true,
+              "value": 145.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "kimchi",
+          "ingredient_name": "Kimchi",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_10131",
+              "title": "Kimchi základ KIKKOMAN 300g",
+              "structured": true,
+              "value": 300.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_10183",
+              "title": "Mat Kimchi BIBIGO 1000g",
+              "structured": true,
+              "value": 1000.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_10455",
+              "title": "Vegán krájané kimchi BIBIGO 500g",
+              "structured": true,
+              "value": 500.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "gochujang",
+          "ingredient_name": "Gochujang",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_3812",
+              "title": "Čili pasta GOCHUJANG SEMPIO 500g",
+              "structured": true,
+              "value": 500.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_6370",
+              "title": "Čili pasta Gochujang Ofood DAESANG 500g",
+              "structured": true,
+              "value": 500.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_8639",
+              "title": "Čili pasta Kórejská GOCHUJANG SEMPIO 1000g",
+              "structured": true,
+              "value": 1000.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "miso",
+          "ingredient_name": "Miso pasta",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_10910",
+              "title": "Miso pasta HIKARI ENJUKU KOJI MUTENKA 375g",
+              "structured": true,
+              "value": 375.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_3362",
+              "title": "BIO červená miso pasta HIKARI 500g",
+              "structured": true,
+              "value": 500.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_6528",
+              "title": "Miso pasta biela SHINSHU HIKARI 400g",
+              "structured": true,
+              "value": 400.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "sojova_omacka",
+          "ingredient_name": "Sójová omáčka",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_102",
+              "title": "Svetlá sójová omáčka DEK SOM BOON 300 ml",
+              "structured": true,
+              "value": 300.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_1026",
+              "title": "Sójová omáčka menej soli KIKKOMAN 150ml",
+              "structured": true,
+              "value": 150.0,
+              "unit": "ml"
+            },
+            {
+              "product_id": "FL_10334",
+              "title": "Prémiová sladká tmavá sójová omáčka MEGACHEF 200 ml",
+              "structured": true,
+              "value": 200.0,
+              "unit": "ml"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "dashi",
+          "ingredient_name": "Dashi",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_7904",
+              "title": "Dashi Bonito Stock SHIMAYA 40 g",
+              "structured": true,
+              "value": 40.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_7993",
+              "title": "Dashinomoto bonito rybací prášok pre Dashi 1kg",
+              "structured": true,
+              "value": 1000.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_11248",
+              "title": "Dashima sušený kelp PAKU PAKU 100g",
+              "structured": true,
+              "value": 100.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "wakame",
+          "ingredient_name": "Wakame",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_4998",
+              "title": "Ochutené pražené riasy Wakame 5g",
+              "structured": true,
+              "value": 5.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_6933",
+              "title": "Wakame morské riasy sušené - GOLDEN TURTLE 100g",
+              "structured": true,
+              "value": 100.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_7253",
+              "title": "Morské riasy Wakame rezané a sušené HUTAKU 300g",
+              "structured": true,
+              "value": 300.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        },
+        {
+          "ingredient_concept_id": "nori",
+          "ingredient_name": "Nori (morské riasy)",
+          "quantity": null,
+          "unit": null,
+          "requirement": "REQUIRED",
+          "source_type": "FOODLAND_EDITORIAL",
+          "source_reference": null,
+          "author_status": "NEEDS_AUTHORING",
+          "scaling_unit_readiness": "MASS_VOLUME_READY",
+          "package_size_readiness": "PACKAGE_SIZE_READY",
+          "candidate_products_sample": [
+            {
+              "product_id": "FL_1410",
+              "title": "Morské riasy na suši YAKI SUSHI NORI JHFOODS 10 listov",
+              "structured": true,
+              "value": 28.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_5451",
+              "title": "Morské riasy Yaki nori na Kimbap GIMBAPGIM NBH 50 listov",
+              "structured": true,
+              "value": 115.0,
+              "unit": "g"
+            },
+            {
+              "product_id": "FL_6925",
+              "title": "Pražené morské riasy YAKI SUSHI NORI SILVER JHFOODS 10 listov",
+              "structured": true,
+              "value": 28.0,
+              "unit": "g"
+            }
+          ],
+          "notes": null
+        }
+      ]
+    }
+  ]
+}
