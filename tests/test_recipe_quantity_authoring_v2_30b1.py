@@ -44,11 +44,14 @@ class TestDatasetTopLevel:
         assert dataset["schema_version"] == 1
         assert dataset["created_for_sprint"] == "V2.30b.1"
 
-    def test_status_is_pending_review_not_approved(self, dataset):
-        # V2.30b.1a grounded some rows against real Foodland recipe pages,
-        # moving the dataset from DRAFT_FOR_HUMAN_AUTHORING to
-        # PENDING_HUMAN_REVIEW - still never auto-approved.
-        assert dataset["status"] == "PENDING_HUMAN_REVIEW"
+    def test_status_is_partial_not_fully_approved(self, dataset):
+        # V2.30b.1a grounded some rows against real Foodland recipe pages
+        # (PENDING_HUMAN_REVIEW); a human reviewer (Foodland editorial) then
+        # approved the rows/dishes that were unambiguous, moving the
+        # dataset to PARTIALLY_APPROVED_PENDING_FULL_AUTHORING. The exact
+        # literal string "APPROVED"/"PRODUCTION"/"READY" must still never
+        # be the whole-dataset status - full approval is a future state.
+        assert dataset["status"] == "PARTIALLY_APPROVED_PENDING_FULL_AUTHORING"
         assert dataset["status"] not in ("APPROVED", "PRODUCTION", "READY")
 
     def test_production_eligible_is_false(self, dataset):
@@ -183,8 +186,9 @@ class TestIngredientLevelIntegrity:
                         f"{dish['dish_id']}/{ing['ingredient_concept_id']}: unit must be null alongside a null quantity"
                     )
                     continue
-                assert ing["author_status"] == "AUTHORED", (
-                    f"{dish['dish_id']}/{ing['ingredient_concept_id']}: non-null quantity requires AUTHORED status"
+                assert ing["author_status"] in ("AUTHORED", "REVIEWED", "APPROVED"), (
+                    f"{dish['dish_id']}/{ing['ingredient_concept_id']}: non-null quantity requires an "
+                    f"AUTHORED/REVIEWED/APPROVED status (never NEEDS_AUTHORING/REJECTED), got {ing['author_status']!r}"
                 )
                 assert ing["unit"], (
                     f"{dish['dish_id']}/{ing['ingredient_concept_id']}: non-null quantity requires a unit"
@@ -203,7 +207,7 @@ class TestIngredientLevelIntegrity:
     def test_authored_rows_have_high_confidence_mapping(self, dataset):
         for dish in dataset["pilot_dishes"]:
             for ing in dish["ingredients"]:
-                if ing["author_status"] == "AUTHORED" and ing["quantity"] is not None:
+                if ing["author_status"] in ("AUTHORED", "REVIEWED", "APPROVED") and ing["quantity"] is not None:
                     assert ing["mapping_confidence"] in ("EXACT", "HIGH"), (
                         f"{dish['dish_id']}/{ing['ingredient_concept_id']}: only EXACT/HIGH mapping confidence "
                         f"may auto-populate a row (got {ing['mapping_confidence']!r})"

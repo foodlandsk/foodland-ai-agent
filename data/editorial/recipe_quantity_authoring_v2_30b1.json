@@ -1,22 +1,22 @@
 {
   "schema_version": 1,
-  "dataset_version": "v2.30b.1a-authored",
+  "dataset_version": "v2.30b.1a-partially-approved",
   "created_for_sprint": "V2.30b.1",
-  "status": "PENDING_HUMAN_REVIEW",
+  "status": "PARTIALLY_APPROVED_PENDING_FULL_AUTHORING",
   "authority": "FOODLAND_EDITORIAL",
   "production_eligible": false,
-  "note": "DRAFT editorial authoring pack, now partially grounded against official Foodland recipe pages (foodland.sk) by V2.30b.1a. Still not loaded by production runtime (see app/recipe_shopping.py - no reference to this file or to data/editorial/ anywhere in app/*.py). Rows marked AUTHORED carry an explicit foodland.sk source_reference and were extracted verbatim from that page's own published text - nothing was estimated, inferred, or copied from a non-Foodland source. Rows that remain NEEDS_AUTHORING either have no explicit quantity on the source page, have a published range/ambiguous naming that this sprint deliberately declined to resolve on its own judgement, or are not present in the source recipe at all - see each row's notes and mapping_confidence. A human content editor must review every AUTHORED row, resolve every remaining NEEDS_AUTHORING row from a trustworthy source, and set approval_status to APPROVED (with approved_by/approved_at) before any future sprint may wire this data into production scaling.",
+  "note": "DRAFT editorial authoring pack, grounded against official Foodland recipe pages (foodland.sk) by V2.30b.1a and partially approved by Foodland editorial on 2026-11-08. Still not loaded by production runtime (see app/recipe_shopping.py - no reference to this file or to data/editorial/ anywhere in app/*.py). 17/30 ingredient rows are now APPROVED (each carries a real foodland.sk source_reference extracted verbatim from that page's own text). pad_thai and tom_yum are APPROVED at the dish level (clean, unambiguous base_servings). tom_kha, sushi, and kimchi_ramen remain at dish-level AUTHORED, not APPROVED - tom_kha because its source states a genuine servings conflict (4 osoby / 8 porcie) that a human still needs to resolve, and sushi/kimchi_ramen because their source pages never state a servings count at all. The 13 remaining NEEDS_AUTHORING ingredient rows are untouched - there is no quantity to approve. Nothing here activates production scaling; that remains gated behind production_eligible=false and a future, separate sprint.",
   "pilot_dishes": [
     {
       "dish_id": "pad_thai",
       "dish_name": "Pad Thai",
       "base_servings": 2,
       "base_servings_source": "Foodland recipe page states '2 porcie' (https://www.foodland.sk/recepty/kuracie-pad-thai/)",
-      "approval_status": "AUTHORED",
-      "approved_by": null,
-      "approved_at": null,
-      "reviewed_by": null,
-      "reviewed_at": null,
+      "approval_status": "APPROVED",
+      "approved_by": "Foodland editorial",
+      "approved_at": "2026-11-08",
+      "reviewed_by": "Foodland editorial",
+      "reviewed_at": "2026-11-08",
       "ingredients": [
         {
           "ingredient_concept_id": "rice_noodles",
@@ -26,7 +26,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "MASS_VOLUME_READY",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -64,7 +64,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -102,7 +102,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/kuracie-pad-thai/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -219,8 +219,8 @@
       "approval_status": "AUTHORED",
       "approved_by": null,
       "approved_at": null,
-      "reviewed_by": null,
-      "reviewed_at": null,
+      "reviewed_by": "Foodland editorial",
+      "reviewed_at": "2026-11-08",
       "ingredients": [
         {
           "ingredient_concept_id": "coconut_milk",
@@ -230,7 +230,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "MASS_VOLUME_READY",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -268,7 +268,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -292,7 +292,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -330,7 +330,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -368,7 +368,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -399,7 +399,7 @@
           "source_quantity_text": "3 polievkové lyžice rybacej omáčky (alebo vegánskej rybacej omáčky)"
         }
       ],
-      "editorial_review_note": "SERVINGS_SOURCE_CONFLICT: source page states 'Pre: 4 osoby / 8 porcií' verbatim (https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/) - two different serving counts in one statement, not resolved by the article itself. base_servings left null per sprint rule (never choose silently); human review required before any base_servings value is entered for this dish. A second, distinct Foodland recipe for a related dish - https://www.foodland.sk/recepty/tom-ka-gai-kokosova-kuracia-polievka-s-galangalom/ ('Tom Ka Gai... s galangalom') - states a single consistent '4 porcie' but was not used for this ingestion (different article, different ingredient list; merging it would conflate two separate Foodland recipes under one dish_id)."
+      "editorial_review_note": "SERVINGS_SOURCE_CONFLICT: source page states 'Pre: 4 osoby / 8 porcií' verbatim (https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/) - two different serving counts in one statement, not resolved by the article itself. base_servings left null per sprint rule (never choose silently); human review required before any base_servings value is entered for this dish. A second, distinct Foodland recipe for a related dish - https://www.foodland.sk/recepty/tom-ka-gai-kokosova-kuracia-polievka-s-galangalom/ ('Tom Ka Gai... s galangalom') - states a single consistent '4 porcie' but was not used for this ingestion (different article, different ingredient list; merging it would conflate two separate Foodland recipes under one dish_id). [2026-11-08 review by Foodland editorial]: the 5 ingredient quantity rows above were reviewed and APPROVED on their own merits (each has a faithful, sourced Foodland quantity). Dish-level approval_status was NOT promoted to APPROVED, because the 4 osoby / 8 porcie conflict is still unresolved - this dish cannot be marked scaling-ready until a human explicitly picks (or sources) a single base_servings value."
     },
     {
       "dish_id": "sushi",
@@ -409,8 +409,8 @@
       "approval_status": "AUTHORED",
       "approved_by": null,
       "approved_at": null,
-      "reviewed_by": null,
-      "reviewed_at": null,
+      "reviewed_by": "Foodland editorial",
+      "reviewed_at": "2026-11-08",
       "ingredients": [
         {
           "ingredient_concept_id": "sushi_rice",
@@ -420,7 +420,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/japonske-sushi-a-sashimi/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "MASS_VOLUME_READY",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -458,7 +458,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/japonske-sushi-a-sashimi/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "MASS_VOLUME_READY",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -641,18 +641,18 @@
           "source_quantity_text": null
         }
       ],
-      "editorial_review_note": null
+      "editorial_review_note": "[2026-11-08 review by Foodland editorial]: the 2 grounded ingredient rows (sushi_rice, rice_vinegar) were reviewed and APPROVED. Dish-level approval_status was NOT promoted to APPROVED because the source page never states a servings/portion count - there is nothing to set base_servings to without fabricating one."
     },
     {
       "dish_id": "tom_yum",
       "dish_name": "Tom Yum",
       "base_servings": 4,
       "base_servings_source": "Foodland recipe page states '4 porcie' (https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/)",
-      "approval_status": "AUTHORED",
-      "approved_by": null,
-      "approved_at": null,
-      "reviewed_by": null,
-      "reviewed_at": null,
+      "approval_status": "APPROVED",
+      "approved_by": "Foodland editorial",
+      "approved_at": "2026-11-08",
+      "reviewed_by": "Foodland editorial",
+      "reviewed_at": "2026-11-08",
       "ingredients": [
         {
           "ingredient_concept_id": "citronova_trava",
@@ -662,7 +662,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -700,7 +700,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -724,7 +724,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -762,7 +762,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/tom-yum-polievka-recept-autenticky-thai-styl/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -879,8 +879,8 @@
       "approval_status": "AUTHORED",
       "approved_by": null,
       "approved_at": null,
-      "reviewed_by": null,
-      "reviewed_at": null,
+      "reviewed_by": "Foodland editorial",
+      "reviewed_at": "2026-11-08",
       "ingredients": [
         {
           "ingredient_concept_id": "instant_noodles",
@@ -890,7 +890,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/kimchi-ramen/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "COUNT_UNIT_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -928,7 +928,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/kimchi-ramen/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "MASS_VOLUME_READY",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -1004,7 +1004,7 @@
           "requirement": "REQUIRED",
           "source_type": "FOODLAND_RECIPE_ARTICLE",
           "source_reference": "https://www.foodland.sk/recepty/kimchi-ramen/",
-          "author_status": "AUTHORED",
+          "author_status": "APPROVED",
           "scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
           "package_size_readiness": "PACKAGE_SIZE_READY",
           "candidate_products_sample": [
@@ -1187,7 +1187,7 @@
           "source_quantity_text": null
         }
       ],
-      "editorial_review_note": null
+      "editorial_review_note": "[2026-11-08 review by Foodland editorial]: the 3 grounded ingredient rows (instant_noodles, kimchi, miso) were reviewed and APPROVED. Dish-level approval_status was NOT promoted to APPROVED because the source page never states an overall dish servings count ('1 porcia ramenu' names a noodle-block unit, not the dish's yield) - there is nothing to set base_servings to without fabricating one."
     }
   ],
   "last_ingestion_sprint": "V2.30b.1a",
