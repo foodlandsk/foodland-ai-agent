@@ -214,13 +214,13 @@
     {
       "dish_id": "tom_kha",
       "dish_name": "Tom Kha Gai",
-      "base_servings": null,
-      "base_servings_source": null,
-      "approval_status": "AUTHORED",
-      "approved_by": null,
-      "approved_at": null,
+      "base_servings": 4,
+      "base_servings_source": "RESOLVED 2026-11-08 (Foodland editorial): Foodland page states 'Pre: 4 osoby / 8 porcii' verbatim (https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/), crediting the recipe to Sylvia Fountaine / feastingathome.com (confirmed via the page's own schema.org Article author field). The original Feasting at Home recipe (https://www.feastingathome.com/tom-kha-gai/) serves 4 and yields 8 cups - so '4 osoby' matches the original author's own serving count, and '8 porcii' is a translation artifact of the original's separate 'Yield: 8 cups' volume figure (8 cups / 4 servings = 2 cups per serving, an ordinary soup-bowl size - internally consistent, not two competing head-counts). Resolved via the original source's own stated servings, not an arbitrary pick between 4 and 8.",
+      "approval_status": "APPROVED",
+      "approved_by": "Foodland editorial",
+      "approved_at": "2026-11-10",
       "reviewed_by": "Foodland editorial",
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-10",
       "ingredients": [
         {
           "ingredient_concept_id": "coconut_milk",
@@ -399,7 +399,7 @@
           "source_quantity_text": "3 polievkové lyžice rybacej omáčky (alebo vegánskej rybacej omáčky)"
         }
       ],
-      "editorial_review_note": "SERVINGS_SOURCE_CONFLICT: source page states 'Pre: 4 osoby / 8 porcií' verbatim (https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/) - two different serving counts in one statement, not resolved by the article itself. base_servings left null per sprint rule (never choose silently); human review required before any base_servings value is entered for this dish. A second, distinct Foodland recipe for a related dish - https://www.foodland.sk/recepty/tom-ka-gai-kokosova-kuracia-polievka-s-galangalom/ ('Tom Ka Gai... s galangalom') - states a single consistent '4 porcie' but was not used for this ingestion (different article, different ingredient list; merging it would conflate two separate Foodland recipes under one dish_id). [2026-11-08 review by Foodland editorial]: the 5 ingredient quantity rows above were reviewed and APPROVED on their own merits (each has a faithful, sourced Foodland quantity). Dish-level approval_status was NOT promoted to APPROVED, because the 4 osoby / 8 porcie conflict is still unresolved - this dish cannot be marked scaling-ready until a human explicitly picks (or sources) a single base_servings value."
+      "editorial_review_note": "SERVINGS_SOURCE_CONFLICT: source page states 'Pre: 4 osoby / 8 porcií' verbatim (https://www.foodland.sk/recepty/tom-kha-gai-thajka-kokosova-kuracia-polievka/) - two different serving counts in one statement, not resolved by the article itself. base_servings left null per sprint rule (never choose silently); human review required before any base_servings value is entered for this dish. A second, distinct Foodland recipe for a related dish - https://www.foodland.sk/recepty/tom-ka-gai-kokosova-kuracia-polievka-s-galangalom/ ('Tom Ka Gai... s galangalom') - states a single consistent '4 porcie' but was not used for this ingestion (different article, different ingredient list; merging it would conflate two separate Foodland recipes under one dish_id). [2026-11-08 review by Foodland editorial]: the 5 ingredient quantity rows above were reviewed and APPROVED on their own merits (each has a faithful, sourced Foodland quantity). Dish-level approval_status was NOT promoted to APPROVED, because the 4 osoby / 8 porcie conflict is still unresolved - this dish cannot be marked scaling-ready until a human explicitly picks (or sources) a single base_servings value. [2026-11-08 follow-up by Foodland editorial]: SERVINGS_SOURCE_CONFLICT RESOLVED. The Foodland page credits this recipe to Sylvia Fountaine / feastingathome.com; the original English recipe (https://www.feastingathome.com/tom-kha-gai/) states it serves 4 and yields 8 cups - confirming '4 osoby' is the correct serving count and '8 porcii' was a mistranslation of the original's separate cup-yield figure, not an alternate servings count. base_servings is now set to 4, sourced to the original recipe's own stated servings. [2026-11-10 promotion by Foodland editorial]: with the servings conflict resolved (base_servings=4, sourced to the original recipe), this dish is now promoted to dish-level APPROVED - all 5 ingredient rows were already APPROVED individually; approval_status now reflects the full dish."
     },
     {
       "dish_id": "sushi",
@@ -1213,8 +1213,8 @@
       "source_language": "sk",
       "source_published_at": "2021-06-18",
       "source_accessed_at": "2026-11-06",
-      "base_servings_evidence_status": "SERVINGS_SOURCE_CONFLICT",
-      "notes": "Page states 'Pre: 4 osoby / 8 porcií' verbatim - two different serving counts in the same sentence, not resolved by the article's own wording. Per sprint rule (do not choose silently), base_servings is left null and flagged for human review rather than guessing which figure is the true baseline. A second, distinct Foodland recipe for a related dish exists at https://www.foodland.sk/recepty/tom-ka-gai-kokosova-kuracia-polievka-s-galangalom/ ('Tom Ka Gai... s galangalom', 15.03.2017) with a single consistent '4 porcie' statement and its own full ingredient list - it is a different published recipe (different ingredient set/quantities) and was NOT merged into this ingestion to avoid conflating two distinct Foodland articles under one dish_id. Flagged here as a human-review discovery, not ingested."
+      "base_servings_evidence_status": "RESOLVED_VIA_ORIGINAL_SOURCE",
+      "notes": "Page states 'Pre: 4 osoby / 8 porcií' verbatim - two different serving counts in the same sentence, not resolved by the article's own wording. Per sprint rule (do not choose silently), base_servings is left null and flagged for human review rather than guessing which figure is the true baseline. A second, distinct Foodland recipe for a related dish exists at https://www.foodland.sk/recepty/tom-ka-gai-kokosova-kuracia-polievka-s-galangalom/ ('Tom Ka Gai... s galangalom', 15.03.2017) with a single consistent '4 porcie' statement and its own full ingredient list - it is a different published recipe (different ingredient set/quantities) and was NOT merged into this ingestion to avoid conflating two distinct Foodland articles under one dish_id. Flagged here as a human-review discovery, not ingested. RESOLVED 2026-11-08: traced to the original recipe (credited on the Foodland page to Sylvia Fountaine, https://www.feastingathome.com/tom-kha-gai/), which states 'serves 4' / 'yield: 8 cups' as two separate fields - confirming '4 osoby' is the correct base_servings and '8 porcii' was a translation artifact of the cup-yield figure, not a second serving count."
     },
     {
       "dish_id": "sushi",

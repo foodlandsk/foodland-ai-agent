@@ -111,10 +111,16 @@ class TestDishLevelIntegrity:
                 f"{dish['dish_id']}: base_servings_source must reference an official Foodland URL"
             )
 
-    def test_servings_conflict_dishes_stay_null_and_are_flagged(self, dataset):
+    def test_servings_conflict_dishes_stay_null_unless_explicitly_resolved(self, dataset):
+        # A dish flagged SERVINGS_SOURCE_CONFLICT must keep base_servings
+        # null UNLESS its note also records an explicit "RESOLVED" follow-up
+        # (e.g. tom_kha's conflict was traced to a translation artifact
+        # against the original recipe's own stated servings) - a resolved
+        # conflict is allowed a non-null base_servings precisely because
+        # it is no longer an unexplained guess between two numbers.
         for dish in dataset["pilot_dishes"]:
             note = dish.get("editorial_review_note")
-            if note and "SERVINGS_SOURCE_CONFLICT" in note:
+            if note and "SERVINGS_SOURCE_CONFLICT" in note and "RESOLVED" not in note:
                 assert dish["base_servings"] is None, (
                     f"{dish['dish_id']}: flagged SERVINGS_SOURCE_CONFLICT must keep base_servings null"
                 )
