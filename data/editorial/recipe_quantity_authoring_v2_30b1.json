@@ -404,13 +404,13 @@
     {
       "dish_id": "sushi",
       "dish_name": "Sushi",
-      "base_servings": null,
-      "base_servings_source": null,
-      "approval_status": "AUTHORED",
-      "approved_by": null,
-      "approved_at": null,
+      "base_servings": 2,
+      "base_servings_source": "HUMAN-SUPPLIED 2026-11-10 by Foodland editorial: the Foodland source page (https://www.foodland.sk/recepty/japonske-sushi-a-sashimi/) states no servings count and credits no traceable original recipe (checked 2026-11-10 - no 'Recept od', no 'Zdroj receptu', no external author byline). Foodland editorial was asked directly and chose 2 servings for the 400 g sushi rice / 80 ml rice vinegar batch as a light meal for two. This is explicitly a human-supplied figure, not a Foodland-published or credited-source fact - unlike tom_kha (traced to feastingathome.com) and kimchi_ramen (traced to chloeting.com), there is no external source backing this number beyond the editor's own judgement.",
+      "approval_status": "APPROVED",
+      "approved_by": "Foodland editorial",
+      "approved_at": "2026-11-10",
       "reviewed_by": "Foodland editorial",
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-10",
       "ingredients": [
         {
           "ingredient_concept_id": "sushi_rice",
@@ -641,7 +641,7 @@
           "source_quantity_text": null
         }
       ],
-      "editorial_review_note": "[2026-11-10 follow-up by Foodland editorial]: checked for a credited original recipe (the pattern that resolved tom_kha and kimchi_ramen) - this page has no 'Recept od ...' byline, no 'Zdroj receptu' source card, and no external author credit anywhere (only the generic site-wide JSON-LD Article author, which is a Foodland staff name, not an attributed external recipe). There is nothing to trace a servings count back to. base_servings remains null and dish-level approval_status remains AUTHORED - this would require either a real additional Foodland source or an explicit human-supplied number, not automated resolution."
+      "editorial_review_note": "[2026-11-10 follow-up by Foodland editorial]: checked for a credited original recipe (the pattern that resolved tom_kha and kimchi_ramen) - this page has no 'Recept od ...' byline, no 'Zdroj receptu' source card, and no external author credit anywhere (only the generic site-wide JSON-LD Article author, which is a Foodland staff name, not an attributed external recipe). There is nothing to trace a servings count back to. base_servings remains null and dish-level approval_status remains AUTHORED - this would require either a real additional Foodland source or an explicit human-supplied number, not automated resolution. [2026-11-10 follow-up by Foodland editorial]: base_servings resolved to 2 via an explicit human-supplied decision (no Foodland source or credited original exists to trace this back to, unlike tom_kha/kimchi_ramen - see base_servings_source for the full distinction). Dish promoted to dish-level APPROVED; its 2 already-APPROVED ingredient rows (sushi_rice, rice_vinegar) now have a servings baseline to scale against. wasabi/nori/nakladany_zazvor/sojova_omacka remain NEEDS_AUTHORING - unquantified condiments on the source page, untouched by this decision."
     },
     {
       "dish_id": "tom_yum",
@@ -1225,8 +1225,8 @@
       "source_language": "sk",
       "source_published_at": "2024-08-05",
       "source_accessed_at": "2026-11-06",
-      "base_servings_evidence_status": "NOT_STATED",
-      "notes": "Page gives no serving/portion count anywhere (checked full page text) - it only states a rice quantity (400 g) and a seasoning mix, not a people/portion baseline. CHECKED 2026-11-10: no credited original source exists on this page to trace a servings count back to (unlike tom_kha/kimchi_ramen) - base_servings_evidence_status remains NOT_STATED."
+      "base_servings_evidence_status": "HUMAN_SUPPLIED_NO_SOURCE",
+      "notes": "Page gives no serving/portion count anywhere (checked full page text) - it only states a rice quantity (400 g) and a seasoning mix, not a people/portion baseline. CHECKED 2026-11-10: no credited original source exists on this page to trace a servings count back to (unlike tom_kha/kimchi_ramen) - base_servings_evidence_status remains NOT_STATED. RESOLVED 2026-11-10: no Foodland or credited-original source exists for a servings count (checked and confirmed absent); Foodland editorial explicitly supplied base_servings=2 as an editorial judgement call, not a sourced fact."
     },
     {
       "dish_id": "tom_yum",
