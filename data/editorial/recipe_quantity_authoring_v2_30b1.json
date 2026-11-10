@@ -641,7 +641,7 @@
           "source_quantity_text": null
         }
       ],
-      "editorial_review_note": "[2026-11-08 review by Foodland editorial]: the 2 grounded ingredient rows (sushi_rice, rice_vinegar) were reviewed and APPROVED. Dish-level approval_status was NOT promoted to APPROVED because the source page never states a servings/portion count - there is nothing to set base_servings to without fabricating one."
+      "editorial_review_note": "[2026-11-10 follow-up by Foodland editorial]: checked for a credited original recipe (the pattern that resolved tom_kha and kimchi_ramen) - this page has no 'Recept od ...' byline, no 'Zdroj receptu' source card, and no external author credit anywhere (only the generic site-wide JSON-LD Article author, which is a Foodland staff name, not an attributed external recipe). There is nothing to trace a servings count back to. base_servings remains null and dish-level approval_status remains AUTHORED - this would require either a real additional Foodland source or an explicit human-supplied number, not automated resolution."
     },
     {
       "dish_id": "tom_yum",
@@ -874,13 +874,13 @@
     {
       "dish_id": "kimchi_ramen",
       "dish_name": "Kimchi Ramen",
-      "base_servings": null,
-      "base_servings_source": null,
-      "approval_status": "AUTHORED",
-      "approved_by": null,
-      "approved_at": null,
+      "base_servings": 1,
+      "base_servings_source": "RESOLVED 2026-11-10 (Foodland editorial): the Foodland page itself credits its source ('Zdroj receptu': 'Recept vychadza z povodneho clanku Foodland a receptu od Chloe Ting', https://www.foodland.sk/recepty/kimchi-ramen/). The credited original recipe (https://chloeting.com/recipes/kimchi-ramen) states 'yield: 1 serving', and its ingredient quantities (80g kimchi, 480ml chicken stock, 1/2 tsp miso paste, 1 tsp gochugaru) match this Foodland page's own ingredient list exactly, confirming it is the same recipe. Unlike tom_kha, the Foodland page never stated a conflicting number itself - it simply omitted the servings count that the credited original recipe does state.",
+      "approval_status": "APPROVED",
+      "approved_by": "Foodland editorial",
+      "approved_at": "2026-11-10",
       "reviewed_by": "Foodland editorial",
-      "reviewed_at": "2026-11-08",
+      "reviewed_at": "2026-11-10",
       "ingredients": [
         {
           "ingredient_concept_id": "instant_noodles",
@@ -1187,7 +1187,7 @@
           "source_quantity_text": null
         }
       ],
-      "editorial_review_note": "[2026-11-08 review by Foodland editorial]: the 3 grounded ingredient rows (instant_noodles, kimchi, miso) were reviewed and APPROVED. Dish-level approval_status was NOT promoted to APPROVED because the source page never states an overall dish servings count ('1 porcia ramenu' names a noodle-block unit, not the dish's yield) - there is nothing to set base_servings to without fabricating one."
+      "editorial_review_note": "[2026-11-08 review by Foodland editorial]: the 3 grounded ingredient rows (instant_noodles, kimchi, miso) were reviewed and APPROVED. Dish-level approval_status was NOT promoted to APPROVED because the source page never states an overall dish servings count ('1 porcia ramenu' names a noodle-block unit, not the dish's yield) - there is nothing to set base_servings to without fabricating one. [2026-11-10 follow-up by Foodland editorial]: base_servings resolved to 1, traced to the credited original recipe (https://chloeting.com/recipes/kimchi-ramen), whose exact ingredient quantities match this page's own list. Dish promoted to dish-level APPROVED - all 3 already-APPROVED ingredient rows plus this sourced servings figure give the dish a complete, approved baseline."
     }
   ],
   "last_ingestion_sprint": "V2.30b.1a",
@@ -1226,7 +1226,7 @@
       "source_published_at": "2024-08-05",
       "source_accessed_at": "2026-11-06",
       "base_servings_evidence_status": "NOT_STATED",
-      "notes": "Page gives no serving/portion count anywhere (checked full page text) - it only states a rice quantity (400 g) and a seasoning mix, not a people/portion baseline."
+      "notes": "Page gives no serving/portion count anywhere (checked full page text) - it only states a rice quantity (400 g) and a seasoning mix, not a people/portion baseline. CHECKED 2026-11-10: no credited original source exists on this page to trace a servings count back to (unlike tom_kha/kimchi_ramen) - base_servings_evidence_status remains NOT_STATED."
     },
     {
       "dish_id": "tom_yum",
@@ -1249,8 +1249,8 @@
       "source_language": "sk",
       "source_published_at": "2024-06-14",
       "source_accessed_at": "2026-11-06",
-      "base_servings_evidence_status": "NOT_STATED",
-      "notes": "Page gives no overall dish serving/portion count. The only portion-like phrase, '1 porcia ramenu', names a single ramen-noodle-block unit, not the dish's total yield."
+      "base_servings_evidence_status": "RESOLVED_VIA_CREDITED_ORIGINAL_SOURCE",
+      "notes": "Page gives no overall dish serving/portion count. The only portion-like phrase, '1 porcia ramenu', names a single ramen-noodle-block unit, not the dish's total yield. RESOLVED 2026-11-10: the page credits 'Recept ... od Chloe Ting'; her published recipe (https://chloeting.com/recipes/kimchi-ramen) states yield: 1 serving and matches this page's quantities exactly, confirming base_servings=1."
     }
   ],
   "unmapped_foodland_recipe_ingredients": [
