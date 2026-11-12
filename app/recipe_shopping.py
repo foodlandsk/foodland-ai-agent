@@ -5,9 +5,14 @@ Builds the structured shopping plan for one dish (Section 21-29): per
 ingredient AVAILABLE/ALREADY_SATISFIED/NOT_AVAILABLE/OPTIONAL/UNKNOWN_MAPPING
 status, coverage metrics kept separate (Section 22/23), basket satisfaction
 (Section 56/57), and serving/package math that only ever activates on real
-structured quantities (Section 24/25/29 - see docs/recipe-knowledge-audit.md:
-no current Foodland recipe carries one, so this machinery is implemented and
-tested but dormant against live data today).
+structured quantities (Section 24/25/29).
+
+V2.30c (Grounded Recipe Scaling Pilot Activation) wires app.recipe_quantities'
+fail-closed, APPROVED-only lookups into the per-ingredient loop below: for
+every dish/ingredient NOT in that approved subset, quantity/package_count
+stay None exactly as documented by docs/recipe-knowledge-audit.md and as
+every dish behaved before this sprint. Only the pilot dishes' dish-level
+APPROVED, ingredient-level APPROVED rows ever populate a real quantity.
 """
 from __future__ import annotations
 
@@ -22,6 +27,7 @@ from app.recipe_graph import (
     RecipeGraphIndex,
     resolve_ingredient_products,
 )
+from app.recipe_quantities import get_approved_ingredient_quantity, get_base_servings
 from app.session_state import (
     TurnSignals,
     get_active_recipe,
@@ -70,6 +76,7 @@ class RecipeShoppingPlan:
     recipe_shopping_coverage: float
     missing_required_count: int
     optional_count: int
+    base_servings: int | None = None
 
 
 def build_recipe_shopping_plan(
@@ -89,6 +96,8 @@ def build_recipe_shopping_plan(
     if dish is None or not recipe_ingredients:
         return None
 
+    base_servings = get_base_servings(dish_id)
+
     plan_ingredients: list[PlanIngredient] = []
     for recipe_ingredient in recipe_ingredients:
         resolution = resolve_ingredient_products(
@@ -105,13 +114,41 @@ def build_recipe_shopping_plan(
         else:
             status = STATUS_NOT_AVAILABLE
 
-        # Section 21/25/28 - no current Foodland recipe carries a structured
-        # quantity (docs/recipe-knowledge-audit.md), so quantity/package_count
-        # stay None for every real dish. scale_plan_quantities() and
-        # package_count_for() implement the arithmetic and are exercised
-        # directly against synthetic fixtures in tests/test_recipe_shopping.py.
+        selected_product_id = resolution.matching_product_ids[0] if resolution.matching_product_ids else None
+
+        # V2.30c (Section 11/13/17/21/26) - a real quantity only ever comes
+        # from the fail-closed, APPROVED-only app.recipe_quantities lookup,
+        # and only when this dish also has a sourced base_servings (Section
+        # 6/18); every other row (any non-pilot dish, or a pilot dish's
+        # NEEDS_AUTHORING/AUTHORED/REVIEWED/REJECTED row, or a dish missing
+        # base_servings) stays quantity=None/package_count=None exactly as
+        # documented by docs/recipe-knowledge-audit.md and as every dish
+        # behaved before this sprint - no fabrication, no inference.
         parsed_quantity = None
         package_count = None
+        approved_quantity = get_approved_ingredient_quantity(dish_id, recipe_ingredient.ingredient_concept_id)
+        if approved_quantity is not None and base_servings is not None:
+            # Section 21 - no requested servings yet this turn -> retain the
+            # recipe's own base-servings quantity rather than inventing a
+            # target; scale_quantity() (existing arithmetic, not duplicated)
+            # only runs once a real target is known (Section 20/22/23/24).
+            effective_quantity = (
+                scale_quantity(approved_quantity.quantity, base_servings, servings)
+                if servings
+                else approved_quantity.quantity
+            )
+            parsed_quantity = ParsedQuantity(
+                quantity=effective_quantity,
+                unit=approved_quantity.unit,
+                is_numeric=True,
+                raw_text=f"{approved_quantity.quantity:g} {approved_quantity.unit}",
+            )
+            normalized_product = normalized_index.get(selected_product_id) if selected_product_id else None
+            if normalized_product is not None:
+                # Section 26/27/28/29 - None whenever the unit isn't a safe
+                # mass/volume conversion or the candidate's package size
+                # isn't structured; that is expected, not an error.
+                package_count = package_count_for(parsed_quantity, normalized_product)
 
         plan_ingredients.append(
             PlanIngredient(
@@ -120,7 +157,7 @@ def build_recipe_shopping_plan(
                 role=recipe_ingredient.role,
                 requirement=recipe_ingredient.requirement,
                 status=status,
-                selected_product_id=resolution.matching_product_ids[0] if resolution.matching_product_ids else None,
+                selected_product_id=selected_product_id,
                 candidate_product_ids=resolution.matching_product_ids,
                 confidence=resolution.confidence,
                 quantity=parsed_quantity,
@@ -156,6 +193,7 @@ def build_recipe_shopping_plan(
         recipe_shopping_coverage=len(required_in_catalog) / total_required,
         missing_required_count=len(missing_required),
         optional_count=len(optional),
+        base_servings=base_servings,
     )
 
 
@@ -190,6 +228,7 @@ def scale_plan_quantities(plan: RecipeShoppingPlan, target_servings: int) -> Rec
         recipe_shopping_coverage=plan.recipe_shopping_coverage,
         missing_required_count=plan.missing_required_count,
         optional_count=plan.optional_count,
+        base_servings=plan.base_servings,
     )
 
 

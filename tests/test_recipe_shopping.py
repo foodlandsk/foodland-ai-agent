@@ -149,6 +149,15 @@ class TestServingScaling:
         assert scale_quantity(100.0, 4, 2) == 50.0
 
     def test_scale_plan_quantities_only_touches_numeric_ingredients(self):
+        # V2.30c (Grounded Recipe Scaling Pilot Activation) grounds 3 of
+        # pad_thai's 5 ingredients (APPROVED: rice_noodles/tamarind_pasta/
+        # fish_sauce) in real data, so this is no longer a universal no-op
+        # for this dish - it now proves scale_plan_quantities()'s own
+        # arithmetic contract (pivoting off whatever requested_servings
+        # this synthetic plan carries, not the recipe's true
+        # base_servings=2) against every real numeric ingredient, while
+        # the 2 still-NEEDS_AUTHORING ingredients (palmovy_cukor/arasidy)
+        # stay untouched exactly as before.
         plan = build_recipe_shopping_plan(GRAPH, "pad_thai", m.products, m.product_taxonomy_index, m.normalized_product_index)
         real_plan_with_servings = plan.__class__(
             dish_id=plan.dish_id, dish_title=plan.dish_title, recipe_id=plan.recipe_id,
@@ -159,13 +168,23 @@ class TestServingScaling:
             catalog_product_coverage=plan.catalog_product_coverage,
             recipe_shopping_coverage=plan.recipe_shopping_coverage,
             missing_required_count=plan.missing_required_count, optional_count=plan.optional_count,
+            base_servings=plan.base_servings,
         )
         scaled = scale_plan_quantities(real_plan_with_servings, 8)
         assert scaled.requested_servings == 8
-        # No current Foodland recipe ingredient carries a structured
-        # quantity (docs/recipe-knowledge-audit.md) - scaling is a provable
-        # no-op against real data today.
-        assert all(ing.quantity is None for ing in scaled.ingredients)
+
+        numeric_concept_ids = {"rice_noodles", "tamarind_pasta", "fish_sauce"}
+        original_by_concept = {ing.ingredient_concept_id: ing for ing in plan.ingredients}
+        for scaled_ing in scaled.ingredients:
+            original = original_by_concept[scaled_ing.ingredient_concept_id]
+            if scaled_ing.ingredient_concept_id in numeric_concept_ids:
+                assert original.quantity is not None and original.quantity.is_numeric
+                assert scaled_ing.quantity.quantity == original.quantity.quantity * 2  # 8 / 4
+                assert scaled_ing.quantity.unit == original.quantity.unit
+            else:
+                assert scaled_ing.quantity is None, (
+                    f"{scaled_ing.ingredient_concept_id}: expected to remain unapproved/untouched"
+                )
 
 
 class TestPackageCount:

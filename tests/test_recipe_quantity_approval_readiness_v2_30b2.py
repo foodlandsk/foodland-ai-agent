@@ -178,14 +178,29 @@ class TestProductionIsolation:
         assert "editorial" in REPORT_PATH.parts
         assert REPORT_PATH.suffix == ".json"
 
-    def test_real_dishes_still_have_null_quantity_and_package_count(self):
+    def test_unapproved_pilot_rows_still_have_null_quantity_and_package_count(self, dataset):
+        # V2.30c (Grounded Recipe Scaling Pilot Activation) deliberately
+        # populates quantity/package_count for APPROVED rows - narrowed
+        # from "every ingredient" accordingly; see
+        # tests/test_recipe_quantity_authoring_v2_30b1.py's identically
+        # narrowed sibling test and tests/test_grounded_recipe_scaling_
+        # v2_30c.py for the positive activation proof.
         import app.main as m
 
+        approved_concepts_by_dish = {
+            dish["dish_id"]: {
+                ing["ingredient_concept_id"] for ing in dish["ingredients"] if ing["author_status"] == "APPROVED"
+            }
+            for dish in dataset["pilot_dishes"]
+        }
         for dish_id in ("pad_thai", "tom_kha", "sushi", "tom_yum", "kimchi_ramen"):
             plan = m._build_recipe_shopping_plan(
                 m.recipe_graph_index, dish_id, m.products, m.product_taxonomy_index, m.normalized_product_index,
                 servings=6,
             )
+            approved_concepts = approved_concepts_by_dish[dish_id]
             for ing in plan.ingredients:
+                if ing.ingredient_concept_id in approved_concepts:
+                    continue
                 assert ing.quantity is None, f"{dish_id}/{ing.ingredient_concept_id}: quantity unexpectedly populated"
                 assert ing.package_count is None, f"{dish_id}/{ing.ingredient_concept_id}: package_count unexpectedly populated"

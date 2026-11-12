@@ -259,17 +259,31 @@ class TestHelperLevelPlanBuilds:
         available = [ing for ing in plan.ingredients if ing.selected_product_id]
         assert available
 
-    def test_servings_presence_does_not_activate_scaling(self):
-        # Section 20 - requested_servings is carried, but ingredient
-        # quantities stay None (no structured recipe data exists), so no
-        # arithmetic activates - re-confirms the V2.28 finding on the
-        # newly-ported dishes specifically.
+    def test_servings_presence_only_activates_scaling_for_approved_rows(self):
+        # Section 20 - requested_servings is carried; V2.30c (Grounded
+        # Recipe Scaling Pilot Activation) now grounds 2 of sushi's 6
+        # ingredients (APPROVED: sushi_rice 400 g / rice_vinegar 80 ml @
+        # base_servings=2) in real data, so those two DO scale. The other
+        # 4 (still NEEDS_AUTHORING: wasabi/nori/nakladany_zazvor/
+        # sojova_omacka) stay None exactly as the original V2.28 finding
+        # on the newly-ported dishes proved.
         graph = _local_graph()
         plan = build_recipe_shopping_plan(
             graph, "sushi", m.products, m.product_taxonomy_index, m.normalized_product_index, servings=6,
         )
         assert plan.requested_servings == 6
-        for ing in plan.ingredients:
+        assert plan.base_servings == 2
+
+        scaled_by_concept = {ing.ingredient_concept_id: ing for ing in plan.ingredients}
+        sushi_rice = scaled_by_concept["sushi_rice"]
+        assert sushi_rice.quantity.quantity == 1200.0  # 400 * 6 / 2
+        assert sushi_rice.quantity.unit == "g"
+        rice_vinegar = scaled_by_concept["rice_vinegar"]
+        assert rice_vinegar.quantity.quantity == 240.0  # 80 * 6 / 2
+        assert rice_vinegar.quantity.unit == "ml"
+
+        for concept_id in ("wasabi", "nori", "nakladany_zazvor", "sojova_omacka"):
+            ing = scaled_by_concept[concept_id]
             assert ing.quantity is None
             assert ing.package_count is None
 
