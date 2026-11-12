@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "created_for_sprint": "V2.30b.2",
+  "audited_source": "data/editorial/recipe_quantity_authoring_v2_30b1.json",
+  "note": "Advisory only - this report never changes production_eligible or app/. A future sprint (V2.30c) reads this as a recommendation, not an authorization.",
+  "production_eligible_recommendation": false,
+  "dishes": [
+    {
+      "dish_id": "pad_thai",
+      "approval_status": "APPROVED",
+      "base_servings": 2,
+      "required_ingredient_count": 5,
+      "required_ingredients_approved": 3,
+      "required_ingredient_approval_coverage": 0.6,
+      "scaling_ready_today_count": 1,
+      "activation_blocked_reason": "INCOMPLETE_REQUIRED_INGREDIENT_APPROVAL"
+    },
+    {
+      "dish_id": "tom_kha",
+      "approval_status": "APPROVED",
+      "base_servings": 4,
+      "required_ingredient_count": 5,
+      "required_ingredients_approved": 5,
+      "required_ingredient_approval_coverage": 1.0,
+      "scaling_ready_today_count": 1,
+      "activation_blocked_reason": null
+    },
+    {
+      "dish_id": "sushi",
+      "approval_status": "APPROVED",
+      "base_servings": 2,
+      "required_ingredient_count": 6,
+      "required_ingredients_approved": 2,
+      "required_ingredient_approval_coverage": 0.3333333333333333,
+      "scaling_ready_today_count": 2,
+      "activation_blocked_reason": "INCOMPLETE_REQUIRED_INGREDIENT_APPROVAL"
+    },
+    {
+      "dish_id": "tom_yum",
+      "approval_status": "APPROVED",
+      "base_servings": 4,
+      "required_ingredient_count": 6,
+      "required_ingredients_approved": 4,
+      "required_ingredient_approval_coverage": 0.6666666666666666,
+      "scaling_ready_today_count": 0,
+      "activation_blocked_reason": "INCOMPLETE_REQUIRED_INGREDIENT_APPROVAL"
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "approval_status": "APPROVED",
+      "base_servings": 1,
+      "required_ingredient_count": 8,
+      "required_ingredients_approved": 3,
+      "required_ingredient_approval_coverage": 0.375,
+      "scaling_ready_today_count": 1,
+      "activation_blocked_reason": "INCOMPLETE_REQUIRED_INGREDIENT_APPROVAL"
+    }
+  ],
+  "ingredients": [
+    {
+      "dish_id": "pad_thai",
+      "ingredient_concept_id": "rice_noodles",
+      "requirement": "REQUIRED",
+      "quantity": 250,
+      "unit": "g",
+      "readiness": "SCALING_READY_TODAY",
+      "self_reported_scaling_unit_readiness": "MASS_VOLUME_READY",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {
+        "FL_10507": 1,
+        "FL_10834": 1,
+        "FL_10836": 1
+      }
+    },
+    {
+      "dish_id": "pad_thai",
+      "ingredient_concept_id": "tamarind_pasta",
+      "requirement": "REQUIRED",
+      "quantity": 3,
+      "unit": "PL",
+      "readiness": "QUANTITY_UNIT_UNSUPPORTED",
+      "self_reported_scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {}
+    },
+    {
+      "dish_id": "pad_thai",
+      "ingredient_concept_id": "fish_sauce",
+      "requirement": "REQUIRED",
+      "quantity": 2,
+      "unit": "PL",
+      "readiness": "QUANTITY_UNIT_UNSUPPORTED",
+      "self_reported_scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {}
+    },
+    {
+      "dish_id": "tom_kha",
+      "ingredient_concept_id": "coconut_milk",
+      "requirement": "REQUIRED",
+      "quantity": 800,
+      "unit": "ml",
+      "readiness": "SCALING_READY_TODAY",
+      "self_reported_scaling_unit_readiness": "MASS_VOLUME_READY",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {
+        "FL_10217": 1,
+        "FL_11141": 4,
+        "FL_206": 1
+      }
+    },
+    {
+      "dish_id": "tom_kha",
+      "ingredient_concept_id": "galangal",
+      "requirement": "REQUIRED",
+      "quantity": 0.25,
+      "unit": "pohár",
+      "readiness": "QUANTITY_UNIT_UNSUPPORTED",
+      "self_reported_scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {}
+    },
+    {
+      "dish_id": "tom_kha",
+      "ingredient_concept_id": "citronova_trava",
+      "requirement": "REQUIRED",
+      "quantity": 3,
+      "unit": "lyžica",
+      "readiness": "QUANTITY_UNIT_UNSUPPORTED",
+      "self_reported_scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {}
+    },
+    {
+      "dish_id": "tom_kha",
+      "ingredient_concept_id": "kaffirove_listy",
+      "requirement": "REQUIRED",
+      "quantity": 8,
+      "unit": "list",
+      "readiness": "QUANTITY_UNIT_UNSUPPORTED",
+      "self_reported_scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {}
+    },
+    {
+      "dish_id": "tom_kha",
+      "ingredient_concept_id": "fish_sauce",
+      "requirement": "REQUIRED",
+      "quantity": 3,
+      "unit": "polievková lyžica",
+      "readiness": "QUANTITY_UNIT_UNSUPPORTED",
+      "self_reported_scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {}
+    },
+    {
+      "dish_id": "sushi",
+      "ingredient_concept_id": "sushi_rice",
+      "requirement": "REQUIRED",
+      "quantity": 400,
+      "unit": "g",
+      "readiness": "SCALING_READY_TODAY",
+      "self_reported_scaling_unit_readiness": "MASS_VOLUME_READY",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {
+        "FL_1081": 1,
+        "FL_1109": 1,
+        "FL_11455": 1
+      }
+    },
+    {
+      "dish_id": "sushi",
+      "ingredient_concept_id": "rice_vinegar",
+      "requirement": "REQUIRED",
+      "quantity": 80,
+      "unit": "ml",
+      "readiness": "SCALING_READY_TODAY",
+      "self_reported_scaling_unit_readiness": "MASS_VOLUME_READY",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {
+        "FL_1346": 1,
+        "FL_1600": 1,
+        "FL_3217": 1
+      }
+    },
+    {
+      "dish_id": "tom_yum",
+      "ingredient_concept_id": "citronova_trava",
+      "requirement": "REQUIRED",
+      "quantity": 2,
+      "unit": "stonka",
+      "readiness": "QUANTITY_UNIT_UNSUPPORTED",
+      "self_reported_scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {}
+    },
+    {
+      "dish_id": "tom_yum",
+      "ingredient_concept_id": "galangal",
+      "requirement": "REQUIRED",
+      "quantity": 8,
+      "unit": "plátok",
+      "readiness": "QUANTITY_UNIT_UNSUPPORTED",
+      "self_reported_scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {}
+    },
+    {
+      "dish_id": "tom_yum",
+      "ingredient_concept_id": "kaffirove_listy",
+      "requirement": "REQUIRED",
+      "quantity": 6,
+      "unit": "list",
+      "readiness": "QUANTITY_UNIT_UNSUPPORTED",
+      "self_reported_scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {}
+    },
+    {
+      "dish_id": "tom_yum",
+      "ingredient_concept_id": "fish_sauce",
+      "requirement": "REQUIRED",
+      "quantity": 3,
+      "unit": "lyžica",
+      "readiness": "QUANTITY_UNIT_UNSUPPORTED",
+      "self_reported_scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {}
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "ingredient_concept_id": "instant_noodles",
+      "requirement": "REQUIRED",
+      "quantity": 1,
+      "unit": "porcia",
+      "readiness": "QUANTITY_UNIT_UNSUPPORTED",
+      "self_reported_scaling_unit_readiness": "COUNT_UNIT_UNSUPPORTED",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {}
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "ingredient_concept_id": "kimchi",
+      "requirement": "REQUIRED",
+      "quantity": 80,
+      "unit": "g",
+      "readiness": "SCALING_READY_TODAY",
+      "self_reported_scaling_unit_readiness": "MASS_VOLUME_READY",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {
+        "FL_10131": 1,
+        "FL_10183": 1,
+        "FL_10455": 1
+      }
+    },
+    {
+      "dish_id": "kimchi_ramen",
+      "ingredient_concept_id": "miso",
+      "requirement": "REQUIRED",
+      "quantity": 0.5,
+      "unit": "čajová lyžička",
+      "readiness": "QUANTITY_UNIT_UNSUPPORTED",
+      "self_reported_scaling_unit_readiness": "CULINARY_MEASURE_UNSUPPORTED",
+      "self_report_matches_real_behavior": true,
+      "sample_package_counts": {}
+    }
+  ],
+  "self_report_mismatches": []
+}
