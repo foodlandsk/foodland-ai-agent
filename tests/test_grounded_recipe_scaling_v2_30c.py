@@ -42,7 +42,7 @@ from app.recipe_quantities import (  # noqa: E402
     get_approved_ingredient_quantity,
     get_base_servings,
 )
-from app.recipe_shopping import build_recipe_shopping_plan, package_count_for  # noqa: E402
+from app.recipe_shopping import best_fit_package_count, build_recipe_shopping_plan, package_count_for  # noqa: E402
 from app.session_state import get_active_recipe  # noqa: E402
 
 PILOT_DISHES = ("pad_thai", "tom_kha", "sushi", "tom_yum", "kimchi_ramen")
@@ -294,17 +294,20 @@ class TestGroundedScalingPadThai:
         assert ing.quantity.quantity == 250.0
 
     def test_mass_package_count_exact_ceil(self):
-        # Section 54 - real approved quantity + real candidate product,
-        # verified against the actual production function AND an
-        # independently computed ceil.
+        # Section 54 - real approved quantity + real candidate products,
+        # verified against the actual production function (V2.30e:
+        # best_fit_package_count() over all real candidates, not just
+        # selected_product_id's own package - see the tom_kha volume test
+        # below for a case where those two differ; here several 400 g
+        # candidates (including the selected one) tie for the minimum
+        # total purchased, so the selected product's own package happens
+        # to also be the best fit).
         ing = self._rice_noodles(6)  # 750 g
         assert ing.selected_product_id is not None
-        product = m.normalized_product_index[ing.selected_product_id]
-        assert product.package_size.is_structured
-        required_base, _ = convert_to_base_unit(ing.quantity.quantity, ing.quantity.unit)
-        package_base, _ = convert_to_base_unit(product.package_size.value, product.package_size.unit)
-        expected = ceil(required_base / package_base)
-        assert ing.package_count == expected == package_count_for(ing.quantity, product)
+        candidates = [m.normalized_product_index[pid] for pid in ing.candidate_product_ids if pid in m.normalized_product_index]
+        expected = best_fit_package_count(ing.quantity, candidates)
+        assert expected == 2  # pinned real value: ceil(750/400)
+        assert ing.package_count == expected
 
     def test_unsupported_culinary_unit_rows_scale_numerically_but_never_get_a_package_count(self):
         # Section 29 - tamarind_pasta (3 PL) and fish_sauce (2 PL) are
@@ -361,13 +364,24 @@ class TestGroundedScalingTomKha:
     def test_volume_package_count_exact_ceil(self):
         # Section 55 - real approved VOLUME (ml) quantity + real candidate
         # product with a structured ml package size.
+        #
+        # V2.30e - package_count is now the BEST FIT across all of this
+        # ingredient's real candidates (minimizing total ml purchased),
+        # not necessarily selected_product_id's own package: among the 8
+        # real coconut_milk candidates, a 400 ml AROY-D product gives an
+        # EXACT 1600 ml / 400 ml = 4 with zero waste, beating the
+        # selected/recommended 1000 ml product's 1600/1000 -> ceil = 2
+        # (which would leave 400 ml of waste). selected_product_id itself
+        # is untouched - only the internal package_count number changed.
         ing = self._coconut_milk(8)  # 1600 ml
-        product = m.normalized_product_index[ing.selected_product_id]
-        assert product.package_size.unit == "ml"
-        required_base, _ = convert_to_base_unit(ing.quantity.quantity, ing.quantity.unit)
-        package_base, _ = convert_to_base_unit(product.package_size.value, product.package_size.unit)
-        expected = ceil(required_base / package_base)
-        assert ing.package_count == expected == package_count_for(ing.quantity, product)
+        selected_product = m.normalized_product_index[ing.selected_product_id]
+        assert ing.selected_product_id == "FL_10217"  # recommendation unchanged
+        assert package_count_for(ing.quantity, selected_product) == 2  # old (pre-V2.30e) number
+
+        candidates = [m.normalized_product_index[pid] for pid in ing.candidate_product_ids if pid in m.normalized_product_index]
+        expected = best_fit_package_count(ing.quantity, candidates)
+        assert expected == 4  # pinned real value: the 400 ml product, exact fit
+        assert ing.package_count == expected
 
     def test_dish_level_approval_covers_all_five_ingredients(self):
         # tom_kha is the one pilot dish with 5/5 ingredient rows APPROVED

@@ -143,12 +143,19 @@ def build_recipe_shopping_plan(
                 is_numeric=True,
                 raw_text=f"{approved_quantity.quantity:g} {approved_quantity.unit}",
             )
-            normalized_product = normalized_index.get(selected_product_id) if selected_product_id else None
-            if normalized_product is not None:
-                # Section 26/27/28/29 - None whenever the unit isn't a safe
-                # mass/volume conversion or the candidate's package size
-                # isn't structured; that is expected, not an error.
-                package_count = package_count_for(parsed_quantity, normalized_product)
+            candidate_products = [
+                normalized_index[pid] for pid in resolution.matching_product_ids if pid in normalized_index
+            ]
+            # V2.30e - package_count is computed against whichever
+            # candidate best fits the required quantity (minimizes total
+            # amount purchased), not necessarily selected_product_id's own
+            # package. This never changes selected_product_id itself (the
+            # product recommended to the customer stays exactly what it
+            # was) - it only corrects the internal, non-customer-facing
+            # package_count number (Section 26/27/28/29 still apply: None
+            # whenever no candidate has a safe mass/volume, structured
+            # package size).
+            package_count = best_fit_package_count(parsed_quantity, candidate_products)
 
         plan_ingredients.append(
             PlanIngredient(
@@ -265,6 +272,52 @@ def package_count_for(required: ParsedQuantity, package: NormalizedProduct) -> i
     if required_unit_class != package_unit_class or package_value <= 0:
         return None
     return ceil(required_value / package_value)
+
+
+def best_fit_package_count(required: ParsedQuantity, candidate_products: list[NormalizedProduct]) -> int | None:
+    """V2.30e - among `candidate_products` (the SAME candidate set already
+    resolved for this ingredient; never a broader search), evaluates
+    package_count_for() against each and returns the count for whichever
+    candidate minimizes total amount purchased (count * package size, in
+    base units) - e.g. for a 400 g requirement, a 1 kg package (count=1,
+    1000 g bought) beats a 20 kg package (count=1, 20000 g bought) even
+    though both already give count=1.
+
+    Ties on total purchased amount are broken toward the FEWER packages
+    (e.g. 1 x 1000 ml and 4 x 250 ml both total exactly 1000 ml for an
+    800 ml requirement - count=1 wins, since recommending 4 small bottles
+    over 1 big one when they buy the identical amount is strictly worse,
+    not better). Any remaining tie is broken by whichever candidate
+    appears first in `candidate_products` (its existing, unchanged
+    resolution order) - both purely deterministic, no re-ranking of the
+    candidates themselves.
+
+    This does NOT decide which product is recommended to the customer
+    (selected_product_id is untouched, computed exactly as before,
+    elsewhere) - it only picks which package size the internal,
+    non-customer-facing package_count number is computed against. Still
+    None whenever no candidate has a safe mass/volume, structured,
+    unit-compatible package size (Section 26/27/28/29 of V2.30c)."""
+    best_total_base: float | None = None
+    best_count: int | None = None
+    for product in candidate_products:
+        count = package_count_for(required, product)
+        if count is None:
+            continue
+        package_size = product.package_size
+        package_base = convert_to_base_unit(package_size.value, package_size.unit)
+        if package_base is None:
+            continue
+        package_value_base, _ = package_base
+        total_base = count * package_value_base
+        if (
+            best_total_base is None
+            or total_base < best_total_base
+            or (total_base == best_total_base and count < best_count)
+        ):
+            best_total_base = total_base
+            best_count = count
+    return best_count
 
 
 _SECTION_BY_STATUS = {
