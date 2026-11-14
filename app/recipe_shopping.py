@@ -329,13 +329,31 @@ _SECTION_BY_STATUS = {
 }
 
 
+def _quantity_json(quantity: ParsedQuantity | None) -> dict | None:
+    """V2.30f (Section Phase 1) - JSON-safe {value, unit} for a real
+    numeric quantity, None otherwise. Never includes source_reference or
+    any other editorial metadata (Section 47 of V2.30c)."""
+    if quantity is None or not quantity.is_numeric:
+        return None
+    return {"value": quantity.quantity, "unit": quantity.unit}
+
+
 def summarize_plan(plan: RecipeShoppingPlan) -> dict:
     """Section 82/94/96/136 - the one JSON-safe shape app.main's /chat
     response exposes for a RecipeShoppingPlan. Grouped by section
     (RECIPE_REQUIRED/RECIPE_OPTIONAL/RECIPE_ALREADY_HAVE/RECIPE_NOT_AVAILABLE)
     so the client can render "shop the recipe" without re-deriving status
     logic (Section 82). Structured facts only - no customer-facing prose
-    (Section 77 - that's app.answer_composer's job)."""
+    (Section 77 - that's app.answer_composer's job).
+
+    V2.30f (Customer-Facing Quantity Exposure, Phase 1) - additionally
+    exposes `quantity`/`package_count` per ingredient and `base_servings`
+    at the top level: the same V2.30c/e-computed values that already
+    existed on PlanIngredient/RecipeShoppingPlan, now JSON-visible for
+    the first time. Both stay null for any non-grounded ingredient
+    exactly as before - this is purely additive, no existing key removed
+    or renamed. Phase 1 is JSON-only: no answer_composer/widget change,
+    so this has no visible effect on today's customer-facing text yet."""
     sections: dict[str, list[dict]] = {
         "RECIPE_REQUIRED": [],
         "RECIPE_OPTIONAL": [],
@@ -353,6 +371,8 @@ def summarize_plan(plan: RecipeShoppingPlan) -> dict:
             "selected_product_id": ingredient.selected_product_id,
             "candidate_product_ids": list(ingredient.candidate_product_ids),
             "confidence": ingredient.confidence,
+            "quantity": _quantity_json(ingredient.quantity),
+            "package_count": ingredient.package_count,
         })
     for raw_text in plan.not_available_ingredients:
         sections["RECIPE_NOT_AVAILABLE"].append({
@@ -364,12 +384,15 @@ def summarize_plan(plan: RecipeShoppingPlan) -> dict:
             "selected_product_id": None,
             "candidate_product_ids": [],
             "confidence": "UNKNOWN",
+            "quantity": None,
+            "package_count": None,
         })
     return {
         "dish_id": plan.dish_id,
         "dish_title": plan.dish_title,
         "recipe_id": plan.recipe_id,
         "requested_servings": plan.requested_servings,
+        "base_servings": plan.base_servings,
         "sections": sections,
         "coverage": {
             "ingredient_mapping_coverage": round(plan.ingredient_mapping_coverage, 3),

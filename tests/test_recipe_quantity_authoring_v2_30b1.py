@@ -333,14 +333,14 @@ class TestProductionIsolation:
                 assert ing.package_count is None, f"{dish_id}/{ing.ingredient_concept_id}: package_count unexpectedly populated"
 
     def test_chat_behavior_unaffected_for_pilot_dishes(self):
-        # Note: app.recipe_shopping.summarize_plan()'s JSON shape never
-        # includes "quantity"/"package_count" keys at all (checked
-        # directly against its source) - those stay PlanIngredient-level
-        # only, so this test checks the one thing the JSON layer actually
-        # carries: routing/workflow/plan presence is unaffected by this
-        # sprint's draft file existing on disk. The PlanIngredient-level
-        # quantity/package_count check lives in the test above, against
-        # the real dataclass fields.
+        # Note: as of V2.30b.1, summarize_plan()'s JSON shape did not yet
+        # include "quantity"/"package_count" keys at all - V2.30f later
+        # added them (JSON-only, additive, still null for unapproved
+        # rows). This test still only checks the one thing that matters
+        # at THIS sprint's layer: routing/workflow/plan presence is
+        # unaffected by this sprint's draft file existing on disk. The
+        # PlanIngredient-level quantity/package_count check lives in the
+        # test above, against the real dataclass fields.
         import app.main as m
 
         class _FakeRequest:

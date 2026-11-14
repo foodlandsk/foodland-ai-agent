@@ -105,6 +105,68 @@ class TestSummarizePlan:
         assert len(summary["sections"]["RECIPE_NOT_AVAILABLE"]) == len(m.MISSING_INGREDIENTS_BY_SUBJECT["pad_thai"])
         assert summary["coverage"]["recipe_shopping_coverage"] == 1.0
 
+    def test_every_item_in_every_section_carries_quantity_and_package_count_keys(self):
+        # V2.30f (Customer-Facing Quantity Exposure, Phase 1) - additive,
+        # uniform shape across every section, including the
+        # not_available_ingredients synthetic entries.
+        plan = build_recipe_shopping_plan(GRAPH, "pad_thai", m.products, m.product_taxonomy_index, m.normalized_product_index)
+        summary = summarize_plan(plan)
+        assert "base_servings" in summary
+        for section_items in summary["sections"].values():
+            for item in section_items:
+                assert "quantity" in item
+                assert "package_count" in item
+
+    def test_grounded_pilot_ingredient_exposes_real_quantity_and_package_count(self):
+        # pad_thai's rice_noodles is dish/ingredient-level APPROVED,
+        # base_servings=2, MASS_VOLUME_READY (V2.30c/e) - confirms the
+        # already-computed value is now actually JSON-visible.
+        plan = build_recipe_shopping_plan(
+            GRAPH, "pad_thai", m.products, m.product_taxonomy_index, m.normalized_product_index, servings=6,
+        )
+        summary = summarize_plan(plan)
+        assert summary["base_servings"] == 2
+        rice_noodles = next(
+            item for item in summary["sections"]["RECIPE_REQUIRED"] if item["ingredient_concept_id"] == "rice_noodles"
+        )
+        assert rice_noodles["quantity"] == {"value": 750.0, "unit": "g"}  # 250 * 6 / 2
+        assert rice_noodles["package_count"] == 2
+
+    def test_culinary_unit_ingredient_exposes_quantity_but_null_package_count(self):
+        plan = build_recipe_shopping_plan(GRAPH, "pad_thai", m.products, m.product_taxonomy_index, m.normalized_product_index)
+        summary = summarize_plan(plan)
+        tamarind = next(
+            item for item in summary["sections"]["RECIPE_REQUIRED"] if item["ingredient_concept_id"] == "tamarind_pasta"
+        )
+        assert tamarind["quantity"] == {"value": 3.0, "unit": "PL"}
+        assert tamarind["package_count"] is None
+
+    def test_unapproved_pilot_ingredient_exposes_null_quantity_and_package_count(self):
+        plan = build_recipe_shopping_plan(GRAPH, "pad_thai", m.products, m.product_taxonomy_index, m.normalized_product_index)
+        summary = summarize_plan(plan)
+        arasidy = next(
+            item for item in summary["sections"]["RECIPE_REQUIRED"] if item["ingredient_concept_id"] == "arasidy"
+        )
+        assert arasidy["quantity"] is None
+        assert arasidy["package_count"] is None
+
+    def test_non_pilot_dish_exposes_null_quantity_package_count_and_base_servings(self):
+        plan = build_recipe_shopping_plan(GRAPH, "kung_pao", m.products, m.product_taxonomy_index, m.normalized_product_index)
+        summary = summarize_plan(plan)
+        assert summary["base_servings"] is None
+        for section_items in summary["sections"].values():
+            for item in section_items:
+                assert item["quantity"] is None
+                assert item["package_count"] is None
+
+    def test_not_available_synthetic_entries_also_carry_null_quantity_fields(self):
+        plan = build_recipe_shopping_plan(GRAPH, "pad_thai", m.products, m.product_taxonomy_index, m.normalized_product_index)
+        summary = summarize_plan(plan)
+        assert summary["sections"]["RECIPE_NOT_AVAILABLE"]
+        for item in summary["sections"]["RECIPE_NOT_AVAILABLE"]:
+            assert item["quantity"] is None
+            assert item["package_count"] is None
+
 
 class TestQuantityParsing:
     """Section 9/25 - synthetic text, pure parser logic."""

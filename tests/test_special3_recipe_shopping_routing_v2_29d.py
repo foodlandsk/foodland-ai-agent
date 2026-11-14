@@ -99,13 +99,27 @@ class TestSessionConvergence:
         assert r2.get("products"), "no 'nemam aktivny nakupny zoznam' fallback expected"
 
     def test_servings_session_composition(self):
+        # V2.30c/f: sushi_rice/rice_vinegar are dish/ingredient-level
+        # APPROVED (grounded Foodland quantities, V2.30b.1/b.1a) and now
+        # legitimately carry a real, sourced, scaled quantity in the JSON
+        # - not fabrication. The remaining 4 ingredients (still
+        # NEEDS_AUTHORING) must still never get one - that is the actual
+        # invariant this test protects, narrowed from "no ingredient ever
+        # has a quantity" (true back in V2.29d, before any approved
+        # quantity data existed) to "no UNAPPROVED ingredient ever has
+        # one".
         sid = "v229d-session-servings-sushi"
         r1 = _chat("Nákupný zoznam na sushi pre 6 ľudí.", sid)
         plan = r1.get("recipe_shopping_plan") or {}
         assert plan.get("requested_servings") == 6
+        grounded = {"sushi_rice": {"value": 1200.0, "unit": "g"}, "rice_vinegar": {"value": 240.0, "unit": "ml"}}
         for section in plan.get("sections", {}).values():
             for ing in section:
-                assert ing.get("quantity") is None, "no ingredient quantity should be fabricated"
+                concept_id = ing.get("ingredient_concept_id")
+                if concept_id in grounded:
+                    assert ing.get("quantity") == grounded[concept_id], f"{concept_id}: expected the real grounded quantity"
+                else:
+                    assert ing.get("quantity") is None, f"{concept_id}: no ingredient quantity should be fabricated"
         r2 = _chat("Čo ešte potrebujem?", sid)
         assert r2.get("workflow_id") == "RECIPE_SHOPPING"
         assert r2.get("products")

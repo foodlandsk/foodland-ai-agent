@@ -475,8 +475,9 @@ class TestSessionPersistence:
 
         # Consistency: both turns' internal plans are a pure function of
         # (dish_id, servings) - rebuilding directly proves what both
-        # turns actually scaled to, since summarize_plan() never exposes
-        # quantity in the chat JSON (Section 42/43).
+        # turns actually scaled to. (As of V2.30c, summarize_plan() did
+        # not yet expose quantity in the chat JSON at all - V2.30f later
+        # added it; this test predates that and still passes unchanged.)
         plan = build_recipe_shopping_plan(
             m.recipe_graph_index, dish_id_2, m.products, m.product_taxonomy_index, m.normalized_product_index,
             servings=servings_2,
