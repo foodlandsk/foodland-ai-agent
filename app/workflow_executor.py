@@ -561,7 +561,7 @@ def execute_recipe(
         if emit_customer_analytics:
             m.log_question(chat_request.message, client_key, 0, intent=intent, session_id=session_id, primary_intent=_ci.primary_intent, subject=_ci.subject or "")
         if recipe_products:
-            recipe_answer_text = m.recipe_products_answer(recipe_product_subject, recipes, query_language)
+            recipe_answer_text = m.recipe_products_answer(recipe_product_subject, recipes, query_language, plan=recipe_shopping_plan)
         elif recipes:
             recipe_answer_text = m.recipe_answer(recipe_subject, recipes, query_language)
         else:

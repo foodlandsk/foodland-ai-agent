@@ -612,13 +612,15 @@ def resolve_recipe_followup(
     return None
 
 
-def _quantity_suffix(ingredient: PlanIngredient) -> str:
-    """V2.30g (Customer-Facing Quantity Exposure, Phase 2) - " (750 g)"
-    for a grounded, numeric quantity (V2.30c/e), "" otherwise. Units are
-    shown exactly as stored (g/ml/kg/l or a culinary abbreviation like
-    "PL") - never translated or converted. package_count is deliberately
-    not mentioned here (a separate, later decision - see V2.30g scoping
-    proposal)."""
+def quantity_suffix(ingredient: PlanIngredient) -> str:
+    """V2.30g/h (Customer-Facing Quantity Exposure, Phases 2/3) -
+    " (750 g)" for a grounded, numeric quantity (V2.30c/e), "" otherwise.
+    Units are shown exactly as stored (g/ml/kg/l or a culinary
+    abbreviation like "PL") - never translated or converted.
+    package_count is deliberately not mentioned here (a separate, later
+    decision - see the V2.30g/h scoping proposals). Public (no leading
+    underscore) because app.main's primary-turn answer (V2.30h) reuses
+    it too, not just this module's own follow-up composer."""
     quantity = ingredient.quantity
     if quantity is None or not quantity.is_numeric:
         return ""
@@ -665,14 +667,14 @@ def compose_recipe_followup_answer(
             if not remaining:
                 return f"You already have everything needed for {dish_title}{servings_note}."
             return f"For {dish_title}{servings_note} you still need: " + ", ".join(
-                graph.ingredient_concepts[i.ingredient_concept_id].display_name + _quantity_suffix(i) for i in remaining
+                graph.ingredient_concepts[i.ingredient_concept_id].display_name + quantity_suffix(i) for i in remaining
             ) + "."
         if not remaining:
             return f"Na {dish_title}{servings_note} už máte všetko potrebné." + (
                 f" Už vybraté: {', '.join(graph.ingredient_concepts[i.ingredient_concept_id].display_name for i in satisfied)}." if satisfied else ""
             )
         return f"Na {dish_title}{servings_note} ešte potrebujete: " + ", ".join(
-            graph.ingredient_concepts[i.ingredient_concept_id].display_name + _quantity_suffix(i) for i in remaining
+            graph.ingredient_concepts[i.ingredient_concept_id].display_name + quantity_suffix(i) for i in remaining
         ) + "."
 
     return "" if lang == "en" else ""

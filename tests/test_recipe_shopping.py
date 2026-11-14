@@ -404,3 +404,42 @@ class TestChatIntegration:
         assert plan["dish_id"] == "kung_pao"
         required_ids = {item["selected_product_id"] for item in plan["sections"]["RECIPE_REQUIRED"]}
         assert None not in required_ids or len(required_ids) > 1
+
+
+class TestPrimaryTurnQuantitySentence:
+    """V2.30h (Customer-Facing Quantity Exposure, Phase 3) -
+    app.main.recipe_products_answer()'s optional appended sentence."""
+
+    def test_no_plan_appends_nothing(self):
+        answer = m.recipe_products_answer("pad_thai", recipes=[{"id": "r1"}], lang="sk", plan=None)
+        assert answer == (
+            "Pripravila som nákupný zoznam pre pad thai: najprv produkty z Foodland.sk, potom zvlášť veci, "
+            "ktoré si treba doplniť mimo e-shopu. Produkty sú zoradené od kľúčových surovín po doplnky."
+        )
+
+    def test_grounded_plan_appends_exact_amounts_sentence_sk(self):
+        plan = build_recipe_shopping_plan(GRAPH, "pad_thai", m.products, m.product_taxonomy_index, m.normalized_product_index, servings=6)
+        answer = m.recipe_products_answer("pad_thai", recipes=[], lang="sk", plan=plan)
+        assert answer.endswith("Presné množstvá: ryzove rezance (750 g), tamarind pasta (9 PL), rybacia omacka (6 PL).")
+
+    def test_grounded_plan_appends_exact_amounts_sentence_en(self):
+        plan = build_recipe_shopping_plan(GRAPH, "pad_thai", m.products, m.product_taxonomy_index, m.normalized_product_index, servings=6)
+        answer = m.recipe_products_answer("pad_thai", recipes=[], lang="en", plan=plan)
+        assert "Exact amounts: " in answer
+        assert "(750 g)" in answer
+
+    def test_non_pilot_plan_appends_nothing(self):
+        plan = build_recipe_shopping_plan(GRAPH, "kung_pao", m.products, m.product_taxonomy_index, m.normalized_product_index)
+        answer = m.recipe_products_answer("kung_pao", recipes=[], lang="sk", plan=plan)
+        assert "Presné množstvá" not in answer
+        assert "(" not in answer
+
+    def test_chat_level_pad_thai_primary_answer_contains_quantities(self):
+        cr = m.ChatRequest(message="Chcem robit Pad Thai pre 6. Co potrebujem?", session_id="v230h-t-1", limit=8)
+        response = m.chat(cr, _FakeRequest())
+        assert "(750 g)" in response.get("answer", "")
+
+    def test_chat_level_kung_pao_primary_answer_unaffected(self):
+        cr = m.ChatRequest(message="recept na kung pao, co potrebujem", session_id="v230h-t-2", limit=8)
+        response = m.chat(cr, _FakeRequest())
+        assert "(" not in response.get("answer", "")

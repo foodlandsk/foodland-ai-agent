@@ -184,6 +184,8 @@ from app.recipe_shopping import RECIPE_FOLLOWUP_SELECTED as _RF_SELECTED
 from app.recipe_shopping import RECIPE_FOLLOWUP_PLAN_UPDATE as _RF_PLAN_UPDATE
 from app.recipe_shopping import STATUS_AVAILABLE as _RF_STATUS_AVAILABLE
 from app.recipe_shopping import SPECIAL3_SHOPPING_DEFINITIONS as _SPECIAL3_SHOPPING_DEFINITIONS
+from app.recipe_shopping import RecipeShoppingPlan as _RecipeShoppingPlan
+from app.recipe_shopping import quantity_suffix as _quantity_suffix
 from app.session_state import get_active_recipe as _get_active_recipe
 from app.session_state import set_active_recipe as _set_active_recipe
 from app.session_state import clear_recipe_state as _clear_recipe_state
@@ -9686,28 +9688,57 @@ def random_recipes_answer(recipes: list[dict] | None = None, lang: str = "sk") -
     return recipe_answer("general", recipes)
 
 
-def recipe_products_answer(subject: str | None, recipes: list[dict] | None = None, lang: str = "sk") -> str:
+def _grounded_quantities_sentence(plan: "_RecipeShoppingPlan | None", lang: str = "sk") -> str:
+    """V2.30h (Customer-Facing Quantity Exposure, Phase 3) - one optional,
+    appended sentence listing only the ingredients that actually have a
+    grounded quantity (V2.30c/e) - reuses app.recipe_shopping.
+    quantity_suffix(), not duplicated. "" (append nothing) whenever the
+    dish has no V2.8 structured plan, or the plan has zero grounded rows
+    (every non-pilot dish, and any pilot dish/request with none approved
+    yet) - the existing sentence this gets appended to stays byte-for-
+    byte unchanged in that case."""
+    if plan is None:
+        return ""
+    grounded = [ing for ing in plan.ingredients if ing.quantity is not None and ing.quantity.is_numeric]
+    if not grounded:
+        return ""
+    items = ", ".join(
+        recipe_graph_index.ingredient_concepts[ing.ingredient_concept_id].display_name + _quantity_suffix(ing)
+        for ing in grounded
+        if ing.ingredient_concept_id in recipe_graph_index.ingredient_concepts
+    )
+    if not items:
+        return ""
+    if lang == "en":
+        return f" Exact amounts: {items}."
+    return f" Presné množstvá: {items}."
+
+
+def recipe_products_answer(
+    subject: str | None, recipes: list[dict] | None = None, lang: str = "sk", plan: "_RecipeShoppingPlan | None" = None,
+) -> str:
     subject_text = str(subject or "recept").replace("_", " ")
+    quantities_sentence = _grounded_quantities_sentence(plan, lang)
     if lang == "en":
         subject_text_en = readable_subject_label_en(subject) if subject else "this recipe"
         if recipes:
             return (
                 f"I put together a shopping list for {subject_text_en}: Foodland.sk products first, then separately the things "
                 "you'll need to get elsewhere. Products are sorted from key ingredients to extras."
-            )
+            ) + quantities_sentence
         return (
             f"I found relevant Foodland.sk products for the {subject_text_en} recipe. "
             "They're sorted from key ingredients to extras; add fresh items yourself per the recipe."
-        )
+        ) + quantities_sentence
     if recipes:
         return (
             f"Pripravila som nákupný zoznam pre {subject_text}: najprv produkty z Foodland.sk, potom zvlášť veci, ktoré si treba doplniť mimo e-shopu. "
             "Produkty sú zoradené od kľúčových surovín po doplnky."
-        )
+        ) + quantities_sentence
     return (
         f"K receptu pre {subject_text} som našla relevantné produkty z Foodland.sk. "
         "Sú zoradené od kľúčových surovín po doplnky; čerstvé veci si doplňte podľa receptu."
-    )
+    ) + quantities_sentence
 
 
 REPLACEMENT_QUERY_FILLER = (
