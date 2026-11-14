@@ -20,9 +20,12 @@ import app.main as m
 from app.ingredients import ParsedQuantity, extract_requested_servings, parse_quantity_text, scale_quantity
 from app.recipe_graph import build_recipe_graph_index
 from app.recipe_shopping import (
+    RECIPE_FOLLOWUP_PLAN_UPDATE,
     STATUS_ALREADY_SATISFIED,
     STATUS_AVAILABLE,
+    RecipeFollowupResult,
     build_recipe_shopping_plan,
+    compose_recipe_followup_answer,
     package_count_for,
     scale_plan_quantities,
     summarize_plan,
@@ -166,6 +169,64 @@ class TestSummarizePlan:
         for item in summary["sections"]["RECIPE_NOT_AVAILABLE"]:
             assert item["quantity"] is None
             assert item["package_count"] is None
+
+
+class TestFollowupAnswerQuantitySuffix:
+    """V2.30g (Customer-Facing Quantity Exposure, Phase 2) -
+    compose_recipe_followup_answer()'s PLAN_UPDATE branch appends a
+    " (value unit)" suffix for grounded remaining ingredients only."""
+
+    def _plan_update_result(self, dish_id, servings=None):
+        plan = build_recipe_shopping_plan(
+            GRAPH, dish_id, m.products, m.product_taxonomy_index, m.normalized_product_index, servings=servings,
+        )
+        return plan, RecipeFollowupResult(kind=RECIPE_FOLLOWUP_PLAN_UPDATE, dish_id=dish_id, plan=plan)
+
+    def test_grounded_ingredient_gets_quantity_suffix_sk(self):
+        _, result = self._plan_update_result("pad_thai", servings=6)
+        answer = compose_recipe_followup_answer(result, GRAPH, {}, lang="sk")
+        assert "rezance (750 g)" in answer  # 250 * 6 / 2
+
+    def test_grounded_ingredient_gets_quantity_suffix_en(self):
+        _, result = self._plan_update_result("pad_thai", servings=6)
+        answer = compose_recipe_followup_answer(result, GRAPH, {}, lang="en")
+        assert "(750 g)" in answer
+
+    def test_unapproved_ingredient_gets_no_suffix(self):
+        plan, result = self._plan_update_result("pad_thai", servings=6)
+        answer = compose_recipe_followup_answer(result, GRAPH, {}, lang="sk")
+        arasidy_label = GRAPH.ingredient_concepts["arasidy"].display_name
+        assert f"{arasidy_label}." in answer or f"{arasidy_label}," in answer
+        assert f"{arasidy_label} (" not in answer
+
+    def test_culinary_unit_ingredient_shows_unit_verbatim(self):
+        _, result = self._plan_update_result("pad_thai", servings=6)
+        answer = compose_recipe_followup_answer(result, GRAPH, {}, lang="sk")
+        assert "(9 PL)" in answer  # tamarind_pasta: 3 PL * 6 / 2, unit shown as-is, no conversion
+
+    def test_no_requested_servings_uses_base_quantity(self):
+        _, result = self._plan_update_result("pad_thai", servings=None)
+        answer = compose_recipe_followup_answer(result, GRAPH, {}, lang="sk")
+        assert "(250 g)" in answer
+
+    def test_non_pilot_dish_text_has_no_quantity_suffix_at_all(self):
+        _, result = self._plan_update_result("kung_pao", servings=6)
+        answer = compose_recipe_followup_answer(result, GRAPH, {}, lang="sk")
+        assert "(" not in answer
+
+    def test_already_have_everything_branch_unaffected(self):
+        plan = build_recipe_shopping_plan(GRAPH, "pad_thai", m.products, m.product_taxonomy_index, m.normalized_product_index)
+        required_product_ids = frozenset(
+            ing.selected_product_id for ing in plan.ingredients if ing.requirement == "REQUIRED" and ing.selected_product_id
+        )
+        full_plan = build_recipe_shopping_plan(
+            GRAPH, "pad_thai", m.products, m.product_taxonomy_index, m.normalized_product_index,
+            basket_product_ids=required_product_ids,
+        )
+        result = RecipeFollowupResult(kind=RECIPE_FOLLOWUP_PLAN_UPDATE, dish_id="pad_thai", plan=full_plan)
+        answer = compose_recipe_followup_answer(result, GRAPH, {}, lang="sk")
+        assert "uz mate vsetko potrebne" in answer.lower() or "už máte všetko potrebné" in answer
+        assert "(" not in answer
 
 
 class TestQuantityParsing:
